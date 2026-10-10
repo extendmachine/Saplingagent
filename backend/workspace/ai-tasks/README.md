@@ -1,3 +1,3 @@
-# 服务任务交接
+# Handover of service tasks
 
-当前实施 TASK-20261009-007.md；规划历史见根 TASK-002。根 AI_TASKS.md/TODO.md 权威，仅协调者更新。服务实现和隔离自检完成，真实集成和人工测试由 TASK-005 汇总。
+Currently implement TASK-20261009-007.md; see the root of the planning history TASK-002. Root AI_TASKS.md/TODO.md authority, only the coordinator is updated. Service realization and isolation self-testing are completed, and real integration and manual testing are summarized by TASK-005.
