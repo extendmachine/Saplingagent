@@ -1,14 +1,14 @@
 # 多 AI 任务管理
 
-TASK017源码快照说明：本分支为GitHub交付版chore/project/github-delivery，用户授权源码上传和产品README；Codex/root只修改README、docs入口及根目标/任务/进度，业务源码与TASK015的f1c690d8完全一致。原始主项目存在.worktrees/coordination时，该目录AI_TASKS/TODO为权威协调记录；本文件不是实时占用索引。现有安装候选不改写，main/testcode不合并。本次发布结果和最终提交由权威协调记录记载。
+TASK018三分支快照：用户已完成上一交付64366886afbc0988669397dd2e793344450e9216的测试，并明确仅保留main纯AI聊天、testcode用户测试页、release客户版（目前同main）。已测安装器/退出清理/README归入main，前端仍为空App和单聊天；testcode80cb9eb保留用户演进组件。此次仅同步分支说明与记录，不改变已测业务。历史临时分支名称仅用于来源追溯，当前可用分支以三分支约定和Git refs为准。
 
 ## 协调信息
 
-- 当前模式：TASK017 GitHub交付源码快照；Codex/root负责README和发布，辅助审查只读。
-- 原项目权威索引/进度：主目录.worktrees/coordination/AI_TASKS.md、TODO.md；该目录存在时优先按规则14读取，GitHub对应chore/project/task-coordination分支。
-- 当前协调者：Codex/root / TASK-20261009-017。
-- 本次分支/位置：chore/project/github-delivery / .worktrees/github-delivery，从f1c690d8创建；main/testcode和安装候选保留。
-- 此文件为提交时的历史快照。新用户的本地占用和授权不能从开发者快照继承；客户分发脚本会初始化接收者状态。
+- 当前任务/协调者：TASK-20261009-018 / Codex/root；执行与Git结果在原主项目.worktrees/coordination/AI_TASKS.md、TODO.md。
+- 当前分支角色：main（纯AI聊天与安装）、testcode（用户测试页）、release（客户版，目前main同提交）。
+- 当前本机权威协调目录按用户三分支要求转detached HEAD，位置不变；此用户明确要求优先于长期保留协调分支的默认做法，不另建第二个索引。
+- 当前主工作目录继续testcode；客户获取main/release，本文件为源码交付快照，新用户不继承开发者历史任务授权。客户打包会初始化接收者状态。
+- 已测来源：64366886afbc0988669397dd2e793344450e9216；归集合并c626fb64febcf53596218372d9fe0fe92cab8945；后续文档提交仅对应本次明确的分支整理要求。
 
 ## 使用规则
 
@@ -18,7 +18,9 @@ TASK017源码快照说明：本分支为GitHub交付版chore/project/github-deli
 4. 无实际微服务的项目级交接写在本文件，不创建虚假服务。
 5. 后续任务与验收、提交、main 同步依规则 04、09、14 执行。
 
-## 当前任务
+## 历史任务快照
+
+以下保留原执行时期的状态；TASK018用户测试、归集和临时分支删除已替代“尚未批准main”等旧当前状态。
 
 | 任务编号 | 执行 AI | 微服务/功能 | 分支 | Worktree | 允许修改范围 | 禁止修改范围 | 最新提交 | 状态 | 最后更新 | 下一步 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -189,4 +191,4 @@ TASK014版本说明：本文件所在源码版本为main；测试/恢复证据�
 
 ## TASK015候选快照说明
 
-当前本地权威索引为原始主项目.worktrees/coordination/AI_TASKS.md；本工作树为chore/project/macos-delivery，从main9271c18创建。TASK-20261009-015 Codex/root允许修改项目macOS安装/登录/启动/诊断、打包脚本、config/docs/相关部署资料及目标快照；TASK016的有界退出修复已从独立服务分支29f84a93d6a4集成。其它根历史记录只保留来源，不是实时认领。当前自检42项和构建通过，尚未批准main同步。冻结后结果仅回写权威协调记录；接收者包初始化自己的目标/任务/进度，不继承本开发项目授权。
+TASK015当时记录：权威索引位于原始主项目.worktrees/coordination/AI_TASKS.md；当时工作树为chore/project/macos-delivery，从main9271c18创建。TASK-20261009-015 Codex/root允许修改项目macOS安装/登录/启动/诊断、打包脚本、config/docs/相关部署资料及目标快照；TASK016的有界退出修复已从独立服务分支29f84a93d6a4集成。其它根历史记录只保留来源，不是实时认领。当前自检42项和构建通过，尚未批准main同步。冻结后结果仅回写权威协调记录；接收者包初始化自己的目标/任务/进度，不继承本开发项目授权。
