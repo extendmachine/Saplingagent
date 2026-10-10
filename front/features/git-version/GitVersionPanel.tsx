@@ -21,6 +21,7 @@ type GitState = {
   changesTruncated: boolean;
   branches: GitBranchInfo[];
   recentCommits: Array<{ shortSha: string; sha: string; committedAt: string; subject: string }>;
+  autoCommit?: { shortSha: string; sha: string; subject: string } | null;
 };
 
 class GitRequestError extends Error {
@@ -123,7 +124,7 @@ export function GitVersionPanel() {
           <div className="git-current-line"><span className="git-status-icon"><GitCommitHorizontal size={15} /></span><strong>{git.branch || 'Detached HEAD'}</strong><code>{git.head.shortSha}</code></div>
           <p title={git.head.subject}>{git.head.subject}</p>
           <div className={`git-worktree-state ${git.clean ? 'is-clean' : 'is-dirty'}`}>
-            {git.clean ? <><Check size={13} /> 工作区干净</> : <><AlertTriangle size={13} /> {git.changeCount} 项未提交改动，切换已锁定</>}
+            {git.clean ? <><Check size={13} /> 当前页面已提交</> : <><AlertTriangle size={13} /> {git.changeCount} 项改动，切换时自动提交</>}
           </div>
         </div>
 
@@ -132,7 +133,7 @@ export function GitVersionPanel() {
         <div className="git-section-title"><span>本地分支</span><small>{git.branches.length}</small></div>
         <div className="git-branch-list" role="listbox" aria-label="选择目标分支">
           {git.branches.map(branch => {
-            const disabled = branch.current || branch.occupied || !git.clean || switching;
+            const disabled = branch.current || branch.occupied || switching;
             return <button className={`git-branch-row${selected === branch.name ? ' is-selected' : ''}`} type="button" key={branch.name} role="option" aria-selected={selected === branch.name} disabled={disabled} onClick={() => setSelected(branch.name)}>
               <span className="git-branch-main"><span>{branch.name}</span><small>{branch.subject}</small></span>
               <span className="git-branch-meta">{branch.current ? '当前' : branch.occupied ? '其他工作树' : branch.shortSha}</span>
@@ -141,14 +142,14 @@ export function GitVersionPanel() {
         </div>
 
         <div className="git-switch-footer">
-          <p>{target ? `切换后页面会载入 ${target.name}` : git.clean ? '选择一个可用分支' : '请先处理当前改动'}</p>
-          <button type="button" onClick={() => void switchBranch()} disabled={!target || switching || !git.clean}>
+          <p>{target ? git.clean ? `切换后载入 ${target.name}` : `先自动提交，再切换到 ${target.name}` : '选择一个可用分支'}</p>
+          <button type="button" onClick={() => void switchBranch()} disabled={!target || switching}>
             {switching ? <LoaderCircle className="spinning" size={14} /> : <GitBranch size={14} />}
             {switching ? '切换中' : '切换版本'}
           </button>
         </div>
 
-        <details className="git-history"><summary>最近提交</summary><ol>{git.recentCommits.map(commit => <li key={commit.sha}><code>{commit.shortSha}</code><span>{commit.subject}</span></li>)}</ol></details>
+        <details className="git-history"><summary>已提交的页面版本</summary><ol>{git.recentCommits.map(commit => <li key={commit.sha}><code>{commit.shortSha}</code><span>{commit.subject}</span></li>)}</ol></details>
       </> : null}
     </div> : null}
   </aside>;

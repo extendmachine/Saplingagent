@@ -36,12 +36,18 @@ test('reads branch, commits and dirty files', async t => {
   assert.equal(state.changes[0].file, 'note.txt');
 });
 
-test('switches only clean, available local branches', async t => {
+test('automatically commits current changes before switching local branches', async t => {
   const root = await repository();
   t.after(() => fs.rm(root, { recursive: true, force: true }));
+  await fs.writeFile(path.join(root, 'note.txt'), 'saved before switch\n');
+  await fs.writeFile(path.join(root, 'page.txt'), 'committed page\n');
   const switched = await switchGitBranch(root, 'release');
   assert.equal(switched.branch, 'release');
-  await fs.writeFile(path.join(root, 'note.txt'), 'dirty\n');
-  await assert.rejects(() => switchGitBranch(root, 'main'), error => error.code === 'GIT_DIRTY');
+  assert.match(switched.autoCommit.subject, /save main before switching to release/);
+  assert.equal((await run(root, 'show', 'main:note.txt')).stdout, 'saved before switch\n');
+  assert.equal((await run(root, 'show', 'main:page.txt')).stdout, 'committed page\n');
+  const returned = await switchGitBranch(root, 'main');
+  assert.equal(returned.branch, 'main');
+  assert.equal(returned.autoCommit, null);
   await assert.rejects(() => switchGitBranch(root, 'missing'), error => error.code === 'GIT_BRANCH_NOT_FOUND');
 });

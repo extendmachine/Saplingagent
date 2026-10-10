@@ -110,8 +110,16 @@ export async function switchGitBranch(root, branch) {
   const target = state.branches.find(candidate => candidate.name === branch);
   if (!target) throw new GitVersionError('GIT_BRANCH_NOT_FOUND', '目标分支不存在', 404);
   if (target.current) return state;
-  if (!state.clean) throw new GitVersionError('GIT_DIRTY', '工作区有未提交改动，请先提交、暂存或撤销后再切换', 409);
+  if (!state.branch) throw new GitVersionError('GIT_DETACHED', '当前目录未处于命名分支，无法自动保存后切换', 409);
   if (target.occupied) throw new GitVersionError('GIT_BRANCH_IN_USE', `分支正在其他工作树中使用：${target.occupiedBy}`, 409);
+  let autoCommit = null;
+  if (!state.clean) {
+    await git(root, ['add', '--all']);
+    const subject = `chore: save ${state.branch} before switching to ${branch}`;
+    await git(root, ['commit', '-m', subject]);
+    const [shortSha, sha] = (await git(root, ['show', '-s', '--format=%h%x00%H', 'HEAD'])).trim().split('\0');
+    autoCommit = { shortSha, sha, subject };
+  }
   await git(root, ['switch', '--', branch]);
-  return readGitVersion(root);
+  return { ...(await readGitVersion(root)), autoCommit };
 }
