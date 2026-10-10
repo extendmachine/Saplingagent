@@ -27,7 +27,7 @@ export async function checkedFetch(url: string, options?: RequestInit): Promise<
   try { response = await fetch(url, { ...options, signal }); } catch (error) {
     if (timeout.signal.aborted && !options?.signal?.aborted) throw new Error('本地服务响应超时，请重试或重新启动服务。');
     if (error instanceof DOMException && error.name === 'AbortError') throw error;
-    throw new Error('本地服务连接失败。请确认 SeedAgent 后端正在运行。');
+    throw new Error('本地服务连接失败。请确认 Saplingagent 后端正在运行。');
   } finally { clearTimeout(timer); }
   if (!response.ok) {
     let message: string | undefined;

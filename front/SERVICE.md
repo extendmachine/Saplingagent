@@ -41,3 +41,7 @@ CONTRACT.md、DEPLOY.md、REFERENCES.md、ai-tasks/TASK-20261009-013.md；历史
 新增运行依赖remark-gfm 4.0.1，安装于front/node_modules并锁定front/package.json/package-lock.json。ChatPanel的MarkdownTextPrimitive配置remarkPlugins={[remarkGfm]}，将竖线表格解析为table/thead/tbody/th/td，沿用chat.css的边框与横向滚动；同时支持GFM删除线、任务列表等语法。保留defer和现有外链/图片覆盖，不启用原始HTML或代码执行。当前main候选仍为空App的单聊天，没有新增业务组件、后端接口或CSS。
 
 检查：TypeScript/Vite构建、4项SSE测试通过；实际ChatPanel隔离合成消息的表格DOM、列对齐、1px边框、overflow-x:auto、任务框/删除线、代码块竖线均核对通过。真实后端/用户会话未写入、模型未调用；新版本人工验收与main同步状态见权威协调索引。构建JS743.90kB/gzip225.93kB，沿用原有500kB体积提示。
+
+## Saplingagent 更名（2026-10-09）
+
+产品名称统一为 Saplingagent，私有包名改为 saplingagent-*。本次仅名称及展示元数据，接口、权限、模型和数据结构不变；SEED_*/SEEDAGENT_*、seedagent MCP/client ID、浏览器会话键、运行期标记和 seed-* Skill ID 保留兼容。验证和待测提交见权威 .worktrees/coordination/AI_TASKS.md；本条不代表 main 已同步。
