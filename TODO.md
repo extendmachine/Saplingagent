@@ -1,5 +1,11 @@
 # SeedAgent 当前进度
 
+## TASK017 GitHub代码与README交付
+
+用户授权将全部源码上传到https://github.com/extendmachine/Saplingagent.git。此分支chore/project/github-delivery基于TASK015冻结安装候选f1c690d8，新增产品README：GitHub获取/ZIP安装、本人登录、项目内Codex AppServer stdio协议、自动MCP/Skills、模型配置、诊断/设备码/注销、权限与认证边界。原完整规范分发说明在README末尾折叠保留，19个rules原样；docs/index同步导航，业务源码未变。
+
+当前为源码交付候选快照；具体提交、推送与GitHub默认分支结果由协调分支的权威记录汇总，不回填冻结候选。远程私有空仓库已核查，已有main/testcode/Mac候选和修复分支均保留，未合并main。上一安装候选42测试/构建/真实模型验证仍见下方，当前仅文档修改采用链接、命令与源码一致性检查，不冒充用户本人登录和Intel真机已验收。
+
 ## TASK015 macOS交付候选
 
 此工作树为chore/project/macos-delivery，从main9271c18创建；权威协调记录在原始主项目.worktrees/coordination。已实现四个.command、macOS13.5+项目内Node24.21/Codex0.146.1安装、用户自登录、自动MCP/Skills就绪启动、诊断及干净源码打包。TASK016退出清理修复已集成（源提交29f84a93d6a4）。真实Apple Silicon安装、重复安装、无全局auth导入、42项隔离/协议测试与TypeScript/Vite构建通过。交付包解压换目录及真实模型回归将在冻结候选后核对，最终结果见权威协调记录和交付回执。main/testcode未变；未远程发布；用户人工Finder/Intel流程待验证，main需指定提交测试确认。

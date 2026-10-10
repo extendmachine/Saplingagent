@@ -36,6 +36,8 @@
 
 ## 本次任务范围
 
+- TASK017（2026-10-09）：用户明确授权将全部公开源码分支推送到https://github.com/extendmachine/Saplingagent.git，并编写产品README，重点说明macOS安装、本人Codex登录和App Server接入。采用独立chore/project/github-delivery从Mac安装候选创建首页版本，保留main/testcode及冻结候选；当前远程为私有仓库。源码上传不包含真实凭据/运行资料，不代表商业认证、云端运行或main合并。
+
 - TASK005至009完成真实AI/MCP/Skills；TASK010至013按用户新要求移除强制保护，保留现有单页和用户已生成业务内容。
 - 构建本地 Agent 运行、workspace 持久化、Full Access文件/命令与可选快照服务、MCP 工具与项目 Skills，前端流式展示和停止/失败处理。
 - 采用已登录本机 Codex App Server，选择目录中真实可用的模型并验证。用户后续通过对话决定页面内容。
@@ -61,4 +63,4 @@
 
 ## 当前不做
 
-本地后端、模型和MCP/Skills已实现，Full Access沿用。TASK015新增macOS本地源包/安装与用户自登录；云端上传下载、外部发布、商业SIWC认证仍不做。后续以 TODO 的实际验证结果为准。
+本地后端、模型和MCP/Skills已实现，Full Access沿用。TASK015新增macOS本地源包/安装与用户自登录，TASK017已授权GitHub源码上传及接入README；云端上传下载、外部应用上线和商业SIWC认证仍不做。后续以 TODO 的实际验证结果为准。
