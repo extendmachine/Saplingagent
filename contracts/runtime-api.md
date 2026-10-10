@@ -10,6 +10,7 @@ Codex sandbox danger-full-access、approvalPolicy never；seedagent MCP default_
 
 GET /api/status -> {ready,authenticated,provider,model,skills:[{name,description}],mcp:{ready,tools:[{name,description}]},permissions:{mode:'full-access',sandbox:'danger-full-access',approvalPolicy:'never',mcpApproval:'approve'},error?}。
 GET /api/git -> {git:{repository,branch,detached,head:{shortSha,sha,committedAt,subject},version,fingerprint,clean,changeCount,changes,changesTruncated,branches,recentCommits}}。`version`为当前可见短版本号，`fingerprint`用于同一浏览器页面检测提交或未提交修改；读取当前项目Worktree的分支、提交、未提交文件、本地分支及其它Worktree占用状态，不访问网络。
+POST /api/git/commit -> {git}。将当前命名分支的全部未忽略改动暂存并创建本地提交；工作区已干净时幂等返回当前状态。AI对话运行中、detached HEAD或其它Git写操作进行中时返回409；不推送远程。
 POST /api/git/switch {branch} -> {git,reloadRecommended:true}。只接受现有本地分支；当前命名分支有未提交改动时先自动提交，AI对话运行中、detached HEAD、另一次切换进行中或目标分支被其他Worktree占用时返回409。接口不执行stash、force、discard、fetch、pull、push或远程分支创建。
 GET /api/sessions -> {sessions:[{id,title,updatedAt}]}。
 GET /api/sessions/:id -> {session:{id,title,threadId,messages,updatedAt,running,activeRequestId,requests,pendingApprovals:[],progress?}}。

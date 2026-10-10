@@ -5,6 +5,7 @@ TASK-20261009-005 / Codex/root；本地可运行开发版，人工体验见根TO
 职责：模型目录/认证、持续thread/turn、SSE文本与工具进展、审批、取消、去重、断线和重启恢复；tasks.mjs负责根AI_TASKS运行期登记及本服务ai-tasks/runtime记录。文件/命令可使用Native Codex或MCP/app-builder；服务实现仍通过公开契约通信。
 
 TASK-20261010-004在本服务增加Git版本读取与受保护切换：`git-versions.mjs`只通过参数数组调用项目内Git工作树，不拼接shell；读取当前HEAD、分支、未提交文件、最近提交和Worktree占用，并生成供底部更新提醒使用的短版本号与状态指纹。切换仅面向现有本地分支；当前分支有改动时自动暂存并提交全部未忽略文件，再切换目标。detached HEAD、活跃AI对话、并发切换或目标被其它Worktree占用时拒绝。不创建或删除分支，不stash、force、丢弃文件或操作远程。切换成功仅记录分支与短SHA，不记录文件正文或绝对路径。
+同一模块提供显式本地保存提交：只在命名分支且Agent无活跃对话时将全部未忽略改动提交，工作区已干净时不创建空提交。该操作不包含远程push、新建分支或切换分支。
 
 默认回环4310；workspace内部HTTP4311、builder4312；浏览器通过Vite同源/api代理。统一启动node scripts/dev.mjs；单独node backend/agent-runtime/server.mjs前准备setup/workspace/builder与MCP依赖。GET /health为进程健康，GET /api/status.ready为模型/认证/MCP真正就绪，两者不同。
 

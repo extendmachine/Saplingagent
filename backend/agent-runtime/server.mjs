@@ -9,7 +9,7 @@ import { confirmationContent } from './approval.mjs';
 import { toolFingerprint } from '../../contracts/agent-tools.mjs';
 import { permissions, threadPermissions, permissionConfigArgs, automaticApproval } from './permissions.mjs';
 import { createTurnProgress, turnTiming } from './turn-progress.mjs';
-import { GitVersionError, readGitVersion, switchGitBranch } from './git-versions.mjs';
+import { commitGitVersion, GitVersionError, readGitVersion, switchGitBranch } from './git-versions.mjs';
 
 const defaultRoot = fileURLToPath(new URL('../../', import.meta.url));
 const safeError = error => String(error?.message || 'Agent operation failed').replace(/Bearer\s+\S+|(?:sk-|eyJ)[\w.\-]{12,}/g, '[redacted]').slice(0, 800);
@@ -327,6 +327,16 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ready: true, service: 'agent-runtime', agentReady: status.ready && !startup });
       if (req.method === 'GET' && url.pathname === '/api/status') { if ((!rpc || rpc.closed) && !startup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...status, ready: status.ready && !startup }); }
       if (req.method === 'GET' && url.pathname === '/api/git') return send(res, 200, { git: await readGitVersion(root) });
+      if (req.method === 'POST' && url.pathname === '/api/git/commit') {
+        if (gitSwitching) throw new ApiError('GIT_SWITCH_BUSY', '另一次 Git 操作正在进行', 409);
+        if (active.size) throw new ApiError('GIT_AGENT_BUSY', 'AI 对话仍在运行，请等待完成或停止后再保存版本', 409);
+        gitSwitching = true;
+        try {
+          const gitState = await commitGitVersion(root);
+          if (gitState.savedCommit) await log('git_version_committed', { branch: gitState.branch, sha: gitState.savedCommit.shortSha });
+          return send(res, 200, { git: gitState });
+        } finally { gitSwitching = false; }
+      }
       if (req.method === 'POST' && url.pathname === '/api/git/switch') {
         if (gitSwitching) throw new ApiError('GIT_SWITCH_BUSY', '另一次版本切换正在进行', 409);
         if (active.size) throw new ApiError('GIT_AGENT_BUSY', 'AI 对话仍在运行，请等待完成或停止后再切换版本', 409);

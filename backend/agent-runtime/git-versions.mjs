@@ -144,3 +144,14 @@ export async function switchGitBranch(root, branch) {
   await git(root, ['switch', '--', branch]);
   return { ...(await readGitVersion(root)), autoCommit };
 }
+
+export async function commitGitVersion(root) {
+  const state = await readGitVersion(root);
+  if (!state.branch) throw new GitVersionError('GIT_DETACHED', '当前目录未处于命名分支，无法保存提交', 409);
+  if (state.clean) return { ...state, savedCommit: null };
+  await git(root, ['add', '--all']);
+  const subject = `chore: save ${state.branch} from Saplingagent`;
+  await git(root, ['commit', '-m', subject]);
+  const [shortSha, sha] = (await git(root, ['show', '-s', '--format=%h%x00%H', 'HEAD'])).trim().split('\0');
+  return { ...(await readGitVersion(root)), savedCommit: { shortSha, sha, subject } };
+}

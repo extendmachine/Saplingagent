@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Check, ChevronDown, GitBranch, GitCommitHorizontal, LoaderCircle, RefreshCw, X } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, GitBranch, GitCommitHorizontal, LoaderCircle, RefreshCw, Save, X } from 'lucide-react';
 
 type GitBranchInfo = {
   name: string;
@@ -24,6 +24,7 @@ type GitState = {
   branches: GitBranchInfo[];
   recentCommits: Array<{ shortSha: string; sha: string; committedAt: string; subject: string }>;
   autoCommit?: { shortSha: string; sha: string; subject: string } | null;
+  savedCommit?: { shortSha: string; sha: string; subject: string } | null;
 };
 
 class GitRequestError extends Error {
@@ -48,6 +49,8 @@ export function GitVersionPanel() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedMessage, setSavedMessage] = useState('');
   const alive = useRef(true);
 
   const refresh = useCallback(async (quiet = false) => {
@@ -68,11 +71,11 @@ export function GitVersionPanel() {
   useEffect(() => {
     alive.current = true;
     void refresh();
-    const timer = window.setInterval(() => { if (!document.hidden && !switching) void refresh(true); }, 5000);
+    const timer = window.setInterval(() => { if (!document.hidden && !switching && !saving) void refresh(true); }, 5000);
     const onVisible = () => { if (!document.hidden) void refresh(true); };
     document.addEventListener('visibilitychange', onVisible);
     return () => { alive.current = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
-  }, [refresh, switching]);
+  }, [refresh, saving, switching]);
 
   const switchBranch = async () => {
     if (!selected || switching) return;
@@ -95,6 +98,23 @@ export function GitVersionPanel() {
     }
   };
 
+  const saveVersion = async () => {
+    if (!git || git.clean || saving || switching) return;
+    setSaving(true);
+    setError('');
+    setSavedMessage('');
+    try {
+      const next = await requestGit('/api/git/commit', { method: 'POST' });
+      if (!alive.current) return;
+      setGit(next);
+      setSavedMessage(next.savedCommit ? `已保存版本 ${next.savedCommit.shortSha}` : '当前版本已保存');
+    } catch (nextError) {
+      if (alive.current) setError(nextError instanceof Error ? nextError.message : '保存版本失败');
+    } finally {
+      if (alive.current) setSaving(false);
+    }
+  };
+
   const currentLabel = git?.branch || (git ? `detached · ${git.head.shortSha}` : 'Git');
   const target = git?.branches.find(branch => branch.name === selected);
 
@@ -113,12 +133,14 @@ export function GitVersionPanel() {
           <strong>Git 版本</strong>
         </div>
         <div className="git-heading-actions">
-          <button type="button" onClick={() => void refresh()} disabled={loading || switching} aria-label="刷新 Git 状态"><RefreshCw className={loading ? 'spinning' : ''} size={15} /></button>
+          <button className="git-save-button" type="button" onClick={() => void saveVersion()} disabled={!git || git.clean || saving || switching} title={git?.clean ? '当前版本已保存' : '保存并提交当前版本'} aria-label="保存并提交当前版本">{saving ? <LoaderCircle className="spinning" size={14} /> : <Save size={14} />}<span>{saving ? '保存中' : '保存提交'}</span></button>
+          <button type="button" onClick={() => void refresh()} disabled={loading || switching || saving} aria-label="刷新 Git 状态"><RefreshCw className={loading ? 'spinning' : ''} size={15} /></button>
           <button type="button" onClick={() => setOpen(false)} aria-label="关闭版本面板"><X size={16} /></button>
         </div>
       </div>
 
       {error ? <div className="git-notice git-notice-error"><AlertTriangle size={15} /><span>{error}</span></div> : null}
+      {savedMessage ? <div className="git-notice git-notice-success"><Check size={15} /><span>{savedMessage}</span></div> : null}
       {loading && !git ? <div className="git-loading"><LoaderCircle className="spinning" size={18} /> 正在读取版本…</div> : null}
 
       {git ? <>

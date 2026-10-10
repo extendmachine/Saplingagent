@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { promisify } from 'node:util';
-import { readGitVersion, switchGitBranch } from '../git-versions.mjs';
+import { commitGitVersion, readGitVersion, switchGitBranch } from '../git-versions.mjs';
 
 const exec = promisify(execFile);
 const run = (cwd, ...args) => exec('git', ['-C', cwd, ...args]);
@@ -54,4 +54,19 @@ test('automatically commits current changes before switching local branches', as
   assert.equal(returned.branch, 'main');
   assert.equal(returned.autoCommit, null);
   await assert.rejects(() => switchGitBranch(root, 'missing'), error => error.code === 'GIT_BRANCH_NOT_FOUND');
+});
+
+test('saves all current changes as a local commit without switching branches', async t => {
+  const root = await repository();
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  await fs.writeFile(path.join(root, 'note.txt'), 'saved by button\n');
+  await fs.writeFile(path.join(root, 'new-page.txt'), 'new page\n');
+  const saved = await commitGitVersion(root);
+  assert.equal(saved.branch, 'main');
+  assert.equal(saved.clean, true);
+  assert.match(saved.savedCommit.subject, /save main from Saplingagent/);
+  assert.equal((await run(root, 'show', 'HEAD:note.txt')).stdout, 'saved by button\n');
+  assert.equal((await run(root, 'show', 'HEAD:new-page.txt')).stdout, 'new page\n');
+  const unchanged = await commitGitVersion(root);
+  assert.equal(unchanged.savedCommit, null);
 });
