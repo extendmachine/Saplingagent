@@ -10,7 +10,9 @@ TASK015候选基于main9271c18单聊天起点；当前App为空，features仅REA
 
 ## 目录与边界
 
-main.tsx当前独立挂载聊天与App，App已引用用户通过对话生成的features/CurrentTime.tsx。chat/包含ChatPanel、useSeedRuntime、runtime-api、sse、ApplicationBoundary和chat.css；styles.css及features承载应用内容。本任务保留现有业务源码，全权限模式对main/chat等文件不设置写入保护。CONTRACT/DEPLOY/REFERENCES与ai-tasks提供维护记录。
+main.tsx独立挂载聊天与App；TASK-20261010-005由App加载`features/git-version/GitVersionPanel.tsx`，在页面右上角提供Git状态和安全分支切换。chat/包含ChatPanel、useSeedRuntime、runtime-api、sse、ApplicationBoundary和chat.css；styles.css及features承载应用内容。全权限模式对main/chat等文件不设置写入保护。CONTRACT/DEPLOY/REFERENCES与ai-tasks提供维护记录。
+
+Git面板每5秒在页面可见时刷新，并支持手动刷新；显示当前分支/短SHA、提交说明、工作区改动、本地分支占用和最近提交。用户先选择目标分支再明确点击“切换版本”。工作区不干净或分支被其它Worktree占用时按钮禁用，后端仍进行权威复核；成功后页面重新载入目标分支。前端不执行Git命令、不提供强制切换、不展示完整本地路径。
 
 ## 全权限运行方式
 

@@ -28,6 +28,7 @@ npm run preview -- --port 4173
 ```
 
 preview 与dev使用同一 SEED_AGENT_PORT 代理设置，默认4310。dist 是静态产物；正式静态托管必须配置同源反向代理，不能直接 file:// 打开，也没有本任务外部发布。
+Git版本面板同样依赖`/api/git`和`/api/git/switch`的同源代理。切换分支会更新当前Worktree文件；Vite开发服务器可能热更新或重新载入，Node后端需重启才会载入目标分支的后端源码。切换到不包含本面板的历史版本后，页面将按该版本显示，不承诺仍保留面板入口。
 前端构建与 4 条 SSE 测试通过；Node strip-only 测试使用显式属性赋值，不需要 tsx 或额外测试依赖。真实流式对话、刷新续聊、停止、MCP、Skills、自修改链路由 root TASK-005 进行集成验证，最终实际结果见根 TODO。
 JS 构建块约 706 kB/gzip 215 kB，Vite 提示超过 500 kB；本地可运行，未隐藏体积提示。fsevents 可选脚本待审核，未批准执行，构建正常。
 
