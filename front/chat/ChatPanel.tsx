@@ -1,5 +1,6 @@
 import { AssistantRuntimeProvider, ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useExternalStoreRuntime, type ThreadMessageLike } from '@assistant-ui/react';
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown';
+import remarkGfm from 'remark-gfm';
 import { ArrowUp, Check, LoaderCircle, Plus, RotateCcw, Square, Wrench } from 'lucide-react';
 import { useSeedRuntime } from './useSeedRuntime';
 import type { Message } from './runtime-api';
@@ -9,7 +10,7 @@ const convertMessage = (message: Message): ThreadMessageLike => ({
   ...(message.role === 'assistant' && { status: message.status === 'streaming' ? { type: 'running' as const } : message.status === 'interrupted' ? { type: 'incomplete' as const, reason: 'cancelled' as const } : message.status === 'failed' ? { type: 'incomplete' as const, reason: 'error' as const } : { type: 'complete' as const, reason: 'stop' as const } }),
 });
 function MarkdownText() {
-  return <MarkdownTextPrimitive className="markdown-text" defer components={{
+  return <MarkdownTextPrimitive className="markdown-text" defer remarkPlugins={[remarkGfm]} components={{
     a: ({ children, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer">{children}</a>,
     img: ({ alt }) => <span className="image-description">{alt || '图片'}</span>,
   }} />;
