@@ -184,3 +184,7 @@
 <!-- seedagent-runtime-tasks:end -->
 
 TASK014版本说明：本文件所在源码版本为main；测试/恢复证据详见docs/git-versions.html。历史TASK001至013非Git描述不代表当前仓库状态。
+
+## TASK015候选快照说明
+
+当前本地权威索引为原始主项目.worktrees/coordination/AI_TASKS.md；本工作树为chore/project/macos-delivery，从main9271c18创建。TASK-20261009-015 Codex/root允许修改项目macOS安装/登录/启动/诊断、打包脚本、config/docs/相关部署资料及目标快照；TASK016的有界退出修复已从独立服务分支29f84a93d6a4集成。其它根历史记录只保留来源，不是实时认领。当前自检42项和构建通过，尚未批准main同步。冻结后结果仅回写权威协调记录；接收者包初始化自己的目标/任务/进度，不继承本开发项目授权。

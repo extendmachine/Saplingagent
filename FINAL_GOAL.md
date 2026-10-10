@@ -30,6 +30,10 @@
 
 用户明确取消SeedAgent MCP的backend/及全部文件保护，授予当前系统用户的Full Access。整个应用、基础聊天、后端、MCP、Skills、配置与依赖可修改，文件和shell无需逐次确认；编译、AST/YAML/hash检查不作为操作门槛，不自动回退。候选/文件原件可记录供用户主动撤销；任意命令或原生写入的副作用不承诺可完整回退。系统自身权限仍适用，不自动提权root。
 
+## macOS安装与交付（TASK015，2026-10-09）
+
+用户已授权制作目前只支持macOS的安装与Codex AppServer接入脚本、说明及可交付本地源包。本候选从main单聊天起点创建，保留Full Access；支持macOS13.5+的Apple Silicon/Intel、项目内Node/Codex、用户自登录、自动MCP/Skills就绪启动和干净打包。用户真实资料不分发，接收者状态文件初始化。云端、商业SIWC及原生App签名/公证另行实施。
+
 ## 本次任务范围
 
 - TASK005至009完成真实AI/MCP/Skills；TASK010至013按用户新要求移除强制保护，保留现有单页和用户已生成业务内容。
@@ -44,7 +48,7 @@
 - 当前会话/偏好为原子JSON文件存储；Codex thread与认证运行资料在项目CODEX_HOME。未迁移SQLite业务库。
 - 已实现agent-runtime、workspace、app-builder、mcp-runtime四项后端职责；features/由用户业务对话逐步建立。
 - 三个回环HTTP进程与Codex托管的MCP stdio进程；共享公开契约，不导入其他服务私有实现。
-- 首版为本机macOS网页开发运行，采用本机已登录Codex App Server0.146.1；实际模型gpt-5.6-sol/medium。客户离线种子、原生能力与跨平台交付仍待实施。
+- 首版为本机macOS网页开发运行，采用本机已登录Codex App Server0.146.1；实际模型gpt-5.6-sol/medium。macOS本地源包与安装脚本见TASK015；原生能力与其他平台交付仍待实施。
 
 ## 验收方向
 
@@ -57,4 +61,4 @@
 
 ## 当前不做
 
-本地后端、模型和MCP/Skills已实现，本次放开执行权限；云端上传下载、外部发布与客户打包仍不做。后续以 TODO 的实际验证结果为准。
+本地后端、模型和MCP/Skills已实现，Full Access沿用。TASK015新增macOS本地源包/安装与用户自登录；云端上传下载、外部发布、商业SIWC认证仍不做。后续以 TODO 的实际验证结果为准。

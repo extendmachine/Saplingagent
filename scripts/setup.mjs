@@ -5,31 +5,34 @@ import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 export const root = process.env.SEED_ROOT || fileURLToPath(new URL('../', import.meta.url));
-export async function setup() {
+export async function setup({ importExistingAuth = process.env.SEED_IMPORT_EXISTING_AUTH !== '0', projectRoot = root } = {}) {
+  const targetRoot = path.resolve(projectRoot);
   for (const folder of ['local-secrets', 'local-secrets/runtime', 'local-secrets/codex', 'local-secrets/notes']) {
-    const target = path.join(root, folder);
+    const target = path.join(targetRoot, folder);
     await fs.mkdir(target, { recursive: true, mode: 0o700 });
     if ((await fs.lstat(target)).isSymbolicLink()) throw new Error('Secret directories must not be symbolic links');
     await fs.chmod(target, 0o700);
   }
-  const tokenPath = path.join(root, 'local-secrets/runtime/service-token');
+  const tokenPath = path.join(targetRoot, 'local-secrets/runtime/service-token');
   try { await fs.writeFile(tokenPath, randomBytes(32).toString('hex'), { flag: 'wx', mode: 0o600 }); }
   catch (error) { if (error.code !== 'EEXIST') throw error; }
   if (!(await fs.lstat(tokenPath)).isFile()) throw new Error('Invalid service token file');
   await fs.chmod(tokenPath, 0o600);
-  const authPath = path.join(root, 'local-secrets/codex/auth.json');
+  const authPath = path.join(targetRoot, 'local-secrets/codex/auth.json');
   let imported = false;
   try { await fs.access(authPath); }
   catch {
-    const source = path.join(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'), 'auth.json');
-    try { await fs.copyFile(source, authPath, fs.constants.COPYFILE_EXCL); imported = true; }
-    catch (error) { if (!['ENOENT', 'EEXIST'].includes(error.code)) throw error; }
+    if (importExistingAuth) {
+      const source = path.join(process.env.CODEX_HOME || path.join(os.homedir(), '.codex'), 'auth.json');
+      try { await fs.copyFile(source, authPath, fs.constants.COPYFILE_EXCL); imported = true; }
+      catch (error) { if (!['ENOENT', 'EEXIST'].includes(error.code)) throw error; }
+    }
   }
   try {
     if (!(await fs.lstat(authPath)).isFile()) throw new Error('Invalid local Codex auth file');
     await fs.chmod(authPath, 0o600);
   } catch (error) { if (error.code !== 'ENOENT') throw error; }
-  const ledgerPath = path.join(root, 'local-secrets/notes/project-secrets.json');
+  const ledgerPath = path.join(targetRoot, 'local-secrets/notes/project-secrets.json');
   let ledger = {};
   try {
     if (!(await fs.lstat(ledgerPath)).isFile()) throw new Error('Invalid secret ledger file');

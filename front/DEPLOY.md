@@ -35,4 +35,6 @@ JS 构建块约 706 kB/gzip 215 kB，Vite 提示超过 500 kB；本地可运行�
 
 浏览器保存 sessionId，刷新从后端恢复消息；运行中的会话恢复 SSE，订阅不可用时读取持久化快照。断线不会主动取消后台任务；停止按钮调用专用 cancel 后等待保存状态。失败重试复用 requestId，不再追加用户消息。
 新对话仅解除当前浏览器选择，旧消息留在 workspace。消息正文不放入 localStorage，旧画布状态不读取或清除。
-当前App已有用户通过对话创建的CurrentTime业务组件，main/chat与App仍独立挂载，App使用ErrorBoundary。本任务保留App/features/styles。全权限运行允许AI在进程当前OS用户可访问的范围直接读写/删除文件、执行命令和修改源码，main/chat等文件不设置写入保护，不要求逐次审批或强制候选验证。候选准备、应用与手动rollback可选，恢复依据实际变更记录。前端只通过Agent展示请求与进展；执行和权限配置由后端承担。当前非Git，没有提交、合并或人工验收记录。
+本macOS候选沿用main的空App和单聊天起点，main/chat与App仍独立挂载，App使用ErrorBoundary。本次未改动App/features/styles。全权限运行允许AI在进程当前OS用户可访问的范围直接读写/删除文件、执行命令和修改源码，main/chat等文件不设置写入保护，不要求逐次审批或强制候选验证。候选准备、应用与手动rollback可选，恢复依据实际变更记录。前端只通过Agent展示请求与进展；执行和权限配置由后端承担。当前非Git，没有提交、合并或人工验收记录。
+
+macOS13.5+客户本机安装使用根目录.command入口，具体见../../docs/macos-install.html及../../scripts/macos/README.md；自动固定项目Node24.21 LTS，依赖按锁文件安装。无新接口或前端业务改动。

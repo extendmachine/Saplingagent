@@ -46,7 +46,7 @@ async function waitHealth(port) {
   }
   throw new Error(`Service ${port} did not start`);
 }
-for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => void stop());
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.once(signal, () => void stop());
 try {
   for (const port of [config.workspacePort, config.builderPort, config.agentPort, config.frontPort]) await freePort(port);
   await fs.access(path.join(root, 'front/node_modules/vite/bin/vite.js'));

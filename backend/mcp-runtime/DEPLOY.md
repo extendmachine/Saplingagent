@@ -27,3 +27,5 @@ client 关闭 transport 或发送 SIGTERM/SIGINT。修改 server/依赖/配置�
 文件写删的原件与记录尽力保存；SNAPSHOT_UNAVAILABLE/RECORD_UNAVAILABLE warning时可能applied无changeId，说明实际成功但无可确认恢复记录。用户主动要求时 page_changes 查已记录变更、page_rollback 恢复。恢复会覆盖后续修改，无hash防护，也不自动回退。原生文件工具、shell、网络、服务状态与业务资料副作用可能没有快照，不能保证整体撤销。写超时或断线先检查实际状态。
 
 本服务无数据库迁移。若需手动恢复 MCP 源码，从用户选择的明确备份恢复同一套 server/package/lock 并自检；当前非 Git，无已知稳定提交/main 合并/发布。真实秘密、依赖、.venv、临时测试 fixture 和日志不是分发源码。资料见 REFERENCES.md。
+
+TASK015 macOS源包通过四个.command入口安装和启动；官方CLI由项目.runtime/codex提供，MCP由Agent自动加载。用户本机自登录且未分发开发者认证，具体见../../docs/macos-install.html和../../scripts/macos/README.md。完整rules与Skills原样入包，运行资料不入包。

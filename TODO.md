@@ -1,5 +1,10 @@
 # SeedAgent 当前进度
 
+## TASK015 macOS交付候选
+
+此工作树为chore/project/macos-delivery，从main9271c18创建；权威协调记录在原始主项目.worktrees/coordination。已实现四个.command、macOS13.5+项目内Node24.21/Codex0.146.1安装、用户自登录、自动MCP/Skills就绪启动、诊断及干净源码打包。TASK016退出清理修复已集成（源提交29f84a93d6a4）。真实Apple Silicon安装、重复安装、无全局auth导入、42项隔离/协议测试与TypeScript/Vite构建通过。交付包解压换目录及真实模型回归将在冻结候选后核对，最终结果见权威协调记录和交付回执。main/testcode未变；未远程发布；用户人工Finder/Intel流程待验证，main需指定提交测试确认。
+
+
 ## Git分支管理（TASK014）
 
 用户授权保存当前testcode及AI在网页自行添加功能前的main单聊天基线；本文件随对应分支保存。确切SHA使用git log -1 <分支>核对，不要求提交中包含自身SHA。当前仅root写入，主工作目录保持testcode，不推送远程。
