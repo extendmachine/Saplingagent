@@ -7,8 +7,8 @@
 <style>body{margin:0;background:#f6f7f4;color:#283128;font:16px/1.75 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:32px 22px 64px}nav{display:flex;flex-wrap:wrap;gap:18px}section{background:#fff;padding:22px;border:1px solid #dde2d8;border-radius:14px;margin:22px 0}h1{line-height:1.25}table{border-collapse:collapse;width:100%}td,th{padding:10px;border:1px solid #dde2d8;text-align:left;vertical-align:top}pre{background:#edf0e9;padding:16px;overflow:auto}a{color:#456a39}img{max-width:100%;border:1px solid #dde2d8;border-radius:12px}@media(max-width:650px){main{padding:22px 12px}section{padding:16px}table{display:block;overflow:auto}}</style>
 </head>
 <body>
-<main>
-<nav>
+<main><p><strong>main单聊天基线</strong>：本分支无后加应用组件，Full Access核心保留。恢复来源与本次检查见<a href="git-versions.html">Git版本说明</a>；历史页面截图和任务记录保留其当时含义。</p>
+<nav><a href="macos-install.html">Mac安装与接入</a>
 <a href="index.html">概览</a>
 <a href="runtime.html">运行与演进</a>
 <a href="frontend-preview.html">单页预览</a>
@@ -18,7 +18,7 @@
 </nav>
 <h1>运行与Full Access</h1>
 <section>
-<h2>启动</h2>
+<h2>启动</h2><p>拿到macOS源包后，按<a href="macos-install.html">Mac安装指南</a>运行1-安装、2-登录Codex、3-启动Saplingagent。以下node命令保留为开发入口。</p>
 <p>Node≥24.11、npm、官方Codex CLI，本机Codex0.146.1。依赖归项目，默认网页127.0.0.1:5173，三个回环后端端口4310/4311/4312。</p>
 <pre>node scripts/install.mjs   # 首次依赖准备
 node scripts/dev.mjs       # 统一启动
@@ -33,13 +33,10 @@ node scripts/login.mjs     # 需要本项目登录时</pre>
 <section>
 <h2>对话和工具</h2>
 <p>浏览器同源/api → Agent → 官方Codex App Server，SSE展示真回复及工具状态。会话持久化、请求去重、刷新重连、重启续聊、停止/错误重试沿用。当前实际模型gpt-5.6-sol/medium，配置首选不可用时选择模型目录默认。</p>
+<p>TASK-20261010-006：默认取消整轮10分钟强制停止（turnTimeoutMs=0，缺字段亦0），改为记录最后一次有效进展。非空文字、推理/计划、有效item生命周期、真实命令输出及MCP进度可更新记录；连续10分钟无有效进展仅提示等待或停止，运行继续，不自动重发。静默工具提示仍在运行，标准Full Access确认继续自动通过；心跳、页面轮询/重连、保存和模型连接重试不延长进展。新进展清除闲置，刷新重连会补发当前提醒。进展时间/类别/状态是当前活动轮的内存元数据，未实现断点续跑，不展示或保存推理原文/工具输出。工具自身时限、手动Stop与真实错误仍有效。显式正turnTimeoutMs可保留绝对总时限；turnIdleWarningMs默认600000。两项只允许0至2147483647整数毫秒，0关闭对应计时器，改配置后重启生效。隔离单元及HTTP测试通过，真实模型长期运行与人工体验待验收，准确提交及同步状态由权威协调记录保存；<a href="../backend/agent-runtime/ai-tasks/TASK-20261010-006.md">查看交接</a>。</p>
+<p>TASK-20261010-003候选修复：切换到使用独立数据的同源服务后，浏览器旧会话可能不存在。确认是会话404时，只解绑匹配旧指针并提示；原输入保留，点击重试或发送新消息才继续。网络和暂时服务错误保留指针，其他标签的新指针不被此次清理删除。20项合成检查、前端构建及独立审查通过，未操作真实浏览器或调用模型；候选待人工体验与main同步，详见<a href="../front/ai-tasks/TASK-20261010-003.md">任务交接</a>。</p>
 <p>15个MCP工具：读取文件/上下文、直接写入和删除文件、执行命令、可选候选与快照、偏好以及Skills发现。workspace_write_file/delete_file/run_command可直接操作；page_propose只生成ready候选，page_apply执行，page_rollback由用户主动请求。修改工具尝试登记根AI_TASKS，但登记失败不会挡住操作；只读聊天不登记。</p>
 <p>三个Skills提供页面修改、官方资料研究与可复用流程编写，可被AI修改；合法frontmatter是Codex发现格式，不是写入权限门槛。后端/MCP源码与依赖也可修改，运行进程重启后加载。</p>
-</section>
-<section>
-<h2>页面快捷能力</h2>
-<p>左侧项目文件栏可展开全部目录、查看和编辑文本文件，并从“…”复制绝对地址；保存使用完整文件hash避免覆盖外部修改，二进制、截断内容和符号链接保持只读。详情编辑器关闭后回到原单页聊天，窄屏文件栏使用抽屉。</p>
-<p>左上“截屏”按钮调用浏览器原生getDisplayMedia选择器。用户选择屏幕、窗口或标签页后，页面抓取单帧并直接下载带时间戳PNG；图像不上传后端。浏览器安全策略要求每次由用户发起并选择捕获来源，网页不能静默绕过。</p>
 </section>
 <section>
 <h2>用户主动回退</h2>
@@ -47,7 +44,7 @@ node scripts/login.mjs     # 需要本项目登录时</pre>
 </section>
 <section>
 <h2>验证与后续</h2>
-<p>33项隔离/协议检查与前端构建通过；项目文件同源API已实测，四个本地服务保持运行。真实模型直接写backend临时文件、MCP读取、原生命令和主动恢复成功，确认弹窗0次。浏览器工具拒绝localhost访问，本次自动视觉复测和真实屏幕授权点击未完成；截屏需用户在浏览器中人工体验。完整结果见根TODO与各服务交接。长期体验、客户单文件种子、跨平台交付与云端仍后续实施，未发布或初始化Git。</p>
+<p>32项隔离/协议检查与前端构建通过；真实模型直接写backend临时文件、MCP读取、原生命令和主动恢复成功，确认弹窗0次，4个用户业务文件哈希一致。浏览器工具拒绝localhost访问，本次视觉复测未完成；服务/API/模型链路已实测。完整结果见根TODO与各服务交接。前版的白名单/强制验证说明已被TASK010至013取代。长期体验、布局效果指标、客户单文件种子、跨平台交付与云端仍后续实施，未发布或初始化Git。</p>
 </section>
 <p>
 <small>2026-10-09 · TASK010至013 · 规范2026-09-29.1 · 待人工体验</small>

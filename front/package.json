@@ -1,5 +1,5 @@
 {
-  "name": "seedagent-front",
+  "name": "saplingagent-front",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -7,14 +7,15 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test chat/sse.test.mjs"
+    "test": "node --experimental-vm-modules --test chat/*.test.mjs"
   },
   "dependencies": {
     "@assistant-ui/react": "0.15.26",
     "@assistant-ui/react-markdown": "0.14.20",
     "lucide-react": "1.54.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "remark-gfm": "4.0.1"
   },
   "devDependencies": {
     "@types/react": "19.3.0",

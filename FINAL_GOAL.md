@@ -1,8 +1,12 @@
-# SeedAgent 最终目标与构想
+# Saplingagent 最终目标与构想
+
+## 项目名称（2026-10-09）
+
+用户明确项目以后统一叫 **Saplingagent**；页面、运行身份、安装与交付使用此名称。历史构想原文和内部协议/状态标识保留，已有会话无需迁移。
 
 ## 最终目标
 
-制作 SeedAgent：以本地文件夹为应用边界，用户通过与 AI 对话构建应用，实现应用快速开发和个性化适配。长期对话形成偏好，持续调整同一工作页面，并以可追溯依据和使用效果判断改进。
+制作 Saplingagent：以本地文件夹为应用边界，用户通过与 AI 对话构建应用，实现应用快速开发和个性化适配。长期对话形成偏好，持续调整同一工作页面，并以可追溯依据和使用效果判断改进。
 “所有 app”是长期产品愿景；首阶段采用 React 网页，原生平台能力与适配器后续按需求定义，不能宣称通用能力已实现。
 
 ## 用户原始构想（2026-10-09）
@@ -18,6 +22,8 @@
 
 ## 已确定要求
 
+分支约定（TASK018，2026-10-09）：用户已完成上一交付版本测试，仅保留main纯AI聊天、testcode用户测试页面、release客户版（TASK018时与main同提交；后续main变更不自动同步release）。已测Mac安装器与AppServer接入内容保留在main/release；其它临时分支删除，来源保留于Git历史。testcode的用户演进内容不合入纯聊天版本。
+
 1. 本地网页采用 React，基础对话入口复用成熟开源方案；其他可见界面组件由 AI 创建、修改和个性化适配。
 2. 用户在 TASK-20261009-004 明确调整起点：初始只有单网页和一个对话框，不预置画布、导航或功能组件。后续通过 AI 对话修改组件、添加内容；画布不再是必须的初始界面。
 3. 本地 Agent 可连接外部资料服务，能生成自己的 MCP 工具以扩展和修改应用；密钥从本地文件读取。
@@ -28,9 +34,15 @@
 
 ## 当前权限决定（2026-10-09）
 
-用户明确取消SeedAgent MCP的backend/及全部文件保护，授予当前系统用户的Full Access。整个应用、基础聊天、后端、MCP、Skills、配置与依赖可修改，文件和shell无需逐次确认；编译、AST/YAML/hash检查不作为操作门槛，不自动回退。候选/文件原件可记录供用户主动撤销；任意命令或原生写入的副作用不承诺可完整回退。系统自身权限仍适用，不自动提权root。
+用户明确取消Saplingagent MCP的backend/及全部文件保护，授予当前系统用户的Full Access。整个应用、基础聊天、后端、MCP、Skills、配置与依赖可修改，文件和shell无需逐次确认；编译、AST/YAML/hash检查不作为操作门槛，不自动回退。候选/文件原件可记录供用户主动撤销；任意命令或原生写入的副作用不承诺可完整回退。系统自身权限仍适用，不自动提权root。
+
+## macOS安装与交付（TASK015，2026-10-09）
+
+用户已授权制作目前只支持macOS的安装与Codex AppServer接入脚本、说明及可交付本地源包。本候选从main单聊天起点创建，保留Full Access；支持macOS13.5+的Apple Silicon/Intel、项目内Node/Codex、用户自登录、自动MCP/Skills就绪启动和干净打包。用户真实资料不分发，接收者状态文件初始化。云端、商业SIWC及原生App签名/公证另行实施。
 
 ## 本次任务范围
+
+- TASK017（2026-10-09）：用户明确授权将全部公开源码分支推送到https://github.com/extendmachine/Saplingagent.git，并编写产品README，重点说明macOS安装、本人Codex登录和App Server接入。采用独立chore/project/github-delivery从Mac安装候选创建首页版本，保留main/testcode及冻结候选；当前远程为私有仓库。源码上传不包含真实凭据/运行资料，不代表商业认证、云端运行或main合并。
 
 - TASK005至009完成真实AI/MCP/Skills；TASK010至013按用户新要求移除强制保护，保留现有单页和用户已生成业务内容。
 - 构建本地 Agent 运行、workspace 持久化、Full Access文件/命令与可选快照服务、MCP 工具与项目 Skills，前端流式展示和停止/失败处理。
@@ -44,7 +56,7 @@
 - 当前会话/偏好为原子JSON文件存储；Codex thread与认证运行资料在项目CODEX_HOME。未迁移SQLite业务库。
 - 已实现agent-runtime、workspace、app-builder、mcp-runtime四项后端职责；features/由用户业务对话逐步建立。
 - 三个回环HTTP进程与Codex托管的MCP stdio进程；共享公开契约，不导入其他服务私有实现。
-- 首版为本机macOS网页开发运行，采用本机已登录Codex App Server0.146.1；实际模型gpt-5.6-sol/medium。客户离线种子、原生能力与跨平台交付仍待实施。
+- 首版为本机macOS网页开发运行，采用本机已登录Codex App Server0.146.1；实际模型gpt-5.6-sol/medium。macOS本地源包与安装脚本见TASK015；原生能力与其他平台交付仍待实施。
 
 ## 验收方向
 
@@ -57,4 +69,4 @@
 
 ## 当前不做
 
-本地后端、模型和MCP/Skills已实现，本次放开执行权限；云端上传下载、外部发布与客户打包仍不做。后续以 TODO 的实际验证结果为准。
+本地后端、模型和MCP/Skills已实现，Full Access沿用。TASK015新增macOS本地源包/安装与用户自登录，TASK017已授权GitHub源码上传及接入README；云端上传下载、外部应用上线和商业SIWC认证仍不做。后续以 TODO 的实际验证结果为准。

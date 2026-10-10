@@ -1,7 +1,7 @@
 # app-builder 服务说明
 
 - 目录 backend/app-builder/；Codex/workspace，TASK-20261009-012；版本0.2.0。
-- 当前状态：实现、14项隔离自检与真实模型联调完成；新增浏览器文件编辑安全写接口，待人工体验。根 TASK010 汇总，非 Git，无提交/main同步。
+- 当前状态：实现、13项隔离自检与真实模型联调完成，待人工体验。根 TASK010 汇总，非 Git，无提交/main同步。
 - 职责：按用户要求提供当前操作系统用户的完整文件与命令操作、可选候选记录及用户主动恢复。模型、会话和MCP协议分别由其他服务通过公开HTTP协调。
 - 当前没有读写白名单、扩展名、符号链接/越界、秘密文本、AST/YAML、固定聊天/入口/后端/rules保护，没有强制编译、hash冲突拦截或自动恢复。不提权 root。
 
@@ -17,8 +17,6 @@ builder.mjs：原生读写、索引快照、主动恢复、shell生命周期。s
 相对路径基于项目根，绝对路径、../、dot目录和符号链接按原生文件系统处理。文件支持utf8/base64与字节分页；目录列表保留目录/symlink/other类型。writable:true表示服务没有写门槛，实际权限由OS决定。
 
 POST /files/write、/files/delete直接操作目标并尽力记录原件。快照或记录失败仍执行可执行目标，返回applied+warning；没有确认可用记录时省略changeId。原件备份失败明确originalSnapshot:false/backupError及BACKUP_UNAVAILABLE，不能承诺该文件可恢复。目录操作可用任意shell。
-
-POST /files/write-checked用于浏览器文本编辑器：读取时取得完整文件SHA256，保存时确认文件仍未被外部修改，再用同目录临时文件原子替换并保留原权限；冲突保留浏览器草稿，不覆盖磁盘。它拒绝symlink及非普通文件，不影响Full Access下其他直写接口。
 
 可选POST /changes成功仅返回ready/checks:[]，expectedHash接受但忽略，不复制完整前端或编译。apply兼容旧validated/failed候选；多文件中途失败保留已经完成的操作。单进程记录队列，无跨进程快照锁。
 
@@ -37,3 +35,7 @@ logs/app-builder/app-builder-YYYY-MM-DD.log；启动和跨日清理30天前日�
 上游backend/mcp-runtime通过HTTP；根启动器准备local-secrets/runtime/service-token，本服务启动读取做内部认证，浏览器不持有token。无跨服务私有导入或数据库依赖。
 
 接口CONTRACT.md；部署/主动恢复DEPLOY.md；官方来源REFERENCES.md；当前交接ai-tasks/TASK-20261009-012.md。旧TASK008是历史受控方案，当前v2已替代。根AI_TASKS/TODO仅协调者更新。
+
+## Saplingagent 更名（2026-10-09）
+
+产品名称统一为 Saplingagent，私有包名改为 saplingagent-*。本次仅名称及展示元数据，接口、权限、模型和数据结构不变；SEED_*/SEEDAGENT_*、seedagent MCP/client ID、浏览器会话键、运行期标记和 seed-* Skill ID 保留兼容。验证和待测提交见权威 .worktrees/coordination/AI_TASKS.md；本条不代表 main 已同步。

@@ -46,7 +46,7 @@ async function waitHealth(port) {
   }
   throw new Error(`Service ${port} did not start`);
 }
-for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => void stop());
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.once(signal, () => void stop());
 try {
   for (const port of [config.workspacePort, config.builderPort, config.agentPort, config.frontPort]) await freePort(port);
   await fs.access(path.join(root, 'front/node_modules/vite/bin/vite.js'));
@@ -55,5 +55,5 @@ try {
   run('backend/app-builder/server.mjs', 'builder'); await waitHealth(config.builderPort);
   run('backend/agent-runtime/server.mjs', 'agent'); await waitHealth(config.agentPort);
   run('front/node_modules/vite/bin/vite.js', 'front', [path.join(root, 'front'), '--host', '127.0.0.1', '--port', String(config.frontPort), '--strictPort']);
-  console.log(`SeedAgent: http://127.0.0.1:${config.frontPort}/ (Agent initialization continues in background)`);
+  console.log(`Saplingagent: http://127.0.0.1:${config.frontPort}/ (Agent initialization continues in background)`);
 } catch (error) { console.error(error.message); await stop(1); }

@@ -1,12 +1,14 @@
 # 多 AI 任务管理
 
+TASK018三分支快照：用户已完成上一交付64366886afbc0988669397dd2e793344450e9216的测试，并明确仅保留main纯AI聊天、testcode用户测试页、release客户版（目前同main）。已测安装器/退出清理/README归入main，前端仍为空App和单聊天；testcode80cb9eb保留用户演进组件。此次仅同步分支说明与记录，不改变已测业务。历史临时分支名称仅用于来源追溯，当前可用分支以三分支约定和Git refs为准。
+
 ## 协调信息
 
-- 当前模式：TASK014本地Git版本保存；只有root写文件，基线核查子任务只读。
-- 权威索引：项目根目录 AI_TASKS.md。
-- 权威进度：项目根目录 TODO.md。
-- 当前协调者：Codex / TASK-20261009-014；用户已授权初始化 Git 与保存 testcode/main，根索引串行协调。
-- 本次修改者：Codex/root；只读协助不认领写入范围。当前根testcode为唯一工作目录；后续并行修改须按规则14建立协调Worktree。
+- 当前任务/协调者：TASK-20261009-018 / Codex/root；执行与Git结果在原主项目.worktrees/coordination/AI_TASKS.md、TODO.md。
+- 当前分支角色：main（纯AI聊天与安装）、testcode（用户测试页）、release（客户版，目前main同提交）。
+- 当前本机权威协调目录按用户三分支要求转detached HEAD，位置不变；此用户明确要求优先于长期保留协调分支的默认做法，不另建第二个索引。
+- 当前主工作目录继续testcode；客户获取main/release，本文件为源码交付快照，新用户不继承开发者历史任务授权。客户打包会初始化接收者状态。
+- 已测来源：64366886afbc0988669397dd2e793344450e9216；归集合并c626fb64febcf53596218372d9fe0fe92cab8945；后续文档提交仅对应本次明确的分支整理要求。
 
 ## 使用规则
 
@@ -16,7 +18,9 @@
 4. 无实际微服务的项目级交接写在本文件，不创建虚假服务。
 5. 后续任务与验收、提交、main 同步依规则 04、09、14 执行。
 
-## 当前任务
+## 历史任务快照
+
+以下保留原执行时期的状态；TASK018用户测试、归集和临时分支删除已替代“尚未批准main”等旧当前状态。
 
 | 任务编号 | 执行 AI | 微服务/功能 | 分支 | Worktree | 允许修改范围 | 禁止修改范围 | 最新提交 | 状态 | 最后更新 | 下一步 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -34,7 +38,7 @@
 | TASK-20261009-012 | Codex/workspace | 全权限文件执行与手动恢复 | 非 Git | 不适用 | backend/app-builder | 根状态/docs/contracts、其他服务、用户业务组件 | 无 | 实现及自检完成，待人工体验 | 2026-10-09 | 已联调；交接见对应服务 ai-tasks |
 | TASK-20261009-013 | Codex/frontend | 全权限工具进度文案 | 非 Git | 不适用 | front/chat/ChatPanel.tsx工具label、front服务说明及交接 | 用户App/features/styles、其他服务/根文档 | 无 | 实现及自检完成，待人工体验 | 2026-10-09 | 已联调；交接见对应服务 ai-tasks |
 
-| TASK-20261009-014 | Codex/root | Git版本保存与原始基线核查 | testcode（用户指定） | 当前项目目录 | .git、根状态/AGENTS专用补充、Git说明；当前公开代码入库 | 业务源码改动、真实凭据/数据/日志入库、远程推送 | 无 | 版本保存完成 | 2026-10-09 | main 9271c188c6af；testcode为本记录所在提交 |
+| TASK-20261009-014 | Codex/root | Git版本保存与原始基线核查 | testcode（用户指定） | 当前项目目录 | .git、根状态/AGENTS专用补充、Git说明；当前公开代码入库 | 业务源码改动、真实凭据/数据/日志入库、远程推送 | 无 | 版本保存自检完成 | 2026-10-09 | 两分支按已核查来源保存；SHA见git log |
 
 ## 新任务填写格式
 
@@ -61,7 +65,7 @@
 - 源码保留：App、用户时钟/文件栏/截屏及全部前后端代码均原样；只同步Git事实与说明。当前保存提交将由git log核对。
 - 基线核查：此前没有Git历史；现存快照和成功原生补丁联合提供恢复来源。用户已确认main为“AI在网页中自行添加功能前的单聊天版本”。前端15项来自5d8cf4fc-b63a-47e7-a700-a464099478ea的baseline，逐项SHA256一致；后端及共享契约9项按已成功原生补丁493→433→426→414反向恢复，22个hunk唯一匹配并与独立核查哈希一致；4份服务/接口说明另按623→583→493恢复。后端保留用户已授权Full Access核心，移除文件栏API与checked-write；没有重建更早的受保护内核。
 - 只读协助：Codex/workspace核查快照与.cache，无写入。根索引唯一权威，当前没有其他修改者、Worktree或来源分支。
-- 当前状态：main基线已保存，SHA 9271c188c6afdd9417deccef8bf1824e8bfc1ff6；当前testcode源码与本记录随本次保存提交冻结，SHA由git log -1 testcode核对（不要求记录包含自身SHA）。恢复版32项隔离/协议测试和TypeScript/Vite构建通过；当前testcode业务源码原样，提交审核排除真实秘密、数据、日志、依赖和构建产物。
+- 当前状态：源码保存与基线恢复自检完成；本文件随本次分支保存，具体提交SHA由git log核对。恢复版32项隔离/协议测试和TypeScript/Vite构建通过；当前testcode业务源码原样，提交审核排除真实秘密、数据、日志、依赖和构建产物。
 - 规则：02/04/05/06/09/14，规范2026-09-29.1；下一步核对两分支树和提交；本次不推送远程。
 
 
@@ -159,7 +163,7 @@
 
 <!-- seedagent-runtime-tasks:start -->
 
-## SeedAgent 运行期权威任务登记
+## Saplingagent 运行期权威任务登记
 
 由 agent-runtime 串行维护此区块；修改工具在执行前尝试登记用户请求引用和实际范围，登记为非阻断记录，结束时记录真实轮状态。普通聊天和只读调研只保存会话，不更新项目任务索引。最近50条列于此处，历史记录保留在 backend/agent-runtime/ai-tasks/runtime/。用户聊天正文不写入公共索引。此入口为当前非Git项目的运行期协调记录，不改变公共rules。
 
@@ -180,9 +184,19 @@
 | RUN-full-access-7f724285-1fc9-4ca3-9a74-e27698167ed5 | completed | 2026-10-10T01:29:48.760Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-full-access-7f724285-1fc9-4ca3-9a74-e27698167ed5.md) |
 | RUN-2e86dcbf-a2b1-43c9-8ed5-f81e3593d463 | interrupted | 2026-10-10T01:41:37.638Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-2e86dcbf-a2b1-43c9-8ed5-f81e3593d463.md) |
 | RUN-48ab9450-11a0-4fd7-bff4-0bab72c0798c | completed | 2026-10-10T01:46:33.009Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-48ab9450-11a0-4fd7-bff4-0bab72c0798c.md) |
+| RUN-739dbd93-3614-48b1-ac66-9eea3b695b8f | failed | 2026-10-10T08:38:59.625Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-739dbd93-3614-48b1-ac66-9eea3b695b8f.md) |
+| RUN-b2233a4d-ca89-48cd-af8c-5c13f50742ad | completed | 2026-10-10T09:54:08.187Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-b2233a4d-ca89-48cd-af8c-5c13f50742ad.md) |
+| RUN-fafe3cbf-e4f8-4028-acbb-3d059099c80e | completed | 2026-10-10T09:57:53.952Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-fafe3cbf-e4f8-4028-acbb-3d059099c80e.md) |
+| RUN-953e9707-d46d-4a71-a31b-5a48a6b74bec | completed | 2026-10-10T10:14:28.073Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-953e9707-d46d-4a71-a31b-5a48a6b74bec.md) |
+| RUN-3c766407-767f-4b84-a946-c1d38ac2235d | completed | 2026-10-10T10:32:47.039Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-3c766407-767f-4b84-a946-c1d38ac2235d.md) |
+| RUN-cdd3173b-6de6-4f55-be54-b91bdb9de818 | completed | 2026-10-10T10:59:37.110Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-cdd3173b-6de6-4f55-be54-b91bdb9de818.md) |
+| RUN-19e0a395-6163-41c4-b0ec-6a5f1bdf7ba6 | interrupted | 2026-10-10T22:33:50.822Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-19e0a395-6163-41c4-b0ec-6a5f1bdf7ba6.md) |
+| RUN-89cd5a9e-02df-49e9-ba82-654d225bb9bb | interrupted | 2026-10-10T22:40:43.545Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-89cd5a9e-02df-49e9-ba82-654d225bb9bb.md) |
 
 <!-- seedagent-runtime-tasks:end -->
 
-TASK014版本说明：本文件所在源码版本为testcode；测试/恢复证据详见docs/git-versions.html。历史TASK001至013非Git描述不代表当前仓库状态。
+TASK014版本说明：本文件所在源码版本为main；测试/恢复证据详见docs/git-versions.html。历史TASK001至013非Git描述不代表当前仓库状态。
 
-TASK014结束复核：规范开始/结束2026-09-29.1；02/04/05/06/09/14及README复核；24项原件/逆补丁哈希、32项检查和构建通过，凭据/产物排除；两分支本地保存，当前testcode，无main合并或远程推送。用户已明确选择单聊天基线；更早受保护内核不在此次恢复范围。
+## TASK015候选快照说明
+
+TASK015当时记录：权威索引位于原始主项目.worktrees/coordination/AI_TASKS.md；当时工作树为chore/project/macos-delivery，从main9271c18创建。TASK-20261009-015 Codex/root允许修改项目macOS安装/登录/启动/诊断、打包脚本、config/docs/相关部署资料及目标快照；TASK016的有界退出修复已从独立服务分支29f84a93d6a4集成。其它根历史记录只保留来源，不是实时认领。当前自检42项和构建通过，尚未批准main同步。冻结后结果仅回写权威协调记录；接收者包初始化自己的目标/任务/进度，不继承本开发项目授权。

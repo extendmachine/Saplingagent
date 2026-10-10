@@ -1,13 +1,6 @@
-import { CurrentTime } from './features/CurrentTime';
-import { ProjectFileExplorer } from './features/ProjectFileExplorer';
-import { ScreenshotButton } from './features/ScreenshotButton';
+import { GitVersionPanel } from './features/git-version/GitVersionPanel';
+import { VersionFooter } from './features/version/VersionFooter';
 
 export function App() {
-  return (
-    <>
-      <ScreenshotButton />
-      <ProjectFileExplorer />
-      <CurrentTime />
-    </>
-  );
+  return <><GitVersionPanel /><VersionFooter /></>;
 }

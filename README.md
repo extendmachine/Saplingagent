@@ -1,3 +1,263 @@
+# Saplingagent
+
+从一个聊天页面开始，通过与 AI 对话创建和修改自己的本地应用。
+
+项目统一名称为 **Saplingagent**。前端采用 React 与 assistant-ui，模型、对话线程和工具执行由官方 **Codex App Server** 驱动。应用源码、会话、Skills、规则和运行环境都归属本地项目文件夹。
+
+**当前支持 macOS 13.5+，自动识别 Apple Silicon / Intel。** 仓库仅保留三个分支：`main` 为纯 AI 聊天与应用构建起点，包含 macOS 安装器；`testcode` 保存用户测试的演进页面；`release` 为上次已验收客户版本，新变更经测试后再同步。
+
+## 快速开始：安装 → 登录 → 启动
+
+### 1. 获取项目
+
+有 Git 的用户可执行：
+
+```bash
+git clone --branch main https://github.com/extendmachine/Saplingagent.git
+cd Saplingagent
+```
+
+也可在本仓库首页选择 **Code → Download ZIP**，解压到可写文件夹。通过 GitHub 下载需要具有仓库读取权限。安装不要求预装 Node、npm、Codex 桌面 App、Homebrew 或 Xcode；Git clone 路径需要 Git，ZIP 路径不需要 Git。
+
+### 2. 安装本地运行环境
+
+双击 **`1-安装.command`**，或在项目目录运行：
+
+```bash
+bash "1-安装.command"
+```
+
+脚本联网下载官方 Node **24.21.0**，核对官方 SHA-256，安装项目内 Codex CLI **0.146.1**，再按各模块锁文件安装依赖。固定版本在 [config/macos.json](config/macos.json)。所有运行环境写入 `.runtime/`，依赖写入对应模块 `node_modules/`，npm 缓存在 `.cache/npm/`。无需 `sudo` 或全局 npm 安装。
+
+安装完成会显示“安装完成”；再次运行会检查版本并跳过已完成的安装。请保留整个项目文件夹，四个 `.command` 入口需要随附源码和配置。
+
+### 3. 用自己的 Codex 账号登录
+
+双击 **`2-登录Codex.command`**，或执行：
+
+```bash
+bash "2-登录Codex.command"
+```
+
+官方 Codex 会打开浏览器，使用你自己的 ChatGPT/Codex 账号完成登录。账号须具备相应 Codex 使用资格；实际可用模型、网络与额度以你的账号和真实请求为准。[官方登录说明](https://learn.chatgpt.com/docs/auth)
+
+项目登录保存在 `local-secrets/codex/`，该目录同时作为本应用的 `CODEX_HOME`。安装器默认不复制全局 `~/.codex` 的登录资料，也不会改变你其他项目的账号。使用此默认登录路径无需填写 OpenAI API key。**不要向他人发送 `auth.json`、token 或整个 `local-secrets/`。**
+
+浏览器回调无法完成时，可按官方设备码提示登录：
+
+```bash
+bash "2-登录Codex.command" --device-auth
+```
+
+设备码登录是否可用取决于账号/组织设置。已保存登录方式不代表当前网络、额度或模型请求一定可用。
+
+### 4. 启动网页
+
+双击 **`3-启动Saplingagent.command`**，或执行：
+
+```bash
+bash "3-启动Saplingagent.command"
+```
+
+脚本启动本地服务、接入 Codex App Server，等待账号、模型、MCP 与网页就绪，再打开 **http://127.0.0.1:5173/**。终端应显示：
+
+```text
+已接入 Codex App Server：<当前模型>；MCP 15 个；Skills 3 个。
+```
+
+在网页发送“你好”验证流式回复，也可要求“列出本项目的 Skills，不修改任何文件”。启动终端需保持开启；按 **Control+C** 停止本次服务。只启动、不自动打开浏览器：
+
+```bash
+bash "3-启动Saplingagent.command" --no-open
+```
+
+初始页面只有聊天入口。后续可以直接说“添加一个待办组件”“调整页面布局”或“为这个功能创建后端服务”，由 AI 按项目规则实施。
+
+## App Server 免费吗？需要什么账号？
+
+**本地 App Server 是开源组件，无需单独购买；AI 模型调用需要用户自己的认证和可用额度。** 本项目没有内置开发者账号或免费 API。（核对日期：2026-10-09）
+
+| 使用方式 | 登录及计费 |
+| --- | --- |
+| 本项目 Mac 默认入口 | 执行 `2-登录Codex.command`，由官方 `codex login` 使用本人 ChatGPT 账号；模型调用受该账号套餐资格、模型权限和额度限制，无需填写 API key |
+| Codex 支持的 API key 模式 | 使用本人的 OpenAI API key，按 API 用量独立计费；费用不包含在 ChatGPT 订阅额度中。本项目 Mac 入口当前采用 ChatGPT 登录，未提供 API key 登录入口 |
+| ChatGPT Free / Go | 官方当前列出的能力为逐步开放的桌面 GPT-6 Luna，不能保证本项目 CLI/App Server 通路或配置模型免费可用；是否可用须以实际账号资格和请求结果为准 |
+
+安装、登录成功、`model/list` 返回模型都不能保证一次模型请求有权限或有额度。启动和诊断不会自动发送收费模型请求；用户发送消息后才按所用认证进行模型调用。额度不足或授权失败时显示实际错误，重装不会增加额度。
+
+依据：[Codex 认证与两种计费方式](https://learn.chatgpt.com/docs/auth)、[当前套餐和用量限制](https://learn.chatgpt.com/docs/pricing)。商业或托管发行的正式授权要求见下文“当前验证与认证边界”。
+
+## 如何接入 Codex App Server
+
+**正常使用只需上述安装、登录和启动三步。** 项目后端已经实现 App Server 客户端，不需要用户手动向 Codex 桌面 App 添加 MCP 或启动一个远程服务器。
+
+```mermaid
+flowchart LR
+    UI[React 聊天网页] -->|HTTP / SSE| Agent[agent-runtime]
+    Agent <-->|JSON-RPC / stdio| Codex[官方 Codex App Server]
+    Codex <-->|MCP / stdio| MCP[Saplingagent MCP]
+    MCP --> Builder[app-builder 文件与命令]
+    MCP --> Workspace[workspace 会话与偏好]
+    Codex --> Skills[项目 Skills 与规则]
+```
+
+### 项目已经替用户完成的接入
+
+1. [scripts/macos/codex.sh](scripts/macos/codex.sh) 使用项目内 Node、官方 Codex CLI 和项目 `CODEX_HOME`，统一使用文件凭据存储。
+2. [backend/agent-runtime/rpc.mjs](backend/agent-runtime/rpc.mjs) 启动 `codex app-server --listen stdio://`，通过 stdin/stdout 收发逐行 JSON。
+3. [backend/agent-runtime/server.mjs](backend/agent-runtime/server.mjs) 发送 `initialize`，成功后发送 `initialized`；检查 `account/read` 与 `model/list`，创建/恢复 thread，发送 `turn/start`，把增量回复与工具事件转成网页 SSE。
+4. 启动参数自动配置 `mcp_servers.seedagent`，运行 [backend/mcp-runtime/server.mjs](backend/mcp-runtime/server.mjs)，传入本项目路径和本地服务连接信息。当前有 **15 个 MCP 工具**；正常用户无需编辑全局 Codex 配置。
+5. 从 [.agents/skills/](.agents/skills/) 发现 **seed-page-edit、seed-research、seed-skill-author**；AI 从 `AGENTS.md` 进入完整 `rules/` 规范。
+
+App Server 使用 JSON-RPC 请求与通知，stdio 是逐行 JSON；初始化、线程和事件顺序按 [OpenAI 官方 App Server 文档](https://learn.chatgpt.com/docs/app-server) 实现。
+
+### 开发者调试入口
+
+安装完成后，可验证项目 CLI 与本项目登录状态：
+
+```bash
+bash scripts/macos/codex.sh --version
+bash scripts/macos/codex.sh login status
+```
+
+仅调试底层协议时，启动一个独立 App Server：
+
+```bash
+bash scripts/macos/codex.sh app-server --listen stdio://
+```
+
+该入口等待 JSON-RPC 输入。以下是最小初始化顺序示意：先发送第一行，等待其成功响应，再发送第二行和后续请求。
+
+```json
+{"id":1,"method":"initialize","params":{"clientInfo":{"name":"seedagent","title":"Saplingagent","version":"0.1.0"},"capabilities":{"experimentalApi":true}}}
+{"method":"initialized","params":{}}
+{"id":2,"method":"account/read","params":{"refreshToken":false}}
+```
+
+为兼容现有会话及配置，`seedagent` MCP/client ID、`SEED_*` / `SEEDAGENT_*` 环境变量、浏览器会话键和 `seed-*` Skill ID 保留；它们是内部标识，界面与交付名称统一为 Saplingagent。
+
+完整网页、项目 MCP、Skills 和会话管理应使用 `3-启动Saplingagent.command`；独立协议入口不包含 agent-runtime 生成的项目 MCP 配置。正常运行时无需另开这个协议进程。
+
+## 模型、权限与本地配置
+
+运行配置在 [config/runtime.json](config/runtime.json)：
+
+| 项目 | 当前默认值 | 说明 |
+| --- | --- | --- |
+| 首选模型 | `gpt-6.1-sol` | 按 App Server 返回的目录选择；首选不存在时使用目录默认/首项 |
+| 推理强度 | `medium` | 实际请求还需满足所选模型支持范围 |
+| 网页 | `5173` | 浏览器访问端口 |
+| Agent | `4310` | 聊天、状态与流式事件 |
+| Workspace | `4311` | 会话与偏好服务 |
+| App Builder | `4312` | 文件、命令、快照服务 |
+| 权限 | `full-access` | Codex `danger-full-access` / `approvalPolicy: never` |
+
+配置中的模型名称是首选，终端和网页状态显示实际采用的模型。模型目录发现不等同于账号模型授权或额度验证，一次成功回复才验证该次请求。
+
+当前 AI 可以使用原生工具与 MCP 修改前端、后端、MCP、Skills、配置和依赖，按当前 macOS 用户权限执行；没有 Saplingagent 目录白名单或逐次工具确认，不自动获得 root 或绕过 macOS 系统权限。快照提供部分文件的主动恢复能力；任意命令和原生写入的副作用不保证完整回退。
+
+## 故障排查
+
+先双击 **`4-诊断.command`** 或运行：
+
+```bash
+bash "4-诊断.command"
+```
+
+诊断报告安装、版本、已存登录和配置端口状态，不输出真实凭据，也不发起模型请求。
+
+| 问题 | 处理 |
+| --- | --- |
+| 双击打不开、下载文件首次打开提示或执行位丢失 | 使用上方 `bash` 命令；首次打开按 macOS 的提示处理。安装脚本会恢复本项目入口执行位，不需要关闭系统安全功能 |
+| 尚未登录 | 执行 `2-登录Codex.command`，完成自己的浏览器/设备码登录 |
+| 登录过期或需要换账号 | 运行下面的项目注销命令，然后重新登录 |
+| 下载失败或依赖损坏 | 检查到 Node 官网和 npm registry 的网络；用 `--repair` 重装，源码/认证/业务数据保留 |
+| 另一轮安装正在进行 | 等原安装结束；若异常退出，确认没有本项目安装进程后，按安装指南处理项目安装锁 |
+| 端口占用 | 关闭自己之前的启动终端，或修改 `config/runtime.json`；脚本不会杀其他项目进程 |
+| 120 秒内未就绪 | 执行诊断并检查终端与 `logs/` 的服务元数据；核对安装、账号、网络和 MCP |
+| 请求额度/账号授权错误 | 以官方账号和实际错误为准；重新安装不能增加额度或账号权限 |
+
+```bash
+# 修复本项目安装
+bash "1-安装.command" --repair
+
+# 退出本项目账号；保留源码和会话
+bash scripts/macos/bootstrap.sh logout
+```
+
+移动应用前先停止服务，然后移动整个项目文件夹。相同架构下入口会重新计算路径；更换架构或依赖锁文件后重跑安装。详细说明：[macOS 安装指南](docs/macos-install.html)（下载后可用浏览器打开）。
+
+## 目录与开发
+
+```text
+Saplingagent/
+├── 1-安装.command / 2-登录Codex.command
+├── 3-启动Saplingagent.command / 4-诊断.command
+├── front/                     # React 与稳定聊天入口
+├── backend/
+│   ├── agent-runtime/         # Codex App Server 客户端与流式对话
+│   ├── workspace/             # 本地会话、偏好和证据
+│   ├── app-builder/           # 文件/命令与可选快照恢复
+│   └── mcp-runtime/           # 项目 MCP 工具
+├── .agents/skills/            # 三项项目 Skills
+├── config/                    # 公开端口、模型和固定版本
+├── scripts/                   # 安装、运行、打包与说明
+├── rules/                     # 完整项目规范与受控附件
+├── docs/                      # 人类 HTML 指南
+├── local-secrets/             # 安装/登录后生成，Git 忽略
+├── .runtime/                  # 项目 Node/Codex，Git 忽略
+├── data/ / snapshots/ / logs/  # 本地运行资料，Git 忽略
+└── AGENTS.md / FINAL_GOAL.md / TODO.md / AI_TASKS.md
+```
+
+AI 开发先读 [AGENTS.md](AGENTS.md)、[rules/README.md](rules/README.md) 与根状态文件；每项后端服务维护自己的 `SERVICE.md`、`CONTRACT.md`、`DEPLOY.md`、`REFERENCES.md`。执行工具、认证与本地环境的实现说明在 [scripts/macos/README.md](scripts/macos/README.md)。
+
+## 分享应用与源码分支
+
+GitHub 保存源码、完整 rules、Skills、锁文件和可追溯提交。真实认证、会话、日志、快照、安装环境及依赖不进入仓库；接收者安装并登录自己的账号。不要把运行中的项目文件夹直接整体压缩发给别人。
+
+需要生成客户干净源包时，先在自己的 Git 仓库提交公开源码，再从项目目录运行安装后的项目 Node：
+
+```bash
+SEED_NODE_VERSION="$(/usr/bin/plutil -extract nodeVersion raw -o - config/macos.json)"
+SEED_ARCH="$(/usr/bin/uname -m)"
+if [ "$SEED_ARCH" = "x86_64" ]; then SEED_ARCH=x64; fi
+".runtime/node-v${SEED_NODE_VERSION}-darwin-${SEED_ARCH}/bin/node" scripts/package-macos.mjs HEAD
+```
+
+源包默认写入 `.cache/releases/`，按指定 Git 提交提取公开文件，包含完整 rules、SHA-256 清单，初始化接收者目标/进度/任务。GitHub 的 Download ZIP 是源码快照；客户分发脚本生成的源包还会清理开发者任务状态。重新打包需要自己的 Git 仓库；下载 ZIP 后安装和运行不需要 Git。
+
+| 分支 | 用途 |
+| --- | --- |
+| `main` | 默认首页：已测试的纯 AI 聊天起点、Mac 安装器与接入指南 |
+| `testcode` | 当前已演进的页面，提交 `80cb9eb5` |
+| `release` | 上次已验收的客户版本；后续变更另行测试同步 |
+
+用户已完成交付版测试；安装器、退出清理与完整 README 已归入纯聊天版本。其余临时分支已按用户要求清理，来源提交保留在 Git 历史。客户可用 `git clone --branch release https://github.com/extendmachine/Saplingagent.git` 获取该客户版本。后续进入 `main`、发布到 `release` 的改动继续绑定实际测试记录。
+
+## 当前验证与认证边界
+
+安装候选已在 Apple Silicon macOS 上通过 **42 项测试、TypeScript/Vite 构建、真实全新目录安装、目录移动、实际模型回复/MCP 调用和 SIGHUP 后服务端口释放**。Intel 二进制与架构选择已核对，Intel 真机、Finder 首次双击和用户本人 OAuth 交互仍需对应环境验收。当前为本地开发源码应用，长期自动布局改善、云端服务、其他平台和签名原生 `.app` 尚未实现。
+
+本项目目前采用官方 Codex 的本地用户自登录方式。OpenAI 官方允许已有本地或开源应用继续使用 App Server 认证，并要求商业或托管服务使用正式的 **Sign in with ChatGPT** 接入；本项目未完成该商业认证注册与集成。见 [App Server 认证边界](https://learn.chatgpt.com/docs/app-server#auth-endpoints) 和 [Sign in with ChatGPT 的 App Server 接入](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server)。
+
+## 官方资料
+
+接入信息最后核对：2026-10-09。
+
+- [Codex CLI](https://learn.chatgpt.com/docs/codex/cli)：官方客户端与安装方式。
+- [Codex App Server](https://learn.chatgpt.com/docs/app-server)：stdio、初始化、线程、流式事件和 MCP。
+- [Codex Authentication](https://learn.chatgpt.com/docs/auth)：账号登录、文件凭据和设备码方式。
+- [Node 24.21.0](https://nodejs.org/en/blog/release/v24.21.0)：本项目固定 Node 版本。
+- [详细本地指南](docs/index.html)、[接口说明](docs/api-interfaces.html)、[运行说明](docs/runtime.html)。
+
+## 项目规范分发指南
+
+用户指定的公共规范保留在 `rules/`，AI 入口仍为 `AGENTS.md → rules/README.md`。下方保留最初引入的完整规范分发说明；它只用于明确要求引入/复制规范的任务，正常安装本应用不需要重新复制规范源。
+
+<details>
+<summary>展开完整项目规范分发指南</summary>
+
 # AI 项目规范文件
 
 这里存放一组用于规范 AI 执行项目任务的本地规则文件。
@@ -223,3 +483,5 @@ AI 完成规范包覆盖和目标项目初始化后，必须向用户报告：
 - 验收状态：<实现、自检、人工验收、main 同步分别说明>
 - 遗留事项：<无，或列出需要用户确认的内容>
 ```
+
+</details>

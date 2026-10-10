@@ -7,7 +7,7 @@
 <style>body{margin:0;background:#f6f7f4;color:#283128;font:16px/1.75 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:32px 22px 64px}nav{display:flex;flex-wrap:wrap;gap:18px}section{background:#fff;padding:22px;border:1px solid #dde2d8;border-radius:14px;margin:22px 0}h1{line-height:1.25}table{border-collapse:collapse;width:100%}td,th{padding:10px;border:1px solid #dde2d8;text-align:left;vertical-align:top}pre{background:#edf0e9;padding:16px;overflow:auto}a{color:#456a39}img{max-width:100%;border:1px solid #dde2d8;border-radius:12px}@media(max-width:650px){main{padding:22px 12px}section{padding:16px}table{display:block;overflow:auto}}</style>
 </head>
 <body>
-<main>
+<main><p><strong>main单聊天基线</strong>：本分支无后加应用组件，Full Access核心保留。恢复来源与本次检查见<a href="git-versions.html">Git版本说明</a>；历史页面截图和任务记录保留其当时含义。</p>
 <nav>
 <a href="index.html">概览</a>
 <a href="runtime.html">运行与演进</a>
@@ -28,6 +28,18 @@
 <tr>
 <td>GET /api/status</td>
 <td>真实ready/authenticated/provider/model、permissions(Full Access)、Skills与MCP目录</td>
+</tr>
+<tr>
+<td>GET /api/git</td>
+<td>当前仓库、分支/HEAD、短版本号与状态指纹、工作区改动、本地分支、最近提交与其它Worktree占用状态；右上面板与底部版本更新提醒使用</td>
+</tr>
+<tr>
+<td>POST /api/git/commit</td>
+<td>将当前未忽略改动保存为本地Git提交；已干净时不重复提交，不推送远程，不创建或切换分支</td>
+</tr>
+<tr>
+<td>POST /api/git/switch</td>
+<td>{branch} → 安全切换已有本地分支；当前命名分支有改动时先自动提交，活跃对话、detached HEAD、并发切换或目标被占用时返回409，不自动stash/force/fetch/push</td>
 </tr>
 <tr>
 <td>GET /api/sessions</td>
@@ -53,24 +65,10 @@
 <td>POST /api/approvals/:id</td>
 <td>{decision:accept或decline}，兼容接口；当前标准工具执行自动允许</td>
 </tr>
-<tr>
-<td>GET /api/project-files</td>
-<td>按path、limit、cursor分页列出项目文件树，返回absolutePath</td>
-</tr>
-<tr>
-<td>GET /api/project-files/content</td>
-<td>读取最多4MiB的utf8内容、完整SHA256、大小和绝对地址</td>
-</tr>
-<tr>
-<td>PUT /api/project-files/content</td>
-<td>携带expectedHash保存文本；磁盘内容变化时返回409并保留浏览器草稿</td>
-</tr>
-<tr>
-<td>POST /api/project-files/changes/:id/rollback</td>
-<td>用户主动恢复文件浏览器最近一次有记录的保存</td>
-</tr>
 </table>
 <p>text最多32000字符；requestId幂等，重试不同文本冲突409；同会话其他运行请求409；未就绪503；错误返回error.code/message。SSE最终status为completed、failed或interrupted。当前Codex为danger-full-access/never，native file/shell与MCP执行自动允许。</p>
+<p>TASK-20261010-006进展监测：活动轮session可带可选progress对象，含startedAt、lastProgressAt（ISO时间）、lastProgressKind（started/text/reasoning/plan/command-output/file-output/mcp-progress/item-started/item-completed）、idle（布尔）和phase（working/tool-running/waiting-user）。元数据仅在Agent内存中，结束省略，不修改workspace存储或返回推理/工具原文。默认turnTimeoutMs=0（缺字段同样0）关闭整轮硬时限；turnIdleWarningMs=600000在连续10分钟没有有效进展时通过既有status.label提醒，仍running，无error/done，不自动停止或重发。每段闲置提醒一次，新进展继续；GET /api/events及相同请求重连补发当前提醒。非空文本/推理/计划、不同的有效计划更新、有效item开始/结束、命令输出和MCP progress.message更新进展，心跳/HTTP轮询/重连/保存/错误重试不续期，旧thread/turn不能续期或结束新轮。静默工具提示仍在运行；标准Full Access确认继续自动允许，未新增自由问题界面。显式正总时限仍真实中断，两个配置均只接受0至2147483647整数毫秒，0关闭对应计时器。详见<a href="../backend/agent-runtime/ai-tasks/TASK-20261010-006.md">任务交接</a>。</p>
+<p>会话恢复修复候选（TASK-20261010-003）：所选会话请求返回404、NOT_FOUND且message为“Session does not exist”时，前端解除匹配的旧会话指针；专属SESSION_NOT_FOUND同样适用。列表、路由/裸404和网络、超时、401、500/503不清指针。保留原输入与requestId，用户点击重试才发送，不自动发起模型请求；旧异步响应不覆盖新会话，其他标签的新缓存不被清除。接口字段不变，候选测试与同步状态见<a href="../front/ai-tasks/TASK-20261010-003.md">交接记录</a>。</p>
 </section>
 <section>
 <h2>内部 HTTP</h2>
@@ -78,7 +76,7 @@
 <p>
 <a href="../backend/workspace/CONTRACT.md">workspace契约</a>：GET/POST sessions、GET/PATCH sessions/:id、GET/POST preferences、DELETE preferences/:id；GET health开放。原子JSON存储、显式证据、单进程队列。</p>
 <p>
-<a href="../backend/app-builder/CONTRACT.md">app-builder契约</a>：GET files/file/changes；POST files/write与files/delete直接操作文件并尽力记录原件；POST files/write-checked专供浏览器文本编辑，确认完整SHA256未变化后原子替换，冲突返回409。快照失败不阻止普通直写，以warnings和changeId为准；POST commands {command,cwd?,timeoutMs?}返回真实exitCode/stdout/stderr/timedOut/cancelled。POST changes返回ready候选、不强制验证；apply直接应用；rollback仅用户主动覆盖恢复，不拦截后续修改。允许所有当前OS用户可访问路径，绝对/相对和符号链接均可用。</p>
+<a href="../backend/app-builder/CONTRACT.md">app-builder契约</a>：GET files/file/changes；POST files/write与files/delete直接操作文件并尽力记录原件；快照失败不阻止操作，以warnings和changeId为准；POST commands {command,cwd?,timeoutMs?}返回真实exitCode/stdout/stderr/timedOut/cancelled。POST changes返回ready候选、不强制验证；apply直接应用；rollback仅用户主动覆盖恢复，不拦截后续修改。允许所有当前OS用户可访问路径，绝对/相对和符号链接均可用。</p>
 </section>
 <section>
 <h2>MCP 目录</h2>
@@ -92,7 +90,7 @@ skills_list / skills_read</pre>
 <p>参数规模使用实际MCP schema上限；reason最多4000。工具返回结构化状态，错误isError，不伪造成功。HTTPtoken仅服务读取，认证详情不在此文档或前端返回。</p>
 </section>
 <p>
-<small>2026-10-09 · TASK-20261009-010 至 013 · 规范2026-09-29.1 · 非Git，待人工体验</small>
+<small>2026-10-10 · TASK-20261010-004/005 · 规范2026-09-29.1 · 本地分支切换前自动提交，面板不创建分支</small>
 </p>
 </main>
 </body>

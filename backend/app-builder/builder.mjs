@@ -70,16 +70,6 @@ async function snapshotOriginal(target, destination, operation) {
   return result;
 }
 async function removeFile(target) { await fs.unlink(target).catch((error) => { if (error.code !== 'ENOENT') throw error; }); }
-async function writeAtomically(target, value, mode = 0o644) {
-  await fs.mkdir(path.dirname(target), { recursive: true });
-  const temporary = path.join(path.dirname(target), `.${path.basename(target)}.${randomUUID()}.tmp`);
-  try {
-    await fs.writeFile(temporary, value, { mode });
-    await fs.rename(temporary, target);
-  } finally {
-    await fs.rm(temporary, { force: true });
-  }
-}
 
 export async function createBuilder(applicationRoot) {
   const root = path.resolve(applicationRoot);
@@ -157,17 +147,7 @@ export async function createBuilder(applicationRoot) {
             const mode = encoding(item.encoding);
             const value = operation === 'write' ? contentBytes(item.content, mode) : null;
             const original = await snapshotOriginal(target, path.join(folder(meta.changeId), 'originals', String(index)), operation);
-            const file = {
-              index,
-              path: item.path,
-              absolutePath: target,
-              operation,
-              encoding: mode,
-              expectedHash: typeof item.expectedHash === 'string' ? item.expectedHash : null,
-              enforceHash: item.enforceHash === true,
-              ...original,
-              appliedHash: value === null ? null : digest(value),
-            };
+            const file = { index, path: item.path, absolutePath: target, operation, encoding: mode, ...original, appliedHash: value === null ? null : digest(value) };
             if (value !== null) { const candidate = artifact(meta, file, 'candidate'); await fs.mkdir(path.dirname(candidate), { recursive: true, mode: 0o700 }); await fs.writeFile(candidate, value, { mode: 0o600 }); }
             meta.files.push(file);
           }
@@ -184,21 +164,7 @@ export async function createBuilder(applicationRoot) {
           for (const file of meta.files) {
             const target = targetPath(root, file.path);
             if (file.operation === 'delete') await fs.unlink(target);
-            else {
-              const candidate = await fs.readFile(artifact(meta, file, 'candidate'));
-              if (file.enforceHash) {
-                if (!/^[a-f0-9]{64}$/.test(file.expectedHash || '')) fail('INVALID_INPUT', 'expectedHash must be a SHA-256 value');
-                const info = await fs.lstat(target).catch((error) => { if (error.code === 'ENOENT') return null; throw error; });
-                if (!info || info.isDirectory()) fail('FILE_CHANGED', 'File no longer matches the opened version', 409);
-                if (info.isSymbolicLink()) fail('UNSUPPORTED_SYMLINK', 'Symbolic links are read-only in the browser editor', 400);
-                const actualHash = digest(await fs.readFile(target));
-                if (actualHash !== file.expectedHash) fail('FILE_CHANGED', 'File changed after it was opened; reload before saving', 409);
-                await writeAtomically(target, candidate, info.mode & 0o7777);
-              } else {
-                await fs.mkdir(path.dirname(target), { recursive: true });
-                await fs.writeFile(target, candidate);
-              }
-            }
+            else { const candidate = await fs.readFile(artifact(meta, file, 'candidate')); await fs.mkdir(path.dirname(target), { recursive: true }); await fs.writeFile(target, candidate); }
           }
           meta.status = 'applied'; meta.error = undefined; meta.updatedAt = new Date().toISOString(); await save(meta); return output(meta);
         } catch (error) {
@@ -249,17 +215,6 @@ export async function createBuilder(applicationRoot) {
         await fs.mkdir(path.dirname(target), { recursive: true }); await fs.writeFile(target, value);
         return { status: 'applied', checks: [], files: [{ path: input.path, absolutePath: target, operation: 'write' }], warnings: [{ code: 'RECORD_UNAVAILABLE', cause: error.code || 'RECORD_FAILED', message: 'File was written; record completion could not be confirmed' }] };
       }
-    },
-    async writeFileChecked(input) {
-      if (!input || typeof input !== 'object') fail('INVALID_INPUT', 'Expected checked file write object');
-      if (typeof input.expectedHash !== 'string' || !/^[a-f0-9]{64}$/.test(input.expectedHash)) fail('INVALID_INPUT', 'expectedHash must be a SHA-256 value');
-      const mode = encoding(input.encoding); const value = contentBytes(input.content, mode);
-      const description = reason(input.reason) || 'Browser file edit';
-      const change = await api.propose({
-        reason: description,
-        files: [{ path: input.path, content: value.toString(mode), encoding: mode, expectedHash: input.expectedHash, enforceHash: true }],
-      });
-      return api.apply(change.changeId);
     },
     async deleteFile(input) {
       if (!input || typeof input !== 'object') fail('INVALID_INPUT', 'Expected file delete object');

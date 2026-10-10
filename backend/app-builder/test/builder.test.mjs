@@ -111,21 +111,6 @@ test('HTTP file operations expose true filesystem errors and retain service auth
   assert.equal(logs.includes(token), false); assert.equal(logs.includes('FIXTURE_ONLY_SYNTHETIC_SECRET'), false); assert.equal(logs.includes('OS determines this error'), false);
 });
 
-test('checked browser writes reject stale content and keep a rollback snapshot', async (t) => {
-  const { root } = await fixture(t); const { request } = await listen(t, root);
-  const target = path.join(root, 'front', 'editable.txt');
-  await put(target, 'opened version');
-  const stale = await request('/files/write-checked', { path: 'front/editable.txt', content: 'must not apply', expectedHash: hash('older version') });
-  assert.equal(stale.status, 409); assert.equal(stale.body.error.code, 'FILE_CHANGED');
-  assert.equal(await fs.readFile(target, 'utf8'), 'opened version');
-
-  const saved = await request('/files/write-checked', { path: 'front/editable.txt', content: 'saved version', expectedHash: hash('opened version'), reason: 'Browser editor fixture' });
-  assert.equal(saved.status, 200); assert.equal(saved.body.status, 'applied'); assert.ok(saved.body.changeId);
-  assert.equal(await fs.readFile(target, 'utf8'), 'saved version');
-  const restored = await request(`/changes/${saved.body.changeId}/rollback`, {});
-  assert.equal(restored.body.status, 'rolledBack'); assert.equal(await fs.readFile(target, 'utf8'), 'opened version');
-});
-
 test('unavailable snapshots never prevent direct writes or deletes and never invent a rollback identifier', async (t) => {
   const { root, peer } = await fixture(t); await put(path.join(root, 'snapshots'), 'Fixture blocks this directory');
   const { request } = await listen(t, root); const destination = path.join(peer, 'still-writable.txt');

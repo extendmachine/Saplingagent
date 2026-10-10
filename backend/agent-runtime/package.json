@@ -1,5 +1,5 @@
 {
-  "name": "seedagent-agent-runtime",
+  "name": "saplingagent-agent-runtime",
   "version": "0.1.0",
   "private": true,
   "type": "module",

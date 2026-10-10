@@ -1,33 +1,63 @@
 # SeedAgent 当前进度
 
-## Git分支管理（TASK014）
+## RUN-19e0a395 底部版本与刷新提醒
 
-用户授权保存当前testcode及AI在网页自行添加功能前的main单聊天基线；本文件随对应分支保存。main已保存为 9271c188c6afdd9417deccef8bf1824e8bfc1ff6；testcode当前保存提交的确切SHA使用git log -1 testcode核对，不要求提交中包含自身SHA。当前仅root写入，主工作目录保持testcode，不推送远程。
+2026-10-10 / Codex / 本地main。已在页面底部增加当前`分支 · 版本号`显示；Agent Git状态增加`version`/`fingerprint`字段，页面每5秒及恢复可见时检查。本次页面加载后出现新提交或文件修改时，底部显示“发现新版本，刷新更新”，用户点击后重载；不自动刷新、不创建分支、不操作release/testcode或远程。Agent 41项与前端20项测试通过，TypeScript/Vite构建通过；保留既有大于500kB构建提示。待本地服务重启后核对5173与Git接口，最终视觉与按钮交互由用户人工体验。
+
+## RUN-89cd5a9e Git面板保存提交
+
+2026-10-10 / Codex / 本地main。右上Git版本面板新增“保存提交”：工作区有改动时，将当前分支全部未忽略改动保存为本地Git提交，并回显新短SHA；已干净时按钮禁用。不push、不新建/删除/切换分支，Agent对话运行中或detached HEAD时后端拒绝写入。Agent 42项、前端20项及TypeScript/Vite构建已通过；待重启后核对真实HTTP路由与页面显示，按钮最终交互由用户人工体验。
+
+## TASK018 当前三分支
+
+用户已完成交付64366886测试并授权归集与清理。main保持纯AI聊天，包含已测Mac安装器、Codex App Server/MCP/Skills和接入README；testcode保留80cb9eb用户测试页面；release客户版目前同main。运行根目录仍在testcode，业务源码/真实资料不改。main已归集已测提交（合并c626fb64febcf53596218372d9fe0fe92cab8945）；本次另同步README clone和三分支说明，GitHub默认main，临时分支按用户要求清理。
+
+| 分支 | 角色 | 当前验证/来源 |
+| --- | --- | --- |
+| main | 纯AI聊天起点、Mac安装与Codex接入 | 已测来源64366886；单聊天源码与原基线一致，当前分支整理仅改说明 |
+| testcode | 用户自测的演进页面 | 保留80cb9eb5457be76036dc92798d99903103c8fd9d，不合入业务组件 |
+| release | 客户使用版本 | 与main指向同一提交、全部文件相同 |
+
+权威协调记录继续在原主项目.worktrees/coordination，以detached HEAD保存；旧分支/任务历史不作为当前活跃分支。后续用户确认的发布按main→release同步，具体结果见实际Git refs与本机权威记录。
+
+## 历史TASK017 GitHub代码与README交付
+
+用户授权将全部源码上传到https://github.com/extendmachine/Saplingagent.git。此分支chore/project/github-delivery基于TASK015冻结安装候选f1c690d8，新增产品README：GitHub获取/ZIP安装、本人登录、项目内Codex AppServer stdio协议、自动MCP/Skills、模型配置、诊断/设备码/注销、权限与认证边界。原完整规范分发说明在README末尾折叠保留，19个rules原样；docs/index同步导航，业务源码未变。
+
+当前为源码交付候选快照；具体提交、推送与GitHub默认分支结果由协调分支的权威记录汇总，不回填冻结候选。远程私有空仓库已核查，已有main/testcode/Mac候选和修复分支均保留，未合并main。上一安装候选42测试/构建/真实模型验证仍见下方，当前仅文档修改采用链接、命令与源码一致性检查，不冒充用户本人登录和Intel真机已验收。
+
+## 历史TASK015 macOS交付候选
+
+此工作树为chore/project/macos-delivery，从main9271c18创建；权威协调记录在原始主项目.worktrees/coordination。已实现四个.command、macOS13.5+项目内Node24.21/Codex0.146.1安装、用户自登录、自动MCP/Skills就绪启动、诊断及干净源码打包。TASK016退出清理修复已集成（源提交29f84a93d6a4）。真实Apple Silicon安装、重复安装、无全局auth导入、42项隔离/协议测试与TypeScript/Vite构建通过。交付包解压换目录及真实模型回归将在冻结候选后核对，最终结果见权威协调记录和交付回执。main/testcode未变；未远程发布；用户人工Finder/Intel流程待验证，main需指定提交测试确认。
+
+
+## 历史Git分支管理（TASK014）
+
+用户授权保存当前testcode及AI在网页自行添加功能前的main单聊天基线；本文件随对应分支保存。确切SHA使用git log -1 <分支>核对，不要求提交中包含自身SHA。当前仅root写入，主工作目录保持testcode，不推送远程。
 
 | 分支 | 版本 | 验证 | main合并 | 位置/执行AI |
 | --- | --- | --- | --- | --- |
 | testcode | 当前代码，含时钟、项目文件栏、截屏和最新后端接口 | 原样保存，凭据/暂存/目录审查 | 无（独立保存当前版本） | 根目录 / Codex TASK014 |
-| main | 经核查恢复的单聊天起点，保留Full Access核心；提交 9271c188c6afdd9417deccef8bf1824e8bfc1ff6 | 前端15项+后端契约9项精确恢复；32项检查与构建通过 | 不适用（基线初始保存） | Git分支对象；临时恢复副本在.cache / Codex TASK014 |
+| main | 经核查恢复的单聊天起点，保留Full Access核心 | 前端15项+后端契约9项精确恢复；32项检查与构建通过 | 不适用（基线初始保存） | Git分支对象；临时恢复副本在.cache / Codex TASK014 |
 
 前端15项来自5d8cf4fc-b63a-47e7-a700-a464099478ea的baseline，逐项SHA256一致；后端及共享契约9项按已成功原生补丁493→433→426→414反向恢复，22个hunk唯一匹配并与独立核查哈希一致；4份服务/接口说明另按623→583→493恢复。后端保留用户已授权Full Access核心，移除文件栏API与checked-write；没有重建更早的受保护内核。
 
-本次没有改变当前运行应用源码或用户的会话/真实凭据；数据、日志、快照、环境、依赖与构建产物保持忽略。当前文件对应testcode版本，来源和恢复边界详见docs/git-versions.html。
+本次没有改变当前运行应用源码或用户的会话/真实凭据；数据、日志、快照、环境、依赖与构建产物保持忽略。当前文件对应main版本，来源和恢复边界详见docs/git-versions.html。
 
 ## 当前任务：Full Access（TASK010至013）
 
 用户明确取消MCP强制保护，已实现danger-full-access/never、通用文件和shell工具，取消目录白名单、强制编译/hash门槛、逐次确认和自动回退。根协调TASK010、MCP011、builder012、前端文案013；保留现有用户页面、会话与本地认证，源码与命令以当前OS用户权限执行。以下TASK005至009保留历史，旧受控限制已被取代。
 
-### 最新页面能力
+### 当前基线页面
 
-- 左侧项目文件栏已接入app-builder：可展开全部项目目录，点击查看/编辑文本内容，从“…”复制绝对地址；保存采用完整hash冲突保护和原子替换，可主动恢复最近一次保存。二进制、截断内容和符号链接只读。
-- 页面左上角已有“截屏”按钮：调用浏览器原生屏幕共享选择器，用户选择屏幕、窗口或标签页后自动下载带时间戳PNG；截图不上传后端。浏览器的首次授权/选择框不能被网页绕过。
+只有一个基础对话框；没有时钟、文件栏、截屏等后加组件。原始前端文件由历史快照精确恢复。
 
 ### 本次验证
 
 - 真Codex启动响应：sandbox dangerFullAccess、approvalPolicy never；实际gpt-5.6-sol/medium；15个MCP、3个Skills就绪。
 - 真实模型通过workspace_write_file直接写backend/agent-runtime/.full-access-check.txt；MCP cat与原生Node命令退出码0；主动page_rollback为rolledBack，临时文件不存在，审批事件0。changeId 3c94e2ad-839a-4fc0-bef5-e6a45f639661。
-- 原有CurrentTime和单页聊天保留；新增ProjectFileExplorer与ScreenshotButton，没有重置用户已有内容。
-- 33项隔离/协议检查通过：agent10、workspace4、builder14、MCP1（涵盖15工具）、front4；前端TypeScript/Vite生产构建通过，三个Skills格式与独立行为评估通过。
+- 本分支恢复单聊天页面；testcode保留用户当前已生成的组件。
+- 32项隔离/协议检查通过：agent10、workspace4、builder13、MCP1（涵盖15工具）、front4；前端TypeScript/Vite生产构建通过，三个Skills格式与独立行为评估通过。
 - builder覆盖任意路径/符号链接/二进制、旧快照兼容、无强制编译或hash阻止、无启动自动回退；快照/日志失败不阻止直接操作；超时和停止仅终止自身命令，真实状态不混淆。
 - MCP正式SDK验证登记失败继续执行且附warning、没有伪造taskId，HTTP取消传递到builder。Agent登记收尾失败仅warning，不把已完成动作误报失败。
 - 19个公共rules与源逐字节一致；652个公开文本检查未发现项目真实凭据，44个HTML本地链接有效。
@@ -76,6 +106,4 @@
 
 运行期MCP在实际变更前调用Agent内部POST /internal/register-task，Bearer认证且绑定当前App Server MCP item指纹。修改前project_context({modification:true})返回taskId；只读不登记；回调失败警告后继续操作。
 
-最近修改：2026-10-09；Codex/root先在RUN-2e86dcbf-a2b1-43c9-8ed5-f81e3593d463实现项目文件栏与后端接口（该对话轮被用户中断，但实际代码和验证保留），随后在RUN-48ab9450-11a0-4fd7-bff4-0bab72c0798c完成左上截屏按钮、文档同步和复核。当前非Git：来源分支、提交、Worktree、待测SHA及main合并均不适用。人工待测：打开本机页面，点击“截屏”，选择屏幕/窗口/标签页，预期下载带时间戳PNG；浏览器安全授权不能自动化替代。未公开发布。
-
-TASK014最近记录：2026-10-09，Codex/root完成基线精确恢复、隔离验证、版本保存审查与来源说明；实际main SHA如上，testcode以本记录所在最终保存提交为准；当前应用业务源码没有被回退，当前分支testcode。不属于软件功能发布验收，无远程。
+最近修改：2026-10-09；Codex/root TASK014从真实原件/补丁恢复main单聊天基线并保存两个Git版本。32项恢复版隔离/协议检查及构建通过；root工作目录保持testcode，用户当前页面和资料未回退。没有远程推送。

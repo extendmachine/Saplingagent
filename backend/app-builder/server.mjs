@@ -62,13 +62,9 @@ export async function createBuilderServer({ root = process.env.SEED_ROOT || defa
         const result = await builder.propose(await body(request));
         return send(response, 201, await record(log, 'info', 'candidate_recorded', { requestId, changeId: result.changeId, status: result.status }, result));
       }
-      if (request.method === 'POST' && ['/files/write', '/files/write-checked', '/files/delete'].includes(url.pathname)) {
+      if (request.method === 'POST' && ['/files/write', '/files/delete'].includes(url.pathname)) {
         const input = await body(request);
-        const result = url.pathname === '/files/write'
-          ? await builder.writeFile(input)
-          : url.pathname === '/files/write-checked'
-            ? await builder.writeFileChecked(input)
-            : await builder.deleteFile(input);
+        const result = url.pathname === '/files/write' ? await builder.writeFile(input) : await builder.deleteFile(input);
         return send(response, 200, await record(log, 'info', 'file_operation', { requestId, changeId: result.changeId, status: result.status }, result));
       }
       if (request.method === 'POST' && url.pathname === '/commands') {

@@ -21,3 +21,7 @@ data/workspace/sessions/<uuid>.json、data/workspace/preferences.json，目录70
 logs/workspace/workspace-YYYY-MM-DD.log，info/warn/error，字段 requestId/code；启动及跨日清理30天前普通日志，不入 Git。日志不记录消息、偏好值、请求体或凭据。
 
 契约 CONTRACT.md；启动/恢复 DEPLOY.md；来源 REFERENCES.md；交接 ai-tasks/TASK-20261009-007.md。
+
+## Saplingagent 更名（2026-10-09）
+
+产品名称统一为 Saplingagent，私有包名改为 saplingagent-*。本次仅名称及展示元数据，接口、权限、模型和数据结构不变；SEED_*/SEEDAGENT_*、seedagent MCP/client ID、浏览器会话键、运行期标记和 seed-* Skill ID 保留兼容。验证和待测提交见权威 .worktrees/coordination/AI_TASKS.md；本条不代表 main 已同步。

@@ -1,9 +1,9 @@
 ---
 name: seed-research
-description: 为 SeedAgent 对话中的技术选型、第三方 API 和新功能研究官方资料，比较可实现的方案并提供来源。用户只要研究或建议时保持只读；明确要求实现时继续完成授权范围。
+description: 为 Saplingagent 对话中的技术选型、第三方 API 和新功能研究官方资料，比较可实现的方案并提供来源。用户只要研究或建议时保持只读；明确要求实现时继续完成授权范围。
 ---
 
-# SeedAgent 资料研究
+# Saplingagent 资料研究
 
 先确定用户要回答的问题和会影响实施的选择；按需用 `project_context`、`workspace_read_file` 读取现有依赖、公开契约和任务范围。只读调研不登记任务、不修改源码或偏好。
 

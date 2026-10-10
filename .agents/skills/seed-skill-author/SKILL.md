@@ -1,9 +1,9 @@
 ---
 name: seed-skill-author
-description: 当用户希望 SeedAgent 记住并复用某种工作流程时，创建或调整项目本地 Skill 及实际需要的支持资源，核对发现格式与行为。用于明确的工作流程复用；简单偏好和一次性页面调整分别走对应能力。
+description: 当用户希望 Saplingagent 记住并复用某种工作流程时，创建或调整项目本地 Skill 及实际需要的支持资源，核对发现格式与行为。用于明确的工作流程复用；简单偏好和一次性页面调整分别走对应能力。
 ---
 
-# SeedAgent 项目 Skill 编写
+# Saplingagent 项目 Skill 编写
 
 Skill 是可发现的工作指引，不是模型训练。简单持续偏好用有用户原文证据的 `preferences_set`；一次性任务直接完成；只有可复用、能改变后续决策的流程才创建 Skill。不要因一次失败把局部经验变成所有任务的强制流程。
 
