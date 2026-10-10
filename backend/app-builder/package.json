@@ -9,5 +9,6 @@
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test test/*.test.mjs"
-  }
+  },
+  "license": "PolyForm-Noncommercial-1.0.0"
 }

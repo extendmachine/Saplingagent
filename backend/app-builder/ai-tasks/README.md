@@ -1,5 +1,5 @@
-# 服务任务交接
+# Handover of service tasks
 
-当前TASK-20261009-012.md：完整文件/命令权限及用户手动恢复。历史TASK-20261009-008.md保留当时受控候选方案与联调证据，已由当前明确需求替代。
+Current TASK-20261009-012.md: complete file/command permissions and user manual recovery. Historical TASK-20261009-008.md retains the controlled candidates and joint evidence at that time, which has been replaced by the current clear demand.
 
-根AI_TASKS/TODO为非Git权威索引，仅Codex/root更新。TASK012实现、13项隔离自检及真实模型联调完成，TASK010汇总，待人工体验。
+Root AI_TASKS/TODO is a non-Git authoritative index, and only Codex/root is updated. TASK012 is realized, 13 isolated self-examinations and real model joint adjustment are completed, TASK010 is summarized, waiting for manual experience.
