@@ -55,5 +55,5 @@ try {
   run('backend/app-builder/server.mjs', 'builder'); await waitHealth(config.builderPort);
   run('backend/agent-runtime/server.mjs', 'agent'); await waitHealth(config.agentPort);
   run('front/node_modules/vite/bin/vite.js', 'front', [path.join(root, 'front'), '--host', '127.0.0.1', '--port', String(config.frontPort), '--strictPort']);
-  console.log(`SeedAgent: http://127.0.0.1:${config.frontPort}/ (Agent initialization continues in background)`);
+  console.log(`Saplingagent: http://127.0.0.1:${config.frontPort}/ (Agent initialization continues in background)`);
 } catch (error) { console.error(error.message); await stop(1); }

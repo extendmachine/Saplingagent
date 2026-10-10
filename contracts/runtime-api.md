@@ -1,6 +1,6 @@
 # 本地运行公开契约 v2 · Full Access
 
-TASK-20261009-010至013；2026-10-09。用户明确取消SeedAgent MCP保护，当前为完整文件/命令权限。HTTP服务agent4310/workspace4311/app-builder4312仍监听127.0.0.1并使用本地Bearer区分内部服务；浏览器同源/api代理，不持有该token。没有跨服务私有导入。
+TASK-20261009-010至013；2026-10-09。用户明确取消Saplingagent MCP保护，当前为完整文件/命令权限。HTTP服务agent4310/workspace4311/app-builder4312仍监听127.0.0.1并使用本地Bearer区分内部服务；浏览器同源/api代理，不持有该token。没有跨服务私有导入。
 
 ## 当前执行权限
 

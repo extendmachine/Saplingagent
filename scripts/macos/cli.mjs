@@ -71,7 +71,7 @@ async function install(repair = false) {
   }
   const stage = path.join(root, '.runtime', `codex-install-${randomUUID()}`);
   try {
-    for (const file of ['1-安装.command', '2-登录Codex.command', '3-启动SeedAgent.command', '4-诊断.command', 'scripts/macos/bootstrap.sh', 'scripts/macos/entry.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
+    for (const file of ['1-安装.command', '2-登录Codex.command', '3-启动Saplingagent.command', '4-诊断.command', 'scripts/macos/bootstrap.sh', 'scripts/macos/entry.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
     if (!repair && await installed()) {
       await localSetup();
       console.log('项目环境已安装且版本一致，无需重复下载。可登录或启动；若依赖损坏，用 bash "1-安装.command" --repair 修复。');
@@ -79,7 +79,7 @@ async function install(repair = false) {
     }
     const packageFile = path.join(stage, 'package.json');
     await fs.mkdir(path.dirname(packageFile), { recursive: true });
-    await fs.writeFile(packageFile, JSON.stringify({ name: 'seedagent-local-codex', private: true, dependencies: { '@openai/codex': settings.codexVersion } }, null, 2) + '\n');
+    await fs.writeFile(packageFile, JSON.stringify({ name: 'saplingagent-local-codex', private: true, dependencies: { '@openai/codex': settings.codexVersion } }, null, 2) + '\n');
     console.log(`安装项目内 Codex ${settings.codexVersion}…`);
     await required('npm', ['install', '--include=optional', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: path.dirname(packageFile) });
     const stagedCli = path.join(stage, 'node_modules/.bin/codex');
@@ -101,19 +101,19 @@ async function install(repair = false) {
     }
     await localSetup();
     await fs.writeFile(stampFile, JSON.stringify({ schemaVersion: 1, nodeVersion: process.versions.node, codexVersion: settings.codexVersion, arch: process.arch, signature: await signature(), installedAt: new Date().toISOString() }, null, 2) + '\n');
-    console.log('安装完成。双击 2-登录Codex.command，用你自己的账号登录，然后双击 3-启动SeedAgent.command。');
+    console.log('安装完成。双击 2-登录Codex.command，用你自己的账号登录，然后双击 3-启动Saplingagent.command。');
   } finally { await fs.rm(stage, { recursive: true, force: true }); await fs.rm(lock, { recursive: true, force: true }); }
 }
 async function login(deviceAuth) {
   if (!await installed()) throw new Error('请先双击 1-安装.command。');
   await localSetup();
-  if (await loggedIn()) { console.log('本项目已保存登录方式。可以运行 3-启动SeedAgent.command；若请求报认证错误，请先按说明退出项目账号，再重新登录。'); return; }
+  if (await loggedIn()) { console.log('本项目已保存登录方式。可以运行 3-启动Saplingagent.command；若请求报认证错误，请先按说明退出项目账号，再重新登录。'); return; }
   console.log('接下来由官方 Codex 打开浏览器。请使用自己的 ChatGPT/Codex 账号完成登录。');
   await required(cli, [...authArgs, 'login', ...(deviceAuth ? ['--device-auth'] : [])]);
   if (!await loggedIn()) throw new Error('登录尚未完成，请再次运行 2-登录Codex.command。');
   const auth = path.join(env.CODEX_HOME, 'auth.json');
   if (await exists(auth)) await fs.chmod(auth, 0o600);
-  console.log('项目登录完成。双击 3-启动SeedAgent.command。');
+  console.log('项目登录完成。双击 3-启动Saplingagent.command。');
 }
 async function logout() {
   if (!await exists(cli)) throw new Error('请先运行 1-安装.command。');
@@ -130,7 +130,7 @@ async function start(noOpen) {
   child.stdout.on('data', chunk => {
     process.stdout.write(chunk);
     startupOutput = (startupOutput + chunk).slice(-2048);
-    if (startupOutput.includes(`SeedAgent: http://127.0.0.1:${config.frontPort}/`)) launched = true;
+    if (startupOutput.includes(`Saplingagent: http://127.0.0.1:${config.frontPort}/`)) launched = true;
   });
   child.stderr.on('data', chunk => process.stderr.write(chunk));
   const exit = new Promise(resolve => {
@@ -191,7 +191,7 @@ async function doctor() {
     const status = await fetch(`http://127.0.0.1:${config.agentPort}/api/status`, { signal: AbortSignal.timeout(2000) }).then(r => r.json());
     online = status.ready === true;
     console.log(`配置端口的运行状态：${online ? '已就绪' : '进程运行但Agent未就绪'}；模型：${status.model || '未选择'}；MCP：${status.mcp?.tools?.length || 0}；Skills：${status.skills?.length || 0}`);
-  } catch { console.log('运行状态：未启动。安装并登录后，运行 3-启动SeedAgent.command。'); }
+  } catch { console.log('运行状态：未启动。安装并登录后，运行 3-启动Saplingagent.command。'); }
   console.log('诊断只报告状态，不输出凭据，也不会发起模型请求。');
   if (!local || !authenticated) process.exitCode = 1;
 }

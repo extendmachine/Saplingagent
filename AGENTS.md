@@ -25,7 +25,7 @@
 
 Codex、Claude Code 或其他 AI 可以在本节维护项目专用的简短入口提示，但不得删除上方的 `@rules/README.md`、必读文件列表或改变公共规则优先级。详细规则必须写入 `rules/`，项目进度必须写入 `TODO.md` 或 `AI_TASKS.md`。
 
-- 本项目为 SeedAgent；已实现本地Agent、workspace、app-builder、MCP与Skills，保留单页对话。实际验证与限制读取 FINAL_GOAL.md、TODO.md、AI_TASKS.md；启动 `node scripts/dev.mjs`。
+- 本项目为 Saplingagent；已实现本地Agent、workspace、app-builder、MCP与Skills，保留单页对话。实际验证与限制读取 FINAL_GOAL.md、TODO.md、AI_TASKS.md；启动 `node scripts/dev.mjs`。
 - 用户指定实际源码位置：前端 front/、后端 backend/、人类文档 docs/；services/ 仅作服务索引。公共规则中的 services/ 路径示例按实际 backend/ 路径应用。
 - 2026-10-09 用户选择Full Access：整个应用（含front/chat/main、backend、MCP、Skills、依赖和配置）均可对话修改，无MCP文件保护或强制编译/逐次确认；按当前OS用户权限执行。恢复仅由用户主动请求，见backend/app-builder/。
 - agent-runtime仅在实际变更前通过MCP登记根AI_TASKS运行期区块，详细记录归该服务ai-tasks/runtime；任务登记为非阻断记录。旧TASK005至009中的白名单说明已被TASK010至013取代；运行期对话轮完成不代表人工验收。
