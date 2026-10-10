@@ -16,7 +16,7 @@ function MarkdownText() {
   }} />;
 }
 function AssistantMessage() {
-  return <MessagePrimitive.Root className="message assistant-message"><span className="message-author">Seed</span><div className="message-text"><MessagePrimitive.Parts components={{ Text: MarkdownText }} /></div></MessagePrimitive.Root>;
+  return <MessagePrimitive.Root className="message assistant-message"><span className="message-author">Saplingagent</span><div className="message-text"><MessagePrimitive.Parts components={{ Text: MarkdownText }} /></div></MessagePrimitive.Root>;
 }
 function UserMessage() {
   return <MessagePrimitive.Root className="message user-message"><div className="message-text"><MessagePrimitive.Parts /></div></MessagePrimitive.Root>;
@@ -37,7 +37,7 @@ export function ChatPanel() {
   return <AssistantRuntimeProvider runtime={runtime}>
     <ThreadPrimitive.Root className={`conversation ${agent.messages.length === 0 ? 'conversation-empty' : ''}`}>
       <ThreadPrimitive.Viewport className="message-viewport">
-        {agent.messages.length === 0 && <div className="welcome"><h1>从一句话开始。</h1><p>告诉 Seed，你想构建什么。</p></div>}
+        {agent.messages.length === 0 && <div className="welcome"><h1>从一句话开始。</h1><p>告诉 Saplingagent，你想构建什么。</p></div>}
         <ThreadPrimitive.Messages components={{ AssistantMessage, UserMessage }} />
         {agent.tools.length > 0 && <div className="tool-activity" aria-label="执行进展">{agent.tools.map(tool => <div key={tool.id} className="tool-step">{['completed', 'complete', 'succeeded'].includes(tool.status) ? <Check size={13} /> : ['failed', 'error'].includes(tool.status) ? <Wrench size={13} /> : <LoaderCircle size={13} className="spinning" />}<span>{toolLabel(tool.name)}</span>{['failed', 'error'].includes(tool.status) && <span>未完成</span>}</div>)}</div>}
         {agent.approvals.map(approval => <div className="approval-message" key={approval.id}>
@@ -52,7 +52,7 @@ export function ChatPanel() {
       <div className="composer-area">
         {agent.error && <div className="chat-error" role="alert"><span>{agent.error}</span>{agent.retryable && <button type="button" disabled={agent.isRunning} onClick={() => { void agent.retry(); }}><RotateCcw size={12} />重试</button>}</div>}
         <ComposerPrimitive.Root className="composer">
-          <ComposerPrimitive.Input className="composer-input" placeholder="描述你的想法…" aria-label="与 Seed 对话" rows={2} autoFocus />
+          <ComposerPrimitive.Input className="composer-input" placeholder="描述你的想法…" aria-label="与 Saplingagent 对话" rows={2} autoFocus />
           <div className="composer-bottom"><span className="input-hint">Enter 发送 · Shift + Enter 换行</span>{agent.isRunning ? <ComposerPrimitive.Cancel className="send-button stop-button" aria-label="停止回复"><Square size={14} fill="currentColor" /></ComposerPrimitive.Cancel> : <ComposerPrimitive.Send className="send-button" aria-label="发送消息"><ArrowUp size={19} /></ComposerPrimitive.Send>}</div>
         </ComposerPrimitive.Root>
         <div className="runtime-footer"><span className={`runtime-caption ${offline ? 'runtime-offline' : ''}`} role="status">{agent.isRunning || agent.isLoading ? <LoaderCircle size={11} className="spinning" /> : <span className="connection-dot" />}{caption}</span>

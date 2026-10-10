@@ -1,4 +1,4 @@
-# SeedAgent 单页对话入口
+# Saplingagent 单页对话入口
 
 TASK-20261009-009 在用户要求的单页、单对话框起点上接入 agent-runtime。没有导航、画布或预置业务面板。React 19.3.0、assistant-ui 0.15.26 保留成熟聊天底座，Markdown 渲染采用 @assistant-ui/react-markdown 0.14.20。
 
