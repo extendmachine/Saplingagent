@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 export const root = process.env.SEED_ROOT || fileURLToPath(new URL('../', import.meta.url));
 export async function setup({ importExistingAuth = process.env.SEED_IMPORT_EXISTING_AUTH !== '0', projectRoot = root } = {}) {
   const targetRoot = path.resolve(projectRoot);
-  for (const folder of ['local-secrets', 'local-secrets/runtime', 'local-secrets/codex', 'local-secrets/notes']) {
+  for (const folder of ['local-secrets', 'local-secrets/runtime', 'local-secrets/codex', 'local-secrets/notes', 'local-secrets/api-keys', 'local-secrets/server-keys', 'local-secrets/ssh']) {
     const target = path.join(targetRoot, folder);
     await fs.mkdir(target, { recursive: true, mode: 0o700 });
     if ((await fs.lstat(target)).isSymbolicLink()) throw new Error('Secret directories must not be symbolic links');
@@ -33,7 +33,7 @@ export async function setup({ importExistingAuth = process.env.SEED_IMPORT_EXIST
     await fs.chmod(authPath, 0o600);
   } catch (error) { if (error.code !== 'ENOENT') throw error; }
   const ledgerPath = path.join(targetRoot, 'local-secrets/notes/project-secrets.json');
-  let ledger = {};
+  let ledger = { schema_version: 1, project: { name: path.basename(targetRoot), root: targetRoot, last_updated: new Date().toISOString().slice(0, 10), maintainer: 'user' }, credentials: [] };
   try {
     if (!(await fs.lstat(ledgerPath)).isFile()) throw new Error('Invalid secret ledger file');
     ledger = JSON.parse(await fs.readFile(ledgerPath, 'utf8'));
@@ -43,6 +43,10 @@ export async function setup({ importExistingAuth = process.env.SEED_IMPORT_EXIST
     if (error.code !== 'ENOENT') throw error;
   }
   if (!ledger || typeof ledger !== 'object' || Array.isArray(ledger) || (ledger.runtime !== undefined && (!ledger.runtime || typeof ledger.runtime !== 'object' || Array.isArray(ledger.runtime)))) throw new Error('Secret ledger structure is invalid');
+  if (ledger.project && typeof ledger.project === 'object' && !Array.isArray(ledger.project)) {
+    ledger.project.root = targetRoot;
+    ledger.project.last_updated = new Date().toISOString().slice(0, 10);
+  }
   ledger.runtime = {
     ...ledger.runtime,
     serviceToken: 'local-secrets/runtime/service-token',

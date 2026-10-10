@@ -45,6 +45,8 @@ test('missing login does not launch services or copy global authentication', asy
   assert.equal(result.code, 1); assert.match(result.output, /尚未登录/);
   assert.equal(await fs.access(path.join(root, 'UNEXPECTED_LAUNCH')).then(() => true, () => false), false);
   assert.equal(await fs.access(path.join(root, 'local-secrets/codex/auth.json')).then(() => true, () => false), false);
+  const ledger = JSON.parse(await fs.readFile(path.join(root, 'local-secrets/notes/project-secrets.json'), 'utf8'));
+  assert.equal(ledger.schema_version, 1); assert.equal(ledger.project.root, root); assert.deepEqual(ledger.credentials, []);
 });
 test('configuration errors are not reported as missing login and raw diagnostics stay private', async t => {
   const root = await fixture(t, { auth: 'broken' });

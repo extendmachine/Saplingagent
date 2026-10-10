@@ -7,7 +7,7 @@ TASK-20261009-015，项目级启动/分发工具，不增加新的业务服务�
 - 根入口：1-安装.command、2-登录Codex.command、3-启动SeedAgent.command、4-诊断.command；所有路径从脚本位置计算，不保存开发者绝对路径。
 - bootstrap.sh：只在 install 下载 Node，HTTPS 获取官方发行包与 SHA-256 表，校验、解压和执行版本检查后提升；失败清理自身 stage/lock。其它操作缺 Node 时明确要求先安装。
 - cli.mjs：项目锁；Codex staging 与真实版本检查后提升，恢复受控入口和wrapper的0755执行位；全部业务 npm ci 成功才写 .runtime/macos-install.json。已完整且版本相同时跳过下载，显式--repair重装。staging失败保留完整旧安装标记，业务npm ci前清除旧标记，部分安装失败不会误报已完成；保留源码、认证和业务数据。
-- 认证：macOS入口 setup(importExistingAuth:false)，env SEED_IMPORT_EXISTING_AUTH=0；不导入全局 auth。项目目录700，token/auth文件600；真实值只在 local-secrets。macOS子进程移除继承的OPENAI_API_KEY/CODEX_API_KEY/CODEX_ACCESS_TOKEN，避免意外复用其他项目的API认证。
+- 认证：macOS入口 setup(importExistingAuth:false)，env SEED_IMPORT_EXISTING_AUTH=0；不导入全局 auth。项目目录700，token/auth文件600；真实值只在 local-secrets。新目录总账包含schema_version/project/credentials，runtime只登记文件引用，保留既有总账字段，移动后更新自身根目录。macOS子进程移除继承的OPENAI_API_KEY/CODEX_API_KEY/CODEX_ACCESS_TOKEN，避免意外复用其他项目的API认证。
 - codex.sh：始终用项目 Node 与官方 npm wrapper、项目 CODEX_HOME，并覆盖 cli_auth_credentials_store=file；App Server 不受已有 config.toml 中其他认证存储方式影响。
 - login/status 使用相同文件认证；未登录与配置/架构错误分别反馈。默认官方浏览器OAuth，用户可显式 --device-auth；取消/失败不标成功。不测试或发起真实用户浏览器登录。
 - start：先检查依赖标记与登录状态，再创建本次 dev 子进程；只有本次 launcher 发出启动标记后才读取端口状态，防止已有其它项目被误认为本次就绪。等待网页及账号/模型/MCP，120秒超时停止本次服务。没有自动付费模型探测。
