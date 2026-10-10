@@ -1,45 +1,45 @@
-# 14. 多 AI 任务认领、Worktree 与交接
+# 14. Multi-AI task claim, Worktree and handover
 
-## 目标
+## Target
 
-Codex、Claude Code 和多个并行对话必须在不覆盖彼此修改的前提下协作。每个任务需要明确执行 AI、修改范围、分支、Worktree、状态和交接记录。
+Codex, Claude Code and multiple parallel conversations must collaborate without overwriting each other's modifications. Each task needs to clearly execute AI, modification scope, branch, Worktree, status and handover record.
 
-只读任务按 `rules/README.md` 执行，不创建认领记录，也不触发交接文件写入要求。以下登记和隔离流程适用于修改任务。
+Read-only tasks are executed according to `rules/README.md`, do not create claim records, and do not trigger the handover file writing requirements. The following registration and isolation processes are applicable to modifying tasks.
 
-## 权威索引与协调者
+## Authoritative index and coordinator
 
-1. 单任务且未启用并行协调时，当前项目根目录的 `AI_TASKS.md`、`TODO.md` 是权威记录，执行 AI 同时承担协调者职责。
-2. Git 项目启动并行修改前，主执行 AI 在原始项目根目录的 `.worktrees/coordination/` 建立独立协调 Worktree，使用 `chore/project/task-coordination` 分支。该目录中的 `AI_TASKS.md`、`TODO.md` 成为唯一实时认领索引和总体进度；此分支只维护协调记录，不修改业务代码。
-3. 原始项目根目录从 `git worktree list --porcelain` 的主工作目录定位。每次认领、续做和结束前都检查上述协调目录；一旦存在，读取其中的权威记录，不能仅凭当前 Worktree 中的快照判断无人占用。路径不符、独立克隆或无法访问权威目录时，先核实位置；不得另建一个并行索引。
-4. 协调者在启动其他执行任务前，登记自己的身份、协调位置和各任务范围。已有协调 Worktree 或协调者时先读取并沿用；并发创建发生占用错误时不得覆盖或重建已有目录。
-5. 权威 `AI_TASKS.md` 和 `TODO.md` 仅由协调者串行修改。尚未登记的认领请求先通过可用协作渠道提交，不先创建交接文件；认领进入权威索引后，执行 AI 才能修改对应范围并维护自己的任务记录。进度、验证结果和待测提交通知协调者汇总；候选分支冻结后的新增记录按规则 04 直接进入协调记录，不再改动候选分支内的任务文件。
-6. 更新项目级索引不要求其他任务把业务文件交给协调者。普通 Worktree 内的根状态文件是已提交快照，执行 AI 读取权威记录后继续自己的任务，不并发回写这些共享快照。
-7. 协调者汇总时重读最新文件，只修改相关任务记录；协调者变更必须记录交接，其他 AI 不得自行抢占。无法完成登记时只暂停新增的修改范围，可以继续只读分析或已有认领范围内不受影响的工作。
-8. 非 Git 项目使用项目根目录的同一份索引和单一协调者，重叠修改必须串行。协调能力不可用时按串行任务处理，不用多份索引模拟并行。
-9. 协调记录进入 main 时，按规则 04 从协调分支创建独立文档交付快照并进行人工审阅；实时协调分支继续维护状态。协调目录不是敏感信息目录，不得保存凭据；不得随规范包复制到其他项目。
+1. When a single task is not enabled for parallel coordination, `AI_TASKS.md` and `TODO.md` in the root directory of the current project are authoritative records, and the implementation of AI also assumes the responsibilities of the coordinator.
+2. Before the Git project starts parallel modification, the main execution AI establishes an independent coordinated Worktree in `.worktrees/coordination/` in the root directory of the original project and uses the `chore/project/task-coordination` branch. `AI_TASKS.md` and `TODO.md` in this directory become the only real-time claim index and overall progress; this branch only maintains coordination records and does not modify business codes.
+3. The root directory of the original project is located from the main working directory of `git worktree list --porcelain`. Check the above coordination directory before each claim, continuation and end; once it exists, read the authoritative records in it, and you can't judge that it is unoccupied by the snapshot in the current Worktree alone. When the path does not match, clone independently or cannot access the authoritative directory, verify the location first; do not build another parallel index.
+4. The coordinator registers his identity, coordination position and task scope before starting other tasks. When there is already a coordination Worktree or coordinator, read it first and follow it; do not overwrite or rebuild the existing directory when the occupancy error occurs in the concurrent creation.
+5. Authoritative `AI_TASKS.md` and `TODO.md` are only serially modified by the coordinator. Claim requests that have not been registered should be submitted through available collaboration channels first, and no handover documents should be created first; after the claim enters the authoritative index, the execution of AI can modify the corresponding scope and maintain its own task records. Summary of progress, verification results and submission to be tested to notify the coordinator; the new record after the candidate branch is frozen will directly enter the coordination record according to Rule 04, and the task file in the candidate branch will no longer be changed.
+6. Updating the project-level index does not require other tasks to hand over business documents to the coordinator. The root status file in the ordinary Worktree is a submitted snapshot, and the AI reads the authoritative record to continue its own task, and does not send back to write these shared snapshots.
+7. When the coordinator summarizes, re-read the latest documents and only modify the relevant task records; the coordinator's changes must be recorded and handed over, and other AIs must not occupy them by themselves. When the registration cannot be completed, only the scope of new modification is suspended, and the work that is not affected by the read-only analysis or the scope of the claim can continue.
+8. Non-Git projects use the same index and a single coordinator in the root directory of the project, and overlapping modifications must be serialized. When the coordination capability is not available, it is processed according to serial tasks, and there is no need to simulate parallel multiple indexes.
+9. When the coordination record enters the main, create an independent document from the coordination branch according to rule 04 to deliver snapshots and conduct manual review; the real-time coordination branch continues to maintain the status. The coordination directory is not a sensitive information directory, and the credentials shall not be saved; it shall not be copied to other items with the specification package.
 
-## 任务认领
+## Claim the task
 
-1. AI 修改前必须按上方定位并读取权威 `AI_TASKS.md`，同时读取当前 Worktree 的目标、规则和相关任务记录。
-2. 新任务必须先生成唯一任务编号，例如 `TASK-20260726-001`。
-3. 协调者必须登记执行 AI、微服务或项目级功能、允许修改范围、禁止修改范围、分支、Worktree 和状态。单任务由执行 AI 自行完成最小登记，再按规则索引发送回执。
-4. 一个任务只能有一个主执行 AI；需要换 AI 时必须先完成交接。
-5. 如果已有进行中任务占用相同文件、目录、接口或数据库结构，先核查实际范围并协调拆分；真实重叠范围在交接前不得修改，其他独立范围可以继续。
-6. 一个任务涉及多个微服务时，应按微服务拆成多个任务编号。
+1. Before AI modification, you must position above and read the authoritative `AI_TASKS.md`, and read the goals, rules and related task records of the current Worktree.
+2. The new task must be a unique task number, such as `TASK-20260726-001`.
+3. The coordinator must register to perform AI, microservice or project-level functions, allow modification scope, prohibit modification scope, branch, Worktree and status. The single task is carried out by the execution AI to complete the minimum registration by itself, and then send the receipt according to the rule index.
+4. A task can only have one main execution AI; when AI needs to be changed, the handover must be completed first.
+5. If there is an ongoing task occupying the same file, directory, interface or database structure, first check the actual scope and coordinate the splitting; the real overlapping scope shall not be modified before the handover, and other independent scopes can continue.
+6. When a task involves multiple microservices, it should be disassembled into multiple task numbers according to the microservice.
 
-## 分支与 Worktree 隔离
+## Branches are isolated from Worktree
 
-1. 每项任务对应一个唯一编号；同一 AI 对话可以顺序处理多个任务，跨服务任务仍分别编号。不得因为沿用对话而混合任务范围。
-2. Git 修改任务对应独立特性、修复或项目级记录分支；没有 Git 仓库时如实标记“不适用”。
-3. Git 项目中并行执行的任务必须各自使用独立 Worktree。
-4. 推荐将项目 Worktree 放在项目根目录的 `.worktrees/<task-id>/`，并将 `.worktrees/` 加入 `.gitignore`。
-5. 不允许两个 AI 同时使用同一个 Worktree、同一个特性分支或同一份未提交工作目录。
-6. 没有 Git 仓库时，不允许多个 AI 同时修改重叠范围；必须串行处理并由协调者在权威 `AI_TASKS.md` 标记占用。
-7. 分支提交、人工测试和同步 `main` 继续遵守 `rules/04-git-branching-by-service.md`。
+1. Each task corresponds to a unique number; the same AI conversation can handle multiple tasks in order, and cross-service tasks are still numbered separately. Do not mix the scope of tasks by following the dialogue.
+2. Git modification tasks correspond to independent features, repairs or project-level record branches; when there is no Git repository, it is truthfully marked as "not applicable".
+3. Tasks performed in parallel in the Git project must use independent Worktree.
+4. It is recommended to put the project Worktree in `.worktrees/<task-id>/` in the root directory of the project, and add `.worktrees/` to `.gitignore`.
+5. Two AIs are not allowed to use the same Worktree, the same feature branch or the same unsubmitted work directory at the same time.
+6. When there is no Git repository, multiple AIs are not allowed to modify the overlapping range at the same time; it must be processed serially and occupied by the coordinator in the authoritative `AI_TASKS.md` tag.
+7. Branch submission, manual testing and synchronous `main` continue to comply with `rules/04-git-branching-by-service.md`.
 
-## 交接文件
+## Handover documents
 
-每个需要跨 AI 或跨对话继续的任务，必须在对应微服务目录建立：
+Each task that needs to be continued across AI or cross-dialogue must be established in the corresponding microservice directory:
 
 ```text
 services/
@@ -48,91 +48,91 @@ services/
         └── TASK-YYYYMMDD-001.md
 ```
 
-并行执行 AI 在认领后使用各自服务内的上述任务文件保存进度，供协调者汇总。没有微服务的项目级任务，由协调者在权威索引的“项目级任务记录”区块保存等价信息，不为交接创建虚假服务。候选分支冻结后，后续进度和交接补充写入协调记录，不修改被冻结的服务任务文件。
+Parallel execution AI uses the above task files in their respective services to save the progress for the coordinator to summarize. For project-level tasks without microservices, the coordinator shall save equivalent information in the "Project-level Task Record" block of the authoritative index, and false services will not be created for handover. After the candidate branch is frozen, the follow-up progress and handover will be added to the coordination record, and the frozen service task file will not be modified.
 
-交接文件必须包含：
+The handover documents must include:
 
-1. 任务编号、执行 AI 和创建时间。
-2. 原始目标和验收条件。
-3. 分支、Worktree 和最新提交编号。
-4. 已修改文件和明确禁止修改的文件。
-5. 关键设计决定及原因。
-6. 已执行的检查和实际结果。
-7. 尚未验证内容、风险和阻塞点。
-8. 用户已经确认或尚未确认的事项。
-9. 使用过的官方参考网址。
-10. 下一位 AI 应执行的具体步骤。
+1. Task number, execution AI and creation time.
+2. The original target and acceptance conditions.
+3. Branch, Worktree and the latest submission number.
+4. Modified documents and documents that are explicitly prohibited from modification.
+5. Key design decisions and reasons.
+6. The executed inspection and actual results.
+7. The content, risks and blocking points have not been verified.
+8. Matters that the user has confirmed or has not yet confirmed.
+9. The official reference website that has been used.
+10. The specific steps that the next AI should take.
 
-交接文件直接按以下格式创建：
+The handover file is directly created in the following format:
 
 ```markdown
-# <TASK-ID> 任务交接
+# <TASK-ID> Task handover
 
-- 执行 AI：<Codex / Claude Code / 其他>
-- 微服务：`<SERVICE_NAME>`
-- 创建时间：<YYYY-MM-DD HH:mm>
-- 分支：`<BRANCH>`
+- Execution AI: <Codex / Claude Code / Other>
+- Microservice: `<SERVICE_NAME>`
+- Creation time: <YYYY-MM-DD HH:mm>
+- Branch: `<BRANCH>`
 - Worktree：`<PATH>`
-- 权威索引：`<相对原始项目根目录的路径>`
-- 协调者：<执行 AI 和协调任务编号>
-- 最新提交：`<COMMIT-OR-NONE>`
-- 当前状态：<状态>
+- Authoritative index: `<path relative to the root directory of the original project>`
+- Coordinator: <Execute AI and coordinate task number>
+- Latest submission: `<COMMIT-OR-NONE>`
+- Current status: <Status>
 
-## 原始目标与验收条件
+## Original target and acceptance conditions
 
-<内容>
+<Content>
 
-## 修改范围
+## Modify the scope
 
-- 已修改：<文件>
-- 允许修改：<范围>
-- 禁止修改：<范围>
+- Modified: <File>
+- Allowed to modify: <Scope>
+- Modification is prohibited: <Scope>
 
-## 关键决定
+## The key decision
 
-<决定及原因>
+<Decision and reason>
 
-## 已执行检查
+## The inspection has been carried out
 
-<命令、步骤和实际结果>
+<Commands, steps and actual results>
 
-## 未验证、风险和阻塞
+## Unverified, risk and blockage
 
-<内容>
+<Content>
 
-## 用户确认情况
+## User confirmation situation
 
-<已确认或待确认事项>
+<Confirmed or pending matters>
 
-## 官方资料
+## Official information
 
-<名称、网址和用途>
+<Name, website and purpose>
 
-## 下一位 AI 的具体步骤
+## The specific steps of the next AI
 
-1. <步骤>
+1. <Steps>
 ```
 
-## 交接流程
+## Handover process
 
-1. 原执行 AI 先停止当前交接范围的修改，更新交接文件，并由协调者汇总权威 `AI_TASKS.md` 和 `TODO.md`；已冻结候选分支的交接补充仅写入协调记录。
-2. 原执行 AI 必须提交可交接内容；无法提交时要说明未提交文件和原因。
-3. 新执行 AI 接手前，必须核对交接文件、分支、提交编号、Worktree 和实际 Git 状态。
-4. 协调者在权威 `AI_TASKS.md` 更新执行 AI 和接手时间后，新执行 AI 才允许继续修改；单任务的新执行 AI 核实交接后承担协调者职责。
-5. 如果实际文件状态与交接记录不一致，先核对代码、提交和记录，按规则索引处理差异；只有未解决的实质冲突影响的部分暂停，不根据聊天内容猜测或覆盖。
+1. The original execution AI first stops the modification of the current handover scope, updates the handover documents, and the coordinator summarizes the authoritative `AI_TASKS.md` and `TODO.md`; the handover supplement of the frozen candidate branch is only written to the coordination record.
+2. The original execution AI must submit the content that can be handed over; if it cannot be submitted, the documents and reasons for not being submitted should be explained.
+3. Before the new execution AI takes over, you must check the handover file, branch, submission number, Worktree and actual Git status.
+4. After the coordinator updates the execution AI and the takeover time of the authority `AI_TASKS.md`, the new execution AI is allowed to continue to modify; the new execution AI of a single task assumes the role of the coordinator after verification and handover.
+5. If the actual file status is inconsistent with the handover record, check the code, submission and record first, and deal with the differences according to the rule index; only the part affected by the unresolved substantive conflict is suspended, and no guess or overwrite according to the chat content.
 
-## 并行更新保护
+## Parallel update protection
 
-1. 修改共享文件前必须重新检查其最新内容。
-2. `rules/README.md`、详细规则、`AGENTS.md`、`FINAL_GOAL.md`、`TODO.md`、`AI_TASKS.md`、公共接口契约和数据库结构属于高冲突文件。
-3. 权威 `AI_TASKS.md`、`TODO.md` 由协调者串行维护；其余高冲突文件由已登记负责该文件的任务主执行 AI 修改。其他 AI 在自己的任务记录中提出待办并通知负责者，不能直接覆盖。
-4. 提交前必须检查是否出现其他 AI 的新修改，不得把不属于当前任务的内容一并提交。
-5. 发现覆盖、冲突或来源不明的修改时，保留现场并核对来源；按规则索引判断，无法解决的实质冲突才请求人工确认，不得回滚他人内容。
+1. Before modifying the shared file, you must check its latest content again.
+2. `rules/README.md`, detailed rules, `AGENTS.md`, `FINAL_GOAL.md`, `TODO.md`, `AI_TASKS.md`, public interface contract and database structure are high conflict files.
+3. The authoritative `AI_TASKS.md` and `TODO.md` are serially maintained by the coordinator; the rest of the high conflict files are carried out by the registered task owner who is responsible for the file. Other AIs put forward pending tasks in their own task records and notify the person in charge, which cannot be directly covered.
+4. Before submission, it is necessary to check whether there are new modifications of other AI, and the content that does not belong to the current task must not be submitted together.
+5. When you find overwriting, conflict or unknown source modifications, keep the scene and check the source; according to the rule index judgment, the substantive conflict that cannot be resolved should be requested for manual confirmation, and other people's content shall not be rolled back.
 
-## 完成与归档
+## Complete and archive
 
-1. 实现、相关文档和可执行自检完成后，记录“实现及自检完成”；准备人工交付后由协调者标记“待人工测试”，并记录被冻结的待测提交。
-2. 用户确认测试通过后，由 AI 按 Git 规则同步到 `main`。
-3. 同步完成后记录 `main` 合并提交，并将任务状态改为“已同步 main”。
-4. 交接文件保留用于追溯；确认不再需要继续工作后，可改为“已归档”，不得直接删除审阅记录。
-5. 只读任务直接报告完成；非 Git 文档任务满足规则 09 的完成条件后可登记“已完成”或“已归档”。Git 文档分支进入 main 仍须人工确认，不能以归档代替验收或合并。
+1. After the implementation, relevant documents and executable self-tests are completed, record the "realization and self-inspection completed"; after preparing for manual delivery, the coordinator will mark "to be tested manually" and record the frozen submissions to be tested.
+2. After the user confirms that the test has passed, AI will synchronize to `main` according to Git rules.
+3. After the synchronization is completed, record the `main` merge submission and change the task status to "synchronized main".
+4. The handover documents are reserved for tracing; after confirming that there is no need to continue work, it can be changed to "archived" and the review record cannot be deleted directly.
+5. Read-only tasks are directly reported to be completed; non-Git document tasks can be registered as "completed" or "archived" after meeting the completion conditions of rule 09. Git document branches still need manual confirmation to enter the main, and archiving cannot replace acceptance or consolidation.

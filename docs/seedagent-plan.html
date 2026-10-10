@@ -1,68 +1,100 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Saplingagent 构想与解决方案</title>
+<title>Saplingagent concept and solution</title>
 <style>body{margin:0;background:#f5f6f8;color:#20242b;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.75}main{max-width:1100px;margin:auto;padding:30px 22px 64px}nav{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:25px}section{background:white;border:1px solid #dde2ea;border-radius:12px;padding:22px;margin:18px 0}h1{font-size:32px;line-height:1.25}h2{font-size:22px}a{color:#2458ab}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{padding:10px;border:1px solid #dde2ea;text-align:left;vertical-align:top}th{background:#eff3f8}pre{overflow:auto;background:#edf1f6;padding:18px;border-radius:9px}code{background:#edf1f6;padding:2px 5px}small{color:#586273}@media(max-width:650px){main{padding:20px 12px}section{padding:16px}table{display:block;overflow:auto}h1{font-size:27px}}</style>
 </head>
-<body><main><nav><a href="index.html">项目概览</a><a href="seedagent-plan.html">Saplingagent 方案</a><a href="frontend-preview.html">前端预览</a><a href="api-interfaces.html">接口规划</a><a href="references.html">官方资料</a></nav><section><h2>最新起点调整 · TASK-20261009-004</h2><p>以下是长期架构设计和历史画布方案。用户现已明确要求：初始是一张简单网页，只有一个对话框，不预置画布、导航或功能组件。后续由对话决定修改哪些组件、添加哪些内容。当前单页见 <a href="frontend-preview.html">前端预览</a>；原多面板界面已移除。</p></section><p><strong>历史方案：</strong>本页记录TASK002最初规划；当前单页与后端实施请查看 <a href="runtime.html">运行与页面演进</a> 及根TODO。</p><h1>Saplingagent 构想与解决方案</h1><p>Saplingagent 是可以在用户本地生长为应用的种子。React 网页提供稳定聊天入口和可演进工作画布，本地 Agent 完成资料查询、功能构建、工具扩展与版本恢复。</p>
-<section><h2>一、八项构想与解决路径</h2><p>用户原文已保存在根 FINAL_GOAL.md；下表为对应方案，不把实现建议冒充已完成能力。</p><table><thead><tr><th>编号</th><th>构想</th><th>解决方式</th></tr></thead><tbody><tr><td>1</td><td>Saplingagent 快速构建与个性化</td><td>以可复制的本地种子为底座，通过对话生成完整功能。React Web 为第一阶段；“所有 app”是长期愿景，原生平台需后续适配，不能承诺一套网页已覆盖所有能力。</td></tr><tr><td>2</td><td>稳定基础聊天，其余组件自修改</td><td>基础聊天库封装在 front/chat/；画布、区域、功能、导航、结果和主题都可由 AI 生成和演进，不限于修改固定 JSON 布局。</td></tr><tr><td>3</td><td>联网找资料并生成 MCP</td><td>本地 Agent 通过明确配置的资料工具访问服务器和官方文档，再生成 MCP server；代码编译、进程执行和文件权限由本地宿主承担。</td></tr><tr><td>4</td><td>最小启动脚本创建功能或应用</td><td>统一启动入口支持新建应用和现有应用加功能两种模式；离线先使用随附种子包，后续可内嵌成单文件自解包入口。</td></tr><tr><td>5</td><td>携带用户 rules</td><td>种子包含完整 rules、AGENTS/CLAUDE 和初始化状态结构；复制新应用时重建任务记录、清空示例历史，保留既有应用的规则和真实本地数据。</td></tr><tr><td>6</td><td>云端上传下载以后做</td><td>本阶段不创建云端服务、账号、存储或上传任务；内容包先本地导入导出。可查询已有外部资料与模型服务不等于实现自有云端。</td></tr><tr><td>7</td><td>应用资料全部归本地文件夹</td><td>源码、说明、规则、资源、配置、记忆、数据、环境与版本归本应用；模型若使用远程 API，只本地保存适配配置和凭据引用，不把远程模型假称为本地文件。</td></tr><tr><td>8</td><td>区域隔离与前后端分离</td><td>front/features/ 与 backend/features/ 按同一 feature-id 对应。服务边界独立，前端调用公开契约；docs 保存人类方案，服务 Markdown 保存在实际 backend/ 目录。</td></tr></tbody></table></section>
-<section><h2>二、系统构成</h2><table><thead><tr><th>对象</th><th>职责</th><th>边界</th></tr></thead><tbody>
-<tr><td>React 网页</td><td>基础聊天、可缩放画布、动态区域与功能组件</td><td>浏览器通过本地接口请求文件和工具操作，不直接改系统文件</td></tr>
-<tr><td>agent-runtime</td><td>会话、任务、模型选择、工具使用、资料查找</td><td>通过 app-builder 修改应用；通过 workspace 保存长期偏好</td></tr>
-<tr><td>workspace</td><td>布局、会话、偏好、依据与效果记录</td><td>每应用独立本地存储，源码修改与数据更新分离</td></tr>
-<tr><td>app-builder</td><td>将需求变成前端、后端与工具候选，检查和切换版本</td><td>有目标文件范围与基础版本；基础聊天不被普通生成任务覆盖</td></tr>
-<tr><td>mcp-runtime</td><td>工具注册、受限进程、调用与可用性检查</td><td>只能使用宿主授予的能力；生成工具不能自行放大权限</td></tr>
-<tr><td>生成业务功能</td><td>按实际需求承担日历、资料管理等应用业务</td><td>前后端同名目录，通过版本化契约组合</td></tr>
-</tbody></table><p>前端确定 React。后端推荐 Node.js + TypeScript，减少启动时跨语言依赖；数据库推荐本地 SQLite 与文件组合，但版本、驱动与实际接口尚未确认。微服务是职责、目录、存储和接口边界；独立进程拓扑在实现时验证，不把一个 UI 面板称为微服务。</p></section>
-<section><h2>三、固定对话入口与可演进界面</h2><p>唯一保持稳定的基础界面是聊天入口，复用开源库。其他界面包括画布框架、功能导航、区域装配器、业务面板、结果显示与主题，均允许 AI 修改自己的 React 源码和布局。</p><p>推荐基础聊天候选 <a href="https://www.assistant-ui.com/docs">assistant-ui</a>，官方文档提供 React 聊天组件和自带后端连接；画布候选 <a href="https://reactflow.dev/learn">React Flow</a>，可以承载自定义节点和交互图。当前保留 assistant-ui 0.15.26；TASK-20261009-004 已移除 React Flow，真实 Agent 适配仍未接入。</p><p>初始建议四类动态区域：功能导航、任务操作、结果预览、上下文详情。它们是初始工作内容，不是永久限定的四个插槽，Agent 可以增删、拆分和调整。聊天区独立于动态模块加载；动态区域构建失败时仍可发消息与恢复。</p><p>不同层次分别处理：布局变化更新坐标、尺寸、分组和视口；组件变化生成与编译 React 模块；功能变化同步前端、后端、接口和数据要求。组件稳定 ID 保留用户编辑状态，布局回退不回滚业务数据。</p><p>组件之间以 props、公开事件和共享契约交互，样式限定作用域，每区域设错误边界。需要权限隔离的任意生成代码放独立来源 iframe 或受限后端进程；错误边界仅处理渲染故障，不能代替权限隔离。</p></section>
-<section><h2>四、AI 如何生成 MCP 并修改应用</h2><p>必须在种子里先提供最小读取、写入候选、检查、构建、预览和恢复能力。这样 Agent 才能创建第一份新工具，不依赖尚不存在的自生成 MCP 来完成启动。</p><pre>用户提出需求
-→ Agent 读取本地规则、目标、现有功能、布局与偏好
-→ 查询所需官方资料并记录来源
-→ 形成修改范围、接口和候选功能声明
-→ 在候选工作区生成前端、后端或 MCP server
-→ 检查路径、契约、类型、构建和隔离的功能行为
-→ 预览候选，按当前授权启用或保留为待验收版本
-→ 保存版本与依据，后续纠正或恢复</pre><p>MCP 是工具连接协议，真正的源码写入、编译和进程运行由本地后端实现。原有工具可以完成需求时优先复用；需要新能力时由 app-builder 生成独立 MCP server，经验证后由 mcp-runtime 登记。官方 <a href="https://modelcontextprotocol.io/docs/2026-07-28/develop/build-server">MCP server 构建文档</a>定义工具、资源、提示与宿主连接。</p><p>每项修改携带 app_id、feature_id、目标文件范围、依据、预期基础版本、所需能力与验证记录。写入路径解析到当前应用根目录，不能通过符号链接或相对路径逃出应用；生成工具不能绕过宿主权限。已经授权的普通修改持续执行，涉及 main 同步、数据迁移或外部发布仍遵守既有项目规则。</p><p>本地启动器和恢复设施属于运行基础设施；功能构建任务通过其公开接口操作，不任意覆盖自身恢复入口。后续需要升级底座时走明确的底座版本流程。这不固化其他界面组件。</p></section>
-<section><h2>五、长期个性化怎样验证</h2><p>同时保存明确偏好、临时要求和行为推测。每条偏好包含适用用户与场景、消息或事件来源、最近纠正、状态和版本。优先级为当前明确要求、用户固定设置、已确认偏好、行为推测、默认布局。</p><p>明显用户要求可直接执行；依据行为推测的调整先形成候选假设。对同类型任务观察操作步骤、完成耗时、成功率、撤销与明确评价。大模型自评和单次点击都不能证明布局更好；任务难度、模型延迟与页面操作耗时应分开记录。证据不足则继续观察，效果变差则修正或恢复。</p><p>组件改动、布局改动和用户反馈都关联版本；保留原始证据摘要及来源标识，减少后续反复询问。新应用初始化空偏好，复制成熟应用时另行选择是否继承布局，不能默认复制原客户身份和记忆。</p></section>
-<section><h2>六、最小启动入口与分发</h2><p>未来入口定位自身所在目录，校验种子版本，带入完整规则与入口文件，建立本地状态和环境，选择本地端口，启动后端与 React 网页，再打开浏览器。重复启动恢复现有应用，不覆盖已有数据和修改。</p><p>新增功能默认在当前应用的 front/features/ 和 backend/features/ 建同名模块；用户要独立应用时，在新目录复制底座并初始化新的 app_id。两种模式复用同一启动入口，避免每个功能无意复制整份客户资料。</p><p>当前不建设云端，最可落地的是离线种子压缩包包含启动入口与种子内容。若要求只复制一个文件，可将种子源码、资料和 rules 内嵌为自解包入口；体积会增大。很小的在线引导脚本必须有可用下载源、固定版本与哈希，不能假定未来云端现在已存在。</p><p>启动入口内携带规则清单和版本，默认不拉取“最新版”规则覆盖客户的规范。新项目重建 FINAL_GOAL、TODO 和 AI_TASKS；带空凭据骨架，不能携带开发者的真实总账。代码与资料包不等于全部运行时已打包，操作系统、Node 是否预置、模型端点和依赖重建方式需要实施前确定。</p></section>
-<section><h2>七、本地资料与客户打包</h2><p>所有应用拥有自己的 front、backend、docs、rules、配置、资源、会话、记忆、业务数据、环境和快照；相对路径解析，外部资料下载后注明来源。不依赖开发者电脑其他目录，也不使用云端保存应用唯一副本。</p><table><thead><tr><th>用途</th><th>包含内容</th><th>默认排除</th></tr></thead><tbody>
-<tr><td>新应用种子</td><td>底座、空状态、规则、入口、必要资源、依赖锁与许可证</td><td>客户功能、身份、记忆、真实数据与凭据</td></tr>
-<tr><td>应用分享</td><td>生成源码、功能声明、规则、文档、必要可分发资源</td><td>个人会话、偏好、业务数据、凭据和日志</td></tr>
-<tr><td>本地恢复备份</td><td>源码、规则、配置、所需资料，以及明确选择的数据和快照</td><td>普通分享中不得包含凭据；凭据单独受保护保存</td></tr>
-</tbody></table><p>未来基础打包脚本核对清单、哈希、版本、解包路径和恢复方式。排除 .git、.worktrees、依赖缓存、真实日志、凭据与旧产物；必要依赖由锁文件重建，离线环境另提供平台对应运行资料。Clawtask 工具附件只原样保留，本次没有创建 Clawtask 包或处理其部署。</p></section>
-<section><h2>八、实际目录</h2><pre>应用根目录/
-├── front/                 React 网页前端
-│   ├── chat/              稳定的基础对话入口
-│   ├── canvas/            AI 可修改的工作画布
-│   ├── regions/           动态区域装配与隔离
-│   └── features/          AI 生成的前端功能
-├── backend/               后端按服务分目录
-│   ├── agent-runtime/     会话、模型与任务协调
-│   ├── workspace/         记忆、偏好、布局和依据
-│   ├── app-builder/       应用生成、验证与版本切换
-│   ├── mcp-runtime/       MCP 工具注册与执行
-│   └── features/          AI 生成的后端功能
-├── contracts/             共享接口和功能声明
-├── config/                应用配置，凭据仅保存引用
-├── data/                  会话、业务数据与本地状态
-├── assets/                应用资源与下载资料
-├── snapshots/             候选与可恢复版本
-├── scripts/               启动入口规划，未编写脚本
-├── packaging/             打包策略，未编写脚本
-├── docs/                  面向人的构想与方案
-├── services/              服务索引，不重复放代码
-├── rules/                 用户规范与内置格式
-├── logs/                  按服务、日期记录，保留30天
-├── local-secrets/         真实凭据只保存在本地
-├── AGENTS.md / CLAUDE.md   AI 入口
-└── FINAL_GOAL.md / TODO.md / AI_TASKS.md</pre><p>现有 services/ 改为索引，backend/ 是唯一后端实现位置，front/ 是唯一前端位置。服务 Markdown 随服务目录保存；人类方案统一在 docs/。TASK-20261009-002 建立说明骨架；TASK-20261009-003 已在 front/ 实现布局预览，backend/ 仍只有规划文档。</p></section>
-<section><h2>九、后续实施顺序与验收</h2><table><thead><tr><th>阶段</th><th>目标</th><th>验收证据</th></tr></thead><tbody>
-<tr><td>1 本地底座</td><td>稳定聊天、画布、单目录启动和 rules 初始化</td><td>新目录启动、重复运行保留数据、聊天可持续使用</td></tr>
-<tr><td>2 对话生成完整功能</td><td>新增一个前后端对应的实际功能，能修改 React 源码</td><td>业务路径成功、接口一致、构建失败可恢复且聊天可用</td></tr>
-<tr><td>3 MCP 自扩展</td><td>生成工具、验证、注册并实际调用</td><td>工具结果可验证、访问范围正确、失败可撤回</td></tr>
-<tr><td>4 长期适应</td><td>偏好跨会话生效、调整依据与使用效果可追溯</td><td>临时要求不污染长期偏好，纠正有效、版本对比可检查</td></tr>
-<tr><td>5 客户交付</td><td>基础启动与打包脚本，跨目标环境恢复</td><td>包内完整资料、规则与锁文件，解包运行、无真实凭据</td></tr>
-</tbody></table><p>云端内容上传下载是以后独立阶段。尚待明确：首个平台与业务场景、聊天库选定版本、后端语言与部署拓扑、模型来源及离线交付形式。前端布局预览已在后续 TASK-20261009-003 实施；真实 AI、生成代码、后端和种子交付阶段仍未执行。</p></section><p><small>2026-10-09 · TASK-20261009-002 · 设计文档，非运行中的产品页面</small></p></main></body>
+<body><main><nav><a href="index.html">Project overview</a><a href="seedagent-plan.html">Saplingagent scheme</a><a href="frontend-preview.html">Front-end preview</a><a href="api-interfaces.html">Interface planning</a><a href="references.html">Official information</a></nav><section><h2>The latest starting point adjustment · TASK-20261009-004</h2><p>The following is the long-term architectural design and historical canvas scheme. Users now have a clear requirement: initially it is a simple web page with only one dialog box, and no canvas, navigation or functional components are preset. In the future, the dialogue will decide which components to modify and what content to add. See the current single page<a href="frontend-preview.html">Front-end preview</a>; The original multi-panel interface has been removed.</p></section><p><strong>Historical plan:</strong>This page records the initial plan of TASK002; please check the current single-page and back-end implementation.<a href="runtime.html">Run and page evolution</a>AND ROOT TODO.</p><h1>Saplingagent concept and solution</h1><p>Saplingagent is a seed that can be grown locally by users as applications. The React web page provides a stable chat entrance and an evolutionary work canvas, and the local Agent can complete data query, function construction, tool extension and version recovery.</p>
+<section><h2>I. Eight concepts and solutions</h2><p>The user's original text has been saved in the root FINAL_GOAL.md; the following table is the corresponding scheme, and the implementation proposal is not impersonated as a completed ability.</p><table><thead><tr><th>Number</th><th>Conceive</th><th>Solution</th></tr></thead><tbody><tr><td>1</td><td>Saplingagent fast construction and personalization</td><td>Based on replicable local seeds, complete functions are generated through dialogue. React Web is the first stage; "all apps" is a long-term vision. The native platform needs to be adapted later, and it cannot be promised that a set of web pages has covered all capabilities.</td></tr><tr><td>2</td><td>Stable basic chat, and the rest of the components are self-modified</td><td>The basic chat library is encapsulated in front/chat/; canvas, area, function, navigation, result and theme can be generated and evolved by AI, not limited to modifying the fixed JSON layout.</td></tr><tr><td>3</td><td>Find information online and generate MCP</td><td>Local Agent accesses the server and official documents through clearly configured data tools to generate MCP server; code compilation, process execution and file permissions are borne by the local host.</td></tr><tr><td>4</td><td>Minimum startup script creation function or application</td><td>The unified start-up entrance supports two modes: new application and existing application plus function; offline, use the attached seed package first, and then it can be embedded into a single file self-unpacking entrance.</td></tr><tr><td>5</td><td>Carry user rules</td><td>The seed contains complete rules, AGENTS/CLAUDE and initialization state structure; when copying new applications, rebuild the task record, empty the sample history, and retain the rules and real local data of existing applications.</td></tr><tr><td>6</td><td>Upload and download in the cloud and do it later.</td><td>Cloud services, accounts, storage or upload tasks are not created at this stage; content packages are imported and exported locally first. Querying existing external information and model services is not equivalent to realizing your own cloud.</td></tr><tr><td>7</td><td>All application materials belong to the local folder.</td><td>The source code, description, rules, resources, configuration, memory, data, environment and version belong to this application; if the model uses remote API, only the adaptive configuration and credentials are saved locally, and the remote model is not regarded as a local file.</td></tr><tr><td>8</td><td>Regional isolation and front-end and back-end separation</td><td>Front/features/ corresponds to backend/features/ according to the same feature-id. The service boundary is independent, and the front-end calls the public contract; docs save the human scheme, and the service Markdown is saved in the actual backend/ directory.</td></tr></tbody></table></section>
+<section><h2>II. System composition</h2><table><thead><tr><th>Object</th><th>Duty</th><th>Border</th></tr></thead><tbody>
+<tr><td>React web page</td><td>Basic chat, zoomable canvas, dynamic area and functional components</td><td>The browser requests files and tool operations through the local interface, and does not directly change the system files.</td></tr>
+<tr><td>agent-runtime</td><td>Session, task, model selection, tool use, data search</td><td>Modify applications through app-builder; save long-term preferences through workspace</td></tr>
+<tr><td>workspace</td><td>Layout, session, preferences, basis and effect record</td><td>Each application is stored locally independently, and the source code modification is separated from the data update.</td></tr>
+<tr><td>app-builder</td><td>Turn requirements into front-end, back-end and tool candidates, check and switch versions</td><td>There is a target file range and basic version; the basic chat is not covered by ordinary generation tasks.</td></tr>
+<tr><td>mcp-runtime</td><td>Tool registration, restricted process, call and availability check</td><td>Only the ability granted by the host can be used; the generation tool cannot amplify the permissions by itself.</td></tr>
+<tr><td>Generate business functions</td><td>Undertake calendar, data management and other application business according to actual needs</td><td>Front-end and back-end catalogs of the same name, through version contract combination</td></tr>
+</tbody></table><p>Determine React at the front end. The back-end recommends Node.js + TypeScript to reduce cross-language dependence at startup; the database recommends local SQLite and file combination, but the version, driver and actual interface have not been confirmed. Microservices are the boundaries of responsibility, directory, storage and interface; independent process topology is verified at the time of implementation, and a UI panel is not called a microservice.</p></section>
+<section><h2>III. Fixed dialogue entrance and evolveable interface</h2><p>The only stable basic interface is the chat entrance, which reuses the open source library. Other interfaces include canvas frame, function navigation, area assembler, business panel, result display and theme, which allow AI to modify its React source code and layout.</p><p>Recommended basic chat candidates<a href="https://www.assistant-ui.com/docs">assistant-ui</a>, the official document provides React chat components and self-back-end connections; canvas candidates<a href="https://reactflow.dev/learn">React Flow</a>, can carry custom nodes and interactive diagrams. Currently reserved assistant-ui 0.15.26; TASK-20261009-004 has removed React Flow, and the real Agent adaptation is still not connected.</p><p>Initially, four types of dynamic areas are recommended: functional navigation, task operation, result preview, and context details. They are the initial work content, not the four permanent slots. Agent can be added, deleted, split and adjusted. The chat area is independent of dynamic module loading; messages can still be sent and restored when the dynamic area construction fails.</p><p>Processing at different levels: layout changes update coordinates, size, grouping and viewport; component changes generate and compile React modules; function changes synchronize front-end, back-end, interface and data requirements. The component stable ID retains the user's editing status, and the layout rollback does not roll back the business data.</p><p>Components interact with props, public events and shared contracts, style limits the scope, and sets an error boundary for each area. Any generated code that requires permission isolation is placed in an independent source iframe or restricted back-end process; the error boundary only handles rendering failures and cannot replace permission isolation.</p></section>
+<section><h2>IV. How does AI generate MCP and modify applications?</h2><p>Minimum read, write candidate, check, build, preview and recovery capabilities must be provided in the seed first. In this way, Agent can create the first new tool without relying on self-generated MCP that does not exist yet to complete the startup.</p><pre>Users put forward their needs
+
+→ Agent reads local rules, goals, existing functions, layouts and preferences
+
+→ Query the required official information and record the source
+
+→ Form a declaration of modification scope, interface and candidate function
+
+→ Generate front-end, back-end or MCP server in the candidate work area
+
+→ Check the functional behavior of path, contract, type, construction and isolation
+
+→ Preview the candidate, enable or keep the version pending acceptance according to the current authorization
+
+→ Save the version and the basis, and then correct or restore</pre><p>MCP is a tool connection protocol. The real source code writing, compilation and process execution are implemented by the local back-end. The original tool can be reused first when it completes the requirements; when new capabilities are needed, the app-builder generates an independent MCP server, and it is registered by mcp-runtime after verification. Government<a href="https://modelcontextprotocol.io/docs/2026-07-28/develop/build-server">MCP server construction document</a>Define tools, resources, prompts to connect with the host.</p><p>Each modification carries app_id, feature_id, target file scope, basis, expected basic version, required capabilities and verification records. The write path is resolved to the root directory of the current application and cannot escape from the application through symbolic links or relative paths; the generation tool cannot bypass the host permission. The authorized general modifications continue to be implemented, involving main synchronization, data migration or external release, which still abides by the existing project rules.</p><p>The local launcher and recovery facility belong to the operating infrastructure; functional construction tasks are operated through their public interfaces and do not arbitrarily cover their own recovery entrance. Follow the clear base version process when upgrading the base in the future. This does not solidify other interface components.</p></section>
+<section><h2>V. How to verify long-term personalization</h2><p>At the same time, keep clear preferences, temporary requirements and behavioral speculations. Each preference includes the applicable user and scenario, message or event source, recent correction, status and version. The priority is the current clear requirements, user fixed settings, confirmed preferences, behavior speculation, and default layout.</p><p>Obviously, the user's requirements can be implemented directly; the candidate hypothesis is formed first according to the adjustment of behavior speculation. Observe the operation steps, time-consuming, success rate, cancellation and clear evaluation of tasks of the same type. Neither the self-evaluation of the large model nor the single click can prove that the layout is better; the difficulty of the task, the delay of the model and the time of page operation should be recorded separately. If the evidence is insufficient, continue to observe, and if the effect deteriorates, correct or restore.</p><p>Component changes, layout changes and user feedback are all related to the version; keep the original evidence summary and source identification to reduce subsequent repeated inquiries. New applications initialize empty preferences. When copying mature applications, choose whether to inherit the layout separately. The original customer identity and memory cannot be copied by default.</p></section>
+<section><h2>VI. Minimum start-up entrance and distribution</h2><p>In the future, the entrance will locate its own directory, check the seed version, bring in the complete rules and entrance files, establish the local state and environment, select the local port, start the back-end and React web page, and then open the browser. Repeated startup to restore existing applications without overwriting existing data and modifications.</p><p>New functions default to build modules of the same name in front/features/ and backend/features/ of the current application; when users want to apply independently, they copy the base in the new directory and initialize the new app_id. The two modes reuse the same startup entrance to avoid unintentionally copying the entire customer information of each function.</p><p>At present, the cloud is not built, and the most implementable is the offline seed compression package that contains the startup entrance and seed content. If you are required to copy only one file, you can embed the seed source code, data and rules into the self-unpacking entrance; the volume will increase. A very small online boot script must have an available download source, a fixed version and a hash, and it cannot be assumed that the future cloud already exists.</p><p>Carry the list and version of rules in the startup entrance, and do not pull the "latest version" rules to cover the customer's specifications by default. New projects rebuild FINAL_GOAL, TODO and AI_TASKS; with empty credentials skeleton, cannot carry the developer's real general ledger. Code and packets do not mean that all runtime has been packaged. Whether the operating system, Node is preset, model endpoints and dependency reconstruction methods need to be determined before implementation.</p></section>
+<section><h2>VII. Local data packaging with customers</h2><p>All applications have their own front, backend, docs, rules, configuration, resources, sessions, memory, business data, environment and snapshots; relative path analysis, external data is downloaded and the source is indicated. It does not rely on other directories of the developer's computer, and does not use the cloud to save the only copy of the application.</p><table><thead><tr><th>Use</th><th>Contains content</th><th>Default exclusion</th></tr></thead><tbody>
+<tr><td>New application seeds</td><td>Base, empty status, rules, entrance, necessary resources, dependency lock and license</td><td>Customer functions, identity, memory, real data and credentials</td></tr>
+<tr><td>Application sharing</td><td>Generate source code, function declaration, rules, documents, and necessary distributeable resources</td><td>Personal sessions, preferences, business data, credentials and logs</td></tr>
+<tr><td>Local recovery backup</td><td>Source code, rules, configuration, required information, and clearly selected data and snapshots</td><td>Credences shall not be included in general sharing; credentials shall be protected and preserved separately.</td></tr>
+</tbody></table><p>In the future, the basic packaging script will check the list, hash, version, unpacking path and recovery method. Excluding .git, .worktrees, dependent cache, real logs, credentials and old products; necessary dependencies are rebuilt by lock files, and the offline environment provides the corresponding operating data of the platform. The Clawtask tool attachment is only kept as it is, and no Clawtask package has been created or its deployment has been processed this time.</p></section>
+<section><h2>VIII. Actual catalog</h2><pre>Application root directory/
+
+├── front/ React web page front-end
+
+│ ├── chat/ Stable basic dialogue entrance
+
+│ ├── canvas/ AI modifiable working canvas
+
+│ ├── regions/ Dynamic regional assembly and isolation
+
+│ └── features/ Front-end functions generated by AI
+
+├── backend/ back-end catalog by service
+
+│ ├── agent-runtime/ Session, model and task coordination
+
+│ ├── workspace/ memory, preference, layout and basis
+
+│ ├── app-builder/ Application generation, verification and version switching
+
+│ ├── mcp-runtime/ MCP tool registration and execution
+
+│ └── features/ back-end functions generated by AI
+
+├── contracts/ Shared interface and function statement
+
+├── config/ application configuration, credentials only save references
+
+├── data/ session, business data and local status
+
+├── assets/ Application resources and download materials
+
+├── snapshots/ candidate and recoverable version
+
+├── scripts/ Start the entrance planning, do not write the script
+
+├── packaging/ packaging strategy, no script written
+
+├── docs/ People-oriented ideas and plans
+
+├── services/ service index, do not repeat the code
+
+├── rules/ User specification and built-in format
+
+├── logs/ Record by service and date, keep for 30 days
+
+├── local-secrets/ Real credentials are only saved locally
+
+├── AGENTS.md / CLAUDE.md AI Entrance
+
+└── FINAL_GOAL.md/TODO.md/AI_TASKS.md</pre><p>The existing services/ is changed to index, backend/ is the only back-end implementation location, and front/ is the only front-end location. The service Markdown is saved with the service directory; the human scheme is unified in docs/. TASK-20261009-002 establishes a description skeleton; TASK-20261009-003 has realized the layout preview in front/, and backend/ still only has planning documents.</p></section>
+<section><h2>IX. Follow-up implementation order and acceptance</h2><table><thead><tr><th>Stage</th><th>Target</th><th>Acceptance evidence</th></tr></thead><tbody>
+<tr><td>1 Local base</td><td>Stable chat, canvas, single directory startup and rules initialization</td><td>Start a new directory, repeat the retention of data, and continue to use the chat</td></tr>
+<tr><td>2 Dialogue generates full functions</td><td>Add a front-end and back-end corresponding actual function, which can modify the React source code.</td><td>The business path is successful, the interface is consistent, the construction failure can be restored and the chat is available.</td></tr>
+<tr><td>3 MCP self-extension</td><td>Generate tools, verify, register and actually call</td><td>The tool results can be verified, the access range is correct, and the failure can be withdrawn.</td></tr>
+<tr><td>4 Long-term adaptation</td><td>Preference cross-session takes effect, adjustment basis and use effect can be traced</td><td>Temporary requirements do not pollute long-term preferences, correction is effective, version comparison can be checked</td></tr>
+<tr><td>5 Customer delivery</td><td>Basic startup and packaging scripts, cross-target environment recovery</td><td>Complete information, rules and lock files in the package, unpacked operation, no real credentials</td></tr>
+</tbody></table><p>Cloud content uploading and downloading is an independent stage in the future. To be clarified: the first platform and business scenario, the selected version of the chat library, the back-end language and deployment topology, the model source and the offline delivery form. The front-end layout preview has been implemented in the subsequent TASK-20261009-003; the real AI, generated code, back-end and seed delivery stages have not been implemented.</p></section><p><small>2026-10-09 · TASK-20261009-002 · Design document, non-running product page</small></p></main></body>
 </html>

@@ -1,12 +1,12 @@
-# 06. 最终目标、当前进度与 docs 说明文件
+# 06. Final goal, current progress and docs documentation
 
-## 目标
+## Target
 
-每个项目必须包含一个最终目标文件和一个当前进度 todo 文件。AI 每次修改前必须先阅读这两个文件，防止任务跑偏，也防止任务被中断后无法接续。
+Each project must contain a final target file and a current progress todo file. AI must read these two files before each modification to prevent the task from running sideway and prevent the task from continuing after being interrupted.
 
-项目给人看的解释文件必须统一放到根目录独立 `docs/` 文件夹内，并使用 HTML 构建，方便直接预览。`docs/` 主要给人看，AI 不把 `docs/` 作为任务依据；AI 应优先读取 `rules/README.md`、`FINAL_GOAL.md`、`TODO.md`、`AI_TASKS.md` 和微服务目录内的 Markdown 说明。
+The explanation file of the project must be placed in the independent `docs/` folder of the root directory, and it must be built using HTML for direct preview. `docs/` mainly shows people that AI does not use `docs/` as the basis for tasks; AI should give priority to reading `rules/README.md`, `FINAL_GOAL.md`, `TODO.md`, `AI_TASKS.md` and Markdown instructions in the microservice catalog.
 
-## 必备文件
+## Required documents
 
 ```text
 project-root/
@@ -19,70 +19,70 @@ project-root/
     └── references.html
 ```
 
-## FINAL_GOAL.md 规范
+## FINAL_GOAL.md Specification
 
-`FINAL_GOAL.md` 用来记录项目最终目标，可以随着项目变化而修改。
+`FINAL_GOAL.md` records the final project goal and may be updated as the project evolves.
 
-必须包含：
+It must contain:
 
-1. 项目最终要完成什么。
-2. 核心功能范围。
-3. 当前不做什么，避免范围膨胀。
-4. 验收标准。
+1. What will be completed in the end of the project?
+2. The scope of core functions.
+3. Don't do anything at present to avoid expanding the scope.
+4. Acceptance standards.
 
-## TODO.md 规范
+## TODO.md specification
 
-`TODO.md` 用来记录目前进度和下一步任务。
+`TODO.md` is used to record the current progress and the next task.
 
-必须包含：
+It must contain:
 
-1. 当前已完成内容。
-2. 正在进行的内容。
-3. 下一步待办。
-4. 已知问题或阻塞点。
-5. 最近一次 AI 修改记录。
+1. The content has been completed at present.
+2. The content in progress.
+3. The next step is to be done.
+4. Known problem or blockage point.
+5. The latest AI modification record.
 
-`TODO.md` 记录项目总体进度，`AI_TASKS.md` 记录多个 AI 和多个对话的任务认领、修改范围、分支、Worktree 与当前状态，两者不得相互替代。
+`TODO.md` records the overall progress of the project, and `AI_TASKS.md` records the task claim, modification scope, branch, Worktree and current status of multiple AI and multiple dialogues, and the two cannot be substituted with each other.
 
-并行修改时，按规则 14 定位协调 Worktree 内的权威索引和进度，由协调者串行汇总；各执行 AI 在自己的任务文件记录进展。其他 Worktree 的根状态文件仅为已提交快照。只读任务不为进度记录要求写文件。
+When modifying in parallel, coordinate the authoritative index and progress in Worktree according to Rule 14, and summarize it serially by the coordinator; each execution AI records the progress in its own task file. The root status file of other Worktree is only a submitted snapshot. Read-only tasks do not require writing documents for progress records.
 
-## docs 规范
+## Docs specification
 
-1. 根目录必须有独立 `docs/` 文件夹。
-2. 给人看的解释文件统一放到 `docs/` 内。
-3. 解释文件使用 HTML 构建，方便本地预览。
-4. `docs/index.html` 应作为项目说明入口。
-5. 文档内容应面向人阅读，说明项目目标、结构、服务、运行方式和注意事项。
-6. `docs/` 内不存放 AI 执行规则，不存放敏感信息。
-7. `docs/references.html` 用于给人审阅第三方平台官方网址、用途和核对日期。
+1. The root directory must have an independent `docs/` folder.
+2. Put the explanation file for people to see in `docs/`.
+3. The interpretation file is built using HTML, which is convenient for local preview.
+4. `docs/index.html` should be used as the entrance to the project description.
+5. The content of the document should be readable to people, explaining the purpose, structure, service, operation mode and notes of the project.
+6. AI execution rules and sensitive information are not stored in `docs/`.
+7. `docs/references.html` is used to review the official website, purpose and check date of third-party platforms.
 
-## 规范包分发与覆盖
+## Standardize package distribution and coverage
 
-1. 根目录 `README.md` 是本规范包分发到其他项目时的强制指导文件。
-   只有用户要求引入或复制规范时才执行覆盖；仅审阅项目或阅读 README 不构成复制与整改授权。
-2. AI 必须把源规范目录中的全部受控内容复制到目标项目根目录，同名文件直接覆盖，不采用选择性复制或旧版规则合并。
-3. `AGENTS.md`、`CLAUDE.md`、`README.md`、`.gitignore`、`FINAL_GOAL.md`、`TODO.md` 和 `AI_TASKS.md` 均属于必须覆盖的内容。
-4. `rules/` 必须按源目录做完整镜像替换；目标目录中源规范不存在的旧规则文件必须移除，防止两套规则同时生效。
-5. `docs/` 中源规范提供的文件必须覆盖目标同名文件；目标项目中其他不同名的人类文档可以保留。
-6. `services/`、`logs/` 和 `local-secrets/` 的安全空骨架属于规范包：新项目必须完整复制；已有项目只补充缺失的骨架文件，不得覆盖实际服务内容、真实日志或已填写的私密信息总账。
-7. 覆盖只针对规范包中的同名内容，不得删除目标项目中无同名关系的业务代码、资源和项目文件。
-8. 本规范目录自身就是项目模板，不得再创建或依赖单独的 `templates/` 目录。
-9. `.git/`、真实敏感信息、真实日志、虚拟环境、依赖缓存、构建产物和系统临时文件不属于规范包，禁止分发。
-10. 覆盖前应读取目标项目已有目标、进度、权威任务记录和本地敏感目录状态，协调受覆盖影响的进行中任务；保存覆盖后重建所需的项目事实，不复制秘密值。覆盖时不得用规范源空总账覆盖目标项目已填写的真实私密信息总账。
-11. 覆盖后直接在目标副本中重建 `FINAL_GOAL.md`、`TODO.md` 和 `AI_TASKS.md`，不得沿用本规范项目自身的状态记录；目标项目原有有效认领、协调者及授权记录必须恢复，已有协调 Worktree 的实时记录不得被模板历史重置。
-12. 微服务、私密信息、日志、环境和交接格式直接从对应 `rules/` 规则正文获取，不从第二套模板目录复制。
-13. 复制阶段核对源文件和公共规则一致；初始化阶段核对项目事实、入口公共部分、合法项目补充和总账结构。AI 必须从目标项目内重新读取入口和规则，给出规范包覆盖回执；不要求定制后的 AGENTS 全文等于源文件，也不要求目标项目总账为空。
-14. 用户依据根目录 `README.md` 要求分发时，视为已授权覆盖同名公共规范文件；真实 `local-secrets/` 和真实日志不在覆盖授权范围内。
+1. The root directory `README.md` is the mandatory guidance document when this specification package is distributed to other projects.
+   Only when the user requests to introduce or copy the specification will the coverage be carried out; only reviewing the project or reading README does not constitute the authorization of copying and rectification.
+2. AI must copy all the controlled content in the source specification directory to the root directory of the target project, and the file of the same name must be directly overwritten, without selective copying or merging old rules.
+3. `AGENTS.md`, `CLAUDE.md`, `README.md`, `.gitignore`, `FINAL_GOAL.md`, `TODO.md` and `AI_TASKS.md` are all contents that must be covered.
+4. `rules/` must be completely mirrored according to the source directory; old rule files that do not exist in the source specification in the target directory must be removed to prevent the two sets of rules from taking effect at the same time.
+5. The documents provided by the `docs/` source specification must overwrite the file of the same name as the target; other human documents with different names in the target project can be retained.
+6. The security skeleton of `services/`, `logs/` and `local-secrets/` belongs to the standard package: new projects must be copied completely; existing projects only supplement the missing skeleton files, and may not overwrite the actual service content, real logs or filled-in private information ledger.
+7. Cover only for the content of the same name in the specification package, and do not delete business codes, resources and project files that are not related to the same name in the target project.
+8. This specification directory itself is a project template, and it is no longer allowed to create or rely on a separate `templates/` directory.
+9. `.git/`, real sensitive information, real logs, virtual environment, dependent cache, construction products and system temporary files do not belong to the specification package and are prohibited from distribution.
+10. Before overwriting, you should read the existing goals, progress, authoritative task records and local sensitive directory status of the target project, and coordinate the ongoing tasks affected by the coverage; save the project facts required for reconstruction after coverage, and do not copy secret values. When covering, the real private information ledger filled in by the target project shall not be covered with the standardized source empty general ledger.
+11. After overwriting, directly rebuild `FINAL_GOAL.md`, `TODO.md` and `AI_TASKS.md` in the target copy, and the status records of this specification project itself shall not be followed; the original valid claim, coordinator and authorization records of the target project must be restored, and the real-time records of the coordinated Worktree must not be reset by the template history.
+12. Microservices, private information, logs, environments and handover formats are obtained directly from the body of the corresponding `rules/` rule, not copied from the second set of template directories.
+13. In the replication stage, check the consistency of the source file and the public rules; in the initialization stage, check the project facts, the entrance public part, the legal project supplement and the general ledger structure. AI must re-read the entrance and rules from the target project and give the standard package coverage receipt; it is not required that the full text of the customized AGENTS is equal to the source file, and the general ledger of the target project is not required to be empty.
+14. When the user distributes according to the requirements of the root directory `README.md`, it is considered that the public specification file of the same name has been authorized to be overwritten; the real `local-secrets/` and the real log are not within the scope of the overwriting authorization.
 
-## AI 执行规则
+## AI execution rules
 
-1. 每次修改代码前，必须先阅读 `FINAL_GOAL.md`、`TODO.md` 和 `AI_TASKS.md`。
-2. 修改完成后，应按实际进展更新任务记录，并由协调者汇总权威 `TODO.md`；只读任务不修改状态文件。
-3. 用户已明确变更项目目标、范围或验收标准时，应同步更新 `FINAL_GOAL.md`。AI 自行提出的扩展先征求确认，不能通过改写目标文件自我授权。
-4. 如果本次修改影响人类理解项目的方式，应同步更新 `docs/index.html` 或对应 HTML 文档。
-5. 不把面向人的解释文档散落在项目根目录或服务目录中，统一收纳到 `docs/`。
-6. 微服务给 AI 读取的说明必须放在微服务目录内，使用 Markdown 格式。
-7. 并行任务状态变化时，按规则 14 通知协调者同步权威 `AI_TASKS.md` 和 `TODO.md`，不并发改写各 Worktree 的状态快照。
-8. 按规则索引完成读取和最小登记后，在首次实质性修改前给出规范读取回执，确认已读取目标、进度和任务状态；回执发送后可继续已授权工作。
-9. 结束任务前必须重新读取权威状态文件，并在结束复核回执中说明文档是否已同步；只读任务注明无需同步。
-10. 执行规范分发时必须遵守本文件“规范包分发与覆盖”以及根目录 `README.md`，不得恢复目标项目被覆盖的旧版公共规则。
+1. Before each modification of the code, you must read `FINAL_GOAL.md`, `TODO.md` and `AI_TASKS.md`.
+2. After the modification is completed, the task record should be updated according to the actual progress, and the coordinator should summarize the authoritative `TODO.md`; the read-only task does not modify the status file.
+3. When the user has clearly changed the project goal, scope or acceptance standards, he/she should update `FINAL_GOAL.md` synchronously. AI's self-propossed expansion should be confirmed first, and cannot be self-authorized by rewriting the target file.
+4. If this modification affects the way human understanding of the project, `docs/index.html` or the corresponding HTML document should be updated synchronously.
+5. Do not scatter human-oriented explanation documents in the root directory or service directory of the project, and collect them in `docs/`.
+6. The instructions read by microservices to AI must be placed in the microservice directory and use Markdown format.
+7. When the status of parallel tasks changes, notify the coordinator to synchronize the authoritative `AI_TASKS.md` and `TODO.md` according to Rule 14, and rewrite the status snapshots of each Worktree in parallel.
+8. After completing the reading and minimum registration according to the rule index, the rules-reading receipt will be given before the first substantive modification to confirm that the target, progress and task status have been read; after the receipt is sent, the authorized work can continue.
+9. Before the end of the task, the authoritative status file must be re-read, and indicate whether the document has been synchronized in the end review receipt; the read-only task indicates that there is no need to be synchronized.
+10. When implementing the specification distribution, you must comply with the "Specification Package Distribution and Overlay" of this document and the root directory `README.md`, and the old version of the public rules covered by the target project must not be restored.

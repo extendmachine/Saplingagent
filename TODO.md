@@ -1,109 +1,115 @@
-# SeedAgent 当前进度
+# Current progress of SeedAgent
 
-## RUN-19e0a395 底部版本与刷新提醒
+> English translation of committed project records. Historical task statuses below retain their original time and scope. Live development ownership/progress are authoritative in the original project's .worktrees/coordination when present. This candidate does not assert human acceptance or branch synchronization.
 
-2026-10-10 / Codex / 本地main。已在页面底部增加当前`分支 · 版本号`显示；Agent Git状态增加`version`/`fingerprint`字段，页面每5秒及恢复可见时检查。本次页面加载后出现新提交或文件修改时，底部显示“发现新版本，刷新更新”，用户点击后重载；不自动刷新、不创建分支、不操作release/testcode或远程。Agent 41项与前端20项测试通过，TypeScript/Vite构建通过；保留既有大于500kB构建提示。待本地服务重启后核对5173与Git接口，最终视觉与按钮交互由用户人工体验。
+## RUN-19e0a395 bottom version and refresh reminder
 
-## RUN-89cd5a9e Git面板保存提交
+2026-10-10 / Codex / Local main. The current `branch · version number` display has been added at the bottom of the page; the `version`/`fingerprint` field has been added to the Agent Git status, and the page is checked every 5 seconds and when it is restored to visibility. When there is a new submission or file modification after the page is loaded, "Discover new version, refresh update" is displayed at the bottom, and the user clicks and reloads; do not automatically refresh, do not create branches, do not operate release/testcode or remote. Agent 41 and front-end 20 tests passed, TypeScript/Vite construction passed; keep the existing build prompts greater than 500kB. After the local service is restarted, the 5173 and Git interface will be checked, and the final visual and button interaction will be manually experienced by the user.
 
-2026-10-10 / Codex / 本地main。右上Git版本面板新增“保存提交”：工作区有改动时，将当前分支全部未忽略改动保存为本地Git提交，并回显新短SHA；已干净时按钮禁用。不push、不新建/删除/切换分支，Agent对话运行中或detached HEAD时后端拒绝写入。Agent 42项、前端20项及TypeScript/Vite构建已通过；待重启后核对真实HTTP路由与页面显示，按钮最终交互由用户人工体验。
+## RUN-89cd5a9e Git panel save and submit
 
-## TASK018 当前三分支
+2026-10-10 / Codex / Local main. "Save Submission" is added to the Git version panel in the upper right corner: when there is a change in the workspace, save all the current branch without ignoring the changes as a local Git submission, and display the new short SHA; when it is clean, the button is disabled. Do not push, do not create/delete/switch branches, and the back-end refuses to write when the Agent dialogue is running or detached HEAD. Agent 42, front-end 20 and TypeScript/Vite construction have been passed; after restarting, check the real HTTP route and page display, and the final interaction of the button is manually experienced by the user.
 
-用户已完成交付64366886测试并授权归集与清理。main保持纯AI聊天，包含已测Mac安装器、Codex App Server/MCP/Skills和接入README；testcode保留80cb9eb用户测试页面；release客户版目前同main。运行根目录仍在testcode，业务源码/真实资料不改。main已归集已测提交（合并c626fb64febcf53596218372d9fe0fe92cab8945）；本次另同步README clone和三分支说明，GitHub默认main，临时分支按用户要求清理。
+## TASK018 Current three branches
 
-| 分支 | 角色 | 当前验证/来源 |
+The user has completed the delivery of 64366886 test and authorized collection and cleaning. Main maintains pure AI chat, including tested Mac installer, Codex App Server/MCP/Skills and access to README; testcode retains 80cb9eb user test page; release client version is currently the same as main. The running root directory is still in testcode, and the business source code/real data is not changed. Main has been collected and tested and submitted (merge c626fb64febcf53596218372d9fe0fe92cab8945); this time, README clone and three-branch instructions are synchronized separately, GitHub defaults main, and temporary branches are cleaned up according to user requirements.
+
+|Branch|Role|Current verification/source|
 | --- | --- | --- |
-| main | 纯AI聊天起点、Mac安装与Codex接入 | 已测来源64366886；单聊天源码与原基线一致，当前分支整理仅改说明 |
-| testcode | 用户自测的演进页面 | 保留80cb9eb5457be76036dc92798d99903103c8fd9d，不合入业务组件 |
-| release | 客户使用版本 | 与main指向同一提交、全部文件相同 |
+| main |Pure AI chat starting point, Mac installation and Codex access|The tested source is 64366886; the single chat source code is consistent with the original baseline, and the current branch sorting only changes the description.|
+| testcode |Evolution page of user self-test|Keep 80cb9eb5457be76036dc92798d99903103c8fd9d, not suitable for business components|
+| release |The version used by the customer|It points to the same submission as main, and all files are the same.|
 
-权威协调记录继续在原主项目.worktrees/coordination，以detached HEAD保存；旧分支/任务历史不作为当前活跃分支。后续用户确认的发布按main→release同步，具体结果见实际Git refs与本机权威记录。
+The authoritative coordination record continues to be saved in the original main project .worktrees/coordination with detached HEAD; the old branch/task history is not regarded as the current active branch. The release confirmed by subsequent users is synchronized according to main→release, and the specific results can be found in the actual Git refs and the local authoritative record.
 
-## 历史TASK017 GitHub代码与README交付
+## History TASK017 GitHub Code and README Delivery
 
-用户授权将全部源码上传到https://github.com/extendmachine/Saplingagent.git。此分支chore/project/github-delivery基于TASK015冻结安装候选f1c690d8，新增产品README：GitHub获取/ZIP安装、本人登录、项目内Codex AppServer stdio协议、自动MCP/Skills、模型配置、诊断/设备码/注销、权限与认证边界。原完整规范分发说明在README末尾折叠保留，19个rules原样；docs/index同步导航，业务源码未变。
+The user authorizes to upload all the source code to https://github.com/extendmachine/Saplingagent.git. This branch chore/project/github-delivery is based on TASK015 to freeze the installation candidate f1c690d8, and the new product README: GitHub acquisition/ZIP installation, personal login, in-project Codex AppServer stdio protocol, automatic MCP/Skills, model configuration, diagnosis/device code/logout, permission and authentication boundary. The original complete specification distribution instructions are folded and retained at the end of README, and the 19 rules are as they are; docs/index synchronous navigation, and the business source code has not changed.
 
-当前为源码交付候选快照；具体提交、推送与GitHub默认分支结果由协调分支的权威记录汇总，不回填冻结候选。远程私有空仓库已核查，已有main/testcode/Mac候选和修复分支均保留，未合并main。上一安装候选42测试/构建/真实模型验证仍见下方，当前仅文档修改采用链接、命令与源码一致性检查，不冒充用户本人登录和Intel真机已验收。
+At present, the candidate snapshot is delivered for the source code; the specific submission, push and GitHub default branch results are summarized by the authoritative records of the coordinated branch, and the candidates are frozen without filling back. The remote private empty repository has been verified, and the main/testcode/Mac candidate and repair branches have been retained, and the main has not been merged. The previous installation candidate 42 test/construction/real model verification is still seen below. At present, only document modification adopts link, command and source code consistency check, and does not pretend to be the user's own login and Intel real machine has been accepted.
 
-## 历史TASK015 macOS交付候选
+## Historical TASK015 macOS Delivery Candidate
 
-此工作树为chore/project/macos-delivery，从main9271c18创建；权威协调记录在原始主项目.worktrees/coordination。已实现四个.command、macOS13.5+项目内Node24.21/Codex0.146.1安装、用户自登录、自动MCP/Skills就绪启动、诊断及干净源码打包。TASK016退出清理修复已集成（源提交29f84a93d6a4）。真实Apple Silicon安装、重复安装、无全局auth导入、42项隔离/协议测试与TypeScript/Vite构建通过。交付包解压换目录及真实模型回归将在冻结候选后核对，最终结果见权威协调记录和交付回执。main/testcode未变；未远程发布；用户人工Finder/Intel流程待验证，main需指定提交测试确认。
+This work tree is chore/project/macos-delivery, created from main9271c18; authoritative coordination is recorded in the original main project.worktrees/coordination. Four .command, Node24.21/Codex0.146.1 installation in macOS13.5+ projects, user self-login, automatic MCP/Skills ready start-up, diagnosis and clean source code packaging have been realized. TASK016 exit cleanup repair has been integrated (source submission 29f84a93d6a4). Real Apple Silicon installation, duplicate installation, no global auth import, 42 isolation/protocol tests and TypeScript/Vite build passed. The decompression of the delivery package and the return of the real model will be checked after freezing the candidates. The final result can be found in the authoritative coordination record and delivery receipt. main/testcode remains unchanged; not released remotely; the user's manual Finder/Intel process is to be verified, and the main needs to be specified to submit the test confirmation.
 
 
-## 历史Git分支管理（TASK014）
+## Historical Git Branch Management (TASK014)
 
-用户授权保存当前testcode及AI在网页自行添加功能前的main单聊天基线；本文件随对应分支保存。确切SHA使用git log -1 <分支>核对，不要求提交中包含自身SHA。当前仅root写入，主工作目录保持testcode，不推送远程。
+The user authorizes to save the main single chat baseline before the current testcode and AI add functions on the web page by itself; this file is saved with the corresponding branch. The exact SHA is checked by git log -1 <branch>, and does not require its own SHA to be included in the submission. At present, only root is written, and the main working directory keeps the testcode and does not push the remote.
 
-| 分支 | 版本 | 验证 | main合并 | 位置/执行AI |
+|Branch|Version|Verification|Main merger|Location/Execution AI|
 | --- | --- | --- | --- | --- |
-| testcode | 当前代码，含时钟、项目文件栏、截屏和最新后端接口 | 原样保存，凭据/暂存/目录审查 | 无（独立保存当前版本） | 根目录 / Codex TASK014 |
-| main | 经核查恢复的单聊天起点，保留Full Access核心 | 前端15项+后端契约9项精确恢复；32项检查与构建通过 | 不适用（基线初始保存） | Git分支对象；临时恢复副本在.cache / Codex TASK014 |
+| testcode |The current code, including clock, project file bar, screenshot and the latest back-end interface|Save as is, credentials/temporary storage/catalog review|None (save the current version independently)|Root Directory / Codex TASK014|
+| main |The starting point of the single chat restored after verification, retaining the Full Access core|Precise recovery of 15 front-end items + 9 back-end contracts; 32 inspections and construction passed|Not applicable (baseline initial saving)|Git branch object; temporary recovery copy in .cache / Codex TASK014|
 
-前端15项来自5d8cf4fc-b63a-47e7-a700-a464099478ea的baseline，逐项SHA256一致；后端及共享契约9项按已成功原生补丁493→433→426→414反向恢复，22个hunk唯一匹配并与独立核查哈希一致；4份服务/接口说明另按623→583→493恢复。后端保留用户已授权Full Access核心，移除文件栏API与checked-write；没有重建更早的受保护内核。
+The front-end 15 items come from the baseline of 5d8cf4fc-b63a-47e7-a700-a464099478ea, and SHA256 is consistent one by one; 9 back-end and shared contracts are reversed according to the successful native patch 493→433→426→414, and 22 hunk uniquely match and consistent with the independent verification hash; 4 service/interface instructions are restored according to 623→583→493. The back-end retains the user's authorized Full Access kernel, removes the file bar API and checked-write; does not rebuild the earlier protected kernel.
 
-本次没有改变当前运行应用源码或用户的会话/真实凭据；数据、日志、快照、环境、依赖与构建产物保持忽略。当前文件对应main版本，来源和恢复边界详见docs/git-versions.html。
+This time, the current running application source code or the user's session/real credentials have not been changed; data, logs, snapshots, environments, dependencies and construction products remain ignored. The current file corresponds to the main version. For details of the source and recovery boundaries, please refer to docs/git-versions.html.
 
-## 当前任务：Full Access（TASK010至013）
+## Current Task: Full Access (TASK010 to 013)
 
-用户明确取消MCP强制保护，已实现danger-full-access/never、通用文件和shell工具，取消目录白名单、强制编译/hash门槛、逐次确认和自动回退。根协调TASK010、MCP011、builder012、前端文案013；保留现有用户页面、会话与本地认证，源码与命令以当前OS用户权限执行。以下TASK005至009保留历史，旧受控限制已被取代。
+Users have clearly canceled MCP compulsory protection, and have realized danger-full-access/never, general file and shell tools, canceled directory whitelisting, forced compilation/hash threshold, one-by-one confirmation and automatic return. Root coordination TASK010, MCP011, builder012, front-end copywriting 013; retain existing user pages, sessions and local authentication, and the source code and commands are executed with the current OS user rights. The following TASK005 to 009 retains the history, and the old controlled restrictions have been replaced.
 
-### 当前基线页面
+### Current baseline page
 
-只有一个基础对话框；没有时钟、文件栏、截屏等后加组件。原始前端文件由历史快照精确恢复。
+There is only one basic dialog box; there is no clock, file bar, screenshot and other post-adding components. The original front-end file is accurately restored by historical snapshots.
 
-### 本次验证
+### This verification
 
-- 真Codex启动响应：sandbox dangerFullAccess、approvalPolicy never；实际gpt-5.6-sol/medium；15个MCP、3个Skills就绪。
-- 真实模型通过workspace_write_file直接写backend/agent-runtime/.full-access-check.txt；MCP cat与原生Node命令退出码0；主动page_rollback为rolledBack，临时文件不存在，审批事件0。changeId 3c94e2ad-839a-4fc0-bef5-e6a45f639661。
-- 本分支恢复单聊天页面；testcode保留用户当前已生成的组件。
-- 32项隔离/协议检查通过：agent10、workspace4、builder13、MCP1（涵盖15工具）、front4；前端TypeScript/Vite生产构建通过，三个Skills格式与独立行为评估通过。
-- builder覆盖任意路径/符号链接/二进制、旧快照兼容、无强制编译或hash阻止、无启动自动回退；快照/日志失败不阻止直接操作；超时和停止仅终止自身命令，真实状态不混淆。
-- MCP正式SDK验证登记失败继续执行且附warning、没有伪造taskId，HTTP取消传递到builder。Agent登记收尾失败仅warning，不把已完成动作误报失败。
-- 19个公共rules与源逐字节一致；652个公开文本检查未发现项目真实凭据，44个HTML本地链接有效。
-- 浏览器工具拒绝该localhost页面访问，本次没有完成自动视觉复测或真实屏幕授权点击；服务、项目文件API、构建和协议测试已验证。截屏选择器需用户在浏览器中人工授权，用户新版实际体验待反馈。
+- True Codex startup response: sandbox dangerFullAccess, approvePolicy never; actual gpt-5.6-sol/medium; 15 MCP, 3 Skills ready.
+- The real model directly writes backend/agent-runtime/.full-access-check.txt through workspace_write_file; MCP cat and native Node command exit code 0; active page_rollback is rolledBack, the temporary file does not exist, and the approval event is 0. changeId 3c94e2ad-839a-4fc0-bef5-e6a45f639661.
+- This branch restores a single chat page; testcode retains the components currently generated by the user.
+- 32 isolation/protocol checks passed: agent10, workspace4, builder13, MCP1 (covering 15 tools), front4; front-end TypeScript/Vite production construction passed, and three Skills formats and independent behavior assessment passed.
+- Builder overwrites any path/symbolic link/binary, old snapshot compatibility, no forced compilation or hash blocking, no start-up automatic rollback; snapshot/log failure does not prevent direct operation; timeout and stop only terminate its own command, and the real state is not confused.
+- MCP official SDK verification registration failed to continue to be executed with warning, no forged taskId, HTTP canceled transmission to builder. Agent registration failure only warns, and does not misreport the completed action failure.
+- 19 public rules are consistent with the source by byte; 652 public text checks do not find the real credentials of the project, and 44 HTML local links are valid.
+- The browser tool refuses to access the localhost page. This time, the automatic visual retest or real screen authorization click has not been completed; the service, project file API, build and protocol test have been verified. The screenshot selector requires the user to manually authorize in the browser, and the actual experience of the new version of the user is waiting for feedback.
 
-### 下一步
+### The next step
 
-本次实现和自检完成；用户可在现有网页直接要求修改后端、MCP、Skills或组件，按需主动恢复记录。无新增权限确认步骤。当前服务已重启并保持运行，实际API ready=true。云端、客户分发和长期布局效果仍未实施。
+This implementation and self-test is completed; users can directly request to modify the back-end, MCP, Skills or components on the existing web page, and actively restore the record as needed. There is no new permission to confirm the steps. The current service has been restarted and kept running, and the actual API is ready=true. Cloud, customer distribution and long-term layout effects have not yet been implemented.
 
-## 历史实现（TASK005至009）
+## Historical realization (TASK005 to 009)
 
-- TASK001/002：规范引入、八项构想与架构；TASK003多面板已被004单页取代。
-- TASK005：Codex App Server真实Agent、模型选择、SSE、持续thread、请求去重、取消、错误恢复、运行期权威任务登记。
-- TASK006：正式stdio MCP 12工具；三项项目Skills，可通过受控Markdown流程扩展。
-- TASK007：会话/偏好原子JSON持久化、证据、请求账本和版本冲突。
-- TASK008：真实候选TypeScript/Vite构建、AST路径检查、完整YAML、应用/hash冲突保护、快照/恢复。
-- TASK009：assistant-ui单页真实流/Markdown、停止/重试/新对话、snapshot刷新恢复、工具中文状态与MCP确认；固定聊天底座。
+- TASK001/002: Specification introduction, eight concepts and architecture; TASK003 multi-panel has been replaced by 004 single page.
+- TASK005: Codex App Server Real Agent, Model Selection, SSE, Continuous Thread, Request De-weighting, Cancellation, Error Recovery, Running Period Authoritative Task Registration.
+- TASK006: Official stdio MCP 12 tool; three project Skills, which can be expanded through the controlled Markdown process.
+- TASK007: Session/Preference Atomic JSON Persistence, Evidence, Request Ledger and Version Conflict.
+- TASK008: Real candidate TypeScript/Vite construction, AST path check, complete YAML, application/hash conflict protection, snapshot/recovery.
+- TASK009: assistant-ui single-page real stream/Markdown, stop/retry/new dialogue, snapshot refresh and restore, tool Chinese status and MCP confirmation; fixed chat base.
 
-## 当前交付
+## Current delivery
 
-本机 http://127.0.0.1:5173/；统一启动 node scripts/dev.mjs；首次依赖 node scripts/install.mjs；项目登录 node scripts/login.mjs。公开配置 config/runtime.json，说明 docs/runtime.html。Node≥24.11，本机26.4.0/Codex0.146.1，实际模型gpt-5.6-sol/medium。不覆盖全局Codex配置。
+Local http://127.0.0.1:5173/; unified start node scripts/dev.mjs; rely on node scripts/install.mjs for the first time; project login node scripts/login.mjs. Public configuration config/runtime.json, explain docs/runtime.html. Node≥24.11, this machine 26.4.0/Codex0.146.1, the actual model gpt-5.6-sol/medium. The global Codex configuration is not covered.
 
-## 历史验证（TASK005至009）
+## Historical verification (TASK005 to 009)
 
-- 真实模型流式回复、MCP skills_list实际调用、seed-research实际联网及官方链接、跨全部服务重启续聊记忆成功。
-- 浏览器真实回复、刷新消息保留、运行中刷新/events恢复、停止按钮中断成功。
-- 模型真实page_propose验证与page_apply应用成功，浏览器看到临时组件；从聊天批准MCP form并真实page_rollback成功，原始App哈希恢复，浏览器回到单聊天。
-- 正式SDK→真实workspace/builder：Skill候选/应用/发现/回滚、合成偏好保存与删除、秘密读取拒绝成功；测试资料已撤回。
-- 29项隔离/协议检查通过（agent8、workspace4、builder12、MCP1、前端4），TypeScript/Vite构建通过；最终测试汇总在TASK005交接；重复无sessionId请求并发重放无重复会话，冲突409、跨站403。此前MCP确认拒绝的协议缺口已修复为正式form确认，并实际批准一次已授权临时测试。
+- Real model streaming reply, MCP skills_list actual call, seed-research actual networking and official link, cross-service restart continuation memory success.
+- The real reply of the browser, the refresh message retention, the refresh/events recovery during operation, and the stop button is interrupted successfully.
+- The model real page_propose verification and page_apply application is successful, and the browser sees temporary components; from the chat to approve the MCP form and the real page_rollback is successful, the original App hash is restored, and the browser returns to the single chat.
+- Official SDK → Real workspace/builder: Skill candidate/application/discovery/rollback, synthetic preference save and delete, secret read rejection success; test data has been withdrawn.
+- 29 quarantine/protocol checks passed (agent8, workspace4, builder12, MCP1, front-end 4), TypeScript/Vite construction passed; the final test summary was handed over in TASK005; repeated no sessionId request and replayed session, conflict 409, cross-site 403. Previously, the agreement gap that MCP confirmed and rejected has been fixed to a formal form confirmation, and an authorized temporary test has actually been approved.
 
-- 最后managed修复后再次真实登记→候选validated→应用applied→撤销rolledBack，changeId 44d3225b-8c72-48e0-94d8-829befb176e4，App原hash一致。早一次模型等待经主动停止后续做成功，不宣称首次响应延迟恒定。
-- 普通聊天只读请求前后AI_TASKS hash一致；修改工具内部登记绑定真实MCP参数指纹，拒绝时不执行下游。19份rules与源一致，公共文件实际凭据匹配扫描无泄露，HTML链接与前端生命周期日志实际落盘已检查。
+- Finally, after managed repair, real registration again → candidate validated → applied → cancel rolledBack, changeId 44d3225b-8c72-48e0-94d8-829befb176e4, App original hash is the same. Earlier, the model waited for the active stop and the follow-up was successful, and did not claim that the first response delay was constant.
+- The AI_TASKS hash is consistent before and after the ordinary chat read-only request; modify the internal registration of the tool to binds the real MCP parameter fingerprint, and does not execute the downstream when rejecting. 19 rules are consistent with the source. The actual credentials of the public document are matched and scanned without leakage. The HTML link and the front-end life cycle log have actually been checked.
 
-## 当前边界与后续
+## Current boundary and follow-up
 
-- 单页入口和业务内容由对话决定，现有用户页面保持。所有前后端、MCP、Skills、依赖和规则可修改，无MCP目录白名单。
-- Native和MCP文件/shell为Full Access，可修改后端与可执行MCP；进程重启后加载变化。记录真实执行结果，用户按需主动回退，任意命令副作用不保证可恢复。
-- 有证据偏好已实施；长期主动布局改进和效果指标尚需真实使用反馈。
-- 客户打包、单文件自解包种子、跨平台交付、云端与公开发布后续实施。
-- JS约706kB（gzip215kB）存在体积提示。未验证全部Codex功能或长期性能；认证、网络、额度错误明确反馈。
-- 存储不可写时保留进程内未保存快照并报失败；进程退出不能保证未落盘末段。停止已发起的原子变更可能完成，以变更记录为准。
+- The single-page entrance and business content are determined by the dialogue, and the existing user page is maintained. All front-end and back-end, MCP, Skills, dependencies and rules can be modified, and there is no MCP directory whitelist.
+- Native and MCP files/shell are Full Access, which can modify the back-end and executable MCP; the loading changes after the process is restarted. Record the real execution results, and the user will actively return on demand. Any side effect of the command is not guaranteed to be restored.
+- There is evidence that the preference has been implemented; long-term active layout improvement and effect indicators still need real use feedback.
+- Customer packaging, single file self-unpacking seeds, cross-platform delivery, cloud and public release follow-up implementation.
+- JS is about 706kB (gzip215kB) and there is a volume prompt. All Codex functions or long-term performance have not been verified; authentication, network and quota errors are clearly feedback.
+- When the storage cannot be written, the snapshot is not saved in the process and reports failure; the process exit cannot guarantee that the last segment has not been dropped. The suspension of the initiated atomic change may be completed, subject to the change record.
 
-## 协调与人工验收
+## Coordination and human acceptance
 
-规范2026-09-29.1。根AI_TASKS/TODO为非Git项目权威记录；运行期由agent-runtime尝试记录根AI_TASKS区块（非阻断），详情在其ai-tasks/runtime。TASK010至013实现及自检已完成，待新版用户体验，不代表人工业务验收。无Git、分支、提交、Worktree、main合并或外部部署。
+Standard 2026-09-29.1. Root AI_TASKS/TODO is an authoritative record of non-Git projects; during the running period, agent-runtime tries to record the root AI_TASKS block (non-blocking), and the details are in its ai-tasks/runtime. TASK010 to 013 implementation and self-inspection have been completed, waiting for the new version of the user experience, which does not represent manual business acceptance. No Git, branch, commit, Worktree, main merge or external deployment.
 
-运行期MCP在实际变更前调用Agent内部POST /internal/register-task，Bearer认证且绑定当前App Server MCP item指纹。修改前project_context({modification:true})返回taskId；只读不登记；回调失败警告后继续操作。
+The running MCP calls Agent's internal POST /internal/register-task before the actual change, and Bearer authenticates and binds the current App Server MCP item fingerprint. Before modification, project_context({modification:true}) returns taskId; read-only without registration; continue operation after the callback failure warning.
 
-最近修改：2026-10-09；Codex/root TASK014从真实原件/补丁恢复main单聊天基线并保存两个Git版本。32项恢复版隔离/协议检查及构建通过；root工作目录保持testcode，用户当前页面和资料未回退。没有远程推送。
+Latest modification: 2026-10-09; Codex/root TASK014 restores the main single chat baseline from the real original/patch and saves two Git versions. 32 recovery version isolation/protocol inspection and construction passed; the root working directory maintains the testcode, and the user's current page and data have not been returned. There is no remote push.
+
+## English release preparation — TASK-20261010-013 to 018
+
+2026-10-10 / Codex/root. English source/UI/docs/rules/Skills/installers are prepared sequentially from main 78ac3a7. 86 existing isolated checks, frontend build and synthetic browser checks pass. Project-owned source uses PolyForm Noncommercial; commercial permission and OpenAI commercial authentication are separate. Syntax/metadata, local links and source-package exclusions are checked; final package/frozen SHA and recipient-install evidence are recorded in the authoritative coordination index after creation. No main/testcode/release synchronization or external publication is claimed. Existing credentials/conversations and previous task records remain intact.

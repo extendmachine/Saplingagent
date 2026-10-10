@@ -5,10 +5,10 @@ SEED_ENTRY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 SEED_ENTRY_STATUS=$?
 if [ "$SEED_ENTRY_STATUS" -ne 0 ]; then
   echo ""
-  echo "操作未完成。请查看上面的具体原因；可运行‘4-诊断.command’。"
+  echo "Operation incomplete. Check the error above or run 4-Doctor.command."
 fi
 if [ -t 0 ]; then
   echo ""
-  read -r -p "按回车关闭此窗口…" SEED_ENTRY_REPLY
+  read -r -p "Press Enter to close this window…" SEED_ENTRY_REPLY
 fi
 exit "$SEED_ENTRY_STATUS"

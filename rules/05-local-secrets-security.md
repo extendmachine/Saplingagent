@@ -1,16 +1,16 @@
-# 05. 本地敏感信息文件夹安全规范
+# 05. Local Sensitive Information Folder Security Specification
 
-## 目标
+## Target
 
-API key、服务器登录密钥、SSH key、密码、token 等敏感内容必须统一存放到本地独立敏感信息文件夹内，确保项目代码可以读取这些文件使用，但这些内容绝对不进入 git。
+API key, server login key, SSH key, password, token and other sensitive contents must be stored in the local independent sensitive information folder to ensure that the project code can read these files for use, but these contents will never enter git.
 
-用户可能不会自行创建凭据文件。用户在对话中直接提供当前项目所需的真实凭据时，AI 应代为保存到目标项目的 `local-secrets/` 并维护总账，不得仅因凭据出现在对话中就拒绝处理，或只让用户自己建文件。
+Users may be unable to create credential files themselves. When the user directly provides the real credentials required for the current project in the dialogue, AI shall save the `local-secrets/` of the target project on its behalf and maintain the general ledger. It shall not refuse to process it just because the credentials appear in the dialogue, or only allow the user to build the file by himself.
 
-客户内容不默认视为敏感内容。业务中的客户资料、客户项目内容、客户数据可按项目需要正常存放数据库；只有登录凭据、密钥、token、密码等访问控制信息属于敏感内容。
+Customer content is not regarded as sensitive content by default. Customer information, customer project content and customer data in the business can be stored in the database normally according to the needs of the project; only login credentials, keys, tokens, passwords and other access control information are sensitive contents.
 
-新项目不得再使用根目录 `selfdata.json` 集中保存全部服务器密码和密钥。旧项目如已存在 `selfdata.json`，应保持 Git 忽略，并逐步迁移到分类明确的 `local-secrets/`；迁移完成前不得删除忽略规则。
+New projects may no longer use the root directory `selfdata.json` to centrally store all server passwords and keys. If the old project already exists `selfdata.json`, it should be ignored by Git and gradually migrated to the clearly classified `local-secrets/`; the ignore rule shall not be deleted before the migration is completed.
 
-## 推荐目录
+## Recommended catalog
 
 ```text
 project-root/
@@ -28,26 +28,26 @@ project-root/
 └── .gitignore
 ```
 
-## 规范源安全骨架
+## Standard source safety skeleton
 
-1. `0.skills项目规范/local-secrets/` 是整包复制所需的预建目录骨架，可以随规范包复制到目标项目。
-2. 规范源中的 `notes/project-secrets.json` 必须保持空项目信息和空 `credentials` 清单，只用于提供可直接填写的合法 JSON 文件。
-3. 规范源中的其他分类目录只保存安全说明文件，不得保存真实服务器、数据库、API 或 SSH 信息。
-4. 目标项目复制完成后，可以直接填写自己的总账和分类文件；一旦填写真实内容，整个目录即按敏感信息管理，不得再次分发或提交 Git。
+1. `0.skills项目规范/local-secrets/` is a pre-built directory skeleton required for whole package replication, which can be copied to the target project with the specification package.
+2. `notes/project-secrets.json` in the specification source must keep empty project information and empty `credentials` lists, and only be used to provide legal JSON files that can be filled in directly.
+3. Other taxonomic directories in the standard source only save security documentation, and do not save real server, database, API or SSH information.
+4. After the copy of the target project is completed, you can directly fill in your own general ledger and classification file; once the real content is filled in, the whole directory will be managed according to sensitive information and may not be distributed or submitted to Git again.
 
-## 项目私密信息总账
+## Project private information general ledger
 
-1. 每个项目的私密信息总账统一存放在 `local-secrets/notes/project-secrets.json`。
-2. 总账用于登记凭据编号、类别、所属微服务、适用环境、用途、实际凭据文件路径、轮换或过期时间和备注。
-3. API key、密码、Token、数据库凭据和 SSH 私钥优先存入对应分类文件；总账通过项目内相对路径引用，避免多处重复保存真实值。
-4. 服务器地址、端口、部署账号、部署路径等需要集中管理的信息，可以保存在总账或其引用的 `server-keys/` 分类文件中。
-5. 填入实际项目信息后的总账属于敏感文件，和目标项目整个 `local-secrets/` 一样禁止提交、再次分发、写入日志或在 AI 回复中完整展示；规范源中的空总账除外。
-6. 新增、删除、轮换或停用凭据时，必须同步更新总账的日期、状态和文件引用。
-7. 初始化时直接按下方 JSON 格式在目标项目本地创建总账和分类凭据文件；规则文件只能保留虚构占位符。
+1. The private information ledger of each project is stored in `local-secrets/notes/project-secrets.json`.
+2. The general ledger is used to register the credential number, category, microservice, applicable environment, purpose, actual credential file path, rotation or expiration time and notes.
+3. API key, password, Token, database credentials and SSH private key are stored in the corresponding classified file first; the general ledger is referenced through the relative path in the project to avoid repeating the real value in many places.
+4. Information that needs to be centrally managed, such as server addresses, ports, deployment accounts, deployment paths, etc., can be saved in the general ledger or the `server-keys/` classification file referenced by it.
+5. The general ledger after filling in the actual project information is a sensitive document. Like the whole `local-secrets/` of the target project, it is prohibited to submit, re-distribute, write to logs or display it completely in the AI reply; except for the empty general ledger in the standard source.
+6. When adding, deleting, rotating or disabling credentials, the date, status and file reference of the general ledger must be updated synchronously.
+7. At the time of initialization, directly use the JSON format to create general ledger and classification credentials files locally in the target project; only fictional placeholders can be retained in the rule file.
 
-## 私密信息总账格式
+## Private information ledger format
 
-目标项目本地创建 `local-secrets/notes/project-secrets.json`：
+The target project is created locally `local-secrets/notes/project-secrets.json`:
 
 ```json
 {
@@ -85,7 +85,7 @@ project-root/
 }
 ```
 
-API 平台凭据文件建议格式：
+Suggested format of API platform credentials file:
 
 ```json
 {
@@ -102,7 +102,7 @@ API 平台凭据文件建议格式：
 }
 ```
 
-服务器登录凭据文件建议格式：
+Suggested format of server login credentials file:
 
 ```json
 {
@@ -120,7 +120,7 @@ API 平台凭据文件建议格式：
 }
 ```
 
-数据库凭据文件建议格式：
+Suggested format of database credentials file:
 
 ```json
 {
@@ -137,55 +137,55 @@ API 平台凭据文件建议格式：
 }
 ```
 
-## 必须本地保存的信息
+## Information that must be saved locally
 
-1. API key、token、第三方平台访问密钥。
-2. 登录账号与密码。
-3. SSH key、服务器登录密钥。
-4. 服务器地址、端口、部署账号。
-5. 部署路径、部署方式和注意事项。
+1. API key, token, third-party platform access key.
+2. Login account and password.
+3. SSH key, server login key.
+4. Server address, port, deployment account.
+5. Deployment path, deployment method and precautions.
 
-## 读取规则
+## Read the rules
 
-1. 首次接收允许从用户当前提供的对话内容转存到本地敏感文件；转存完成后，代码运行、配置和后续任务使用凭据必须读取本地文件，不从聊天记忆复制真实值到代码或命令中。
-2. 不允许把敏感内容硬编码到代码、文档、日志或提交记录中。
-3. 不允许让 AI 在进度说明、最终回复或校验输出里展示真实密钥、密码、token。
-4. 需要示例时，只能使用占位符，例如 `YOUR_API_KEY_HERE`。
+1. The first reception allows the transfer from the conversation content currently provided by the user to the local sensitive file; after the transfer is completed, the code run, configuration and subsequent task use credentials must read the local file, and the real value must not be copied from the chat memory to the code or command.
+2. It is not allowed to hardcode sensitive content into code, documents, logs or submission records.
+3. It is not allowed for AI to display the real key, password and token in the progress description, final reply or verification output.
+4. When examples are needed, only placeholders can be used, such as `YOUR_API_KEY_HERE`.
 
-## 对话凭据代存
+## Conversation credentials deposit
 
-用户为当前项目直接提供真实凭据，视为授权 AI 本地代存和登记总账，无需再次询问“是否保存”。只读审阅中的引用、示例占位符或用户明确要求不要保存的内容不触发代存。按规则索引完成必要的任务登记后执行以下流程，登记中不得包含秘密值：
+Users directly provide real credentials for the current project, which is regarded as authorized AI local storage and registration of the general ledger, without asking "whether to save" again. References, sample placeholders or content that the user explicitly requests not to save in the read-only review will not trigger the substitute storage. After completing the necessary task registration according to the rule index, the following process shall be carried out. The registration shall not contain secret values:
 
-1. **定位目标项目。** 保存到凭据所属项目的 `local-secrets/`，不得散存到桌面、全局配置或其他项目。当前目录为规范源 `0.skills项目规范/` 时，仍不得在模板内存放真实凭据；已有明确目标项目则直接存到目标项目，无法确定项目时只询问目标位置，不要求用户自己创建文件或重新发送已有完整凭据。
-2. **准备受保护的目录。** 自动补齐缺失的分类目录和 `.gitignore` 忽略项，确认实际写入路径位于目标项目内，不通过符号链接写到项目外。Git 项目检查目标文件未被跟踪或加入暂存区；已有跟踪按泄密处置规则处理，不把新凭据写入已跟踪文件。macOS / Linux 新建敏感目录和文件分别使用仅当前用户可访问的权限，例如目录 `700`、文件 `600`，不递归改动其他项目或无关文件权限。
-3. **分类保存原始内容。** API 凭据存入 `api-keys/`，服务器或数据库登录凭据存入 `server-keys/`，SSH 私钥存入 `ssh/`。文件名根据平台、服务和环境命名，不含秘密值；保留密钥原文及多行格式，不擅自修补缺失字符。所属项目明确但类别、用途或环境暂不清楚时，先用不覆盖已有文件的 `notes/pending-<task-id>.txt` 等名称保存，标记待确认，不猜测配置或启用。
-4. **保留已有凭据。** 新凭据不得无声覆盖现有文件或切换正在使用的凭据。用户已明确要求替换同一凭据时，按该授权更新；否则使用独立文件代存，保留原有文件和正在使用的引用。
-5. **避免再次暴露。** 使用可用的安全文件写入方式，不将秘密放入可见命令参数，不通过回显、文件差异预览、日志或错误输出展示内容；不为代存创建含秘密的临时脚本、普通任务记录或额外副本。缺少可安全写入的工具或权限时如实说明阻塞，不宣称已保存。
-6. **维护本地总账。** 更新 `local-secrets/notes/project-secrets.json` 中的凭据编号、类别、服务、环境、用途、文件引用、日期和状态，仅登记已知信息，不重复保存真实值。未明确启用的新增凭据标记为待配置或待确认，不覆盖原有有效条目；`TODO.md`、`AI_TASKS.md` 和交接文件只记录处理状态及不含秘密的文件路径。
-7. **核验并反馈。** 通过不回显内容的文件读取检查保存完整性、格式、权限和 Git 忽略情况，不为验证保存成功而调用外部平台。回复只说明保存路径、总账是否更新和必要待办，不重复展示凭据；后续已授权任务从保存的文件读取使用。
-8. **区分代存与其他授权。** 本地代存不等于授权远程登录、付费调用、生产切换、发布或凭据轮换，相关操作仍核对已有任务授权。保存到本地不代表对话中的副本已删除，也不代表已经排除泄露风险；可以简短提醒风险和轮换建议，但不把用户先轮换或自己搬运文件作为代存前置条件。需要实际泄密处置时继续遵守下方批准要求。
+1. **Locate the target project. **Save to the `local-secrets/` of the project to which the credentials belong, and shall not be scattered to the desktop, global configuration or other items. When the current directory is a standard source `0.skills项目规范/`, real credentials are still not allowed to be stored in the template; if there is a clear target project, it is directly stored in the target project. When the project cannot be determined, only the target location is asked, and users are not required to create files by themselves or resend existing complete credentials.
+2.** Prepare a protected catalog. **Automatically complete the missing catalog and `.gitignore` omissions, confirm that the actual write path is within the target project, and do not write outside the project through symbolic links. The Git project checks that the target file has not been tracked or added to the temporary storage area; the existing tracking is handled according to the leak disposal rules, and the new credentials are not written to the tracked file. macOS / Linux creates new sensitive directories and files using permissions that only the current user can access, such as directory `700` and file `600`, without recursively changing other projects or unrelated file permissions.
+3.**Classify and save the original content. **API credentials are deposited in `api-keys/`, server or database login credentials are stored in `server-keys/`, and SSH private keys are stored in `ssh/`. The file name is named according to the platform, service and environment, and does not contain secret values; the original text and multi-line format of the key are retained, and the missing characters are not patched without authorization. When the project is clear but the category, purpose or environment is not clear, first save it with names such as `notes/pending-<task-id>.txt` that do not overwrite the existing file, mark to be confirmed, and do not guess the configuration or enable.
+4.**Keep the existing credentials. **New credentials shall not silently overwrite existing files or switch between credentials in use. When the user has explicitly requested to replace the same credentials, update according to the authorization; otherwise, use separate files to store and retain the original files and references in use.
+5.** Avoid exposure again. **Use the available secure file writing method, do not put secrets into visible command parameters, do not display content through echo, file difference preview, log or error output; do not create temporary scripts, ordinary task records or additional copies with secrets for storage. If there is a missing tool or permission that can be safely written, it is blocked truthfully and does not claim that it has been saved.
+6.**Maintain the local general ledger. **Update the credential number, category, service, environment, purpose, file reference, date and status in `local-secrets/notes/project-secrets.json`, only register known information, and do not save the real value repeatedly. New credentials that are not explicitly enabled are marked as pending configuration or confirmation, and do not overwrite the original valid entries; `TODO.md`, `AI_TASKS.md` and handover files only record the processing status and non-secret file paths.
+7.** Verify and give feedback. **Check the integrity, format, permissions and Git ignoring of the save by reading the file that does not echo the content, and do not call the external platform to verify the success of the save. The reply only indicates the saving path, whether the general ledger has been updated and the necessary to-do items, and does not repeatedly display the credentials; subsequent authorized tasks can be read and used from the saved files.
+8.** Distinguish between deposit and other authorizations. ** Local deposit is not the same as authorizing remote login, paid call, production switching, release or credentials rotation, and the relevant operation still checks the existing task authorization. Saving locally does not mean that the copy of the dialogue has been deleted, nor does it mean that the risk of leakage has been eliminated; it can briefly remind the risk and rotation suggestions, but do not take the user's rotation first or carry the file by himself as a precondition for storage. Continue to comply with the following approval requirements when it is necessary to actually leak and dispose of it.
 
-## 安全红线
+## Safety red line
 
-1. 本地敏感信息文件夹绝对不允许提交到 git。
-2. 项目初始化时必须立刻将本地敏感信息文件夹写入 `.gitignore`。
-3. 每次提交前必须确认敏感信息文件夹、密钥文件、环境变量文件不在暂存区。
-4. 如果发现敏感内容已被误提交，必须立即阻止继续传播，准备并落实历史清理方案；共享历史重写和强推须有对应授权，具体按下方泄密处置顺序执行。
-5. 如果敏感信息曾经泄露，必须安排更换或撤销其中的密码、密钥和 token；可能中断服务的凭据操作须有对应授权，不得把修复代码的授权视为生产凭据轮换授权。
+1. The local sensitive information folder is absolutely not allowed to be submitted to git.
+2. When the project is initialized, the local sensitive information folder must be written to `.gitignore` immediately.
+3. Before each submission, it must be confirmed that the sensitive information folder, key file and environment variable file are not in the temporary storage area.
+4. If it is found that the sensitive content has been submitted by mistake, it must immediately prevent the continuation of dissemination, and prepare and implement the historical cleaning plan; sharing history rewriting and pushing must have corresponding authorization, specifically in the order of leakage and disposal below.
+5. If sensitive information has been leaked, it must be arranged to replace or revoke the password, key and token; the operation of the credentials that may be interrupted by the service must be authorized accordingly, and the authorization to repair the code shall not be regarded as the production credentials rotation authorization.
 
-## 泄密处置顺序
+## The order of leakage and disposal
 
-1. 立即暂停包含秘密的提交、推送、发布或分享，记录泄露类别和位置，不重复展示秘密值。
-2. 在已授权范围内准备本地净化、忽略规则、历史清理和凭据轮换方案，保留他人修改；不受影响的工作可以继续。
-3. 执行共享历史重写、强推、生产凭据撤销或可能中断服务的轮换前，核对用户对具体仓库、凭据和影响范围的授权。已有同范围明确授权可沿用，否则先提供方案并请求批准。
-4. 历史清理不等于凭据失效；分别记录清理、轮换和验证结果。尚未获得权限或无法完成的事项必须保持待处理状态，不得宣称泄密已经解决。
+1. Immediately suspend the submission, push, publication or sharing containing secrets, record the leaked category and location, and do not display the secret value repeatedly.
+2. Prepare local purification, ignore rules, historical cleaning and credentials rotation plans within the authorized scope, and reserve other modifications; work that is not affected can continue.
+3. Before performing the rotation of shared history rewriting, pushing, revoking production credentials or possibly interrupting the service, check the user's authorization for specific repositories, credentials and scope of impact. If there is a clear authorization in the same scope, it can be used. Otherwise, provide the plan first and request approval.
+4. Historical cleaning does not mean that the credentials are invalid; the cleaning, rotation and verification results are recorded separately. Matters that have not been authorized or cannot be completed must be kept in a pending state, and the leak shall not be claimed to have been resolved.
 
-## AI 执行规则
+## AI execution rules
 
-1. 不主动输出本地敏感信息文件夹中的敏感内容。
-2. 不把服务器密码、密钥、token 写入代码、文档或日志。
-3. 涉及部署任务时，缺少凭据才提示补充；用户已在对话中提供完整凭据的，按“对话凭据代存”直接完成本地保存和总账登记，不把建目录、建文件的工作退回用户，且不得提交该文件夹。
-4. 客户内容按业务数据处理，不因为是客户内容就自动归入敏感信息文件夹。
-5. 不新建 `selfdata.json`；发现旧文件时，先记录迁移计划，不直接展示或提交其中内容。
-6. 公钥和平台证书虽然不等同于私钥，但必须按 `rules/15-official-links-and-source-traceability.md` 记录官方来源。
-7. 初始化新项目时，检查整包复制得到的 `local-secrets/notes/project-secrets.json` 并直接填写；文件缺失时才按本规则重建。没有需要管理的凭据时可以保留空清单，但不得删除目录的 Git 忽略规则。
+1. Do not actively output sensitive content in the local sensitive information folder.
+2. Do not write the server password, key or token into the code, document or log.
+3. When it involves deployment tasks, the lack of credentials will prompt to supplement; if the user has provided complete credentials in the dialogue, the local saving and general ledger registration will be completed directly according to the "dialogue credentials storage". The work of building directories and files will not be returned to the user, and the folder shall not be submitted.
+4. Customer content is processed according to business data, and it is not automatically classified into the sensitive information folder because it is customer content.
+5. Do not create a new `selfdata.json`; when old files are found, record the migration plan first, and do not directly display or submit the contents.
+6. Although public keys and platform certificates are not the same as private keys, they must record the official source according to `rules/15-official-links-and-source-traceability.md`.
+7. When initializing a new project, check the `local-secrets/notes/project-secrets.json` copied from the whole package and fill it in directly; only rebuild it according to this rule when the file is missing. If there are no credentials to be managed, you can keep an empty list, but you can't delete the Git ignore rule of the directory.
