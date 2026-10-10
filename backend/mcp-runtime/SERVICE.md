@@ -43,3 +43,7 @@ YAML 解析与名称格式用于 Skills 发现，不是文件写入保护。三�
 日志在 `logs/mcp-runtime/mcp-runtime-YYYY-MM-DD.log`，普通日志保留 30 天，首次记录与跨日清理过期匹配文件。字段仅 time、level、tool、code；不落参数、命令、文件内容、偏好原文、凭据或返回正文。登记失败单独记 TASK_REGISTRATION_FAILED。stdout 严格用于 MCP 协议，stderr 只给固定脱敏启动失败说明；日志失败不改变操作结果。
 
 接口见 CONTRACT.md；部署见 DEPLOY.md；资料见 REFERENCES.md；交接见 ai-tasks/。
+
+## Saplingagent 更名（2026-10-09）
+
+产品名称统一为 Saplingagent，私有包名改为 saplingagent-*。本次仅名称及展示元数据，接口、权限、模型和数据结构不变；SEED_*/SEEDAGENT_*、seedagent MCP/client ID、浏览器会话键、运行期标记和 seed-* Skill ID 保留兼容。验证和待测提交见权威 .worktrees/coordination/AI_TASKS.md；本条不代表 main 已同步。

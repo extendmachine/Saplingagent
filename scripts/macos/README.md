@@ -4,7 +4,7 @@ TASK-20261009-015，项目级启动/分发工具，不增加新的业务服务�
 
 - 系统：macOS 13.5+；按当前运行架构选择 arm64/x64，Rosetta 下使用对应 x64 运行时。
 - 固定版本：config/macos.json 的 Node 24.21.0 / Codex CLI 0.146.1；Node 安装到 .runtime/node-v<version>-darwin-<arch>，Codex 到 .runtime/codex，npm 缓存 .cache/npm。
-- 根入口：1-安装.command、2-登录Codex.command、3-启动SeedAgent.command、4-诊断.command；所有路径从脚本位置计算，不保存开发者绝对路径。
+- 根入口：1-安装.command、2-登录Codex.command、3-启动Saplingagent.command、4-诊断.command；所有路径从脚本位置计算，不保存开发者绝对路径。
 - bootstrap.sh：只在 install 下载 Node，HTTPS 获取官方发行包与 SHA-256 表，校验、解压和执行版本检查后提升；失败清理自身 stage/lock。其它操作缺 Node 时明确要求先安装。
 - cli.mjs：项目锁；Codex staging 与真实版本检查后提升，恢复受控入口和wrapper的0755执行位；全部业务 npm ci 成功才写 .runtime/macos-install.json。已完整且版本相同时跳过下载，显式--repair重装。staging失败保留完整旧安装标记，业务npm ci前清除旧标记，部分安装失败不会误报已完成；保留源码、认证和业务数据。
 - 认证：macOS入口 setup(importExistingAuth:false)，env SEED_IMPORT_EXISTING_AUTH=0；不导入全局 auth。项目目录700，token/auth文件600；真实值只在 local-secrets。新目录总账包含schema_version/project/credentials，runtime只登记文件引用，保留既有总账字段，移动后更新自身根目录。macOS子进程移除继承的OPENAI_API_KEY/CODEX_API_KEY/CODEX_ACCESS_TOKEN，避免意外复用其他项目的API认证。
@@ -31,3 +31,11 @@ TASK-20261009-015，项目级启动/分发工具，不增加新的业务服务�
 - https://nodejs.org/en/blog/release/v24.21.0 与 https://nodejs.org/dist/v24.21.0/SHASUMS256.txt ：官方固定LTS及两种Mac归档SHA256。精确产物Mach-O minOS两架构为13.5；这是二进制下限，Intel真机用户流程另测。
 
 无需独立端口、数据库或新增生产依赖。服务日志沿用logs/<service>/，安装/npm诊断仅在终端与项目.cache/npm，真实认证和源码内容不写入普通日志。外部上线、商业登录注册、原生签名/公证和云端未实现。
+
+## Saplingagent 名称与模型费用（TASK020）
+
+启动入口为 `3-启动Saplingagent.command`，交付包为 `Saplingagent-macOS-<提交前8位>`；dev输出与cli启动检测使用同一品牌标记。环境变量及认证目录保留兼容。
+
+本地App Server开源组件无需单独购买，模型需本人认证及可用额度。此Mac入口采用ChatGPT登录、按账号套餐资格/模型权限/额度使用；Codex另支持API key独立按量计费，不使用ChatGPT订阅额度，本入口没有提供API key登录选项。Free/Go目前仅列桌面Luna逐步开放，不承诺本项目CLI/App Server免费可用。启动/诊断不做模型收费探测。
+
+官方公开依据（2026-10-09 / TASK020；文档无需登录，实际调用需本人认证；当前认证/套餐文档）：https://learn.chatgpt.com/docs/auth 、https://learn.chatgpt.com/docs/pricing 。商业/托管须正式SIWC，项目尚未实现；当前资格和伙伴范围：https://developers.openai.com/siwc/quickstart 。

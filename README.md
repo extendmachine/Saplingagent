@@ -1,10 +1,10 @@
-# SaplingAgent · SeedAgent
+# Saplingagent
 
 从一个聊天页面开始，通过与 AI 对话创建和修改自己的本地应用。
 
-SaplingAgent 是仓库名；当前代码、启动脚本和运行时使用 **SeedAgent** 名称。前端采用 React 与 assistant-ui，模型、对话线程和工具执行由官方 **Codex App Server** 驱动。应用源码、会话、Skills、规则和运行环境都归属本地项目文件夹。
+项目统一名称为 **Saplingagent**。前端采用 React 与 assistant-ui，模型、对话线程和工具执行由官方 **Codex App Server** 驱动。应用源码、会话、Skills、规则和运行环境都归属本地项目文件夹。
 
-**当前支持 macOS 13.5+，自动识别 Apple Silicon / Intel。** 仓库仅保留三个分支：`main` 为纯 AI 聊天与应用构建起点，包含 macOS 安装器；`testcode` 保存用户测试的演进页面；`release` 为客户使用版本，目前与 `main` 完全一致。
+**当前支持 macOS 13.5+，自动识别 Apple Silicon / Intel。** 仓库仅保留三个分支：`main` 为纯 AI 聊天与应用构建起点，包含 macOS 安装器；`testcode` 保存用户测试的演进页面；`release` 为上次已验收客户版本，新变更经测试后再同步。
 
 ## 快速开始：安装 → 登录 → 启动
 
@@ -53,10 +53,10 @@ bash "2-登录Codex.command" --device-auth
 
 ### 4. 启动网页
 
-双击 **`3-启动SeedAgent.command`**，或执行：
+双击 **`3-启动Saplingagent.command`**，或执行：
 
 ```bash
-bash "3-启动SeedAgent.command"
+bash "3-启动Saplingagent.command"
 ```
 
 脚本启动本地服务、接入 Codex App Server，等待账号、模型、MCP 与网页就绪，再打开 **http://127.0.0.1:5173/**。终端应显示：
@@ -68,10 +68,24 @@ bash "3-启动SeedAgent.command"
 在网页发送“你好”验证流式回复，也可要求“列出本项目的 Skills，不修改任何文件”。启动终端需保持开启；按 **Control+C** 停止本次服务。只启动、不自动打开浏览器：
 
 ```bash
-bash "3-启动SeedAgent.command" --no-open
+bash "3-启动Saplingagent.command" --no-open
 ```
 
 初始页面只有聊天入口。后续可以直接说“添加一个待办组件”“调整页面布局”或“为这个功能创建后端服务”，由 AI 按项目规则实施。
+
+## App Server 免费吗？需要什么账号？
+
+**本地 App Server 是开源组件，无需单独购买；AI 模型调用需要用户自己的认证和可用额度。** 本项目没有内置开发者账号或免费 API。（核对日期：2026-10-09）
+
+| 使用方式 | 登录及计费 |
+| --- | --- |
+| 本项目 Mac 默认入口 | 执行 `2-登录Codex.command`，由官方 `codex login` 使用本人 ChatGPT 账号；模型调用受该账号套餐资格、模型权限和额度限制，无需填写 API key |
+| Codex 支持的 API key 模式 | 使用本人的 OpenAI API key，按 API 用量独立计费；费用不包含在 ChatGPT 订阅额度中。本项目 Mac 入口当前采用 ChatGPT 登录，未提供 API key 登录入口 |
+| ChatGPT Free / Go | 官方当前列出的能力为逐步开放的桌面 GPT-6 Luna，不能保证本项目 CLI/App Server 通路或配置模型免费可用；是否可用须以实际账号资格和请求结果为准 |
+
+安装、登录成功、`model/list` 返回模型都不能保证一次模型请求有权限或有额度。启动和诊断不会自动发送收费模型请求；用户发送消息后才按所用认证进行模型调用。额度不足或授权失败时显示实际错误，重装不会增加额度。
+
+依据：[Codex 认证与两种计费方式](https://learn.chatgpt.com/docs/auth)、[当前套餐和用量限制](https://learn.chatgpt.com/docs/pricing)。商业或托管发行的正式授权要求见下文“当前验证与认证边界”。
 
 ## 如何接入 Codex App Server
 
@@ -81,7 +95,7 @@ bash "3-启动SeedAgent.command" --no-open
 flowchart LR
     UI[React 聊天网页] -->|HTTP / SSE| Agent[agent-runtime]
     Agent <-->|JSON-RPC / stdio| Codex[官方 Codex App Server]
-    Codex <-->|MCP / stdio| MCP[SeedAgent MCP]
+    Codex <-->|MCP / stdio| MCP[Saplingagent MCP]
     MCP --> Builder[app-builder 文件与命令]
     MCP --> Workspace[workspace 会话与偏好]
     Codex --> Skills[项目 Skills 与规则]
@@ -115,12 +129,14 @@ bash scripts/macos/codex.sh app-server --listen stdio://
 该入口等待 JSON-RPC 输入。以下是最小初始化顺序示意：先发送第一行，等待其成功响应，再发送第二行和后续请求。
 
 ```json
-{"id":1,"method":"initialize","params":{"clientInfo":{"name":"seedagent","title":"SeedAgent","version":"0.1.0"},"capabilities":{"experimentalApi":true}}}
+{"id":1,"method":"initialize","params":{"clientInfo":{"name":"seedagent","title":"Saplingagent","version":"0.1.0"},"capabilities":{"experimentalApi":true}}}
 {"method":"initialized","params":{}}
 {"id":2,"method":"account/read","params":{"refreshToken":false}}
 ```
 
-完整网页、项目 MCP、Skills 和会话管理应使用 `3-启动SeedAgent.command`；独立协议入口不包含 agent-runtime 生成的项目 MCP 配置。正常运行时无需另开这个协议进程。
+为兼容现有会话及配置，`seedagent` MCP/client ID、`SEED_*` / `SEEDAGENT_*` 环境变量、浏览器会话键和 `seed-*` Skill ID 保留；它们是内部标识，界面与交付名称统一为 Saplingagent。
+
+完整网页、项目 MCP、Skills 和会话管理应使用 `3-启动Saplingagent.command`；独立协议入口不包含 agent-runtime 生成的项目 MCP 配置。正常运行时无需另开这个协议进程。
 
 ## 模型、权限与本地配置
 
@@ -138,7 +154,7 @@ bash scripts/macos/codex.sh app-server --listen stdio://
 
 配置中的模型名称是首选，终端和网页状态显示实际采用的模型。模型目录发现不等同于账号模型授权或额度验证，一次成功回复才验证该次请求。
 
-当前 AI 可以使用原生工具与 MCP 修改前端、后端、MCP、Skills、配置和依赖，按当前 macOS 用户权限执行；没有 SeedAgent 目录白名单或逐次工具确认，不自动获得 root 或绕过 macOS 系统权限。快照提供部分文件的主动恢复能力；任意命令和原生写入的副作用不保证完整回退。
+当前 AI 可以使用原生工具与 MCP 修改前端、后端、MCP、Skills、配置和依赖，按当前 macOS 用户权限执行；没有 Saplingagent 目录白名单或逐次工具确认，不自动获得 root 或绕过 macOS 系统权限。快照提供部分文件的主动恢复能力；任意命令和原生写入的副作用不保证完整回退。
 
 ## 故障排查
 
@@ -176,7 +192,7 @@ bash scripts/macos/bootstrap.sh logout
 ```text
 Saplingagent/
 ├── 1-安装.command / 2-登录Codex.command
-├── 3-启动SeedAgent.command / 4-诊断.command
+├── 3-启动Saplingagent.command / 4-诊断.command
 ├── front/                     # React 与稳定聊天入口
 ├── backend/
 │   ├── agent-runtime/         # Codex App Server 客户端与流式对话
@@ -215,9 +231,9 @@ if [ "$SEED_ARCH" = "x86_64" ]; then SEED_ARCH=x64; fi
 | --- | --- |
 | `main` | 默认首页：已测试的纯 AI 聊天起点、Mac 安装器与接入指南 |
 | `testcode` | 当前已演进的页面，提交 `80cb9eb5` |
-| `release` | 客户使用版本，目前与 `main` 指向同一提交 |
+| `release` | 上次已验收的客户版本；后续变更另行测试同步 |
 
-用户已完成交付版测试；安装器、退出清理与完整 README 已归入纯聊天版本。其余临时分支已按用户要求清理，来源提交保留在 Git 历史。客户可用 `git clone --branch release https://github.com/extendmachine/Saplingagent.git` 获取相同的当前版本。后续进入 `main`、发布到 `release` 的改动继续绑定实际测试记录。
+用户已完成交付版测试；安装器、退出清理与完整 README 已归入纯聊天版本。其余临时分支已按用户要求清理，来源提交保留在 Git 历史。客户可用 `git clone --branch release https://github.com/extendmachine/Saplingagent.git` 获取该客户版本。后续进入 `main`、发布到 `release` 的改动继续绑定实际测试记录。
 
 ## 当前验证与认证边界
 

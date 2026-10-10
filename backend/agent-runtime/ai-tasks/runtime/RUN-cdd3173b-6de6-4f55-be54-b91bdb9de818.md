@@ -1,0 +1,10 @@
+# RUN-cdd3173b-6de6-4f55-be54-b91bdb9de818
+
+- 来源：用户在 Saplingagent 当前会话中的明确请求；授权详情以本地会话 035b949f-8a5e-4621-b58d-b39eba7b225b 的请求 cdd3173b-6de6-4f55-be54-b91bdb9de818 为准，不在公共任务记录复制聊天。
+- 执行：Saplingagent / Codex App Server，模型 gpt-5.6-sol。
+- 状态：completed；2026-10-10T10:59:37.109Z。
+- 允许：当前系统用户可访问的文件和命令，包括完整front/backend/MCP/Skills/配置/规则；具体动作按用户当前请求；具体动作必须符合当前用户请求。
+- 文件/命令权限：full-access，无Saplingagent目录保护；发布与外部消息仍按用户明确授权。
+- 无强制候选验证或hash冲突拦截，不自动回退；用户可主动恢复已有原件，命令副作用不保证可恢复；人工体验未验收。
+- 对话轮完成不代表所有业务需求、人工测试、Git同步或发布完成。
+- 权威协调索引：根 AI_TASKS.md 运行期区块；非Git，无分支/提交/main同步。

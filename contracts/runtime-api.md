@@ -1,6 +1,6 @@
 # 本地运行公开契约 v2 · Full Access
 
-TASK-20261009-010至013；2026-10-09。用户明确取消SeedAgent MCP保护，当前为完整文件/命令权限。HTTP服务agent4310/workspace4311/app-builder4312仍监听127.0.0.1并使用本地Bearer区分内部服务；浏览器同源/api代理，不持有该token。没有跨服务私有导入。
+TASK-20261009-010至013；2026-10-09。用户明确取消Saplingagent MCP保护，当前为完整文件/命令权限。HTTP服务agent4310/workspace4311/app-builder4312仍监听127.0.0.1并使用本地Bearer区分内部服务；浏览器同源/api代理，不持有该token。没有跨服务私有导入。
 
 ## 当前执行权限
 
@@ -9,10 +9,15 @@ Codex sandbox danger-full-access、approvalPolicy never；seedagent MCP default_
 ## 前端 -> agent
 
 GET /api/status -> {ready,authenticated,provider,model,skills:[{name,description}],mcp:{ready,tools:[{name,description}]},permissions:{mode:'full-access',sandbox:'danger-full-access',approvalPolicy:'never',mcpApproval:'approve'},error?}。
+GET /api/git -> {git:{repository,branch,detached,head:{shortSha,sha,committedAt,subject},version,fingerprint,clean,changeCount,changes,changesTruncated,branches,recentCommits}}。`version`为当前可见短版本号，`fingerprint`用于同一浏览器页面检测提交或未提交修改；读取当前项目Worktree的分支、提交、未提交文件、本地分支及其它Worktree占用状态，不访问网络。
+POST /api/git/commit -> {git}。将当前命名分支的全部未忽略改动暂存并创建本地提交；工作区已干净时幂等返回当前状态。AI对话运行中、detached HEAD或其它Git写操作进行中时返回409；不推送远程。
+POST /api/git/switch {branch} -> {git,reloadRecommended:true}。只接受现有本地分支；当前命名分支有未提交改动时先自动提交，AI对话运行中、detached HEAD、另一次切换进行中或目标分支被其他Worktree占用时返回409。接口不执行stash、force、discard、fetch、pull、push或远程分支创建。
 GET /api/sessions -> {sessions:[{id,title,updatedAt}]}。
-GET /api/sessions/:id -> {session:{id,title,threadId,messages,updatedAt,running,activeRequestId,requests,pendingApprovals:[]}}。
+GET /api/sessions/:id -> {session:{id,title,threadId,messages,updatedAt,running,activeRequestId,requests,pendingApprovals:[],progress?}}。
 POST /api/chat {sessionId?,text,requestId?} -> SSE：session、snapshot、text_delta、status、tool、error、done；保留兼容approval事件与POST /api/approvals/:id，但本地权限/MCP执行自动放行，不要求逐次确认。
 POST /api/sessions/:id/cancel -> {ok:true}；GET /api/events?sessionId=... -> snapshot+后续SSE。运行断线不会自动停止。会话持久化、请求去重、真实取消/错误状态保持。Stop不能撤销已经产生的文件或命令副作用。
+
+TASK-20261010-006：`progress?`仅活动轮提供，为 `{startedAt:ISO时间,lastProgressAt:ISO时间,lastProgressKind:'started'|'text'|'reasoning'|'plan'|'command-output'|'file-output'|'mcp-progress'|'item-started'|'item-completed',idle:boolean,phase:'working'|'tool-running'|'waiting-user'}`。属于Agent内存元数据，不持久化到workspace、不返回输出/推理/工具参数，结束省略。默认总时限turnTimeoutMs=0（缺字段同样0），默认闲置提醒turnIdleWarningMs=600000；每段无有效进展通过既有status.label提醒一次，保持running、无error/done、不自动重发，进展恢复继续。重连补发当前提醒；静默工具可提示仍在运行，标准Full Access确认仍自动允许，自由问题界面未新增。心跳/轮询/重连/保存/连接错误重试不算进展，旧thread/turn事件不能续期。显式正总时限仍真实中断；两项配置只接受0..2147483647整数毫秒，0关闭对应计时器。
 
 ## MCP -> agent 运行记录
 
@@ -30,7 +35,7 @@ GET /files?path=.&limit=200&cursor=0 -> {files:[{path,size,type,writable:true}],
 GET /file?path=...&encoding=utf8|base64&offset=0&maxBytes=1048576 -> {path,content,encoding,hash,hashScope,size,offset,nextOffset,truncated,...}；maxBytes最多4MiB，读取分页不是路径权限限制。
 POST /files/write {path,content,encoding?:'utf8'|'base64',reason?} -> {changeId?,status:'applied',warnings?,...}：直接写文件，尽力记录原件供手动撤销；快照失败仍写入，warning且没有可用changeId时不能承诺恢复。
 POST /files/delete {path,reason?} -> {changeId?,status:'applied',warnings?,...}：删除文件，尽力记录原件；快照失败不阻止删除，目录操作可用shell。
-POST /commands {command,cwd?,timeoutMs?} -> {exitCode,stdout,stderr,timedOut,cancelled,stdoutTruncated,stderrTruncated,...}：当前用户shell，无命令白名单；默认cwd项目，支持其他工作目录。默认60秒、可指定最多1小时；真实退出码、超时与取消，stdout/stderr分别1MiB输出上限并说明截断，不落盘正文。HTTP断开/请求取消/服务关闭会停止本次工具命令，不能撤销已经发生的副作用。MCP请求上限3615秒，聊天轮10分钟超时仍可中断。
+POST /commands {command,cwd?,timeoutMs?} -> {exitCode,stdout,stderr,timedOut,cancelled,stdoutTruncated,stderrTruncated,...}：当前用户shell，无命令白名单；默认cwd项目，支持其他工作目录。默认60秒、可指定最多1小时；真实退出码、超时与取消，stdout/stderr分别1MiB输出上限并说明截断，不落盘正文。HTTP断开/请求取消/服务关闭会停止本次工具命令，不能撤销已经发生的副作用。MCP请求上限3615秒；聊天默认无整轮硬时限，闲置仅提醒，工具自身时限仍有效。
 POST /changes {files:[{path,content,expectedHash?,encoding?}],reason} -> {changeId,status:'ready',checks:[],...}：可选候选记录，不编译、不执行AST/YAML/秘密文本验证、expectedHash不阻止写入。
 POST /changes/:id/apply -> {changeId,status:'applied',...}；兼容旧validated/failed候选，实际文件系统错误如实返回。
 POST /changes/:id/rollback -> {changeId,status:'rolledBack',...}：仅用户主动请求，不拦截后续修改，按原件覆盖恢复。GET /changes -> {changes}。

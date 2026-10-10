@@ -55,3 +55,5 @@ SDK/schema 无效输入返回错误；NOT_FOUND、INVALID_SKILL、LOCAL_CONFIG�
 候选 ready 不等于已应用或验证；applied 不等于人工体验验收。page_rollback 仅在用户要求时恢复已记录原件，覆盖后续修改，没有自动回退；未记录的原生写、shell、网络与业务数据副作用不承诺全部恢复。MCP/后端源码修改需重启并实际核对工具/服务生效。
 
 直接 write/delete 的快照或元数据失败不阻止目标操作，可能 applied + SNAPSHOT_UNAVAILABLE/RECORD_UNAVAILABLE warning 且无 changeId；原样保留 warning，不编造恢复标识。若同时登记失败，两类 warning 都保留。
+
+TASK023 更名展示元数据：serverInfo.name 保持 seedagent，新增 title 为 Saplingagent；工具名称、schema、协议与权限保持兼容。

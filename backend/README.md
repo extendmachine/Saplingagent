@@ -1,4 +1,4 @@
-# SeedAgent本地后端
+# Saplingagent本地后端
 
 已实现四个独立职责，TASK005至009集成；Node原生ESM，整体Node >=24.11，统一 node scripts/dev.mjs。无云端、Git或客户分发发布。
 

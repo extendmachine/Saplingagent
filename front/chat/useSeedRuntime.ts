@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppendMessage } from '@assistant-ui/react';
-import { checkedFetch, cleanMessages, getSession, readSessionId, rememberSession, type Approval, type Message, type Request, type RuntimeStatus, type Session } from './runtime-api';
+import { checkedFetch, cleanMessages, getSession, isMissingSession, readSessionId, rememberSession, type Approval, type Message, type Request, type RuntimeStatus, type Session } from './runtime-api';
 import { consumeEvents, type ServerEvent } from './sse';
 
 type ToolActivity = { id: string; name: string; status: string };
@@ -47,6 +47,27 @@ export function useSeedRuntime() {
       return next;
     });
   }, []);
+
+  const currentTarget = useCallback((signal: AbortSignal, expectedEpoch: number, id: string | null) =>
+    !signal.aborted && epoch.current === expectedEpoch && session.current === id, []);
+
+  const detachMissingSession = useCallback((failure: unknown, id: string | null, signal: AbortSignal, expectedEpoch: number) => {
+    if (!id || !isMissingSession(failure) || !currentTarget(signal, expectedEpoch, id)) return false;
+    flush();
+    session.current = null;
+    // Another same-origin tab may have already stored a different conversation.
+    if (readSessionId() === id) rememberSession(null);
+    if (lastRequest.current?.sessionId === id) {
+      const { sessionId: _obsolete, ...request } = lastRequest.current;
+      lastRequest.current = request;
+    }
+    setRunning(false);
+    setApprovals([]);
+    setActivity('');
+    setError(lastRequest.current ? '会话在当前服务中不存在。原输入已保留，点击重试可在新会话中继续。' : '上次会话在当前服务中不存在。发送新消息即可开始新会话。');
+    setRetryable(Boolean(lastRequest.current));
+    return true;
+  }, [currentTarget, flush, setRunning]);
 
   const snapshot = useCallback((saved: Session) => {
     flush();
@@ -140,10 +161,17 @@ export function useSeedRuntime() {
   // The backend continues a turn if the browser loses its transport. Recover its
   // persisted snapshot before subscribing, so text is never replayed twice.
   const recover = useCallback(async (signal: AbortSignal, expectedEpoch: number, requiredRequestId?: string) => {
-    if (!session.current) throw new Error('会话连接中断。请重试原请求。');
+    const id = session.current;
+    if (!id) throw new Error('会话连接中断。请重试原请求。');
+    if (!currentTarget(signal, expectedEpoch, id)) return;
     setActivity('正在恢复连接…');
-    const saved = await getSession(session.current, signal);
-    if (signal.aborted || epoch.current !== expectedEpoch) return;
+    let saved: Session;
+    try { saved = await getSession(id, signal); }
+    catch (failure) {
+      if (detachMissingSession(failure, id, signal, expectedEpoch)) return;
+      throw failure;
+    }
+    if (!currentTarget(signal, expectedEpoch, id)) return;
     if (requiredRequestId && !saved.messages.some(message => message.role === 'user' && (message.id === requiredRequestId || message.requestId === requiredRequestId))) throw new Error('原请求尚未保存，请重试。');
     snapshot(saved);
     if (!saved.running) {
@@ -158,15 +186,21 @@ export function useSeedRuntime() {
     setRunning(true);
     try {
       const response = await checkedFetch(`/api/events?sessionId=${encodeURIComponent(saved.id)}`, { signal });
-      await consumeEvents(response, event => { if (!signal.aborted && epoch.current === expectedEpoch) receive(event); });
+      if (!currentTarget(signal, expectedEpoch, id)) return;
+      await consumeEvents(response, event => { if (currentTarget(signal, expectedEpoch, id)) receive(event); });
       if (!running.current || signal.aborted) return;
     } catch (failure) {
       if (signal.aborted || isAborted(failure)) return;
     }
     // Snapshot polling is a fallback for an unavailable event subscription.
-    while (!signal.aborted && epoch.current === expectedEpoch && running.current) {
-      const latest = await getSession(saved.id, signal);
-      if (signal.aborted || epoch.current !== expectedEpoch) return;
+    while (currentTarget(signal, expectedEpoch, id) && running.current) {
+      let latest: Session;
+      try { latest = await getSession(id, signal); }
+      catch (failure) {
+        if (detachMissingSession(failure, id, signal, expectedEpoch)) return;
+        throw failure;
+      }
+      if (!currentTarget(signal, expectedEpoch, id)) return;
       snapshot(latest);
       if (!latest.running) {
         setRunning(false);
@@ -176,36 +210,43 @@ export function useSeedRuntime() {
       setActivity('已恢复连接，等待回复…');
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
-  }, [receive, setRunning, snapshot]);
+  }, [currentTarget, detachMissingSession, receive, setRunning, snapshot]);
 
   useEffect(() => {
     const bootstrap = new AbortController();
     const expectedEpoch = ++epoch.current;
+    let id = session.current;
+    let fetchingSavedSession = false;
     let statusTimer: ReturnType<typeof setInterval> | undefined;
     void (async () => {
       await refreshStatus(bootstrap.signal);
-      if (bootstrap.signal.aborted) return;
+      if (!currentTarget(bootstrap.signal, expectedEpoch, id)) return;
       statusTimer = setInterval(() => { void refreshStatus(bootstrap.signal); }, 10000);
       try {
         // Confirm saved conversations through the public service; do not put
         // conversation content into browser storage or create a second sidebar.
         const response = await checkedFetch('/api/sessions', { signal: bootstrap.signal });
         await response.json();
-        if (session.current) {
-          const saved = await getSession(session.current, bootstrap.signal);
-          if (bootstrap.signal.aborted) return;
+        if (!currentTarget(bootstrap.signal, expectedEpoch, id)) return;
+        if (id) {
+          fetchingSavedSession = true;
+          const saved = await getSession(id, bootstrap.signal);
+          fetchingSavedSession = false;
+          if (!currentTarget(bootstrap.signal, expectedEpoch, id)) return;
           snapshot(saved);
           if (saved.running) {
             setRunning(true);
             stream.current = bootstrap;
             setIsLoading(false);
             await recover(bootstrap.signal, expectedEpoch);
+            if (!bootstrap.signal.aborted && epoch.current === expectedEpoch) id = session.current;
           }
         }
       } catch (failure) {
-        if (!bootstrap.signal.aborted && !isAborted(failure) && session.current) setError(`无法恢复上次会话：${errorText(failure)}`);
+        if (fetchingSavedSession && detachMissingSession(failure, id, bootstrap.signal, expectedEpoch)) id = null;
+        else if (currentTarget(bootstrap.signal, expectedEpoch, id) && !isAborted(failure) && id) setError(`无法恢复上次会话：${errorText(failure)}`);
       } finally {
-        if (!bootstrap.signal.aborted) {
+        if (currentTarget(bootstrap.signal, expectedEpoch, id)) {
           setIsLoading(false);
           if (!running.current) setActivity('');
         }
@@ -218,11 +259,12 @@ export function useSeedRuntime() {
       if (timer.current) clearTimeout(timer.current);
       pending.current.clear();
     };
-  }, [recover, refreshStatus, setRunning, snapshot]);
+  }, [currentTarget, detachMissingSession, recover, refreshStatus, setRunning, snapshot]);
 
   const runRequest = useCallback(async (request: Request, isRetry = false) => {
     if (running.current) return;
     const expectedEpoch = ++epoch.current;
+    let id = session.current;
     const controller = new AbortController();
     stream.current?.abort();
     stream.current = controller;
@@ -239,32 +281,37 @@ export function useSeedRuntime() {
         method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify(request), signal: controller.signal,
       });
-      const id = response.headers.get('X-Session-Id');
-      if (id) { session.current = id; request.sessionId = id; rememberSession(id); }
+      if (!currentTarget(controller.signal, expectedEpoch, id)) return;
+      const responseId = response.headers.get('X-Session-Id');
+      if (responseId) { id = responseId; session.current = id; request.sessionId = id; rememberSession(id); }
       let ended = false;
       await consumeEvents(response, event => {
-        if (controller.signal.aborted || epoch.current !== expectedEpoch) return;
+        if (!currentTarget(controller.signal, expectedEpoch, id)) return;
         if (event.type === 'done') ended = true;
         receive(event);
+        id = session.current;
       });
-      if (!ended && !controller.signal.aborted) await recover(controller.signal, expectedEpoch);
-      if (session.current && !running.current && !controller.signal.aborted && epoch.current === expectedEpoch) {
-        snapshot(await getSession(session.current, controller.signal));
+      if (!currentTarget(controller.signal, expectedEpoch, id)) return;
+      if (!ended) await recover(controller.signal, expectedEpoch);
+      if (id && !running.current && currentTarget(controller.signal, expectedEpoch, id)) {
+        const saved = await getSession(id, controller.signal);
+        if (currentTarget(controller.signal, expectedEpoch, id)) snapshot(saved);
       }
     } catch (failure) {
-      if (controller.signal.aborted || isAborted(failure) || epoch.current !== expectedEpoch) return;
+      if (!currentTarget(controller.signal, expectedEpoch, id) || isAborted(failure)) return;
+      if (detachMissingSession(failure, request.sessionId || id, controller.signal, expectedEpoch)) return;
       flush();
       try {
         await recover(controller.signal, expectedEpoch, request.requestId);
         if (!running.current) return;
       } catch { /* Keep the original actionable error when recovery also fails. */ }
-      if (controller.signal.aborted || epoch.current !== expectedEpoch) return;
+      if (!currentTarget(controller.signal, expectedEpoch, id)) return;
       setRunning(false);
       setActivity('连接失败');
       setError(errorText(failure));
       setRetryable(true);
     }
-  }, [flush, receive, recover, setRunning, snapshot]);
+  }, [currentTarget, detachMissingSession, flush, receive, recover, setRunning, snapshot]);
 
   const onNew = useCallback(async (message: AppendMessage) => {
     const text = message.content.filter(part => part.type === 'text').map(part => part.type === 'text' ? part.text : '').join('\n').trim();

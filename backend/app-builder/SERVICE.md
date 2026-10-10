@@ -35,3 +35,7 @@ logs/app-builder/app-builder-YYYY-MM-DD.log；启动和跨日清理30天前日�
 上游backend/mcp-runtime通过HTTP；根启动器准备local-secrets/runtime/service-token，本服务启动读取做内部认证，浏览器不持有token。无跨服务私有导入或数据库依赖。
 
 接口CONTRACT.md；部署/主动恢复DEPLOY.md；官方来源REFERENCES.md；当前交接ai-tasks/TASK-20261009-012.md。旧TASK008是历史受控方案，当前v2已替代。根AI_TASKS/TODO仅协调者更新。
+
+## Saplingagent 更名（2026-10-09）
+
+产品名称统一为 Saplingagent，私有包名改为 saplingagent-*。本次仅名称及展示元数据，接口、权限、模型和数据结构不变；SEED_*/SEEDAGENT_*、seedagent MCP/client ID、浏览器会话键、运行期标记和 seed-* Skill ID 保留兼容。验证和待测提交见权威 .worktrees/coordination/AI_TASKS.md；本条不代表 main 已同步。
