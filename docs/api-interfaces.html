@@ -31,11 +31,11 @@
 </tr>
 <tr>
 <td>GET /api/git</td>
-<td>当前仓库、分支/HEAD、工作区改动、本地分支、最近提交与其它Worktree占用状态</td>
+<td>当前仓库、分支/HEAD、短版本号与状态指纹、工作区改动、本地分支、最近提交与其它Worktree占用状态；右上面板与底部版本更新提醒使用</td>
 </tr>
 <tr>
 <td>POST /api/git/switch</td>
-<td>{branch} → 安全切换已有本地分支；未提交改动、活跃对话、并发切换或目标被占用时返回409，不自动stash/force/fetch/push</td>
+<td>{branch} → 安全切换已有本地分支；当前命名分支有改动时先自动提交，活跃对话、detached HEAD、并发切换或目标被占用时返回409，不自动stash/force/fetch/push</td>
 </tr>
 <tr>
 <td>GET /api/sessions</td>

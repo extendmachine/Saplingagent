@@ -1,4 +1,6 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
@@ -62,6 +64,22 @@ function parseRecords(raw, fields) {
   });
 }
 
+async function createVersionFingerprint(root, sha, statusRaw, changes) {
+  const hash = createHash('sha256').update(sha).update('\0').update(statusRaw);
+  const files = [...new Set(changes.flatMap(change => [change.file, change.from].filter(Boolean)))].sort();
+  for (const file of files) {
+    hash.update('\0').update(file);
+    try {
+      const stat = await fs.lstat(path.resolve(root, file), { bigint: true });
+      hash.update(`\0${stat.size}:${stat.mtimeNs}:${stat.mode}`);
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+      hash.update('\0deleted');
+    }
+  }
+  return hash.digest('hex').slice(0, 16);
+}
+
 export async function readGitVersion(root) {
   const [repositoryRoot, head, branchName, statusRaw, branchRaw, worktreeRaw, commitRaw] = await Promise.all([
     git(root, ['rev-parse', '--show-toplevel']),
@@ -88,11 +106,14 @@ export async function readGitVersion(root) {
     ...(occupied.has(branch.name) ? { occupiedBy: occupied.get(branch.name) } : {}),
   }));
   const changes = parseStatus(statusRaw);
+  const fingerprint = await createVersionFingerprint(currentRoot, sha, statusRaw, changes);
   return {
     repository: path.basename(currentRoot),
     branch: branchName.trim() || null,
     detached: !branchName.trim(),
     head: { shortSha, sha, committedAt, subject },
+    version: changes.length === 0 ? shortSha : `${shortSha}+${fingerprint.slice(0, 6)}`,
+    fingerprint,
     clean: changes.length === 0,
     changes: changes.slice(0, 100),
     changeCount: changes.length,

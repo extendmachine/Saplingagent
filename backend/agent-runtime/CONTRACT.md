@@ -2,7 +2,7 @@
 
 任务010，取代005中的权限策略；完整字段以 contracts/runtime-api.md 为共享契约，浏览器同源/api代理。GET /health区分进程healthy和agentReady；GET /api/status返回ready/authenticated/provider/model、permissions(full-access/danger-full-access/never/approve)、项目Skills和MCP真实工具目录，不返回token。
 
-TASK-20261010-004新增Git版本接口。GET /api/git返回当前仓库名、分支或detached状态、HEAD、工作区改动（最多100项并标记截断）、本地分支、最近8项提交及分支被其它Worktree占用状态。POST /api/git/switch {branch}只切换到已存在且未被其它Worktree占用的本地分支；如当前命名分支有改动，先执行`git add --all`并以`chore: save <current> before switching to <target>`自动提交，再切换目标分支。当前处于detached HEAD、Agent对话运行中、并发切换或目标Worktree占用时返回409。接口不创建/删除分支，不自动stash、force/discard、远程fetch/pull/push；成功后前端应重新载入目标版本。错误使用GIT_NOT_REPOSITORY、GIT_INVALID_BRANCH、GIT_BRANCH_NOT_FOUND、GIT_DETACHED、GIT_BRANCH_IN_USE、GIT_AGENT_BUSY、GIT_SWITCH_BUSY或GIT_COMMAND_FAILED。
+TASK-20261010-004新增Git版本接口。GET /api/git返回当前仓库名、分支或detached状态、HEAD、`version`短版本号、`fingerprint`当前状态指纹、工作区改动（最多100项并标记截断）、本地分支、最近8项提交及分支被其它Worktree占用状态。干净时版本号为短SHA，有改动时附加指纹摘要；指纹用于页面检测状态变化，不是安全签名。POST /api/git/switch {branch}只切换到已存在且未被其它Worktree占用的本地分支；如当前命名分支有改动，先执行`git add --all`并以`chore: save <current> before switching to <target>`自动提交，再切换目标分支。当前处于detached HEAD、Agent对话运行中、并发切换或目标Worktree占用时返回409。接口不创建/删除分支，不自动stash、force/discard、远程fetch/pull/push；成功后前端应重新载入目标版本。错误使用GIT_NOT_REPOSITORY、GIT_INVALID_BRANCH、GIT_BRANCH_NOT_FOUND、GIT_DETACHED、GIT_BRANCH_IN_USE、GIT_AGENT_BUSY、GIT_SWITCH_BUSY或GIT_COMMAND_FAILED。
 
 GET /api/sessions列表；GET /api/sessions/:id返回session，包括messages、threadId、running、activeRequestId、requests及pendingApprovals。POST /api/chat {sessionId?,text,requestId?} SSE；requestId只接受字母数字下划线连字符，最长100，text1..32000字符。首次无sessionId按requestId查旧会话以免网络重试重复创建。相同requestId不同text409；并发同会话其他requestId409，已完成请求重放snapshot+done。
 

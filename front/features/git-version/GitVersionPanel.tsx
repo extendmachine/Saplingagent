@@ -15,6 +15,8 @@ type GitState = {
   branch: string | null;
   detached: boolean;
   head: { shortSha: string; sha: string; committedAt: string; subject: string };
+  version: string;
+  fingerprint: string;
   clean: boolean;
   changeCount: number;
   changes: Array<{ code: string; file: string; from?: string }>;

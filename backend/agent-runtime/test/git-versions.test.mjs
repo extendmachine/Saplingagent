@@ -28,12 +28,16 @@ test('reads branch, commits and dirty files', async t => {
   let state = await readGitVersion(root);
   assert.equal(state.branch, 'main');
   assert.equal(state.clean, true);
+  assert.equal(state.version, state.head.shortSha);
+  const cleanFingerprint = state.fingerprint;
   assert.deepEqual(state.branches.map(branch => branch.name), ['main', 'release']);
   await fs.writeFile(path.join(root, 'note.txt'), 'changed\n');
   state = await readGitVersion(root);
   assert.equal(state.clean, false);
   assert.equal(state.changeCount, 1);
   assert.equal(state.changes[0].file, 'note.txt');
+  assert.match(state.version, new RegExp(`^${state.head.shortSha}\\+[a-f0-9]{6}$`));
+  assert.notEqual(state.fingerprint, cleanFingerprint);
 });
 
 test('automatically commits current changes before switching local branches', async t => {

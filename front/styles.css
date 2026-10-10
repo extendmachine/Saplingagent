@@ -1,4 +1,13 @@
 /* 用户通过对话新增的应用内容样式放在这里。基础聊天样式在 chat/chat.css。 */
+.seed-page .composer-area { padding-bottom: max(68px, calc(env(safe-area-inset-bottom) + 54px)); }
+.version-footer { position: fixed; z-index: 28; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); min-height: 34px; max-width: calc(100vw - 28px); display: flex; align-items: center; gap: 10px; transform: translateX(-50%); border: 1px solid #dfe4da; border-radius: 999px; padding: 5px 7px 5px 12px; background: #fffefbe8; color: #7b8475; box-shadow: 0 5px 22px #26351c0d; backdrop-filter: blur(12px); font-size: 10px; }
+.version-footer-label { min-width: 0; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.version-footer-label code { max-width: 38vw; overflow: hidden; text-overflow: ellipsis; color: #5f6b57; font: 10px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.version-footer-dot { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: #8fa481; }
+.version-footer.has-update { border-color: #c7d5bc; background: #fffefb; color: #59684f; }
+.version-footer.has-update .version-footer-dot { background: #6f8c5e; box-shadow: 0 0 0 3px #edf3e8; }
+.version-footer button { height: 25px; display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; border: 0; border-radius: 999px; padding: 0 10px; background: #536a46; color: #fff; font-size: 10px; font-weight: 600; }
+.version-footer button:hover { background: #405634; }
 .git-version-anchor { position: fixed; z-index: 30; top: 20px; right: 34px; color: #30362d; }
 .git-version-trigger { height: 38px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid #dde3d7; border-radius: 12px; padding: 0 12px; background: #fffdfbde; color: #526048; box-shadow: 0 5px 18px #26351c0a; backdrop-filter: blur(12px); font-size: 12px; font-weight: 600; }
 .git-version-trigger:hover { border-color: #bfcbb5; background: #fff; }
@@ -49,5 +58,5 @@
 .git-changes li code, .git-history li code { flex: 0 0 auto; color: #75836a; font: 9px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
 .git-changes li span, .git-history li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .git-changes > p { margin: 5px 3px 0; }
-@media(max-width: 600px) { .git-version-anchor { top: 13px; right: 16px; } .git-version-trigger { max-width: 48vw; height: 38px; } .git-version-trigger > span:not(.git-dirty-dot) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .git-version-popover { max-height: calc(100dvh - 68px); } }
+@media(max-width: 600px) { .git-version-anchor { top: 13px; right: 16px; } .git-version-trigger { max-width: 48vw; height: 38px; } .git-version-trigger > span:not(.git-dirty-dot) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .git-version-popover { max-height: calc(100dvh - 68px); } .version-footer { width: calc(100vw - 24px); justify-content: center; } .version-footer-label code { max-width: 28vw; } }
 @media(prefers-reduced-motion: reduce) { .git-trigger-chevron { transition: none; } }

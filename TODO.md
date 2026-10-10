@@ -1,5 +1,9 @@
 # SeedAgent 当前进度
 
+## RUN-19e0a395 底部版本与刷新提醒
+
+2026-10-10 / Codex / 本地main。已在页面底部增加当前`分支 · 版本号`显示；Agent Git状态增加`version`/`fingerprint`字段，页面每5秒及恢复可见时检查。本次页面加载后出现新提交或文件修改时，底部显示“发现新版本，刷新更新”，用户点击后重载；不自动刷新、不创建分支、不操作release/testcode或远程。Agent 41项与前端20项测试通过，TypeScript/Vite构建通过；保留既有大于500kB构建提示。待本地服务重启后核对5173与Git接口，最终视觉与按钮交互由用户人工体验。
+
 ## TASK018 当前三分支
 
 用户已完成交付64366886测试并授权归集与清理。main保持纯AI聊天，包含已测Mac安装器、Codex App Server/MCP/Skills和接入README；testcode保留80cb9eb用户测试页面；release客户版目前同main。运行根目录仍在testcode，业务源码/真实资料不改。main已归集已测提交（合并c626fb64febcf53596218372d9fe0fe92cab8945）；本次另同步README clone和三分支说明，GitHub默认main，临时分支按用户要求清理。
