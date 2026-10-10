@@ -1,0 +1,4 @@
+interface:
+  display_name: "工作流程复用"
+  short_description: "创建项目 Skill 与所需资源，核对发现格式和真实工作流程行为"
+  default_prompt: "使用 $seed-skill-author 把我描述的工作流程整理为项目 Skill。"

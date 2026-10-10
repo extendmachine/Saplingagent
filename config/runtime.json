@@ -1,0 +1,10 @@
+{
+  "agentPort": 4310,
+  "workspacePort": 4311,
+  "builderPort": 4312,
+  "frontPort": 5173,
+  "preferredModel": "gpt-6.1-sol",
+  "reasoningEffort": "medium",
+  "turnTimeoutMs": 600000,
+  "permissionMode": "full-access"
+}

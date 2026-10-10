@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>运行与页面演进</title>
+<style>body{margin:0;background:#f6f7f4;color:#283128;font:16px/1.75 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:32px 22px 64px}nav{display:flex;flex-wrap:wrap;gap:18px}section{background:#fff;padding:22px;border:1px solid #dde2d8;border-radius:14px;margin:22px 0}h1{line-height:1.25}table{border-collapse:collapse;width:100%}td,th{padding:10px;border:1px solid #dde2d8;text-align:left;vertical-align:top}pre{background:#edf0e9;padding:16px;overflow:auto}a{color:#456a39}img{max-width:100%;border:1px solid #dde2d8;border-radius:12px}@media(max-width:650px){main{padding:22px 12px}section{padding:16px}table{display:block;overflow:auto}}</style>
+</head>
+<body>
+<main><p><strong>main单聊天基线</strong>：本分支无后加应用组件，Full Access核心保留。恢复来源与本次检查见<a href="git-versions.html">Git版本说明</a>；历史页面截图和任务记录保留其当时含义。</p>
+<nav>
+<a href="index.html">概览</a>
+<a href="runtime.html">运行与演进</a>
+<a href="frontend-preview.html">单页预览</a>
+<a href="api-interfaces.html">接口</a>
+<a href="references.html">官方资料</a>
+<a href="seedagent-plan.html">早期方案</a>
+</nav>
+<h1>运行与Full Access</h1>
+<section>
+<h2>启动</h2>
+<p>Node≥24.11、npm、官方Codex CLI，本机Codex0.146.1。依赖归项目，默认网页127.0.0.1:5173，三个回环后端端口4310/4311/4312。</p>
+<pre>node scripts/install.mjs   # 首次依赖准备
+node scripts/dev.mjs       # 统一启动
+node scripts/login.mjs     # 需要本项目登录时</pre>
+<p>已有本机Codex登录可在项目无认证时复制到local-secrets/codex，不覆盖原项目认证或全局配置；浏览器不持有内部token。未知端口占用会停止启动；Ctrl+C结束本次服务。front每日生命周期日志保留30天，原始诊断在终端。</p>
+</section>
+<section>
+<h2>用户选择的权限</h2>
+<p>当前为Full Access：Codex danger-full-access + approval_policy never，seedagent MCP执行默认approve；原生文件与shell启用。backend、MCP、Skills、基础聊天、main、配置、依赖、规则和其他当前系统用户可访问路径均无应用级文件保护，可用绝对或相对路径。权限为当前系统用户，未自动提权root。</p>
+<p>取消强制候选编译、AST/YAML/hash门槛与逐次确认；检查由具体需求决定。当前页面与用户已生成内容保留，本次没有恢复初始空白布局。HTTP仍在回环且内部Bearer用于识别服务。</p>
+</section>
+<section>
+<h2>对话和工具</h2>
+<p>浏览器同源/api → Agent → 官方Codex App Server，SSE展示真回复及工具状态。会话持久化、请求去重、刷新重连、重启续聊、停止/错误重试沿用。当前实际模型gpt-5.6-sol/medium，配置首选不可用时选择模型目录默认。</p>
+<p>15个MCP工具：读取文件/上下文、直接写入和删除文件、执行命令、可选候选与快照、偏好以及Skills发现。workspace_write_file/delete_file/run_command可直接操作；page_propose只生成ready候选，page_apply执行，page_rollback由用户主动请求。修改工具尝试登记根AI_TASKS，但登记失败不会挡住操作；只读聊天不登记。</p>
+<p>三个Skills提供页面修改、官方资料研究与可复用流程编写，可被AI修改；合法frontmatter是Codex发现格式，不是写入权限门槛。后端/MCP源码与依赖也可修改，运行进程重启后加载。</p>
+</section>
+<section>
+<h2>用户主动回退</h2>
+<p>文件工具尽力保存原件，可选候选保存到snapshots/app-builder；快照失败不阻止直接文件操作，只有实际可用的记录才可恢复；用户需要时查看page_changes并调用page_rollback，可覆盖后续修改。不自动回退或阻止新的写入。任意shell、Codex原生文件操作及外部副作用不保证进入快照，也不保证完整可恢复。Stop请求中断当前turn，不撤销已发生的操作。</p>
+</section>
+<section>
+<h2>验证与后续</h2>
+<p>32项隔离/协议检查与前端构建通过；真实模型直接写backend临时文件、MCP读取、原生命令和主动恢复成功，确认弹窗0次，4个用户业务文件哈希一致。浏览器工具拒绝localhost访问，本次视觉复测未完成；服务/API/模型链路已实测。完整结果见根TODO与各服务交接。前版的白名单/强制验证说明已被TASK010至013取代。长期体验、布局效果指标、客户单文件种子、跨平台交付与云端仍后续实施，未发布或初始化Git。</p>
+</section>
+<p>
+<small>2026-10-09 · TASK010至013 · 规范2026-09-29.1 · 待人工体验</small>
+</p>
+</main>
+</body>
+</html>

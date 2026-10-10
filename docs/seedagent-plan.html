@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SeedAgent 构想与解决方案</title>
+<style>body{margin:0;background:#f5f6f8;color:#20242b;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.75}main{max-width:1100px;margin:auto;padding:30px 22px 64px}nav{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:25px}section{background:white;border:1px solid #dde2ea;border-radius:12px;padding:22px;margin:18px 0}h1{font-size:32px;line-height:1.25}h2{font-size:22px}a{color:#2458ab}table{border-collapse:collapse;width:100%;margin:16px 0}td,th{padding:10px;border:1px solid #dde2ea;text-align:left;vertical-align:top}th{background:#eff3f8}pre{overflow:auto;background:#edf1f6;padding:18px;border-radius:9px}code{background:#edf1f6;padding:2px 5px}small{color:#586273}@media(max-width:650px){main{padding:20px 12px}section{padding:16px}table{display:block;overflow:auto}h1{font-size:27px}}</style>
+</head>
+<body><main><nav><a href="index.html">项目概览</a><a href="seedagent-plan.html">SeedAgent 方案</a><a href="frontend-preview.html">前端预览</a><a href="api-interfaces.html">接口规划</a><a href="references.html">官方资料</a></nav><section><h2>最新起点调整 · TASK-20261009-004</h2><p>以下是长期架构设计和历史画布方案。用户现已明确要求：初始是一张简单网页，只有一个对话框，不预置画布、导航或功能组件。后续由对话决定修改哪些组件、添加哪些内容。当前单页见 <a href="frontend-preview.html">前端预览</a>；原多面板界面已移除。</p></section><p><strong>历史方案：</strong>本页记录TASK002最初规划；当前单页与后端实施请查看 <a href="runtime.html">运行与页面演进</a> 及根TODO。</p><h1>SeedAgent 构想与解决方案</h1><p>SeedAgent 是可以在用户本地生长为应用的种子。React 网页提供稳定聊天入口和可演进工作画布，本地 Agent 完成资料查询、功能构建、工具扩展与版本恢复。</p>
+<section><h2>一、八项构想与解决路径</h2><p>用户原文已保存在根 FINAL_GOAL.md；下表为对应方案，不把实现建议冒充已完成能力。</p><table><thead><tr><th>编号</th><th>构想</th><th>解决方式</th></tr></thead><tbody><tr><td>1</td><td>SeedAgent 快速构建与个性化</td><td>以可复制的本地种子为底座，通过对话生成完整功能。React Web 为第一阶段；“所有 app”是长期愿景，原生平台需后续适配，不能承诺一套网页已覆盖所有能力。</td></tr><tr><td>2</td><td>稳定基础聊天，其余组件自修改</td><td>基础聊天库封装在 front/chat/；画布、区域、功能、导航、结果和主题都可由 AI 生成和演进，不限于修改固定 JSON 布局。</td></tr><tr><td>3</td><td>联网找资料并生成 MCP</td><td>本地 Agent 通过明确配置的资料工具访问服务器和官方文档，再生成 MCP server；代码编译、进程执行和文件权限由本地宿主承担。</td></tr><tr><td>4</td><td>最小启动脚本创建功能或应用</td><td>统一启动入口支持新建应用和现有应用加功能两种模式；离线先使用随附种子包，后续可内嵌成单文件自解包入口。</td></tr><tr><td>5</td><td>携带用户 rules</td><td>种子包含完整 rules、AGENTS/CLAUDE 和初始化状态结构；复制新应用时重建任务记录、清空示例历史，保留既有应用的规则和真实本地数据。</td></tr><tr><td>6</td><td>云端上传下载以后做</td><td>本阶段不创建云端服务、账号、存储或上传任务；内容包先本地导入导出。可查询已有外部资料与模型服务不等于实现自有云端。</td></tr><tr><td>7</td><td>应用资料全部归本地文件夹</td><td>源码、说明、规则、资源、配置、记忆、数据、环境与版本归本应用；模型若使用远程 API，只本地保存适配配置和凭据引用，不把远程模型假称为本地文件。</td></tr><tr><td>8</td><td>区域隔离与前后端分离</td><td>front/features/ 与 backend/features/ 按同一 feature-id 对应。服务边界独立，前端调用公开契约；docs 保存人类方案，服务 Markdown 保存在实际 backend/ 目录。</td></tr></tbody></table></section>
+<section><h2>二、系统构成</h2><table><thead><tr><th>对象</th><th>职责</th><th>边界</th></tr></thead><tbody>
+<tr><td>React 网页</td><td>基础聊天、可缩放画布、动态区域与功能组件</td><td>浏览器通过本地接口请求文件和工具操作，不直接改系统文件</td></tr>
+<tr><td>agent-runtime</td><td>会话、任务、模型选择、工具使用、资料查找</td><td>通过 app-builder 修改应用；通过 workspace 保存长期偏好</td></tr>
+<tr><td>workspace</td><td>布局、会话、偏好、依据与效果记录</td><td>每应用独立本地存储，源码修改与数据更新分离</td></tr>
+<tr><td>app-builder</td><td>将需求变成前端、后端与工具候选，检查和切换版本</td><td>有目标文件范围与基础版本；基础聊天不被普通生成任务覆盖</td></tr>
+<tr><td>mcp-runtime</td><td>工具注册、受限进程、调用与可用性检查</td><td>只能使用宿主授予的能力；生成工具不能自行放大权限</td></tr>
+<tr><td>生成业务功能</td><td>按实际需求承担日历、资料管理等应用业务</td><td>前后端同名目录，通过版本化契约组合</td></tr>
+</tbody></table><p>前端确定 React。后端推荐 Node.js + TypeScript，减少启动时跨语言依赖；数据库推荐本地 SQLite 与文件组合，但版本、驱动与实际接口尚未确认。微服务是职责、目录、存储和接口边界；独立进程拓扑在实现时验证，不把一个 UI 面板称为微服务。</p></section>
+<section><h2>三、固定对话入口与可演进界面</h2><p>唯一保持稳定的基础界面是聊天入口，复用开源库。其他界面包括画布框架、功能导航、区域装配器、业务面板、结果显示与主题，均允许 AI 修改自己的 React 源码和布局。</p><p>推荐基础聊天候选 <a href="https://www.assistant-ui.com/docs">assistant-ui</a>，官方文档提供 React 聊天组件和自带后端连接；画布候选 <a href="https://reactflow.dev/learn">React Flow</a>，可以承载自定义节点和交互图。当前保留 assistant-ui 0.15.26；TASK-20261009-004 已移除 React Flow，真实 Agent 适配仍未接入。</p><p>初始建议四类动态区域：功能导航、任务操作、结果预览、上下文详情。它们是初始工作内容，不是永久限定的四个插槽，Agent 可以增删、拆分和调整。聊天区独立于动态模块加载；动态区域构建失败时仍可发消息与恢复。</p><p>不同层次分别处理：布局变化更新坐标、尺寸、分组和视口；组件变化生成与编译 React 模块；功能变化同步前端、后端、接口和数据要求。组件稳定 ID 保留用户编辑状态，布局回退不回滚业务数据。</p><p>组件之间以 props、公开事件和共享契约交互，样式限定作用域，每区域设错误边界。需要权限隔离的任意生成代码放独立来源 iframe 或受限后端进程；错误边界仅处理渲染故障，不能代替权限隔离。</p></section>
+<section><h2>四、AI 如何生成 MCP 并修改应用</h2><p>必须在种子里先提供最小读取、写入候选、检查、构建、预览和恢复能力。这样 Agent 才能创建第一份新工具，不依赖尚不存在的自生成 MCP 来完成启动。</p><pre>用户提出需求
+→ Agent 读取本地规则、目标、现有功能、布局与偏好
+→ 查询所需官方资料并记录来源
+→ 形成修改范围、接口和候选功能声明
+→ 在候选工作区生成前端、后端或 MCP server
+→ 检查路径、契约、类型、构建和隔离的功能行为
+→ 预览候选，按当前授权启用或保留为待验收版本
+→ 保存版本与依据，后续纠正或恢复</pre><p>MCP 是工具连接协议，真正的源码写入、编译和进程运行由本地后端实现。原有工具可以完成需求时优先复用；需要新能力时由 app-builder 生成独立 MCP server，经验证后由 mcp-runtime 登记。官方 <a href="https://modelcontextprotocol.io/docs/2026-07-28/develop/build-server">MCP server 构建文档</a>定义工具、资源、提示与宿主连接。</p><p>每项修改携带 app_id、feature_id、目标文件范围、依据、预期基础版本、所需能力与验证记录。写入路径解析到当前应用根目录，不能通过符号链接或相对路径逃出应用；生成工具不能绕过宿主权限。已经授权的普通修改持续执行，涉及 main 同步、数据迁移或外部发布仍遵守既有项目规则。</p><p>本地启动器和恢复设施属于运行基础设施；功能构建任务通过其公开接口操作，不任意覆盖自身恢复入口。后续需要升级底座时走明确的底座版本流程。这不固化其他界面组件。</p></section>
+<section><h2>五、长期个性化怎样验证</h2><p>同时保存明确偏好、临时要求和行为推测。每条偏好包含适用用户与场景、消息或事件来源、最近纠正、状态和版本。优先级为当前明确要求、用户固定设置、已确认偏好、行为推测、默认布局。</p><p>明显用户要求可直接执行；依据行为推测的调整先形成候选假设。对同类型任务观察操作步骤、完成耗时、成功率、撤销与明确评价。大模型自评和单次点击都不能证明布局更好；任务难度、模型延迟与页面操作耗时应分开记录。证据不足则继续观察，效果变差则修正或恢复。</p><p>组件改动、布局改动和用户反馈都关联版本；保留原始证据摘要及来源标识，减少后续反复询问。新应用初始化空偏好，复制成熟应用时另行选择是否继承布局，不能默认复制原客户身份和记忆。</p></section>
+<section><h2>六、最小启动入口与分发</h2><p>未来入口定位自身所在目录，校验种子版本，带入完整规则与入口文件，建立本地状态和环境，选择本地端口，启动后端与 React 网页，再打开浏览器。重复启动恢复现有应用，不覆盖已有数据和修改。</p><p>新增功能默认在当前应用的 front/features/ 和 backend/features/ 建同名模块；用户要独立应用时，在新目录复制底座并初始化新的 app_id。两种模式复用同一启动入口，避免每个功能无意复制整份客户资料。</p><p>当前不建设云端，最可落地的是离线种子压缩包包含启动入口与种子内容。若要求只复制一个文件，可将种子源码、资料和 rules 内嵌为自解包入口；体积会增大。很小的在线引导脚本必须有可用下载源、固定版本与哈希，不能假定未来云端现在已存在。</p><p>启动入口内携带规则清单和版本，默认不拉取“最新版”规则覆盖客户的规范。新项目重建 FINAL_GOAL、TODO 和 AI_TASKS；带空凭据骨架，不能携带开发者的真实总账。代码与资料包不等于全部运行时已打包，操作系统、Node 是否预置、模型端点和依赖重建方式需要实施前确定。</p></section>
+<section><h2>七、本地资料与客户打包</h2><p>所有应用拥有自己的 front、backend、docs、rules、配置、资源、会话、记忆、业务数据、环境和快照；相对路径解析，外部资料下载后注明来源。不依赖开发者电脑其他目录，也不使用云端保存应用唯一副本。</p><table><thead><tr><th>用途</th><th>包含内容</th><th>默认排除</th></tr></thead><tbody>
+<tr><td>新应用种子</td><td>底座、空状态、规则、入口、必要资源、依赖锁与许可证</td><td>客户功能、身份、记忆、真实数据与凭据</td></tr>
+<tr><td>应用分享</td><td>生成源码、功能声明、规则、文档、必要可分发资源</td><td>个人会话、偏好、业务数据、凭据和日志</td></tr>
+<tr><td>本地恢复备份</td><td>源码、规则、配置、所需资料，以及明确选择的数据和快照</td><td>普通分享中不得包含凭据；凭据单独受保护保存</td></tr>
+</tbody></table><p>未来基础打包脚本核对清单、哈希、版本、解包路径和恢复方式。排除 .git、.worktrees、依赖缓存、真实日志、凭据与旧产物；必要依赖由锁文件重建，离线环境另提供平台对应运行资料。Clawtask 工具附件只原样保留，本次没有创建 Clawtask 包或处理其部署。</p></section>
+<section><h2>八、实际目录</h2><pre>应用根目录/
+├── front/                 React 网页前端
+│   ├── chat/              稳定的基础对话入口
+│   ├── canvas/            AI 可修改的工作画布
+│   ├── regions/           动态区域装配与隔离
+│   └── features/          AI 生成的前端功能
+├── backend/               后端按服务分目录
+│   ├── agent-runtime/     会话、模型与任务协调
+│   ├── workspace/         记忆、偏好、布局和依据
+│   ├── app-builder/       应用生成、验证与版本切换
+│   ├── mcp-runtime/       MCP 工具注册与执行
+│   └── features/          AI 生成的后端功能
+├── contracts/             共享接口和功能声明
+├── config/                应用配置，凭据仅保存引用
+├── data/                  会话、业务数据与本地状态
+├── assets/                应用资源与下载资料
+├── snapshots/             候选与可恢复版本
+├── scripts/               启动入口规划，未编写脚本
+├── packaging/             打包策略，未编写脚本
+├── docs/                  面向人的构想与方案
+├── services/              服务索引，不重复放代码
+├── rules/                 用户规范与内置格式
+├── logs/                  按服务、日期记录，保留30天
+├── local-secrets/         真实凭据只保存在本地
+├── AGENTS.md / CLAUDE.md   AI 入口
+└── FINAL_GOAL.md / TODO.md / AI_TASKS.md</pre><p>现有 services/ 改为索引，backend/ 是唯一后端实现位置，front/ 是唯一前端位置。服务 Markdown 随服务目录保存；人类方案统一在 docs/。TASK-20261009-002 建立说明骨架；TASK-20261009-003 已在 front/ 实现布局预览，backend/ 仍只有规划文档。</p></section>
+<section><h2>九、后续实施顺序与验收</h2><table><thead><tr><th>阶段</th><th>目标</th><th>验收证据</th></tr></thead><tbody>
+<tr><td>1 本地底座</td><td>稳定聊天、画布、单目录启动和 rules 初始化</td><td>新目录启动、重复运行保留数据、聊天可持续使用</td></tr>
+<tr><td>2 对话生成完整功能</td><td>新增一个前后端对应的实际功能，能修改 React 源码</td><td>业务路径成功、接口一致、构建失败可恢复且聊天可用</td></tr>
+<tr><td>3 MCP 自扩展</td><td>生成工具、验证、注册并实际调用</td><td>工具结果可验证、访问范围正确、失败可撤回</td></tr>
+<tr><td>4 长期适应</td><td>偏好跨会话生效、调整依据与使用效果可追溯</td><td>临时要求不污染长期偏好，纠正有效、版本对比可检查</td></tr>
+<tr><td>5 客户交付</td><td>基础启动与打包脚本，跨目标环境恢复</td><td>包内完整资料、规则与锁文件，解包运行、无真实凭据</td></tr>
+</tbody></table><p>云端内容上传下载是以后独立阶段。尚待明确：首个平台与业务场景、聊天库选定版本、后端语言与部署拓扑、模型来源及离线交付形式。前端布局预览已在后续 TASK-20261009-003 实施；真实 AI、生成代码、后端和种子交付阶段仍未执行。</p></section><p><small>2026-10-09 · TASK-20261009-002 · 设计文档，非运行中的产品页面</small></p></main></body>
+</html>

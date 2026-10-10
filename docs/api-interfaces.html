@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>可调用接口 v2</title>
+<style>body{margin:0;background:#f6f7f4;color:#283128;font:16px/1.75 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:32px 22px 64px}nav{display:flex;flex-wrap:wrap;gap:18px}section{background:#fff;padding:22px;border:1px solid #dde2d8;border-radius:14px;margin:22px 0}h1{line-height:1.25}table{border-collapse:collapse;width:100%}td,th{padding:10px;border:1px solid #dde2d8;text-align:left;vertical-align:top}pre{background:#edf0e9;padding:16px;overflow:auto}a{color:#456a39}img{max-width:100%;border:1px solid #dde2d8;border-radius:12px}@media(max-width:650px){main{padding:22px 12px}section{padding:16px}table{display:block;overflow:auto}}</style>
+</head>
+<body>
+<main><p><strong>main单聊天基线</strong>：本分支无后加应用组件，Full Access核心保留。恢复来源与本次检查见<a href="git-versions.html">Git版本说明</a>；历史页面截图和任务记录保留其当时含义。</p>
+<nav>
+<a href="index.html">概览</a>
+<a href="runtime.html">运行与演进</a>
+<a href="frontend-preview.html">单页预览</a>
+<a href="api-interfaces.html">接口</a>
+<a href="references.html">官方资料</a>
+<a href="seedagent-plan.html">早期方案</a>
+</nav>
+<h1>可调用接口 v2</h1>
+<p>公开机器契约 <a href="../contracts/runtime-api.md">contracts/runtime-api.md</a>，各服务 CONTRACT.md 为执行依据。前端同源5173代理Agent4310；workspace4311和builder4312为内部Bearer接口。所有地址127.0.0.1，无云端。</p>
+<section>
+<h2>前端 → Agent</h2>
+<table>
+<tr>
+<th>方法/路径</th>
+<th>内容</th>
+</tr>
+<tr>
+<td>GET /api/status</td>
+<td>真实ready/authenticated/provider/model、permissions(Full Access)、Skills与MCP目录</td>
+</tr>
+<tr>
+<td>GET /api/sessions</td>
+<td>本地会话列表</td>
+</tr>
+<tr>
+<td>GET /api/sessions/:id</td>
+<td>消息、threadId、requests、running、activeRequestId与pendingApprovals</td>
+</tr>
+<tr>
+<td>POST /api/chat</td>
+<td>{sessionId?,text,requestId?} → SSE：session、snapshot、text_delta、status、tool、approval、error、done</td>
+</tr>
+<tr>
+<td>GET /api/events?sessionId=…</td>
+<td>重连：先snapshot，订阅后续事件与heartbeat</td>
+</tr>
+<tr>
+<td>POST /api/sessions/:id/cancel</td>
+<td>真实turn/interrupt</td>
+</tr>
+<tr>
+<td>POST /api/approvals/:id</td>
+<td>{decision:accept或decline}，兼容接口；当前标准工具执行自动允许</td>
+</tr>
+</table>
+<p>text最多32000字符；requestId幂等，重试不同文本冲突409；同会话其他运行请求409；未就绪503；错误返回error.code/message。SSE最终status为completed、failed或interrupted。当前Codex为danger-full-access/never，native file/shell与MCP执行自动允许。</p>
+</section>
+<section>
+<h2>内部 HTTP</h2>
+<p>MCP → Agent：POST /internal/register-task {tool,fingerprint}，Bearer认证并绑定当前真实MCP调用，尝试记录taskId；登记失败不作为操作权限门槛。project_context({modification:true})供修改前登记；普通聊天与只读不登记。</p>
+<p>
+<a href="../backend/workspace/CONTRACT.md">workspace契约</a>：GET/POST sessions、GET/PATCH sessions/:id、GET/POST preferences、DELETE preferences/:id；GET health开放。原子JSON存储、显式证据、单进程队列。</p>
+<p>
+<a href="../backend/app-builder/CONTRACT.md">app-builder契约</a>：GET files/file/changes；POST files/write与files/delete直接操作文件并尽力记录原件；快照失败不阻止操作，以warnings和changeId为准；POST commands {command,cwd?,timeoutMs?}返回真实exitCode/stdout/stderr/timedOut/cancelled。POST changes返回ready候选、不强制验证；apply直接应用；rollback仅用户主动覆盖恢复，不拦截后续修改。允许所有当前OS用户可访问路径，绝对/相对和符号链接均可用。</p>
+</section>
+<section>
+<h2>MCP 目录</h2>
+<p>
+<a href="../backend/mcp-runtime/CONTRACT.md">正式MCP schema</a>，官方SDK stdio，15个工具：</p>
+<pre>workspace_list_files / workspace_read_file / project_context
+workspace_write_file / workspace_delete_file / workspace_run_command
+page_propose / page_apply / page_rollback / page_changes
+preferences_get / preferences_set / preferences_forget
+skills_list / skills_read</pre>
+<p>参数规模使用实际MCP schema上限；reason最多4000。工具返回结构化状态，错误isError，不伪造成功。HTTPtoken仅服务读取，认证详情不在此文档或前端返回。</p>
+</section>
+<p>
+<small>2026-10-09 · TASK-20261009-010 至 013 · 规范2026-09-29.1 · 非Git，待人工体验</small>
+</p>
+</main>
+</body>
+</html>
