@@ -163,7 +163,7 @@ TASK018三分支快照：用户已完成上一交付64366886afbc0988669397dd2e79
 
 <!-- seedagent-runtime-tasks:start -->
 
-## SeedAgent 运行期权威任务登记
+## Saplingagent 运行期权威任务登记
 
 由 agent-runtime 串行维护此区块；修改工具在执行前尝试登记用户请求引用和实际范围，登记为非阻断记录，结束时记录真实轮状态。普通聊天和只读调研只保存会话，不更新项目任务索引。最近50条列于此处，历史记录保留在 backend/agent-runtime/ai-tasks/runtime/。用户聊天正文不写入公共索引。此入口为当前非Git项目的运行期协调记录，不改变公共rules。
 
@@ -184,6 +184,12 @@ TASK018三分支快照：用户已完成上一交付64366886afbc0988669397dd2e79
 | RUN-full-access-7f724285-1fc9-4ca3-9a74-e27698167ed5 | completed | 2026-10-10T01:29:48.760Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-full-access-7f724285-1fc9-4ca3-9a74-e27698167ed5.md) |
 | RUN-2e86dcbf-a2b1-43c9-8ed5-f81e3593d463 | interrupted | 2026-10-10T01:41:37.638Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-2e86dcbf-a2b1-43c9-8ed5-f81e3593d463.md) |
 | RUN-48ab9450-11a0-4fd7-bff4-0bab72c0798c | completed | 2026-10-10T01:46:33.009Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-48ab9450-11a0-4fd7-bff4-0bab72c0798c.md) |
+| RUN-739dbd93-3614-48b1-ac66-9eea3b695b8f | failed | 2026-10-10T08:38:59.625Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-739dbd93-3614-48b1-ac66-9eea3b695b8f.md) |
+| RUN-b2233a4d-ca89-48cd-af8c-5c13f50742ad | completed | 2026-10-10T09:54:08.187Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-b2233a4d-ca89-48cd-af8c-5c13f50742ad.md) |
+| RUN-fafe3cbf-e4f8-4028-acbb-3d059099c80e | completed | 2026-10-10T09:57:53.952Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-fafe3cbf-e4f8-4028-acbb-3d059099c80e.md) |
+| RUN-953e9707-d46d-4a71-a31b-5a48a6b74bec | completed | 2026-10-10T10:14:28.073Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-953e9707-d46d-4a71-a31b-5a48a6b74bec.md) |
+| RUN-3c766407-767f-4b84-a946-c1d38ac2235d | completed | 2026-10-10T10:32:47.039Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-3c766407-767f-4b84-a946-c1d38ac2235d.md) |
+| RUN-cdd3173b-6de6-4f55-be54-b91bdb9de818 | completed | 2026-10-10T10:59:37.110Z | [记录](backend/agent-runtime/ai-tasks/runtime/RUN-cdd3173b-6de6-4f55-be54-b91bdb9de818.md) |
 
 <!-- seedagent-runtime-tasks:end -->
 
