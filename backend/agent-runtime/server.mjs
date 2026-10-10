@@ -19,8 +19,8 @@ class ApiError extends Error { constructor(code, message, status = 400) { super(
 const send = (res, code, value) => { if (res.writableEnded || res.destroyed) return; res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(value)); };
 async function readBody(req) {
   const parts = []; let size = 0;
-  for await (const chunk of req) { size += chunk.length; if (size > 128 * 1024) throw new ApiError('PAYLOAD_TOO_LARGE', '消息太长', 413); parts.push(chunk); }
-  try { return JSON.parse(Buffer.concat(parts).toString('utf8')); } catch { throw new ApiError('INVALID_JSON', '请求格式错误'); }
+  for await (const chunk of req) { size += chunk.length; if (size > 128 * 1024) throw new ApiError('PAYLOAD_TOO_LARGE', 'Message is too long', 413); parts.push(chunk); }
+  try { return JSON.parse(Buffer.concat(parts).toString('utf8')); } catch { throw new ApiError('INVALID_JSON', 'Invalid request format'); }
 }
 const validId = id => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(id);
 
@@ -45,7 +45,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   async function ws(route, method = 'GET', data) {
     const response = await fetch(workspaceBase + route, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: data === undefined ? undefined : JSON.stringify(data), signal: AbortSignal.any([AbortSignal.timeout(15000), workspaceAbort.signal]) });
     const value = await response.json();
-    if (!response.ok) throw new ApiError(value.error?.code || 'WORKSPACE_ERROR', value.error?.message || '本地会话服务不可用', response.status);
+    if (!response.ok) throw new ApiError(value.error?.code || 'WORKSPACE_ERROR', value.error?.message || 'Local session service unavailable', response.status);
     return value;
   }
   let rpc, startup, shutdown, closing = false, gitSwitching = false, lastStart = 0;
@@ -74,7 +74,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     run.saving = run.saving.catch(() => {}).then(() => ws(`/sessions/${run.session.id}`, 'PATCH', snapshot)).then(value => { run.session.updatedAt = value.session.updatedAt; });
     return run.saving;
   }
-  function scheduleSave(run) { if (run.saveTimer || run.finished) return; run.saveTimer = setTimeout(() => { run.saveTimer = null; save(run).catch(() => abortRun(run, new Error('无法保存会话，请检查本地存储'))); }, 1000); }
+  function scheduleSave(run) { if (run.saveTimer || run.finished) return; run.saveTimer = setTimeout(() => { run.saveTimer = null; save(run).catch(() => abortRun(run, new Error('Unable to save the session. Check local storage'))); }, 1000); }
   function finish(run, result, error) {
     if (run.finishing) return run.finishing;
     if (run.finished) return Promise.resolve();
@@ -90,12 +90,12 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     for (const [id, approval] of approvals) if (approval.sessionId === run.session.id) approvals.delete(id);
     try { if (run.taskRegistered) await registerTask({ requestId: run.requestId, sessionId: run.session.id, model: status.model, status: result }); }
     catch {
-      broadcast(run.session.id, { type: 'status', label: '运行期任务记录未能更新，实际执行结果保留' });
+      broadcast(run.session.id, { type: 'status', label: 'Runtime task record could not be updated; execution results are retained' });
       await log('task_registration_warning', { requestId: run.requestId }).catch(() => {});
     }
     try { await save(run); }
     catch (persistError) {
-      result = 'failed'; error = new Error('回复尚未完整保存，请检查本地存储');
+      result = 'failed'; error = new Error('Response has not been fully saved. Check local storage');
       if (request) { request.status = result; request.error = error.message; }
       for (const item of run.session.messages) if (item.requestId === run.requestId && item.role === 'assistant') item.status = result;
       dirtySessions.set(run.session.id, run.session);
@@ -144,11 +144,11 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       } else if (['mcpToolCall', 'webSearch', 'commandExecution', 'fileChange'].includes(item?.type)) {
         broadcast(run.session.id, { type: 'tool', id: item.id, name: item.tool || item.type, status: item.status || (message.method === 'item/started' ? 'inProgress' : 'completed') });
         if (item.tool === 'page_apply' && message.method === 'item/completed') catalog().catch(() => {});
-      } else if (item?.type === 'reasoning') broadcast(run.session.id, { type: 'status', label: '正在思考…' });
+      } else if (item?.type === 'reasoning') broadcast(run.session.id, { type: 'status', label: 'Thinking…' });
     } else if (message.method === 'turn/completed') {
       const state = ['completed', 'interrupted', 'failed'].includes(p.turn?.status) ? p.turn.status : 'failed';
-      await finish(run, run.abortError ? 'failed' : state, run.abortError || (state === 'failed' ? new Error(p.turn?.error?.message || '模型执行失败，请重试') : undefined));
-    } else if (message.method === 'error') broadcast(run.session.id, { type: 'status', label: p.willRetry ? '正在重试模型连接…' : '正在处理模型错误…' });
+      await finish(run, run.abortError ? 'failed' : state, run.abortError || (state === 'failed' ? new Error(p.turn?.error?.message || 'Model execution failed. Please try again') : undefined));
+    } else if (message.method === 'error') broadcast(run.session.id, { type: 'status', label: p.willRetry ? 'Retrying model connection…' : 'Handling model error…' });
   }
   function serverRequest(message) {
     const p = message.params || {}, run = threads.get(p.threadId);
@@ -163,7 +163,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       if (run && p.serverName === 'seedagent' && p.mode === 'form' && content !== null) {
         const id = randomUUID(), event = { type: 'approval', id, kind: 'mcp-tool', description: safeError({ message: p.message }), choices: ['accept', 'decline'] };
         approvals.set(id, { rpcId: message.id, sessionId: run.session.id, event, elicitation: true, content }); broadcast(run.session.id, event);
-        if (!run.finished && p.turnId === run.turnId) { run.progress?.waitForUser(message.id); broadcast(run.session.id, { type: 'status', label: '正在等待你的确认…' }); }
+        if (!run.finished && p.turnId === run.turnId) { run.progress?.waitForUser(message.id); broadcast(run.session.id, { type: 'status', label: 'Waiting for your confirmation…' }); }
       } else {
         log('unsupported_mcp_form', { mode: p.mode, propertyTypes: Object.values(p.requestedSchema?.properties || {}).map(field => field.type) }).catch(() => {});
         rpc.reply(message.id, { action: 'decline', content: null });
@@ -180,7 +180,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     status.ready = status.authenticated && status.mcp.ready;
   }
   async function start() {
-    if (closing) throw new ApiError('SHUTTING_DOWN', '服务正在停止', 503);
+    if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
     if (startup) return startup;
     lastStart = Date.now();
     startup = (async () => {
@@ -199,14 +199,14 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       const account = await rpc.call('account/read', { refreshToken: false }); status.authenticated = !!account.account;
       const models = await rpc.call('model/list', { limit: 50, includeHidden: false });
       const selected = models.data.find(m => m.model === config.preferredModel) || models.data.find(m => m.isDefault) || models.data[0];
-      if (!selected) throw new Error('没有可用模型');
+      if (!selected) throw new Error('No available model');
       status.model = selected.model;
       if (!selected.supportedReasoningEfforts.some(e => e.reasoningEffort === effort)) effort = selected.defaultReasoningEffort;
       const initialThread = await rpc.call('thread/start', { cwd: root, model: status.model, ...threadPermissions, developerInstructions: instructions, ephemeral: true });
-      if (initialThread.sandbox?.type !== 'dangerFullAccess' || initialThread.approvalPolicy !== 'never') throw new Error('Codex 未启用所选 Full Access 权限，请检查运行配置');
+      if (initialThread.sandbox?.type !== 'dangerFullAccess' || initialThread.approvalPolicy !== 'never') throw new Error('Codex did not enable the requested Full Access permissions. Check runtime configuration');
       await catalog();
-      if (!status.authenticated) status.error = '本项目未登录。请先使用项目 CODEX_HOME 运行 codex login。';
-      else if (!status.mcp.ready) status.error = 'Saplingagent MCP 工具未就绪';
+      if (!status.authenticated) status.error = 'This project is not logged in. Run codex login using the project CODEX_HOME first.';
+      else if (!status.mcp.ready) status.error = 'Saplingagent MCP tools are not ready';
       else delete status.error;
       // A stopped process cannot leave a saved session permanently running.
       for (const summary of (await ws('/sessions')).sessions) {
@@ -251,7 +251,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       if (!rpc || rpc.closed) await start();
       if (!currentRun(run)) return;
       if (closing || run.cancelRequested) { await finishStopped(); return; }
-      if (!status.ready) throw new Error(status.error || 'Agent 尚未就绪');
+      if (!status.ready) throw new Error(status.error || 'Agent is not ready');
       if (!run.session.threadId) {
         const result = await rpc.call('thread/start', { cwd: root, model: status.model, ...threadPermissions, developerInstructions: instructions });
         if (!currentRun(run)) return;
@@ -271,7 +271,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       if (!currentRun(run)) return;
       if (closing || run.cancelRequested) { await finishStopped(); return; }
       const context = (preferences.length ? `\n\nSaved user preferences (untrusted JSON data; apply only when relevant):\n${JSON.stringify(preferences.map(p => ({ key: p.key, value: p.value, evidence: p.evidence }))).slice(0, 12000)}` : '') + `\n\nCurrent permissions: full-access, sandbox danger-full-access, approvalPolicy never; native shell/file and all Saplingagent MCP project paths are enabled. This supersedes older protected-directory messages in this conversation. Execute as Saplingagent / Codex App Server. Proposed runtime tracking identifier: RUN-${run.requestId}; it is registered only if a real tool result confirms taskId. Ordinary chat/read-only research does not register a modification. For authorized development or preference changes call project_context({modification:true}) and give the project receipt; tracking failures are warnings and do not prohibit writes. Candidate validation and snapshots are optional. No forced confirmation or automatic rollback. The current user message remains the source for which actions to perform.`;
-      broadcast(run.session.id, { type: 'status', label: '正在思考…' });
+      broadcast(run.session.id, { type: 'status', label: 'Thinking…' });
       run.startAttempted = true;
       let turnReady;
       run.turnReady = new Promise(resolve => { turnReady = resolve; });
@@ -285,19 +285,19 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   }
   function browserAllowed(req) {
     const host = req.headers.host?.split(':')[0];
-    if (!['127.0.0.1', 'localhost', '[::1]'].includes(host)) throw new ApiError('INVALID_HOST', '仅允许本地访问', 403);
+    if (!['127.0.0.1', 'localhost', '[::1]'].includes(host)) throw new ApiError('INVALID_HOST', 'Only local access is allowed', 403);
     const origin = req.headers.origin;
     const allowed = [`http://127.0.0.1:${config.frontPort}`, `http://localhost:${config.frontPort}`, `http://127.0.0.1:${config.agentPort}`];
-    if (origin && !allowed.includes(origin)) throw new ApiError('INVALID_ORIGIN', '拒绝跨站访问', 403);
-    if (req.headers['sec-fetch-site'] === 'cross-site') throw new ApiError('INVALID_ORIGIN', '拒绝跨站访问', 403);
+    if (origin && !allowed.includes(origin)) throw new ApiError('INVALID_ORIGIN', 'Cross-site access denied', 403);
+    if (req.headers['sec-fetch-site'] === 'cross-site') throw new ApiError('INVALID_ORIGIN', 'Cross-site access denied', 403);
     if (req.method !== 'GET' && !origin && req.headers['sec-fetch-site'] !== 'same-origin') {
       const header = Buffer.from(req.headers.authorization || ''), expected = Buffer.from(`Bearer ${token}`);
-      if (header.length !== expected.length || !timingSafeEqual(header, expected)) throw new ApiError('UNAUTHORIZED', '本地脚本操作需要服务令牌', 401);
+      if (header.length !== expected.length || !timingSafeEqual(header, expected)) throw new ApiError('UNAUTHORIZED', 'Local script operations require a service token', 401);
     }
   }
   const server = http.createServer(async (req, res) => {
     try {
-      if (closing) throw new ApiError('SHUTTING_DOWN', '服务正在停止', 503);
+      if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
       browserAllowed(req); const url = new URL(req.url, 'http://127.0.0.1');
       if (req.method === 'POST' && url.pathname === '/internal/register-task') {
         const header = Buffer.from(req.headers.authorization || ''), expected = Buffer.from(`Bearer ${token}`);
@@ -311,7 +311,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           if (candidates.length) break;
           await new Promise(resolve => setTimeout(resolve, 20));
         } while (Date.now() < end);
-        if (candidates.length !== 1) throw new ApiError('TASK_CONTEXT_UNAVAILABLE', '无法唯一确认运行记录归属；工具执行结果由工具返回', 409);
+        if (candidates.length !== 1) throw new ApiError('TASK_CONTEXT_UNAVAILABLE', 'Runtime record ownership cannot be uniquely identified; the tool returns execution results', 409);
         const run = candidates[0];
         if (!run.taskRegistered) {
           run.registering ||= registerTask({ requestId: run.requestId, sessionId: run.session.id, model: status.model, status: 'inProgress' }).then(async taskId => {
@@ -321,15 +321,15 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           }).catch(error => { run.registering = null; throw error; });
           await run.registering;
         }
-        if (run.finished || run.cancelRequested) throw new ApiError('TASK_ENDED', '当前任务已停止，未确认运行记录；工具执行结果由工具返回', 409);
+        if (run.finished || run.cancelRequested) throw new ApiError('TASK_ENDED', 'This task has stopped; runtime record not confirmed. The tool returns execution results', 409);
         return send(res, 200, { taskId: `RUN-${run.requestId}` });
       }
       if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ready: true, service: 'agent-runtime', agentReady: status.ready && !startup });
       if (req.method === 'GET' && url.pathname === '/api/status') { if ((!rpc || rpc.closed) && !startup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...status, ready: status.ready && !startup }); }
       if (req.method === 'GET' && url.pathname === '/api/git') return send(res, 200, { git: await readGitVersion(root) });
       if (req.method === 'POST' && url.pathname === '/api/git/commit') {
-        if (gitSwitching) throw new ApiError('GIT_SWITCH_BUSY', '另一次 Git 操作正在进行', 409);
-        if (active.size) throw new ApiError('GIT_AGENT_BUSY', 'AI 对话仍在运行，请等待完成或停止后再保存版本', 409);
+        if (gitSwitching) throw new ApiError('GIT_SWITCH_BUSY', 'Another Git operation is in progress', 409);
+        if (active.size) throw new ApiError('GIT_AGENT_BUSY', 'AI is still running. Wait or stop before saving a version', 409);
         gitSwitching = true;
         try {
           const gitState = await commitGitVersion(root);
@@ -338,8 +338,8 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         } finally { gitSwitching = false; }
       }
       if (req.method === 'POST' && url.pathname === '/api/git/switch') {
-        if (gitSwitching) throw new ApiError('GIT_SWITCH_BUSY', '另一次版本切换正在进行', 409);
-        if (active.size) throw new ApiError('GIT_AGENT_BUSY', 'AI 对话仍在运行，请等待完成或停止后再切换版本', 409);
+        if (gitSwitching) throw new ApiError('GIT_SWITCH_BUSY', 'Another version switch is in progress', 409);
+        if (active.size) throw new ApiError('GIT_AGENT_BUSY', 'AI is still running. Wait or stop before switching versions', 409);
         const { branch } = await readBody(req);
         gitSwitching = true;
         try {
@@ -352,7 +352,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       const sessionId = url.pathname.match(/^\/api\/sessions\/([a-zA-Z0-9_-]+)$/)?.[1];
       if (req.method === 'GET' && sessionId) { const run = active.get(sessionId); if (run?.loaded) await run.loaded; const session = run?.session || dirtySessions.get(sessionId) || (await ws(`/sessions/${sessionId}`)).session; return send(res, 200, { session: publicSession(session) }); }
       if (req.method === 'GET' && url.pathname === '/api/events') {
-        const id = url.searchParams.get('sessionId'); if (!validId(id)) throw new ApiError('INVALID_SESSION', '会话标识无效');
+        const id = url.searchParams.get('sessionId'); if (!validId(id)) throw new ApiError('INVALID_SESSION', 'Invalid session ID');
         let run = active.get(id); if (run?.loaded) await run.loaded;
         const stored = run?.session || dirtySessions.get(id) || (await ws(`/sessions/${id}`)).session;
         run = active.get(id); if (run?.loaded) await run.loaded;
@@ -364,8 +364,8 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       if (req.method === 'POST' && cancelId) { const run = active.get(cancelId); if (run) await interrupt(run); return send(res, 200, { ok: true }); }
       const approvalId = url.pathname.match(/^\/api\/approvals\/([a-zA-Z0-9_-]+)$/)?.[1];
       if (req.method === 'POST' && approvalId) {
-        const approval = approvals.get(approvalId); if (!approval) throw new ApiError('NOT_FOUND', '审批已结束', 404);
-        const { decision } = await readBody(req); if (!['accept', 'decline'].includes(decision)) throw new ApiError('INVALID_DECISION', '审批选择无效');
+        const approval = approvals.get(approvalId); if (!approval) throw new ApiError('NOT_FOUND', 'Approval has ended', 404);
+        const { decision } = await readBody(req); if (!['accept', 'decline'].includes(decision)) throw new ApiError('INVALID_DECISION', 'Invalid approval decision');
         if (approval.elicitation) rpc.reply(approval.rpcId, { action: decision, content: decision === 'accept' ? approval.content : null });
         else {
           const pattern = decision === 'accept' ? /^(accept|approve|allow)(\b|$)/i : /^(decline|deny|reject)(\b|$)/i;
@@ -377,9 +377,9 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       }
       if (req.method === 'POST' && url.pathname === '/api/chat') {
         const input = await readBody(req);
-        if (typeof input.text !== 'string' || !input.text.trim() || input.text.length > 32000) throw new ApiError('INVALID_TEXT', '请输入 1 至 32000 字符的消息');
-        const requestId = input.requestId || randomUUID(); if (!validId(requestId) || (input.sessionId && !validId(input.sessionId))) throw new ApiError('INVALID_ID', '请求或会话标识无效');
-        if (!status.ready || startup) throw new ApiError('AGENT_NOT_READY', status.error || 'Agent 正在启动，请稍后重试', 503);
+        if (typeof input.text !== 'string' || !input.text.trim() || input.text.length > 32000) throw new ApiError('INVALID_TEXT', 'Enter a message of 1 to 32000 characters');
+        const requestId = input.requestId || randomUUID(); if (!validId(requestId) || (input.sessionId && !validId(input.sessionId))) throw new ApiError('INVALID_ID', 'Invalid request or session ID');
+        if (!status.ready || startup) throw new ApiError('AGENT_NOT_READY', status.error || 'Agent is starting. Try again shortly', 503);
         let id = input.sessionId;
         if (!id) {
           if (!requestSessions.has(requestId)) {
@@ -396,11 +396,11 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         }
         const existing = active.get(id);
         if (existing) {
-          if (existing.requestId !== requestId) throw new ApiError('SESSION_BUSY', '这段对话仍在运行，请先停止或等待', 409);
+          if (existing.requestId !== requestId) throw new ApiError('SESSION_BUSY', 'This conversation is still running. Stop it or wait first', 409);
           await existing.loaded;
-          if (!existing.session) throw new ApiError('SESSION_FAILED', '会话未能加载，请重试', 503);
+          if (!existing.session) throw new ApiError('SESSION_FAILED', 'Session could not be loaded. Please try again', 503);
           const priorUser = existing.session.messages.find(m => m.id === requestId);
-          if (priorUser && priorUser.text !== input.text) throw new ApiError('IDEMPOTENCY_CONFLICT', '同一请求标识不能用于不同消息', 409);
+          if (priorUser && priorUser.text !== input.text) throw new ApiError('IDEMPOTENCY_CONFLICT', 'The same request ID cannot be used for different messages', 409);
           const emit = subscribe(id, res); emit({ type: 'snapshot', session: publicSession(existing.session) }); emitProgressStatus(existing, emit);
           if (existing.finished || active.get(id) !== existing) { const terminal = existing.session.requests?.find(r => r.id === requestId)?.status; emit({ type: 'done', status: ['completed', 'failed', 'interrupted'].includes(terminal) ? terminal : 'failed' }); res.end(); } return;
         }
@@ -414,7 +414,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           run.session.requests ||= [];
           const prior = run.session.requests.find(r => r.id === requestId);
           const priorUser = run.session.messages.find(m => m.id === requestId);
-          if (priorUser && priorUser.text !== input.text) throw new ApiError('IDEMPOTENCY_CONFLICT', '同一请求标识不能用于不同消息', 409);
+          if (priorUser && priorUser.text !== input.text) throw new ApiError('IDEMPOTENCY_CONFLICT', 'The same request ID cannot be used for different messages', 409);
           const emit = subscribe(id, res);
           if (prior?.status === 'completed') { run.finished = true; emit({ type: 'snapshot', session: publicSession(run.session) }); emit({ type: 'done', status: 'completed' }); res.end(); active.delete(id); return; }
           if (!priorUser) run.session.messages.push({ id: requestId, role: 'user', text: input.text, requestId });
@@ -428,7 +428,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           if (!closing && !run.cancelRequested) run.progress = createTurnProgress({ ...timing, clock: progressClock,
             onIdle: label => { if (!run.finished && !run.cancelRequested && active.get(id) === run) broadcast(id, { type: 'status', label }); },
             onResume: label => { if (!run.finished && !run.cancelRequested && active.get(id) === run) broadcast(id, { type: 'status', label }); },
-            onHardTimeout: () => { abortRun(run, new Error('本轮达到配置的总时限，已停止；可以重试')).catch(() => {}); },
+            onHardTimeout: () => { abortRun(run, new Error('This turn reached the configured total time limit and was stopped. You can retry')).catch(() => {}); },
           });
           loaded(); emit({ type: 'snapshot', session: publicSession(run.session) });
           void execute(run, input.text);
@@ -439,7 +439,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         finally { loaded(); }
         return;
       }
-      throw new ApiError('NOT_FOUND', '接口不存在', 404);
+      throw new ApiError('NOT_FOUND', 'Endpoint does not exist', 404);
     } catch (error) {
       if (error instanceof GitVersionError) return send(res, error.status, { error: { code: error.code, message: safeError(error) } });
       send(res, error.status || 500, { error: { code: error.code || 'INTERNAL_ERROR', message: safeError(error) } });
