@@ -14,4 +14,4 @@ TASK016退出处理同时支持SIGTERM与SIGHUP（关闭macOS终端）。Agent�
 
 运行期MCP在受控变更前调用Agent内部POST /internal/register-task，Bearer认证且绑定当前App Server MCP item指纹。修改前project_context({modification:true})尝试返回taskId；只读不登记；回调失败不阻止操作。源码改动按进程加载方式重启；不自动回退，主动恢复可用文件快照，命令和原生操作副作用不保证可恢复。
 
-TASK015 macOS13.5+源包安装：根目录1-安装.command准备项目Node24.21 LTS、Codex0.146.1和锁定依赖；2-登录Codex.command由用户自行完成官方OAuth；3-启动SeedAgent.command等账号/模型/MCP与网页真正就绪再打开浏览器。SEED_CODEX_BIN指向scripts/macos/codex.sh，始终强制项目CODEX_HOME及file凭据存储，不导入全局auth。4-诊断.command仅元数据，不发模型请求。详情见../../docs/macos-install.html；这是本机开发/开源运行，商业/托管需另行SIWC。旧node开发入口保留。本任务不改FullAccess或API结构。
+TASK015 macOS13.5+源包安装：根目录1-安装.command准备项目Node24.21 LTS、Codex0.146.1和锁定依赖；2-登录Codex.command由用户自行完成官方OAuth；3-启动Saplingagent.command等账号/模型/MCP与网页真正就绪再打开浏览器。SEED_CODEX_BIN指向scripts/macos/codex.sh，始终强制项目CODEX_HOME及file凭据存储，不导入全局auth。4-诊断.command仅元数据，不发模型请求。详情见../../docs/macos-install.html；这是本机开发/开源运行，商业/托管需另行SIWC。旧node开发入口保留。本任务不改FullAccess或API结构。
