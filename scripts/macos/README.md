@@ -1,41 +1,41 @@
-# macOS 本地安装入口
+# macOS local installation entrance
 
-TASK-20261009-015，项目级启动/分发工具，不增加新的业务服务。人类指南：../../docs/macos-install.html。
+TASK-20261009-015, project-level startup/distribution tool, does not add new business services. Human Guide:../../Docs/macos-install.html.
 
-- 系统：macOS 13.5+；按当前运行架构选择 arm64/x64，Rosetta 下使用对应 x64 运行时。
-- 固定版本：config/macos.json 的 Node 24.21.0 / Codex CLI 0.146.1；Node 安装到 .runtime/node-v<version>-darwin-<arch>，Codex 到 .runtime/codex，npm 缓存 .cache/npm。
-- 根入口：1-安装.command、2-登录Codex.command、3-启动Saplingagent.command、4-诊断.command；所有路径从脚本位置计算，不保存开发者绝对路径。
-- bootstrap.sh：只在 install 下载 Node，HTTPS 获取官方发行包与 SHA-256 表，校验、解压和执行版本检查后提升；失败清理自身 stage/lock。其它操作缺 Node 时明确要求先安装。
-- cli.mjs：项目锁；Codex staging 与真实版本检查后提升，恢复受控入口和wrapper的0755执行位；全部业务 npm ci 成功才写 .runtime/macos-install.json。已完整且版本相同时跳过下载，显式--repair重装。staging失败保留完整旧安装标记，业务npm ci前清除旧标记，部分安装失败不会误报已完成；保留源码、认证和业务数据。
-- 认证：macOS入口 setup(importExistingAuth:false)，env SEED_IMPORT_EXISTING_AUTH=0；不导入全局 auth。项目目录700，token/auth文件600；真实值只在 local-secrets。新目录总账包含schema_version/project/credentials，runtime只登记文件引用，保留既有总账字段，移动后更新自身根目录。macOS子进程移除继承的OPENAI_API_KEY/CODEX_API_KEY/CODEX_ACCESS_TOKEN，避免意外复用其他项目的API认证。
-- codex.sh：始终用项目 Node 与官方 npm wrapper、项目 CODEX_HOME，并覆盖 cli_auth_credentials_store=file；App Server 不受已有 config.toml 中其他认证存储方式影响。
-- login/status 使用相同文件认证；未登录与配置/架构错误分别反馈。默认官方浏览器OAuth，用户可显式 --device-auth；取消/失败不标成功。不测试或发起真实用户浏览器登录。
-- start：先检查依赖标记与登录状态，再创建本次 dev 子进程；只有本次 launcher 发出启动标记后才读取端口状态，防止已有其它项目被误认为本次就绪。等待网页及账号/模型/MCP，120秒超时停止本次服务。没有自动付费模型探测。
-- stop：SIGINT/SIGTERM/SIGHUP 转发到本次子进程；不按进程名称或端口杀他人。Agent的自身AppServer组清理由TASK016处理。
-- doctor：只打印版本、依赖、登录布尔和配置端口元数据，退出码0代表本地安装与已存登录均通过；未启动本身不算故障，运行/额度另判断。缺Node时不下载。不会回显原始认证状态或错误输出。
-- logout：显式退出本项目认证；会话及源码保留。
+- System: macOS 13.5+; Select arm64/x64 according to the current running architecture, and use the corresponding x64 runtime under Rosetta.
+- Fixed version: Node 24.21.0 / Codex CLI 0.146.1 of config/macos.json; Node is installed to .runtime/node-v<version>-darwin-<arch>, Codex to .runtime/codex, npm cache .cache/npm.
+- Root entry: 1-Install.command, 2-Login-Codex.command, 3-Start-Saplingagent.command, 4-Doctor.command; All paths are calculated from the script location, and the developer's absolute path is not saved.
+- bootstrap.sh: Only download Node in install, HTTPS to get the official distribution package and SHA-256 table, check, decompress and perform version check and upgrade; fail to clean up your own stage/lock. When other operations lack Node, it is clearly required to install it first.
+- cli.mjs: project lock; upgrade after checking Codex staging and the real version, restore the 0755 execution bit of the controlled entrance and wrapper; all services npm ci successfully write .runtime/macos-install.json. Skip the download when it is complete and the version is the same, and explicitly--repair and reinstall. Staging failure retains the complete old installation mark, removes the old mark before the business npm ci, and some installation failures will not misreport that it has been completed; keep the source code, authentication and business data.
+- Authentication: macOS entrance setup(importExistingAuth:false), env SEED_IMPORT_EXISTING_AUTH=0; do not import global auth. Project directory 700, token/auth file 600; the real value is only in local-secrets. The new directory ledger contains schema_version/project/credentials. Runtime only registers file references, retains the existing ledger fields, and updates its own root directory after moving. The macOS sub-process removes the inherited OPENAI_API_KEY/CODEX_API_KEY/CODEX_ACCESS_TOKEN to avoid accidental reuse of API authentication of other items.
+- codex.sh: Always use the project Node and the official npm wrapper, the project CODEX_HOME, and overwrite cli_auth_credentials_store=file; App Server is not affected by other authentication storage methods in the existing config.toml.
+- login/status uses the same file authentication; non-login and configuration/architecture errors are feedback separately. The default official browser OAuth, users can explicitly --device-auth; cancellation/failure is not marked as successful. Do not test or initiate real user browser login.
+- Start: Check the dependency tag and login status first, and then create this dev subprocess; only read the port status after the launcher issues the startup mark to prevent other projects from being mistaken for this time. Waiting for the web page and account/model/MCP, 120 seconds timeout to stop this service. There is no automatic paid model detection.
+- Stop: SIGINT/SIGTERM/SIGHUP Forward to this subprocess; do not kill others by process name or port. Agent's own AppServer group clears the reason TASK016 processing.
+- Doctor: Only print the version, dependency, login Boolean and configuration port metadata. Exit code 0 means that both local installation and saved login are passed; if it is not started, it is not considered a fault, and the operation/amount is judged separately. Don't download when Node is missing. The original authentication status or error output will not be displayed.
+- Logout: explicitly exit the authentication of this project; the session and source code are retained.
 
-原有 node scripts/dev.mjs 等开发入口保留；setup 默认导入行为仅在明确macOS env为0时关闭，不改变已有开发应用行为。源码、锁文件或架构变更后需停止应用并重装。强制结束安装可能留下锁，确认没有本项目安装进程后再按人类指南移除。
+The original node scripts/dev.mjs and other development entrances are retained; the setup default import behavior is only closed when it is clear that macOS env is 0, and the existing development application behavior is not changed. After the source code, lock file or architecture changes, you need to stop the application and reinstall it. Forcing the termination of the installation may leave a lock. Confirm that there is no installation process for this project before removing it according to the human guidelines.
 
-## 打包契约
+## Packing contract
 
-`node scripts/package-macos.mjs [ref=HEAD] [outputDir=.cache/releases]` 仅macOS，有Git时按可解析的明确提交取文件，不将工作树未提交变更夹入。白名单包含业务源码、公共契约/config/scripts/docs、入口与状态文件、完整rules和项目Skills；排除secret/data/log/snapshots/cache/worktrees/dependencies/运行期任务资料等。拒绝候选源文件symlink和不完整rules。Git archive逐文件核对blob；接收者FINAL_GOAL/TODO/AI_TASKS重新初始化，AGENTS只调整合法项目补充，manifest标注initializedForRecipient，不继承开发者任务和批准；zip保留执行位，delivery.json列sourceCommit、运行版本和逐文件SHA256，旁边提供ZIP SHA256。解压/安装不依赖Git；后续重新打包需要用户自己的本地仓库及提交。此包是macOS源代码交付，不是Clawtask业务导入包；rules附件原样随公共规范分发，未执行其打包能力。
+`node scripts/package-macos.mjs [ref=HEAD] [outputDir=.cache/releases]` macOS only, when there is Git, take the file according to the parsable explicit submission, and do not include the work tree without submitting changes. The white list includes business source code, public contract/config/scripts/docs, entrance and status files, complete rules and project Skills; exclude secret/data/log/snapshots/cache/worktrees/dependencies/runtime task data, etc. Reject candidate source file symlink and incomplete rules. Git archive checks blob file by file; the recipient FINAL_GOAL/TODO/AI_TASKS is re-initialized, AGENTS only adjusts the legal project supplement, manifest annotation initializedForRecipient, does not inherit the developer task and approval; zip retains the execution bit, delivery.json column sourceCommit, running version and file-by-file SHA256, and ZIP SHA256 is provided next to it. Decompression/installation does not depend on Git; subsequent repackaging requires the user's own local repository and submission. This package is a macOS source code delivery, not a Clawtask business import package; the rules attachment is distributed as it is according to the public specification, and its packaging capability is not implemented.
 
-## 官方来源（核对2026-10-09）
+## Official source (check 2026-10-09)
 
-- https://learn.chatgpt.com/docs/codex/cli ：官方CLI与npm安装方式；实际npm package metadata https://registry.npmjs.org/@openai/codex/0.146.1 核对bin、固定native optional packages及无install脚本。
-- https://learn.chatgpt.com/docs/app-server ：stdio初始化/账号/模型/MCP/turn；本机开发及开源认证边界，商业/托管需另行SIWC。
-- https://learn.chatgpt.com/docs/auth ：file凭据、CODEX_HOME、login status与device-auth；不代表额度可用。
-- https://learn.chatgpt.com/docs/config-file/environment-variables ：项目CODEX_HOME；不改全局配置。
-- https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server ：商业发行后续的正式登录接入，不假定本包已注册clientId。
-- https://nodejs.org/en/blog/release/v24.21.0 与 https://nodejs.org/dist/v24.21.0/SHASUMS256.txt ：官方固定LTS及两种Mac归档SHA256。精确产物Mach-O minOS两架构为13.5；这是二进制下限，Intel真机用户流程另测。
+- Https://learn.chatgpt.com/docs/codex/cli: official CLI and npm installation method; actual npm package metadata https://registry.npmjs.org/@openai/codex/0.146.1 Check bin, fix native optional packages and no install script. (Original references: <https://learn.chatgpt.com/docs/codex/cli>.)
+- Https://learn.chatgpt.com/docs/app-server: stdio initialization/account/model/MCP/turn; local development and open source authentication boundaries, commercial/hosting needs to be done separately SIWC. (Original references: <https://learn.chatgpt.com/docs/app-server>.)
+- Https://learn.chatgpt.com/docs/auth: file credentials, CODEX_HOME, login status and device-auth; does not mean that the quota is available. (Original references: <https://learn.chatgpt.com/docs/auth>.)
+- Https://learn.chatgpt.com/docs/config-file/environment-variables: Project CODEX_HOME; Do not change the global configuration. (Original references: <https://learn.chatgpt.com/docs/config-file/environment-variables>.)
+- Https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server: Official login access after commercial distribution, without assuming that this package has registered clientId. (Original references: <https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server>.)
+- Https://nodejs.org/en/blog/release/v24.21.0 and https://nodejs.org/dist/v24.21.0/SHASUMS256.txt: Official fixed LTS and two Mac archives SHA256. The two architectures of the exact product Mach-O minOS are 13.5; this is the lower binary limit, and the Intel real machine user process is measured separately. (Original references: <https://nodejs.org/en/blog/release/v24.21.0>.)
 
-无需独立端口、数据库或新增生产依赖。服务日志沿用logs/<service>/，安装/npm诊断仅在终端与项目.cache/npm，真实认证和源码内容不写入普通日志。外部上线、商业登录注册、原生签名/公证和云端未实现。
+No need for independent ports, databases or new production dependencies. The service log follows logs/<service>/, and the installation /npm diagnosis is only in the terminal and project .cache/npm, and the real authentication and source code content are not written to the ordinary log. External online, commercial login registration, native signature/notarization and cloud have not been realized.
 
-## Saplingagent 名称与模型费用（TASK020）
+## Saplingagent name and model fee (TASK020)
 
-启动入口为 `3-启动Saplingagent.command`，交付包为 `Saplingagent-macOS-<提交前8位>`；dev输出与cli启动检测使用同一品牌标记。环境变量及认证目录保留兼容。
+The startup entrance is `3-Start-Saplingagent.command`, and the delivery package is `Saplingagent-macOS-<submit the first 8 bits>`; the dev output uses the same brand mark as the cli start detection. Environment variables and authentication catalogs remain compatible.
 
-本地App Server开源组件无需单独购买，模型需本人认证及可用额度。此Mac入口采用ChatGPT登录、按账号套餐资格/模型权限/额度使用；Codex另支持API key独立按量计费，不使用ChatGPT订阅额度，本入口没有提供API key登录选项。Free/Go目前仅列桌面Luna逐步开放，不承诺本项目CLI/App Server免费可用。启动/诊断不做模型收费探测。
+Local App Server open source components do not need to be purchased separately, and the model needs to be authenticated by yourself and available. This Mac entrance uses ChatGPT to log in and use it according to the account package qualification/model permission/quota; Codex also supports API key independent volume billing and does not use ChatGPT subscription quota. This entrance does not provide API key login option. At present, Free/Go only lists the desktop Luna gradually open, and does not promise that CLI/App Server of this project can be used for free. Start/diagnose without model charging detection.
 
-官方公开依据（2026-10-09 / TASK020；文档无需登录，实际调用需本人认证；当前认证/套餐文档）：https://learn.chatgpt.com/docs/auth 、https://learn.chatgpt.com/docs/pricing 。商业/托管须正式SIWC，项目尚未实现；当前资格和伙伴范围：https://developers.openai.com/siwc/quickstart 。
+Official public basis (2026-10-09 / TASK020; documents do not need to be logged in, and the actual call needs to be authenticated by yourself; current authentication/package document): https://learn.chatgpt.com/docs/auth, https://learn.chatgpt.com/docs/pricing. Business/hosting requires formal SIWC, and the project has not been realized; current qualification and partner scope: https://developers.openai.com/siwc/quickstart.

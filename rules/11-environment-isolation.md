@@ -1,26 +1,26 @@
-# 11. 项目内环境隔离规范
+# 11. Environmental isolation specifications in the project
 
-## 目标
+## Target
 
-凡是涉及运行环境、依赖环境、容器环境的内容，都必须归属当前项目文件夹内部，避免不同项目之间互相干扰、污染或误用环境。
+All content involving the operating environment, dependent environment and container environment must belong to the current project folder to avoid mutual interference, pollution or misuse of the environment between different projects.
 
-## 总原则
+## General principles
 
-1. 环境文件必须放在项目目录内，不放到项目外部公共位置。
-2. 不同项目之间不共用虚拟环境、依赖目录、容器配置或临时运行目录。
-3. AI 不应修改其他项目的环境文件。
-4. AI 不应把当前项目依赖安装到系统全局环境。
-5. 环境相关说明必须写入对应微服务目录内的 `SERVICE.md` 或 `DEPLOY.md`。
+1. The environment file must be placed in the project directory, not in the public place outside the project.
+2. Different projects do not share virtual environments, dependent directories, container configurations or temporary running directories.
+3. AI should not modify the environment files of other projects.
+4. AI should not depend on the current project to be installed in the global environment of the system.
+5. Environment-related instructions must be written to `SERVICE.md` or `DEPLOY.md` in the corresponding microservice directory.
 
-## Python 环境
+## Python environment
 
-1. Python 项目必须使用项目内虚拟环境，推荐目录为 `.venv/`。
-2. 不允许使用系统 Python 环境直接安装项目依赖。
-3. 不允许多个项目共用同一个 venv。
-4. `.venv/` 必须加入 `.gitignore`。
-5. 依赖文件应放在项目内或对应微服务目录内，例如 `requirements.txt`、`pyproject.toml`。
+1. The Python project must use the in-project virtual environment, and the recommended directory is `.venv/`.
+2. It is not allowed to directly install project dependencies using the system Python environment.
+3. Multiple projects are not allowed to share the same venv.
+4. `.venv/` must add `.gitignore`.
+5. Dependent files should be placed in the project or in the corresponding microservice directory, such as `requirements.txt` and `pyproject.toml`.
 
-推荐结构：
+Recommended structure:
 
 ```text
 project-root/
@@ -32,15 +32,15 @@ project-root/
 └── .gitignore
 ```
 
-## Docker 环境
+## Docker environment
 
-1. Dockerfile、compose 文件、构建上下文和项目相关容器说明必须放在项目文件夹内。
-2. 每个微服务如需 Docker，应优先在自己的微服务目录内维护 Dockerfile。
-3. 项目级编排文件可放在项目根目录，例如 `docker-compose.yml`。
-4. 项目镜像、镜像命名规则、构建方式必须在项目内文档说明，不依赖外部未知配置。
-5. 构建缓存、导出的镜像包、临时容器数据如需保存，应放在项目内明确目录，并按需加入 `.gitignore`。
+1. Dockerfile, compose file, build context and project-related container instructions must be placed in the project folder.
+2. If each microservice needs Docker, it should give priority to maintaining Dockerfile in its own microservice directory.
+3. Project-level arrangement files can be placed in the root directory of the project, such as `docker-compose.yml`.
+4. Project mirroring, mirror naming rules and construction methods must be documented in the project, and do not rely on external unknown configurations.
+5. If you need to save the built cache, exported mirror package and temporary container data, you should put it in a clear directory in the project and add `.gitignore` as needed.
 
-推荐结构：
+Recommended structure:
 
 ```text
 project-root/
@@ -54,39 +54,39 @@ project-root/
 └── .gitignore
 ```
 
-## Node 或其他语言环境
+## Node or other language environments
 
-1. Node 依赖必须使用项目内 `node_modules/`，不依赖全局安装作为项目运行前提。
-2. 其他语言如需虚拟环境、缓存目录、依赖目录，也应放在项目内或明确记录项目级路径。
-3. 不同项目不得共用同一个依赖目录。
+1. Node dependency must use `node_modules/` in the project, and does not rely on global installation as a prerequisite for project operation.
+2. If other languages need a virtual environment, cache directory, and dependent directory, they should also be placed in the project or clearly record the project-level path.
+3. Different projects must not share the same dependent directory.
 
-## AI 执行规则
+## AI execution rules
 
-1. 新增环境前，先确认环境目录在当前项目文件夹内。
-2. 如果发现项目正在使用外部共享环境，应先记录到 `TODO.md`，再询问是否迁移。
-3. 修改环境配置后，必须更新对应微服务的 `SERVICE.md` 或 `DEPLOY.md`。
-4. 不创建会影响系统全局或其他项目的环境配置。
-5. 不把 `.venv/`、`node_modules/`、Docker 镜像包、容器临时数据提交到 git。
-6. 初始化或审阅环境时使用下方“环境填写格式”检查，最终内容直接写入对应微服务的 `SERVICE.md` 或 `DEPLOY.md`。
+1. Before adding an environment, confirm that the environment directory is in the current project folder.
+2. If it is found that the project is using an external shared environment, it should be recorded to `TODO.md` first, and then ask whether to migrate.
+3. After modifying the environment configuration, you must update the corresponding `SERVICE.md` or `DEPLOY.md` of the corresponding microservice.
+4. Not creating will affect the environment configuration of the system global or other projects.
+5. Do not submit `.venv/`, `node_modules/`, Docker mirror package, container temporary data to git.
+6. When initializing or reviewing the environment, use the "Environment Filling Format" below to check, and the final content is directly written to the corresponding microservice `SERVICE.md` or `DEPLOY.md`.
 
-## 环境填写格式
+## Environment filling format
 
 ```markdown
-## 项目内环境
+## The environment in the project
 
-- 服务：`<SERVICE_NAME>`
-- 技术栈：<Python / Node / Docker / 其他>
-- 运行时版本：<VERSION>
-- 环境目录：<项目内部路径>
-- 依赖清单：<requirements.txt / pyproject.toml / package.json / 其他>
-- 配置入口：<项目内部路径>
-- 临时数据目录：<项目内部路径>
-- Python 虚拟环境：<`.venv/` 或不适用>
-- Node 依赖目录：<项目内 `node_modules/` 或不适用>
-- Dockerfile：<项目内路径或不适用>
-- Docker 构建上下文：<项目内路径或不适用>
-- Docker 镜像命名：<project/service:version 或不适用>
-- 导出镜像目录：<`docker-images/` 或不适用>
+- Service: `<SERVICE_NAME>`
+- Technical stack: <Python / Node / Docker / Other>
+- RUNTIME VERSION: <VERSION>
+- Environment Catalog: <Project Internal Path>
+- Dependency list: <requirements.txt / pyproject.toml / package.json / other>
+- Configuration entrance: <Project Internal Path>
+- Temporary Data Catalog: <Project Internal Path>
+- Python virtual environment: <`.venv/` or not applicable>
+- Node dependent directory: <`node_modules/` or not applicable in the project>
+- Dockerfile: <In-project path or not applicable>
+- Docker build context: <In-project path or not applicable>
+- Docker mirror naming: <project/service:version or not applicable>
+- Export mirror directory: <`docker-images/` or not applicable>
 ```
 
-AI 必须删除不适用项或明确写明“不适用”，不得保留未处理占位符。
+AI must delete the inapplicable items or clearly state "not applicable", and must not keep unprocessed placeholders.

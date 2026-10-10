@@ -1,7 +1,7 @@
-# Claude Code 项目入口
+# Claude Code Project Entrance
 
 @AGENTS.md
 
-Claude Code 必须先读取 `AGENTS.md`，再按其中的 `@rules/README.md` 指引读取项目公共控制规范与规则索引。
+Claude Code must first read `AGENTS.md`, and then read the project public control specification and rule index according to the `@rules/README.md` guideline.
 
-不要在本文件复制或改写公共规则。公共控制规范维护在 `rules/README.md` 和对应规则文件；项目专用的简短入口提示可以维护在 `AGENTS.md` 的指定区域。
+Do not copy or rewrite the public rules in this file. Public control specifications are maintained in `rules/README.md` and the corresponding rule files; the project-specific brief entrance prompt can be maintained in the designated area of `AGENTS.md`.

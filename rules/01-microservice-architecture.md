@@ -1,10 +1,10 @@
-# 01. 微服务架构组织项目
+# 01. Microservice architecture organization project
 
-## 目标
+## Target
 
-所有项目必须按微服务逻辑构建。每个功能模块独立成一个文件夹存放，避免功能混杂、边界不清、后续难以维护。微服务必须从文件夹开始区分，一个层级、一个模块服务、一个目录，确保每个模块可以独立修改。
+All projects must be built according to microservice logic. Each functional module is stored independently in a folder to avoid mixed functions, unclear boundaries, and difficult maintenance in the future. Microservices must be distinguished from folders, a hierarchy, a module service, and a directory to ensure that each module can be modified independently.
 
-## 推荐目录结构
+## Recommended directory structure
 
 ```text
 project-root/
@@ -28,25 +28,25 @@ project-root/
     └── README.md
 ```
 
-## AI 执行规则
+## AI execution rules
 
-1. 新增功能前，先判断该功能属于哪个已有服务。
-2. 如果功能不属于任何现有服务，应新建独立服务文件夹，不要塞进无关模块。
-3. 每个微服务必须有自己的目录，目录名应能表达服务职责。
-4. 一个目录只承载一个模块服务，不把多个服务混在同一层目录中。
-5. 服务之间保持低耦合，不允许跨服务直接引用内部实现。
-6. 服务之间通信必须通过明确接口，例如 API、消息队列或共享契约。
-7. 修改服务内部代码时，不应顺手改动其他服务，除非任务明确要求并且拆分处理。
-8. 每个微服务目录内必须包含自己的 Markdown 说明文件，建议命名为 `SERVICE.md`。
-9. 数据库管理可以作为独立微服务存在；其他微服务如有特殊数据管理方案，由该微服务自行说明，不做统一限制。
-10. 微服务使用外部平台时，应在服务目录维护 `REFERENCES.md`。
-11. 微服务任务需要跨 AI 或跨对话交接时，应在服务目录维护 `ai-tasks/<task-id>.md`。
-12. 新建微服务时，按 `rules/07-service-contracts.md`、`rules/10-database-deploy-rollback.md` 和 `rules/15-official-links-and-source-traceability.md` 中的内置格式，直接在 `services/<service-name>/` 创建并填写说明文件。
-13. 规范源目录预建的 `services/README.md` 随整包复制；目标项目根据真实服务创建子目录，不在规范源中预建虚假服务。
+1. Before adding a new function, first determine which existing service the function belongs to.
+2. If the function does not belong to any existing service, a new independent service folder should be created and not stuffed into unrelated modules.
+3. Each microservice must have its own directory, and the directory name should be able to express service responsibilities.
+4. A directory only carries one module service, and does not mix multiple services in the same directory.
+5. Maintain low coupling between services, and do not allow cross-service direct reference to internal implementation.
+6. Communication between services must be through clear interfaces, such as API, message queue or shared contract.
+7. When modifying the internal code of the service, other services should not be changed by the way, unless the task is clearly required and split.
+8. Each microservice directory must contain its own Markdown documentation, and it is recommended to name it `SERVICE.md`.
+9. Database management can exist as an independent microservice; if other microservices have special data management schemes, the microservice will explain it by itself without unified restrictions.
+10. When microservices use external platforms, `REFERENCES.md` should be maintained in the service directory.
+11. When microservice tasks need to be handed over across AI or dialogues, `ai-tasks/<task-id>.md` should be maintained in the service directory.
+12. When creating a new microservice, create and fill in the documentation directly in `services/<service-name>/` according to the built-in format in `rules/07-service-contracts.md`, `rules/10-database-deploy-rollback.md` and `rules/15-official-links-and-source-traceability.md`.
+13. The pre-built `services/README.md` of the standardized source directory is copied with the whole package; the target project creates a subdirectory according to the real service, and does not pre-build false services in the standard source.
 
-## 禁止事项
+## Prohibited matters
 
-- 禁止把多个无关功能堆进同一个服务。
-- 禁止多个微服务共用同一个服务目录。
-- 禁止从一个服务直接导入另一个服务的私有实现。
-- 禁止绕过接口约定修改其他服务内部数据。
+- It is forbidden to stack multiple irrelevant functions into the same service.
+- It is forbidden for multiple microservices to share the same service directory.
+- It is forbidden to directly import private implementations from one service to another.
+- It is forbidden to bypass the interface agreement to modify the internal data of other services.

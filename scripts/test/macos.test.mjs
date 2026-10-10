@@ -10,9 +10,9 @@ import { distributable } from '../package-macos.mjs';
 const project = fileURLToPath(new URL('../../', import.meta.url));
 async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   const parent = path.join(project, '.cache/macos-tests'); await fs.mkdir(parent, { recursive: true });
-  const root = await fs.mkdtemp(path.join(parent, "测试 app's "));
+  const root = await fs.mkdtemp(path.join(parent, "\u6d4b\u8bd5 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['scripts/setup.mjs', 'scripts/macos/cli.mjs', 'scripts/macos/bootstrap.sh', 'scripts/macos/entry.sh', 'scripts/macos/codex.sh', '1-安装.command', '2-登录Codex.command', '3-启动Saplingagent.command', '4-诊断.command', 'config/macos.json', 'config/runtime.json']) {
+  for (const file of ['scripts/setup.mjs', 'scripts/macos/cli.mjs', 'scripts/macos/bootstrap.sh', 'scripts/macos/entry.sh', 'scripts/macos/codex.sh', '1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', '4-Doctor.command', 'config/macos.json', 'config/runtime.json']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const settings = JSON.parse(await fs.readFile(path.join(root, 'config/macos.json'), 'utf8'));
@@ -37,12 +37,12 @@ function runCli(root, action, extraEnv = {}) {
 }
 test('distribution filter excludes runtime/private files while retaining complete rules and Skills', () => {
   for (const file of ['local-secrets/codex/auth.json', 'backend/a/local-secrets/key.txt', 'data/session.json', 'backend/agent-runtime/ai-tasks/runtime/run.md', 'front/node_modules/react/index.js', '.runtime/codex/package.json', '.worktrees/coordination/TODO.md', 'logs/front/x.log', 'backend/a/.env.local', 'backend/a/token.pem', 'front/dist/index.html']) assert.equal(distributable(file), false, file);
-  for (const file of ['rules/README.md', 'rules/clawtask-package-skill-v2.zip', '.agents/skills/seed-page-edit/SKILL.md', '1-安装.command', 'front/App.tsx', 'scripts/macos/codex.sh']) assert.equal(distributable(file), true, file);
+  for (const file of ['LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', 'rules/README.md', 'rules/clawtask-package-skill-v2.zip', '.agents/skills/seed-page-edit/SKILL.md', '1-Install.command', 'front/App.tsx', 'scripts/macos/codex.sh']) assert.equal(distributable(file), true, file);
 });
 test('missing login does not launch services or copy global authentication', async t => {
   const root = await fixture(t);
   const result = await runCli(root, ['start', '--no-open']);
-  assert.equal(result.code, 1); assert.match(result.output, /尚未登录/);
+  assert.equal(result.code, 1); assert.match(result.output, /not logged in/);
   assert.equal(await fs.access(path.join(root, 'UNEXPECTED_LAUNCH')).then(() => true, () => false), false);
   assert.equal(await fs.access(path.join(root, 'local-secrets/codex/auth.json')).then(() => true, () => false), false);
   const ledger = JSON.parse(await fs.readFile(path.join(root, 'local-secrets/notes/project-secrets.json'), 'utf8'));
@@ -51,18 +51,18 @@ test('missing login does not launch services or copy global authentication', asy
 test('configuration errors are not reported as missing login and raw diagnostics stay private', async t => {
   const root = await fixture(t, { auth: 'broken' });
   const result = await runCli(root, ['login']);
-  assert.equal(result.code, 1); assert.match(result.output, /不能视为尚未登录/); assert.doesNotMatch(result.output, /PRIVATE_FIXTURE_VALUE/);
+  assert.equal(result.code, 1); assert.match(result.output, /does not mean the project is not logged in/); assert.doesNotMatch(result.output, /PRIVATE_FIXTURE_VALUE/);
 });
 test('dependency changes invalidate the success marker before launching', async t => {
   const root = await fixture(t, { auth: 'present' }); await fs.writeFile(path.join(root, 'front/package-lock.json'), '{"changed":true}');
   const result = await runCli(root, ['start', '--no-open']);
-  assert.equal(result.code, 1); assert.match(result.output, /锁文件已经变化/);
+  assert.equal(result.code, 1); assert.match(result.output, /lockfiles have changed/);
   assert.equal(await fs.access(path.join(root, 'UNEXPECTED_LAUNCH')).then(() => true, () => false), false);
 });
 test('a failed launcher cannot claim another live project is ready', async t => {
   const root = await fixture(t, { auth: 'present', badDev: true });
   const result = await runCli(root, ['start', '--no-open']);
-  assert.equal(result.code, 1); assert.match(result.output, /Port occupied/); assert.doesNotMatch(result.output, /已接入 Codex App Server/);
+  assert.equal(result.code, 1); assert.match(result.output, /Port occupied/); assert.doesNotMatch(result.output, /Connected to Codex App Server/);
 });
 test('failed staging preserves a complete old installation and repairs stripped script permissions', async t => {
   const root = await fixture(t, { auth: 'present' });
@@ -71,7 +71,7 @@ test('failed staging preserves a complete old installation and repairs stripped 
   const bin = path.join(root, 'fake-bin'); await fs.mkdir(bin);
   await fs.writeFile(path.join(bin, 'npm'), '#!/bin/sh\necho "Synthetic network failure" >&2\nexit 42\n', { mode: 0o755 });
   const result = await runCli(root, ['install', '--repair'], { PATH: bin + path.delimiter + process.env.PATH });
-  assert.equal(result.code, 1); assert.match(result.output, /退出码 42/);
+  assert.equal(result.code, 1); assert.match(result.output, /exit code 42/);
   assert.equal(await fs.readFile(marker, 'utf8'), before);
   assert.equal((await fs.stat(wrapper)).mode & 0o777, 0o755);
   assert.equal(await fs.access(path.join(root, '.runtime/macos-install.lock')).then(() => true, () => false), false);

@@ -1,5 +1,5 @@
-# 应用资源与资料
+# Application resources and materials
 
-状态：目前只有说明。
-后续保存图片、上传附件及已下载的参考资料；每项外部资料记录 URL、获取日期和适用功能。公开分发仅包括具有分发权限的资料，个人附件归应用备份范围。
-运行时临时资源归项目内缓存目录，不能将客户数据写到开发机公共目录。
+Status: There is only an explanation at present.
+Subsequently save pictures, upload attachments and downloaded reference materials; record the URL, acquisition date and applicable functions for each external data. Public distribution only includes materials with distribution rights, and personal attachments are within the scope of application backup.
+Runtime temporary resources belong to the cache directory in the project, and customer data cannot be written to the public directory of the development machine.

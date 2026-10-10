@@ -1,84 +1,84 @@
-# 17. Clawtask 项目打包与交付
+# 17. Clawtask project packaging and delivery
 
-## 触发与任务边界
+## Trigger and mission boundary
 
-用户要求“请将项目打包为 clawtask 可用”“打包成 Clawtask 项目”“生成 Clawtask 导入包”“适配 Clawtask 部署”“导出可上传 Clawtask 的 ZIP”等相同含义，或修改已有 Clawtask 打包、部署、环境准备、启动与健康检查方案时，必须读取并执行本规则；大小写、空格和自然语言变体不影响路由，不需要用户手动启用 Skill。
+Users must read and execute these rules when requiring the same meaning as "please package the project as clawtask available", "package as clawtask project", "generate Clawtask import package", "adapt to Clawtask deployment", "export ZIP that can be uploaded by Clawtask", or modify existing Clawtask packaging, deployment, environment preparation, startup and health check schemes; case, spaces and natural language variants do not affect the routing, and do not require users to manually enable Skill.
 
-1. 默认交付 **conversation v2.0 群聊项目源码 ZIP**。只有用户明确选择外部 Compose/staging 纳管时，才走附件中的旧兼容路径，不必为默认方案重复询问接入类型。
-2. “打包为可用”授权必要的本地适配、文档、打包和安全自检，不自动授权上传、远程登录、启动生产容器、公开访问、发布镜像或合并 main。用户只问方案时按只读任务交付；已有同范围明确授权不重复询问。
-3. 沿用目标项目的微服务目录、独立分支和人工确认流程，不把 Clawtask 平台自身的服务架构、宿主路径或规则复制进业务项目。项目级打包配置按规则 04 管理，跨服务业务修改按服务拆分。
+1. Default delivery **conversation v2.0 group chat project source code ZIP**. Only when the user clearly selects the external Compose/staging management will he follow the old compatibility path in the attachment, and there is no need to repeatedly ask for the access type for the default scheme.
+2. "Packaging as Available" authorizes necessary local adaptation, documents, packaging and security self-testing, and does not automatically authorize uploading, remote login, starting production containers, public access, publishing mirroring or merging main. When users only ask about the plan, it is delivered according to the read-only task; it has been clearly authorized not to repeat the inquiry within the same scope.
+3. Follow the microservice directory, independent branch and manual confirmation process of the target project, and do not copy the Clawtask platform's own service architecture, host path or rules into the business project. The project-level packaging configuration is managed according to Rule 04, and the cross-service business modification is split according to the service.
 
-## 每次修改前读取最新 Demo
+## Read the latest Demo before each modification
 
-用户指定的本机最新 Demo 源目录：
+The latest local Demo source directory specified by the user:
 
 ```text
 /Users/xty/Desktop/projctworks/5.clawtask/tools/skills/clawtask-package/assets/demo/
 ```
 
-1. 每次修改 Clawtask 相关打包、部署说明、配置或脚本前，必须重新读取该目录的实际最新内容，包括同一任务中的后续修正和中断后的续做；不能只沿用聊天记忆、旧解压缓存或 ZIP 内的示例。不涉及 Clawtask 的普通业务修改不触发本项。
-2. 先核对目录清单，再读取 `CLAWTASK_README.md`、`clawtask-package.json`、`prepare.sh`、`start.sh`、`deploy.sh`、`healthcheck.py` 和依赖清单；结合本次修改读取 `app.py`、`.gitignore` 及 README 引用的新文件。文件名或结构变化时按当前目录和说明定位，不要求最新 Demo 永远维持旧清单。
-3. 同时核对上级 Skill 根目录的 `SKILL.md`、`references/package-format.md`，确认准备、启动、工具参数及目标平台契约。最新 Demo 用于校准实现，不能代替目标业务源码，也不能扩大用户授权；不修改来源目录，不把开发机绝对路径写入业务运行脚本。
-4. 修改前的规范读取回执记录实际读取路径、核对日期、Demo 声明版本（如有）及与随包快照的差异。目标项目任务记录和交付说明保留同样的来源信息；没有声明版本时如实记录，不用文件修改时间冒充发布版本。
-5. 该目录不可访问时，明确报告“最新 Demo 未核对”，请求用户提供可访问的最新目录或完整副本。不能静默回退到旧 ZIP 并宣称符合最新方案；仅暂停依赖最新 Demo 的修改与可用性结论，其他已授权且不受影响的工作继续。用户明确接受固定旧版本时，记录版本范围和未验证项后按该范围执行。
-6. Demo、Skill、ZIP 快照或目标实例行为不一致时，先列出具体差异并核对对应契约，不因路径名为最新或日期较新就混用不兼容版本。需要更新工具附件时，单独核对脚本、哈希与兼容性，再同步规则；不要只拷贝新示例却宣称旧工具已升级。
+1. Every time you modify the Clawtask-related packaging, deployment instructions, configuration or script, you must re-read the actual latest content of the directory, including subsequent corrections in the same task and continuation after interruption; you can't just follow the chat memory, old decompression cache or examples in ZIP. General business modifications that do not involve Clawtask do not trigger this item.
+2. Check the directory list first, and then read `CLAWTASK_README.md`, `clawtask-package.json`, `prepare.sh`, `start.sh`, `deploy.sh`, `healthcheck.py` and the dependency list; read the new files referenced by `app.py`, `.gitignore` and README in combination with this modification. When the file name or structure changes, it is located according to the current directory and instructions, and the latest Demo is not required to maintain the old list forever.
+3. At the same time, check the `SKILL.md` and `references/package-format.md` of the higher Skill root directory to confirm the preparation, start-up, tool parameters and target platform contract. The latest Demo is used for calibration implementation. It cannot replace the target business source code or expand user authorization; it does not modify the source directory and does not write the absolute path of the development machine into the business running script.
+4. The specification reading receipt before modification records the actual reading path, check date, Demo declaration version (if any) and the difference from the package snapshot. The task record and delivery instructions of the target project retain the same source information; record it truthfully when there is no declared version, and do not use the file modification time to pretend to be the release version.
+5. When the directory is not accessible, clearly report "the latest Demo is not checked" and ask the user to provide the latest accessible directory or a complete copy. It is not allowed to silently return to the old ZIP and claim that it conforms to the latest plan; only suspend the modification and usability conclusion of relying on the latest Demo, and continue other authorized and unaffected work. When the user clearly accepts the fixed old version, record the version range and unverified items and execute according to the scope.
+6. When the behavior of Demo, Skill, ZIP snapshot or target instance is inconsistent, first list the specific differences and check the corresponding contract, and do not mix the incompatible version because the path name is the latest or the date is newer. When you need to update the tool attachment, check the script, hash and compatibility separately, and then synchronize the rules; don't just copy the new example but claim that the old tool has been upgraded.
 
-2026-09-23 核对时，该目录是“完整部署 Demo”：`prepare.sh` 在目标环境创建或复用项目内 `.venv`，`deploy.sh` 串联准备与前台启动，`start.sh` 要求环境已准备。平台基础容器开启后由 AI 显式调用脚本，`startup` 仅为参考，不是开机自动执行钩子。此段是核对快照，不取代下次修改前重新读取。
+2026-09-23 When checking, the directory is "complete deployment Demo": `prepare.sh` creates or reuses `.venv` in the target environment, `deploy.sh` is ready to start the front desk, and `start.sh` requires the environment to be prepared. After the platform basic container is opened, the script is explicitly called by AI. `startup` is for reference only, not automatically executing hooks when power-on. This paragraph is a check snapshot, which does not replace the re-reading before the next modification.
 
-## 固定附件与读取入口
+## Fixed attachments and reading entrances
 
-- 受控附件：`rules/clawtask-package-skill-v2.zip`。
-- 内部 Skill 入口：`clawtask-package/SKILL.md`。
-- 默认契约：`clawtask-package/references/package-format.md`。
-- 兼容路径：`clawtask-package/references/legacy-compose.md`，仅明确选择该模式时读取。
-- 工具：`clawtask-package/scripts/package_project.py` 及同目录 `package_contract.py`，Python 3.10+，仅使用标准库。
-- 附件内样例快照：`clawtask-package/assets/demo/`；不是上方源目录的实时镜像，用来对比归档版本，不替代每次修改前的最新 Demo 核对。
-- 来源：用户提供的 Clawtask 平台项目打包方案，纳入日期 2026-09-09。
-- 当前附件 SHA-256：`92a1d30fb46975bcf18be30d5700b7f4cf8a6256d539a6c4aaed583b86f70503`。
+- Controlled attachment: `rules/clawtask-package-skill-v2.zip`.
+- Internal Skill entrance: `clawtask-package/SKILL.md`.
+- Default contract: `clawtask-package/references/package-format.md`.
+- Compatible path: `clawtask-package/references/legacy-compose.md`, read only when the mode is explicitly selected.
+- Tools: `clawtask-package/scripts/package_project.py` and the same directory `package_contract.py`, Python 3.10+, only use the standard library.
+- Sample snapshot in the attachment: `clawtask-package/assets/demo/`; It is not a real-time mirror image of the source directory above. It is used to compare the archived version and does not replace the latest Demo check before each modification.
+- Source: The Clawtask platform project packaging plan provided by the user is included on 2026-09-09.
+- Current attachment SHA-256: `ef903a7b70acf6501081fec3e296f058d6045780e9b30993c3154f0c1a94fd76`.
 
-此 ZIP 是供开发 AI 阅读和运行的工具包，不是目标项目交付包，也不是 Clawtask 运行期 Skill 导入包。它是规范受控资源，分发规则时必须原样复制，不能因扩展名为 ZIP 而当成构建缓存排除；不要将它嵌套进业务交付 ZIP。
+This ZIP is a toolkit for developing AI to read and run. It is not a target project delivery package, nor a Clawtask runtime Skill import package. It is a standardized controlled resource. When distributing rules, it must be copied as it is. It cannot be excluded as a build cache because the extension is ZIP. Do not nest it into the business delivery ZIP.
 
-从目标项目根目录读取随包工具快照；工具执行仍使用目标项目内副本，最新 Demo 核对则按上方用户指定的来源目录进行：
+Read the snapshot of the package tool from the root directory of the target project; the tool execution still uses a copy in the target project, and the latest Demo check is carried out according to the source directory specified by the user above:
 
 ```sh
 unzip -p rules/clawtask-package-skill-v2.zip clawtask-package/SKILL.md
 unzip -p rules/clawtask-package-skill-v2.zip clawtask-package/references/package-format.md
 ```
 
-首次使用先检查附件清单、CRC 和 SHA-256，再解压到项目内独立缓存目录，例如 `.cache/clawtask-packaging/<task-id>/`。拒绝不安全路径、符号链接、重复条目和异常体积；不覆盖现有缓存。阅读脚本后才执行，不全局安装 Skill，不新建第二套模板。附件缺失、损坏或哈希变化时按规则索引核查差异，未核实的脚本不执行；仍可继续不受影响的项目盘点。
+For the first use, check the attachment list, CRC and SHA-256 first, and then decompress it to the independent cache directory in the project, such as `.cache/clawtask-packaging/<task-id>/`. Reject insecure paths, symbolic links, duplicate entries and abnormal volumes; do not overwrite the existing cache. It is executed after reading the script. Skill is not installed at all, and a second set of templates is not created. When the attachment is missing, damaged or hash changes, check the difference according to the rule index, and the unverified script will not be executed; the inventory of unaffected items can still be continued.
 
-后续平台升级时，重新核对最新 Demo、附件契约与目标平台版本；需要升级附件时同步更新附件、本规则摘要和规范版本，不得只替换文件名，或依赖旧解压副本继续打包。本地验证只覆盖该附件快照，不证明任意平台实例兼容。当前附件仍是 2026-09-09 纳入的固定快照，不代表已经包含 2026-09-23 的完整部署 Demo；其中与已核对最新方案不一致的启动说明不得继续照搬。
+When upgrading the subsequent platform, recheck the latest Demo, attachment contract and the target platform version; when upgrading the attachment, update the attachment, the summary of this rule and the standard version synchronously. Do not only replace the file name, or rely on the old decompressed copy to continue packaging. Local verification only covers the attached snapshot and does not prove that any platform instance is compatible. The current attachment is still a fixed snapshot included in 2026-09-09, which does not mean that the complete deployment Demo of 2026-09-23 has been included; the startup instructions that are inconsistent with the checked latest plan shall not continue to be copied.
 
-## 执行顺序
+## Execution order
 
-1. **读取和盘点。** 按规则索引读取目标、进度、任务认领和相关服务 Markdown，先完成上方“每次修改前读取最新 Demo”，再确认源码范围、技术栈、锁文件、构建产物、启动入口、端口、依赖服务和持久化数据。已有项目可确定的信息自行读取，不把普通实施细节退回用户。
-2. **确定容器运行方式。** 默认源码进入 Linux 容器 `/app`，保留服务目录，提供一个供平台转发的 HTTP 入口。多服务项目说明同容器进程管理或已授权的外部依赖；一个入口不等于合并源码模块，也不等于可默默新建多个 Docker 容器。架构确实不兼容时给出具体差异和必要选择，不宣称仅压缩源码就可运行。
-3. **准备启动与依赖。** 按最新 Demo 提供 `prepare.sh`、`start.sh`、`deploy.sh` 或等效完整脚本链及真实健康检查。脚本兼容 POSIX `sh`、从自身目录定位文件，显式传入 `APP_PORT`（兼容 `PORT`）、监听 `0.0.0.0`，以前台 `exec` 方式启动，由已授权工具管理长期进程。首次安装和构建与日常启动分开，准备可重复执行且不覆盖已有环境或业务数据；缺依赖时清晰失败并记录恢复步骤。Python 项目若入口依赖 `/app/.venv`，必须有目标环境创建与核验步骤，不能只检查 `start.sh` 存在。不搬运 macOS 的 `.venv/`、`node_modules/` 或原生二进制冒充 Linux 依赖，不假定平台自动创建环境或执行入口。
-4. **明确运行说明。** 在交付源码根准备 `CLAWTASK_README.md`，写明运行时、首次准备、日常启动、配置名、端口、健康路径、数据恢复、日志和剩余操作。此文件是平台交付契约说明，不取代服务 `DEPLOY.md` 和给人的 `docs/` HTML 文档；按实际影响同步这些文档。
-5. **补齐网页标识并建立交付清单。** 有网页界面的项目先落实下方“网页底部部署标识”，再在目标项目维护 `clawtask-package.json`，只使用 `title`、`goal`、`startup`、`include`、`exclude`。`include` 是明确的文件或目录白名单，不使用整个仓库 `.`；打包器不读取 `.gitignore`。前端必要 `dist/` 可以纳入，须包含本次页脚更新，打包缓存、交付 ZIP、真实运行数据默认不纳入。
-6. **复核安全和数据。** 检查白名单、排除报告和源码硬编码凭据；真实密钥、`local-secrets/`、真实 `.env`、日志、Git 历史、虚拟环境、依赖缓存和嵌套归档不得打包。无真实值的配置样例可以交付。客户数据库、素材、聊天、角色和知识的迁移范围依据用户要求，不默认带入；本工具只生成源码群聊包，不伪造身份或迁移历史。
-7. **生成并验证。** 使用附件自带脚本 `build`，然后独立执行 `validate`；输出在目标项目内，例如 `dist/<project>-clawtask-v2-<version>.zip`。输出文件必须尚不存在，重建使用新名称，不直接覆盖已有交付版本。检查实际归档根层级、入口、文件清单、体积和 SHA-256，不能只确认 ZIP 文件存在。
-8. **自检和交付。** 完成不会污染业务数据的启动脚本检查、现有构建或隔离验证，真实业务与目标平台验收继续按规则 09 人工协作，不另建专用业务测试入口。分别报告包验证、本地运行、真实导入、容器就绪和公开访问状态，交付具体文件与下一步；未执行阶段不得标记通过。
+1. **Reading and inventory. **Read the target, progress, task claim and related service Markdown according to the rule index, first complete the above "Read the latest Demo before each modification", and then confirm the source code scope, technology stack, lock file, build product, startup entrance, port, dependency service and persistent data. The information that can be determined by the existing project is read by itself, and the general implementation details are not returned to the user.
+2.**Determine the operation mode of the container. **The default source code enters the Linux container `/app`, keeps the service directory, and provides an HTTP entrance for platform forwarding. Multi-service projects explain the same container process management or authorized external dependence; an entrance is not equivalent to merging source code modules, nor is it equivalent to silently creating multiple Docker containers. When the architecture is indeed incompatible, specific differences and necessary choices are given, and it is not claimed that it can be run only by compressing the source code.
+3.**Prepare to start and rely. **Provide `prepare.sh`, `start.sh`, `deploy.sh` or equivalent complete script chain and real health check according to the latest Demo. The script is compatible with POSIX `sh`, locates files from its own directory, explicitly inputs `APP_PORT` (compatible with `PORT`), listens to `0.0.0.0`, starts in the previous `exec` way, and manages long-term processes by authorized tools. The first installation and construction are separated from the daily start-up, and the preparation can be repeated without overwriting the existing environment or business data; when the dependency is missing, the failure is clear and the recovery steps are recorded. If the entrance of the Python project depends on `/app/.venv`, there must be steps to create and verify the target environment, and you can't just check the existence of `start.sh`. Do not carry macOS's `.venv/`, `node_modules/` or native binary to pretend to be Linux dependencies, and do not assume that the platform automatically creates an environment or executes the entrance.
+4.**Clear operation instructions. **Prepare `CLAWTASK_README.md` in the delivery source root, and write down the runtime, first preparation, daily startup, configuration name, port, health path, data recovery, log and remaining operations. This document is a description of the platform delivery contract, which does not replace the service `DEPLOY.md` and the `docs/` HTML documents given to people; synchronize these documents according to the actual impact.
+5.**Add the web footer and define the delivery manifest.**For projects with a web interface, implement the footer specified below, then maintain `clawtask-package.json` using only `title`, `goal`, `startup`, `include` and `exclude`. Use an explicit file/directory allowlist for `include`, never the whole repository `.`. The packager does not read `.gitignore`. Required frontend `dist/` may be included with the updated footer; exclude packaging caches, delivery ZIPs and real runtime data by default.
+6.** Review security and data. **Check the whitelist, exclusion report and source code hard-coded credentials; real keys, `local-secrets/`, real `.env`, logs, Git history, virtual environment, dependent cache and nested archives shall not be packaged. Configuration samples without real values can be delivered. The migration scope of customer databases, materials, chats, roles and knowledge is based on user requirements and is not brought in by default; this tool only generates source code group chat packages and does not falsify identity or migrate history.
+7.**Generate and verify. **Use the attachment's built-in script `build`, and then execute `validate` independently; output in the target project, such as `dist/<project>-clawtask-v2-<version>.zip`. The output file must not exist yet, rebuild with a new name, and do not directly overwrite the existing delivery version. Check the actual archive root hierarchy, entrance, file list, volume and SHA-256, and not only confirm the existence of the ZIP file.
+8.**Self-inspection and delivery. ** Complete the start-up script inspection, existing construction or isolation verification that will not pollute the business data. The acceptance of the real business and the target platform will continue to collaborate manually according to Rule 09, and no special business test entrance will be built. Report package verification, local operation, real import, container readiness and public access status respectively, and deliver specific documents and the next step; the non-execution stage shall not be marked as passed.
 
-## 网页底部部署标识
+## Deploy the logo at the bottom of the web page
 
-1. 打包为 Clawtask 可用的项目，只要包含网页界面，必须在网页底部显示部署标识：[Deployed with Clawtask ↗](https://clawtask.fun/)。可见文字固定为 `Deployed with Clawtask ↗`，链接固定为 `https://clawtask.fun/`，直接指向用户指定的 Clawtask 官网，不替换为部署实例地址或中转链接。
-2. 标识放在实际应用的公共页脚或底部布局，覆盖各网页路由；无公共布局时补到对应页面底部。已有相同标识时核对并复用，不重复添加。不能只写在 README、打包回执或 docs 中充当完成。
-3. 沿用项目样式，保持桌面和移动端文字清晰、链接可点击且可通过键盘访问；不得隐藏、裁切、使用不可读字号或遮挡业务内容，也不得删除原有版权、备案等页脚信息。不要求悬浮或固定定位。
-4. 使用真实链接，不为跳转引入 SDK、追踪脚本或新依赖。可使用下方 HTML；采用框架时保留等价语义。新标签页打开时带上 `rel="noopener noreferrer"`。
+1. Packaged as a project that can be used by Clawtask, as long as it contains a web interface, the deployment logo must be displayed at the bottom of the web page: [Deployed with Clawtask ↗](https://clawtask.fun/). The visible text is fixed as `Deployed with Clawtask ↗`, and the link is fixed as `https://clawtask.fun/`, which directly points to the official website of Clawtask designated by the user, and is not replaced by the deployment instance address or transit link.
+2. The identification is placed in the public footer or bottom layout of the actual application, covering the route of each web page; when there is no public layout, it is supplemented at the bottom of the corresponding page. Check and reuse when the same logo is already available, and do not add it again. It cannot be written only in README, packaging receipt or docs as completion.
+3. Follow the project style to keep the desktop and mobile text clear, the link can be clicked and accessed through the keyboard; do not hide, crop, use unreadable font size or obscure business content, and do not delete the original copyright, filing and other footer information. No suspension or fixed positioning is required.
+4. Use real links and do not introduce SDK, tracking scripts or new dependencies for jumps. The HTML below can be used; retain the equivalent semantics when using the framework. Bring `rel="noopener noreferrer"` when the new tab is opened.
 
    ```html
    <a href="https://clawtask.fun/" target="_blank" rel="noopener noreferrer">Deployed with Clawtask ↗</a>
    ```
 
-5. 将修改后的网页源码及必要的重新构建产物纳入交付清单。从实际交付 ZIP 核对标识及目标链接，并在可运行时检查桌面、移动端和相关路由的页脚展示、点击目标；仅有源码字符串不代表渲染验证通过。未能运行时记录未验证原因和人工检查步骤，不宣称通过。
-6. 纯 API、命令行等没有网页界面的项目不为此新建网页，回执注明“不适用：无网页界面”。有网页的项目不能因旧 Demo 或附件尚无标识而省略；该标识属于本地打包适配，不代表已完成真实部署，也不扩大上传、发布或 main 合并授权。
+5. Include the modified web page source code and necessary reconstruction products in the delivery list. Check the identification and target link from the actual delivery of ZIP, and check the footer display and click the target of the desktop, mobile and related routes when running; only the source code string does not represent the rendering verification. When it fails to run, it records the unverified reason and manual inspection steps, and does not claim to be passed.
+6. Projects without web interfaces such as pure API and command lines will not create new web pages for this purpose, and the receipt will indicate "not applicable: no web interface". Projects with web pages cannot be omitted because the old Demo or attachment has no logo; the logo belongs to local packaging adaptation, which does not mean that the real deployment has been completed, nor does it expand the upload, release or main merger authorization.
 
-官网来源：用户在本任务指定的 Clawtask 官网 `https://clawtask.fun/`，用途为页脚品牌跳转，适用于本规则下所有有网页的 Clawtask 交付项目；访问核对结果与日期记录到任务交接中，不将官网当作具体部署实例的管理入口。
+Official website source: The Clawtask official website `https://clawtask.fun/` specified by the user in this task is for the purpose of the footer brand jump, which is applicable to all Clawtask delivery projects with web pages under this rule; access to the check results and date are recorded in the task handover, and the official website is not used as the management entrance for specific deployment instances.
 
-## v2.0 契约要点
+## v2.0 Key Points of Contract
 
-详细字段以本次实际读取的附件为准，不能手写一个假的 manifest 让旧 Compose ZIP 冒充群聊包。默认归档根必须直接是：
+The detailed field is subject to the attachment actually read this time. You can't write a fake manifest by hand to let the old Compose ZIP pretend to be a group chat package. The default archive root must be directly:
 
 ```text
 <project>-clawtask-v2-<version>.zip
@@ -91,19 +91,19 @@ unzip -p rules/clawtask-package-skill-v2.zip clawtask-package/references/package
         ├── deploy.sh
         ├── healthcheck.py
         ├── CLAWTASK_README.md
-        └── <实际项目源码和必要构建产物>
+        └── <Actual project source code and necessary construction products>
 ```
 
-1. `manifest.json` 的 `version` 为字符串 `2.0`，`type` 为 `conversation`；源码映射到 `/app`，ZIP 外面不能再套项目目录。
-2. `startup` 只允许 `workdir`、`entrypoint`、`container_port`、`healthcheck_path`。前两个路径位于 `/app`，入口必须存在于包内；端口为 1-65535 的 JSON 整数，推荐 8000，不是公网端口。当前方案中该字段是 AI 部署参考，不触发容器开机执行或环境变量注入。不要写入自造的 image/build/env 配置字段。上方准备、部署和健康脚本表示完整交付方案，可按实际技术栈提供等效实现，不是新增 manifest 字段。
-3. 健康路径为本应用的单 `/` 开头路径或 `null`。可检查时提供真实健康端点，不用固定成功响应掩盖故障；不适用时明确说明，不能声称健康检查已通过。
-4. 源码包不包含已有系统镜像或 `/app` 之外的数据，不保证任意技术栈免准备启动。包大小上限 500 MiB，展开总量 1 GiB，条目 20000，单文件 100 MiB；拒绝加密、重复路径、路径穿越、链接和特殊文件。
-5. 密钥继续遵守规则 05：交付包只含配置名与安全准备说明，目标环境实际凭据仍按项目本地文件读取方案处理；不承诺 `deploy.json.env`、旧 Compose 变量界面或自造 manifest 字段能注入 sandbox。只为打包不需要用户提供生产密钥。
-6. 应用自行管理的日志仍放在项目 `logs/<service>/` 并按天保留 30 天；附件样例提到的平台日志路径仅用于平台诊断，不据此修改本项目日志归属或共享宿主配置。
+1. The `version` of `manifest.json` is the string `2.0`, and `type` is `conversation`; the source code is mapped to `/app`, and the project directory can no longer be set outside the ZIP.
+2. `startup` only allows `workdir`, `entrypoint`, `container_port`, `healthcheck_path`. The first two paths are located in `/app`, and the entrance must exist in the package; the port is a JSON integer of 1-65535, and 8000 is recommended, which is not a public network port. In the current scheme, this field is an AI deployment reference and does not trigger the container start-up execution or environment variable injection. Do not write to the self-made image/build/env configuration field. The preparation, deployment and health script above represent the complete delivery plan, which can provide equivalent implementation according to the actual technology stack, not the new manifest field.
+3. The health path is the single `/` starting path or `null` of this application. Real health endpoints are provided when it can be checked, and there is no need to fix the successful response to cover up the fault; when it is not applicable, it is clearly stated that the health check cannot be passed.
+4. The source code package does not contain data other than the existing system mirror image or `/app`, and does not guarantee that any technology stack is not ready to start. The upper limit of the package size is 500 MiB, the total amount of expansion is 1 GiB, the entry is 20,000, and the single file is 100 MiB; encryption, duplicate paths, path crossing, links and special files are rejected.
+5. The key continues to comply with Rule 05: the delivery package only contains the configuration name and security preparation instructions, and the actual credentials of the target environment are still processed according to the project local file reading scheme; it is not promised that `deploy.json.env`, the old Compose variable interface or self-made manifest fields can be injected into sandbox. Only for packaging, the user does not need to provide the production key.
+6. The self-managed log of the application is still placed in the project `logs/<service>/` and kept for 30 days; the platform log path mentioned in the attached sample is only for platform diagnosis, and the project log attribution or shared host configuration is not modified accordingly.
 
-## 工具命令
+## Tool command
 
-先选择已经可用的 Python 3.10+，为打包工具建立项目内独立 venv；不要覆盖业务项目已有 `.venv/`，不安装全局依赖。以下在目标项目根执行，`<task-id>`、`<project>`、`<version>` 须替换为当前任务实际值：
+First, select Python 3.10+ that is already available to establish an independent venv in the project for the packaging tool; do not overwrite the existing `.venv/` of the business project, and do not install global dependencies. The following is executed at the root of the target project. `<task-id>`, `<project>`, `<version>` must be replaced by the actual value of the current task:
 
 ```sh
 python3 -m venv --without-pip ".cache/clawtask-packaging/<task-id>/.venv"
@@ -116,33 +116,37 @@ python3 -m venv --without-pip ".cache/clawtask-packaging/<task-id>/.venv"
   "dist/<project>-clawtask-v2-<version>.zip"
 ```
 
-上例 `python3` 必须已核实版本；macOS 系统自带版本可能不满足条件，不要未经检查直接使用。解压得到的两份脚本必须保持同目录。工具自身不会上传、安装业务依赖或运行项目代码。安全过滤不能证明任意源码都不含密钥，仍须人工可审阅的范围检查。
+The above example `python3` must have been verified; the self-contain version of the macOS system may not meet the conditions, so do not use it directly without checking. The two decompressed scripts must be kept in the same directory. The tool itself will not upload, install business dependencies or run project code. Security filtering cannot prove that any source code does not contain a key, and still requires manual reviewable scope check.
 
-## 平台后续步骤
+## Next steps of the platform
 
-1. 按当前 Demo 和目标实例核实导入入口；2026-09-23 Demo 指向管理员“系统初始化 → 导入数据包”。上传生成的业务 ZIP 后等待导入任务 `succeeded`；接收上传不等于完成，失败先检查原任务状态，不反复创建重复导入。
-2. 导入文件进入停止容器 `/app`，用户开启基础容器后，由已获授权的 AI 读取 `/app/CLAWTASK_README.md` 并调用准备、部署和健康检查脚本。基础容器运行不等于应用已启动；容器重启后仍需恢复应用并验证。不用“公开访问”按钮代替构建或启动。员工 `cmd_executor` 的长期服务按当前 Demo 使用 `background=true, wait_for_exit=false`；安装或构建等有限任务确认成功退出。外部 MCP 按实际工具 schema 操作，不混用这些参数，不把有超时的前台命令当永久托管；记录原任务标识，先查状态、日志和健康再重试，避免重复启动。
-3. 应用就绪后，用户再启用“公开访问”，填写应用容器端口。宿主端口、loopback 转发、Caddy、证书和路由归平台管理，不在包内硬编码或自行改动。
-4. 实际上传、远程操作和公开访问仅在已有对应授权时由 AI 执行，否则交付步骤给用户。提供目标实例已核实的入口或平台返回的 URL；未知时写明未提供，不臆造站点地址，不阻塞已授权的本地打包。路由登记成功不等于公网已验证可达。
+1. Verify the import entrance according to the current Demo and the target instance; 2026-09-23 Demo points to the administrator's "System Initialization → Import Packet". After uploading the generated business ZIP, wait for the import task `succeeded`; receiving the upload does not equal completion. If it fails, check the original task status first, and do not repeatedly create repeated imports.
+2. Import the file into the stop container `/app`. After the user opens the basic container, the authorized AI reads `/app/CLAWTASK_README.md` and calls the preparation, deployment and health check script. The running of the basic container does not mean that the application has been started; the application still needs to be restored and verified after the container is restarted. Don't use the "Public Access" button instead of building or starting. The long-term service of the employee `cmd_executor` uses `background=true, wait_for_exit=false` according to the current Demo; limited tasks such as installation or construction confirm successful exit. External MCP operates according to the actual tool schema, do not mix these parameters, and do not treat the front desk command with timeout as permanent hosting; record the original task identification, check the status, log and health first, and then try again to avoid repeated startup.
+3. After the application is ready, the user enables "public access" and fills in the application container port. Host port, loopback forwarding, Caddy, certificate and routing are managed by the platform, and are not hard-coded or modified by themselves in the package.
+4. In fact, transmission, remote operation and public access are only performed by AI when the corresponding authorization is already available, otherwise the steps are delivered to the user. Provide the URL returned by the verified entrance or platform of the target instance; when unknown, it is written that it is not provided, do not create a site address, and do not block the authorized local packaging. The successful routing registration does not mean that the public network has been verified.
 
-## 交付回执
+## Delivery receipt
 
-除规则索引要求的结束复核外，至少给出：
+In addition to the end review required by the rule index, at least:
 
 ```text
-Clawtask 打包回执
-- 项目与模式：<项目名> / conversation v2.0 或明确批准的兼容模式
-- 工具依据：rules/clawtask-package-skill-v2.zip / <实际 SHA-256>
-- 最新 Demo 核对：<实际源路径、核对日期、声明版本或未声明、与附件差异及处理>
-- 交付 ZIP：<目标项目内绝对路径>
-- 包 SHA-256：<实际值>
-- 来源版本：<分支、提交；非 Git 如实说明>
-- 运行契约：<运行时、首次准备、入口、端口、健康路径>
-- 网页部署标识：<页脚位置、文字与官网链接、包内核对及桌面/移动端验证结果；无网页时注明不适用>
-- 配置与数据：<配置名、文件读取和必要恢复步骤，不含真实值>
-- 验证：<包结构、安全检查、本地运行分别列出结果>
-- 平台验收：<导入、容器启动、公开访问分别列出实际状态>
-- 人工下一步：<操作、已核实入口或缺失信息>
+Clawtask packing receipt
+- Project and mode: <project name> / conversation v2.0 or explicitly approved compatibility mode
+- Tool base: rules/clawtask-package-skill-v2.zip / <actual SHA-256>
+- Latest Demo Check: <Actual source path, verification date, declared version or undeclared, difference and processing with attachments>
+- Delivery ZIP: <Absolute path in the target project>
+- Package SHA-256: <Actual Value>
+- Source version: <branch, submission; non-Git truthfully explained>
+- Operation contract: <runtime, first preparation, entrance, port, health path>
+- Web page deployment logo: <footer location, text and official website link, in-package check and desktop/mobile verification results; indicate that it is not applicable when there is no web page>
+- Configuration and data: <Configuration name, file reading and necessary recovery steps, excluding real values>
+- Verification: <List the results of package structure, security check and local operation respectively>
+- Platform acceptance: <List the actual status of import, container startup and public access respectively>
+- Manual next step: <Operation, verified entrance or missing information>
 ```
 
-仅生成并验证 ZIP 时，可说明“打包与本地包验证完成，待平台验收”；不得宣称已经部署上线。Git 的人工确认与 main 同步仍遵守规则 04。
+When generating and verifying ZIP only, it can be said that "packaging and local package verification are completed and waiting for platform acceptance"; it cannot be claimed that it has been deployed online. Git's manual confirmation and main synchronization still follow rule 04.
+
+## English attachment translation (2026-10-10)
+
+TASK-20261010-013 translates the fixed imported archive into English without upgrading the tool or its demo. The original archive SHA-256 was 92a1d30fb46975bcf18be30d5700b7f4cf8a6256d539a6c4aaed583b86f70503; the English archive SHA-256 is ef903a7b70acf6501081fec3e296f058d6045780e9b30993c3154f0c1a94fd76. Python AST structure, f-string expressions, filenames, JSON keys, archive permissions and contracts were preserved. Current original-project Demo/Skill/contracts were read on 2026-10-10: their declared snapshot date is 2026-09-23. The latest demo contains prepare/deploy/healthcheck scripts absent from this older attachment. That difference remains explicit; translation does not make the attachment a latest-demo mirror or authorize platform deployment. The permission and human-test rules retain their prior meaning in specification version 2026-10-10.1; this language-only archive revision must be included in future checks.

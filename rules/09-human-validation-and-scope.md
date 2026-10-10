@@ -1,47 +1,47 @@
-# 09. 人工协作验证与任务边界
+# 09. Manual collaborative verification and task boundaries
 
-## 目标
+## Target
 
-微服务修改后的测试和确认由 AI 与人工合作完成。AI 不专门创建测试入口，避免测试数据干扰项目本身。AI 必须把验证情况、未验证原因和后续人工确认事项写入 `TODO.md`。
+The modified testing and confirmation of microservices are completed by AI and manual cooperation. AI does not specifically create a test entrance to avoid the test data interfering with the project itself. AI must write the verification situation, the reason for non-verification and subsequent human confirmation matters into `TODO.md`.
 
-## 人工协作验证
+## Manual collaborative verification
 
-1. 修改完成后，AI 应说明本次涉及哪些微服务。
-2. AI 不强制创建新的测试入口或测试数据。
-3. AI 先完成与改动相称、不会污染业务数据的已有检查，例如静态检查、构建、文档一致性检查和已隔离的现有测试；真实业务操作流程继续与人工协作验证。不因需要人工验收而省略能独立完成的检查。
-4. 未完成验证时，必须在 `TODO.md` 中记录原因。
-5. 人工确认完成前，不把微服务分支合并到 `main`。
-6. AI 完成分支后，必须把来源分支、待测试提交编号、测试步骤和预期结果交给用户。
-7. 用户测试并确认指定提交通过后，由 AI 负责同步到 `main`，用户不需要管理特性分支。
-8. 测试后分支内容发生变化时，必须重新提交并重新进行人工测试。
-9. 多 AI 任务必须标明执行 AI、任务编号、分支和 Worktree；人工确认必须对应明确提交。
+1. After the modification is completed, AI should explain which microservices are involved this time.
+2. AI does not force the creation of new test entrances or test data.
+3. AI first completes the existing inspections that are proportionate with the changes and will not pollute the business data, such as static inspection, construction, document consistency inspection and isolated existing tests; the real business operation process continues to collaborate with human verification. Do not omit the inspection that can be completed independently because of the need for human acceptance.
+4. When the verification is not completed, the reason must be recorded in `TODO.md`.
+5. Do not merge the microservice branch into `main` until the human confirmation is completed.
+6. After AI completes the branch, it must give the source branch, the commit SHA to be tested, the test steps and the expected results to the user.
+7. After the user tests and confirms that the specified commit is approved, AI is responsible for synchronizing to `main`, and the user does not need to manage the feature branch.
+8. When the content of the branch changes after the test, it must be resubmitted and the manual test must be carried out again.
+9. Multi-AI tasks must indicate the execution of AI, task number, branch and Worktree; human confirmation must be clearly submitted.
 
-## TODO 修改记录
+## TODO modification record
 
-每次 AI 修改后，按规则 14 汇总到 `TODO.md` 的最近记录应包含以下内容；只读任务不为记录要求写文件：
+After each AI modification, the latest record summarized to `TODO.md` according to rule 14 should contain the following; read-only tasks do not write documents for record requirements:
 
-1. 修改时间。
-2. 修改目标。
-3. 涉及微服务或规范文件。
-4. 已完成内容。
-5. 验证情况。
-6. 未完成事项或需要人工确认的内容。
-7. 待测试或已测试的来源分支及提交编号。
-8. 同步到 `main` 后的合并提交编号。
-9. 执行 AI、任务编号和交接文件位置。
+1. Modify the time.
+2. Modify the goal.
+3. It involves microservices or standard documents.
+4. The content has been completed.
+5. Verify the situation.
+6. Unfinished matters or contents that need to be confirmed manually.
+7. Source branches to be tested or have been tested and the commit SHA.
+8. The merge commit SHA after synchronization to `main`.
+9. Perform AI, task number and handover document location.
 
-## 任务边界
+## Mission boundary
 
-1. AI 只能围绕当前目标修改。
-2. 发现额外优化点时，不直接顺手改，先记录到 `TODO.md` 的后续建议。
-3. 涉及多个微服务时，必须拆分处理。
-4. 用户明确变更目标、范围或验收条件时，AI 应同步更新 `FINAL_GOAL.md` 后继续已授权工作。AI 自行提出的范围扩展须先征求人工确认，不得通过自行修改目标文件取得授权。
+1. AI can only be modified around the current goal.
+2. When additional optimization points are found, do not change them directly, but record the follow-up suggestions of `TODO.md` first.
+3. When multiple microservices are involved, they must be split and processed.
+4. When the user clearly changes the target, scope or acceptance conditions, AI should update `FINAL_GOAL.md` synchronously and continue the authorized work. The scope expansion proposed by AI must be confirmed manually, and authorization shall not be obtained by modifying the target file by itself.
 
-## 完成状态
+## Completion status
 
-1. 实现及自检完成：授权范围内的实现、相关文档和可执行检查已完成，但尚不代表人工验收或 main 同步完成。
-2. 待人工测试：交付被冻结的来源分支、提交编号、人工步骤和预期结果。自检通过不替代人工确认。
-3. 测试通过待同步、已同步 main：按规则 04 记录用户确认和实际合并结果；提交变化后继续按规则 04 重新测试。
-4. 只读任务在报告覆盖用户要求后可以结束，无需任务登记、Git 提交或虚构人工测试；非 Git 文档任务完成文档检查且没有约定的待验收项时，可标记已完成或已归档。
-5. Git 项目的文档修改仍在对应特性分支提交，进入 main 前仍须人工审阅确认指定提交，不适用的业务测试步骤应说明，不得借“文档任务”绕过合并批准。
-6. 最终交付分别说明已完成、未验证和等待用户的事项；存在仍可独立完成的授权工作时继续处理，不把“待人工测试”作为提前交回未完成实现的理由。
+1. Realization and self-inspection completion: The implementation, relevant documents and executable inspections within the scope of authorization have been completed, but it does not represent human acceptance or main synchronous completion.
+2. To be tested manually: deliver the frozen source branch, commit SHA, manual steps and expected results. Self-examination does not replace human confirmation.
+3. The test passed the synchronization and synchronized main: record the user confirmation and actual merge results according to rule 04; continue to retest according to rule 04 after submitting the changes.
+4. Read-only tasks can be terminated after the report covers user requirements, without task registration, Git commit or fictitious human testing; when non-Git document tasks complete document inspection and there are no agreed pending acceptance items, they can be marked as completed or archived.
+5. The document modification of the Git project is still submitted in the corresponding feature branch. Before entering the main, it is still necessary to manually review and confirm the specified commit. Inapplicable business test steps should be explained, and the merger approval should not be bypassed by the "document task".
+6. The final delivery explains the items that have been completed, not verified and waiting for the user respectively; continue to be processed when there is authorized work that can still be completed independently, and do not use "to be tested manually" as a reason to return the incomplete implementation in advance.

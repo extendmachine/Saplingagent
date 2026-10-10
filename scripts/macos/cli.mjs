@@ -27,13 +27,13 @@ function run(command, args, { cwd = root, capture = false } = {}) {
     const onInterrupt = () => forward('SIGINT'), onTerminate = () => forward('SIGTERM');
     process.on('SIGINT', onInterrupt); process.on('SIGTERM', onTerminate); process.on('SIGHUP', onTerminate);
     const detach = () => { process.off('SIGINT', onInterrupt); process.off('SIGTERM', onTerminate); process.off('SIGHUP', onTerminate); };
-    child.once('error', () => { detach(); reject(new Error('命令无法启动，请重新运行 1-安装.command。')); });
+    child.once('error', () => { detach(); reject(new Error('Command could not start. Run 1-Install.command again.')); });
     child.once('exit', (code, signal) => { detach(); resolve({ code: code ?? 1, signal, output, errorOutput }); });
   });
 }
 async function required(command, args, options) {
   const result = await run(command, args, options);
-  if (result.code !== 0) throw new Error(`操作失败（退出码 ${result.code}）。请查看上面的原因，修复后重试。`);
+  if (result.code !== 0) throw new Error(`Operation failed (exit code ${result.code}). Fix the error above and try again.`);
   return result;
 }
 async function exists(file) { return fs.access(file).then(() => true, () => false); }
@@ -60,31 +60,31 @@ async function loggedIn() {
   const result = await run(cli, [...authArgs, 'login', 'status'], { capture: true });
   if (result.code === 0) return true;
   if (/not logged in/i.test(result.output + result.errorOutput)) return false;
-  throw new Error('无法读取项目登录状态。请检查 Codex 安装、架构和 local-secrets/codex/config.toml；该错误不能视为尚未登录。');
+  throw new Error('Unable to read project login status. Check the Codex installation, architecture and local-secrets/codex/config.toml; this error does not mean the project is not logged in.');
 }
 async function install(repair = false) {
   const lock = path.join(root, '.runtime/macos-install.lock');
   try { await fs.mkdir(lock); }
   catch (error) {
-    if (error.code === 'EEXIST') throw new Error('另一轮安装尚未结束。请等待；若安装窗口已关闭，可按说明移除 .runtime/macos-install.lock 后重试。');
+    if (error.code === 'EEXIST') throw new Error('Another installation is in progress. Wait; if its window has closed, remove .runtime/macos-install.lock as documented and retry.');
     throw error;
   }
   const stage = path.join(root, '.runtime', `codex-install-${randomUUID()}`);
   try {
-    for (const file of ['1-安装.command', '2-登录Codex.command', '3-启动Saplingagent.command', '4-诊断.command', 'scripts/macos/bootstrap.sh', 'scripts/macos/entry.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
+    for (const file of ['1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', '4-Doctor.command', 'scripts/macos/bootstrap.sh', 'scripts/macos/entry.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
     if (!repair && await installed()) {
       await localSetup();
-      console.log('项目环境已安装且版本一致，无需重复下载。可登录或启动；若依赖损坏，用 bash "1-安装.command" --repair 修复。');
+      console.log('The project environment is installed and up to date. Log in or start; repair damaged dependencies with bash "1-Install.command" --repair.');
       return;
     }
     const packageFile = path.join(stage, 'package.json');
     await fs.mkdir(path.dirname(packageFile), { recursive: true });
     await fs.writeFile(packageFile, JSON.stringify({ name: 'saplingagent-local-codex', private: true, dependencies: { '@openai/codex': settings.codexVersion } }, null, 2) + '\n');
-    console.log(`安装项目内 Codex ${settings.codexVersion}…`);
+    console.log(`Installing project-local Codex ${settings.codexVersion}…`);
     await required('npm', ['install', '--include=optional', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: path.dirname(packageFile) });
     const stagedCli = path.join(stage, 'node_modules/.bin/codex');
     const version = await required(stagedCli, ['--version'], { capture: true });
-    if (version.output.trim() !== `codex-cli ${settings.codexVersion}`) throw new Error('Codex 版本与配置不一致，请重新安装。');
+    if (version.output.trim() !== `codex-cli ${settings.codexVersion}`) throw new Error('Codex version does not match configuration. Reinstall.');
     const destination = path.join(root, '.runtime/codex');
     const previous = path.join(root, '.runtime', `codex-previous-${randomUUID()}`);
     const hasPrevious = await exists(destination);
@@ -96,34 +96,34 @@ async function install(repair = false) {
     // Once npm ci can replace business dependencies, the old marker is no longer valid.
     await fs.rm(stampFile, { force: true });
     for (const service of services) {
-      console.log(`安装 ${service} 的锁定依赖…`);
+      console.log(`Installing locked dependencies for ${service}…`);
       await required('npm', ['ci', '--include=optional', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: path.join(root, service) });
     }
     await localSetup();
     await fs.writeFile(stampFile, JSON.stringify({ schemaVersion: 1, nodeVersion: process.versions.node, codexVersion: settings.codexVersion, arch: process.arch, signature: await signature(), installedAt: new Date().toISOString() }, null, 2) + '\n');
-    console.log('安装完成。双击 2-登录Codex.command，用你自己的账号登录，然后双击 3-启动Saplingagent.command。');
+    console.log('Installation complete. Double-click 2-Login-Codex.command to log in with your own account, then 3-Start-Saplingagent.command.');
   } finally { await fs.rm(stage, { recursive: true, force: true }); await fs.rm(lock, { recursive: true, force: true }); }
 }
 async function login(deviceAuth) {
-  if (!await installed()) throw new Error('请先双击 1-安装.command。');
+  if (!await installed()) throw new Error('Double-click 1-Install.command first.');
   await localSetup();
-  if (await loggedIn()) { console.log('本项目已保存登录方式。可以运行 3-启动Saplingagent.command；若请求报认证错误，请先按说明退出项目账号，再重新登录。'); return; }
-  console.log('接下来由官方 Codex 打开浏览器。请使用自己的 ChatGPT/Codex 账号完成登录。');
+  if (await loggedIn()) { console.log('Project login credentials are saved. Run 3-Start-Saplingagent.command; if requests fail authentication, log out of this project as documented and log in again.'); return; }
+  console.log('Official Codex will open your browser. Log in with your own ChatGPT/Codex account.');
   await required(cli, [...authArgs, 'login', ...(deviceAuth ? ['--device-auth'] : [])]);
-  if (!await loggedIn()) throw new Error('登录尚未完成，请再次运行 2-登录Codex.command。');
+  if (!await loggedIn()) throw new Error('Login is incomplete. Run 2-Login-Codex.command again.');
   const auth = path.join(env.CODEX_HOME, 'auth.json');
   if (await exists(auth)) await fs.chmod(auth, 0o600);
-  console.log('项目登录完成。双击 3-启动Saplingagent.command。');
+  console.log('Project login complete. Double-click 3-Start-Saplingagent.command.');
 }
 async function logout() {
-  if (!await exists(cli)) throw new Error('请先运行 1-安装.command。');
+  if (!await exists(cli)) throw new Error('Run 1-Install.command first.');
   await required(cli, [...authArgs, 'logout'], { capture: true });
-  console.log('已退出本项目 Codex 账号；应用文件和会话保留。可重新运行 2-登录Codex.command。');
+  console.log('Logged out of the Codex account for this project; application files and sessions are retained. Run 2-Login-Codex.command to log in again.');
 }
 async function start(noOpen) {
-  if (!await installed()) throw new Error('安装尚未完成，或依赖锁文件已经变化。请先运行 1-安装.command。');
+  if (!await installed()) throw new Error('Installation is incomplete or dependency lockfiles have changed. Run 1-Install.command first.');
   await localSetup();
-  if (!await loggedIn()) throw new Error('本项目尚未登录。请先运行 2-登录Codex.command。');
+  if (!await loggedIn()) throw new Error('This project is not logged in. Run 2-Login-Codex.command first.');
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   const child = spawn(process.execPath, [path.join(root, 'scripts/dev.mjs')], { cwd: root, env, stdio: ['inherit', 'pipe', 'pipe'] });
   let ended = false, interrupted = false, stopRequested = false, launched = false, startupOutput = '';
@@ -151,8 +151,8 @@ async function start(noOpen) {
           const front = await fetch(`http://127.0.0.1:${config.frontPort}/`, { signal: AbortSignal.timeout(1500) });
           if (front.ok) {
             ready = true;
-            console.log(`已接入 Codex App Server：${status.model}；MCP ${status.mcp.tools.length} 个；Skills ${status.skills.length} 个。`);
-            console.log(`网页：http://127.0.0.1:${config.frontPort}/\n保持本窗口开启；按 Control+C 停止本次服务。`);
+            console.log(`Connected to Codex App Server: ${status.model}; ${status.mcp.tools.length} MCP tools; ${status.skills.length} Skills.`);
+            console.log(`Web page: http://127.0.0.1:${config.frontPort}/\nKeep this window open; press Control+C to stop these services.`);
             if (!noOpen) await run('/usr/bin/open', [`http://127.0.0.1:${config.frontPort}/`], { capture: true });
             break;
           }
@@ -162,10 +162,10 @@ async function start(noOpen) {
     }
     if (!ready && !ended && !interrupted) {
       stopRequested = true; child.kill('SIGTERM');
-      throw new Error('120秒内未完成模型/认证/MCP就绪。请运行 4-诊断.command；此轮服务已停止。');
+      throw new Error('Model/authentication/MCP did not become ready within 120 seconds. Run 4-Doctor.command; these services have been stopped.');
     }
     const result = await exit;
-    if (result.code !== 0 && !interrupted) throw new Error(`服务已停止（退出码 ${result.code}）。请查看端口、安装或认证错误。`);
+    if (result.code !== 0 && !interrupted) throw new Error(`Services stopped (exit code ${result.code}). Check for port, installation or authentication errors.`);
   } finally {
     process.off('SIGINT', stop); process.off('SIGTERM', stop); process.off('SIGHUP', stop);
     if (!ended) { stopRequested = true; child.kill('SIGTERM'); }
@@ -173,36 +173,36 @@ async function start(noOpen) {
   }
 }
 async function doctor() {
-  console.log(`macOS ${process.arch}；Node ${process.versions.node}；目录：${root}`);
+  console.log(`macOS ${process.arch}; Node ${process.versions.node}; folder: ${root}`);
   const local = await installed();
-  console.log(`项目依赖：${local ? '完整' : '未安装或已变化，请运行 1-安装.command'}`);
+  console.log(`Project dependencies:${local ? 'installed' : 'not installed or changed; run 1-Install.command'}`);
   let authenticated = false;
   if (await exists(cli)) {
     const version = await run(cli, ['--version'], { capture: true });
     const versionLabel = version.output.trim().match(/^codex-cli (\d+\.\d+\.\d+(?:[-.a-z0-9]+)?)$/i)?.[1];
-    if (version.code !== 0 || !versionLabel) throw new Error('Codex 可执行文件检查失败，请重新安装；未检查登录状态。');
+    if (version.code !== 0 || !versionLabel) throw new Error('Codex executable check failed. Reinstall; login status was not checked.');
     console.log(`Codex：${versionLabel}`);
     authenticated = await loggedIn();
-    console.log(`项目登录：${authenticated ? '已保存（不代表当前网络/额度可用）' : '尚未登录，请运行 2-登录Codex.command'}`);
+    console.log(`Project login:${authenticated ? 'saved (does not verify current network or quota)' : 'not logged in; run 2-Login-Codex.command'}`);
   }
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   let online = false;
   try {
     const status = await fetch(`http://127.0.0.1:${config.agentPort}/api/status`, { signal: AbortSignal.timeout(2000) }).then(r => r.json());
     online = status.ready === true;
-    console.log(`配置端口的运行状态：${online ? '已就绪' : '进程运行但Agent未就绪'}；模型：${status.model || '未选择'}；MCP：${status.mcp?.tools?.length || 0}；Skills：${status.skills?.length || 0}`);
-  } catch { console.log('运行状态：未启动。安装并登录后，运行 3-启动Saplingagent.command。'); }
-  console.log('诊断只报告状态，不输出凭据，也不会发起模型请求。');
+    console.log(`Runtime status on configured ports:${online ? 'ready' : 'process running but Agent not ready'}; model:${status.model || 'not selected'}; MCP:${status.mcp?.tools?.length || 0}; Skills:${status.skills?.length || 0}`);
+  } catch { console.log('Runtime status: not started. Install, log in, then run 3-Start-Saplingagent.command.'); }
+  console.log('Diagnostics report status only, without printing credentials or making model requests.');
   if (!local || !authenticated) process.exitCode = 1;
 }
 
 try {
-  if (process.platform !== 'darwin') throw new Error('此入口目前只支持 macOS。');
+  if (process.platform !== 'darwin') throw new Error('This entry point currently supports macOS only.');
   const [action, ...args] = process.argv.slice(2);
   if (action === 'install' && args.every(x => x === '--repair')) await install(args.includes('--repair'));
   else if (action === 'login' && args.every(x => x === '--device-auth')) await login(args.includes('--device-auth'));
   else if (action === 'start' && args.every(x => x === '--no-open')) await start(args.includes('--no-open'));
   else if (action === 'doctor' && !args.length) await doctor();
   else if (action === 'logout' && !args.length) await logout();
-  else throw new Error('可用操作：install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout。');
+  else throw new Error('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout.');
 } catch (error) { console.error(error.message); process.exitCode = 1; }

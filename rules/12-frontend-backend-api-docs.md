@@ -1,12 +1,12 @@
-# 12. 前后端接口审阅文档
+# 12. Front-end and back-end interface review documents
 
-## 目标
+## Target
 
-项目必须在根目录 `docs/` 内维护一份面向人工审阅的前后端接口文档，集中展示前端与后端之间使用的接口名称和完整内容，方便检查接口是否一致、是否遗漏、是否发生不兼容修改。
+The project must maintain a front-end and back-end interface document for manual review in the root directory `docs/`, and centrally display the interface name and complete content used between the front-end and the back-end, so as to check whether the interface is consistent, missing, and incompatible modifications.
 
-微服务目录内的 `CONTRACT.md` 仍是 AI 开发和修改时读取的接口契约；`docs/api-interfaces.html` 是根据各微服务契约整理出的人工审阅版本，不替代 `CONTRACT.md`。
+`CONTRACT.md` in the microservice catalog is still the interface contract read during AI development and modification; `docs/api-interfaces.html` is a manual review version sorted out according to each microservice contract and does not replace `CONTRACT.md`.
 
-## 必备文件
+## Required documents
 
 ```text
 project-root/
@@ -18,32 +18,32 @@ project-root/
         └── CONTRACT.md
 ```
 
-## 每个接口必须记录
+## Each interface must be recorded.
 
-1. 接口名称和唯一标识。
-2. 接口用途和业务内容。
-3. 所属后端微服务与调用该接口的前端模块。
-4. 请求方式和接口地址，例如 `GET /api/users/{id}`。
-5. 请求头、路径参数、查询参数和请求体，并注明字段名称、类型、是否必填和含义。
-6. 成功返回内容，包括状态码、字段名称、类型和含义。
-7. 失败返回内容，包括错误码、触发条件和前端应如何处理。
-8. 身份验证和权限要求，但不得写入真实账号、令牌、密钥或其他敏感内容。
-9. 接口状态，例如规划中、开发中、待人工验证、已启用、已停用。
-10. 接口版本、最后更新时间和对应的 `CONTRACT.md` 位置。
+1. Interface name and unique identification.
+2. Interface purpose and business content.
+3. It belongs to the back-end microservice and the front-end module that calls the interface.
+4. Request method and interface address, such as `GET /api/users/{id}`.
+5. Request header, path parameter, query parameter and request body, and indicate the field name, type, whether it is required and its meaning.
+6. Successfully return the content, including the status code, field name, type and meaning.
+7. The failure returns the content, including the error code, trigger conditions and how the front-end should be handled.
+8. Authentication and permission requirements, but do not write real accounts, tokens, keys or other sensitive content.
+9. Interface status, such as planning, development, pending manual verification, enabled, disabled.
+10. Interface version, last update time and the corresponding `CONTRACT.md` location.
 
-## 文档组织方式
+## Document organization method
 
-1. `docs/api-interfaces.html` 必须使用 HTML，方便直接打开审阅。
-2. 接口应按后端微服务分组，并标明对应前端模块。
-3. 文档应提供接口目录或快速定位方式；接口较多时，应支持按服务、前端模块或状态筛选。
-4. 请求和返回示例必须使用虚构或脱敏数据，不得出现本地敏感信息、真实密钥和真实登录凭据。
-5. 已停用接口不得直接删除，应标记停用时间、替代接口和兼容处理；确认无需追溯后才能移入历史记录。
+1. `docs/api-interfaces.html` must use HTML, which is convenient to open and review directly.
+2. The interface should be grouped by back-end microservices and marked with the corresponding front-end modules.
+3. Documents should provide interface directories or quick positioning methods; when there are many interfaces, they should support filtering by service, front-end module or status.
+4. Requests and return examples must use fictitious or desensitized data, and local sensitive information, real keys and real login credentials must not appear.
+5. Disabled interfaces should not be deleted directly. They should be marked with deactivation time, alternative interfaces and compatibility processing; confirm that they do not need to be traced before they can be moved to the history.
 
-## AI 执行规则
+## AI execution rules
 
-1. 新增、修改或停用前后端接口时，先更新对应微服务的 `CONTRACT.md`，再同步更新 `docs/api-interfaces.html`。
-2. 仅修改接口内部实现且对外契约未变化时，不要求改写接口内容，但应核对文档仍然准确。
-3. 前端调用字段与后端返回字段不一致时，不得自行猜测，应在 `TODO.md` 记录待人工确认项。
-4. 接口修改完成后，将需要人工联调和验证的内容写入 `TODO.md`，不得把“代码已修改”直接视为“接口已验证”。
-5. 提交前必须检查 `CONTRACT.md` 与 `docs/api-interfaces.html` 是否一致。
-6. 接口依赖第三方平台时，必须同步更新微服务 `REFERENCES.md`，并提供官方接口文档网址。
+1. When adding, modifying or disabling the front-end interface, update the corresponding microservice `CONTRACT.md` first, and then update `docs/api-interfaces.html` synchronously.
+2. When only the internal implementation of the interface is modified and the external contract has not changed, it is not required to rewrite the interface content, but it should be checked that the document is still accurate.
+3. When the front-end call field is inconsistent with the back-end return field, you should not guess by yourself. You should record the items to be manually confirmed in `TODO.md`.
+4. After the interface modification is completed, the content that needs manual tuning and verification should be written to `TODO.md`, and "code has been modified" shall not be directly regarded as "interface verified".
+5. It must be checked whether `CONTRACT.md` is consistent with `docs/api-interfaces.html` before submission.
+6. When the interface depends on the third-party platform, the microservice `REFERENCES.md` must be updated synchronously and the official interface document URL must be provided.
