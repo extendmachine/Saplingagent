@@ -1,157 +1,161 @@
-# AI 项目控制规范与规则索引
+# AI Project Control Specification and Rule Index
 
-规范版本：`2026-09-29.1`
+Specification version: `2026-10-10.1`
 
-本文件是项目公共控制规范和规则索引的唯一来源。Codex、Claude Code 和其他 AI 从根目录入口文件进入本文件，再按当前任务读取相关细则。
+This document is the only source of project public control specifications and rule indexes. Codex, Claude Code and other AI enter this file from the root directory entrance file, and then read the relevant details according to the current task.
 
-## 入口关系
+## Entry points
 
 ```text
-Codex / 其他 AI -> AGENTS.md -> rules/README.md
+Codex / Other AI -> AGENTS.md -> rules/README.md
 Claude Code      -> CLAUDE.md -> AGENTS.md -> rules/README.md
 ```
 
-根目录 `AGENTS.md` 只保存启动引导和少量项目专用提示；`CLAUDE.md` 只负责导入 `AGENTS.md`。公共控制规范、规则索引和跨 AI 约束统一维护在本文件与 `rules/` 下的细则中。
+The root directory `AGENTS.md` only saves startup guidance and a small number of project-specific prompts; `CLAUDE.md` is only responsible for importing `AGENTS.md`. Public control specifications, rule indexes and cross-AI constraints are uniformly maintained in the detailed rules under this document and `rules/`.
 
-全局 AI 入口中的默认要求用于补充项目未规定的事项；项目已明确规定的内容以本项目规则为准。Skill 提供任务专用方法，不自行扩大用户授权，也不覆盖项目已明确保留的批准要求。
+The default requirements in the global AI entrance are used to supplement the matters not stipulated in the project; the content clearly stipulated in the project shall be subject to the rules of this project. Skill provides a task-specific method, does not expand user authorization on its own, and does not override the approval requirements that have been clearly retained by the project.
 
-## 任务类型与授权
+## Task type and authorization
 
-1. 只读审阅、解释、分析和方案讨论：读取相关文件并输出结果，不为流程要求写入任务登记、TODO 或其他文件。用户明确要求先审阅后修改时，必须等到修改获准再进入修改流程。
-2. 修改任务：在用户已授权的目标内完成必要的分析、实施、文档同步和适当自检，不因普通实施细节重复索取批准。
-3. 规范分发：仅在用户要求引入或复制规范时，按根目录 `README.md` 执行整包覆盖；仅阅读该文件或要求审阅项目不构成复制、重构或部署授权。
-4. 回执是 AI 对读取和复核结果的告知，不是等待用户回复的批准流程。main 同步、接口人工确认、环境迁移和外部发布等明确批准要求仍按相关规则执行。
-5. 已有明确授权在同一对象、动作和范围内有效；执行前核对实际条件，不能把授权扩展到不同目标、未经测试的提交或额外外部操作。
-6. 用户在对话中为当前项目直接提供真实凭据时，按规则 05 代存到目标项目的 `local-secrets/` 并登记总账，不重复询问是否保存，也不要求用户自行建文件；仅限本地代存，示例、只读引用和明确禁止保存的内容除外。
+1. Read-only review, explanation, analysis and program discussion: read relevant documents and output the results, do not write task registration, TODO or other documents for process requirements. When the user clearly requests to review first and then modify, he must wait until the modification is approved before entering the modification process.
+2. Modification task: complete the necessary analysis, implementation, document synchronization and appropriate self-examination within the goals authorized by the user, and do not repeatedly request approval for ordinary implementation details.
+3. Specification distribution: Only when the user requests to introduce or copy the specification, perform the whole package overwriting according to the root directory `README.md`; only reading the file or requesting to review the project does not constitute copying, restructuring or deployment authorization.
+4. The receipt is AI's notification of the reading and review results, not the approval process waiting for the user's reply. Clear approval requirements such as main synchronization, interface manual confirmation, environment migration and external release are still implemented in accordance with relevant rules.
+5. Clear authorization is valid in the same object, action and scope; check the actual conditions before execution, and the authorization cannot be extended to different goals, untested submissions or additional external operations.
+6. When the user directly provides real credentials for the current project in the dialogue, the `local-secrets/` of the target project shall be deposited in accordance with Rule 05 and the general ledger shall be registered. It does not repeatedly ask whether to save it, nor does it require the user to build the file by himself; only local deposit, except for examples, read-only references and content that is clearly prohibited from saving.
 
-## 开始任务前
+## Before starting the task
 
-修改任务按以下顺序执行；只读任务完成必要读取和检查后直接给出审阅结果：
+The modification task is executed in the following order; the review results are directly given after the read-only task completes the necessary reading and inspection:
 
-1. 完整读取本文件。
-2. 读取根目录 `FINAL_GOAL.md`、`TODO.md` 和 `AI_TASKS.md`；并行任务按规则 14 定位并读取权威任务索引和进度，不能只读当前 Worktree 的快照。
-3. 确认任务所属微服务或项目级功能、执行 AI、修改范围、分支和 Worktree。
-4. 读取当前任务相关的服务说明、契约、部署、来源和交接文件，以及下方路由出的详细规则。项目级任务没有微服务时标记“不适用”。
-5. 按下方“差异与冲突处理”核查文件、版本和任务归属。
-6. 完成最小任务登记；并行时由协调者在权威索引登记。此项登记及必要的协调分支、Worktree 建立是启动准备，可在回执前执行，不得夹带业务修改。
-7. 在首次实质性修改前向用户给出“规范读取回执”，发送后即可继续已授权工作。
+1. Read this file in full.
+2. Read the root directory `FINAL_GOAL.md`, `TODO.md` and `AI_TASKS.md`; parallel tasks locate and read the authoritative task index and progress according to Rule 14, and cannot only read the snapshot of the current Worktree.
+3. Confirm the microservice or project-level function to which the task belongs, execute AI, modify the scope, branch and Worktree.
+4. Read the service description, contract, deployment, source and handover documents related to the current task, as well as the detailed rules routed below. Mark "not applicable" when project-level tasks do not have microservices.
+5. Follow "Differences and conflict handling" below to check the file, version and task attribution.
+6. Complete the minimum task registration; in parallel, it is registered by the coordinator in the authoritative index. This registration and the necessary coordination branch and Worktree establishment are the start-up preparation, which can be implemented before the receipt, and must not include application changes.
+7. Give the user a "rules-reading receipt" before the first substantive modification, and the authorized work can continue after sending.
 
-初始化时必读文件不存在的，应如实记录缺失，并在已授权初始化范围内创建和填写；不得把规范源的示例历史当成目标项目事实，也不得编造缺失信息。仅审阅时只报告缺失。
+If the required file does not exist at the time of initialization, it should be truthfully recorded and created and filled in within the scope of authorized initialization; the sample history of the standard source shall not be regarded as the fact of the target project, and the missing information shall not be fabricated. Only when reviewing, only report missing.
 
-## 差异与冲突处理
+## Differences and conflict handling
 
-1. 规则版本变化、记录过时或文件与预期不同，先重新读取并核对实际差异，不直接认定为实质冲突。
-2. 按项目内优先级和已有授权能够明确确定处理方式的，记录依据后继续；涉及新增规则时补读细则并更新回执。版本号较新本身不构成覆盖他人修改的理由。
-3. 实际任务占用、无法确定的业务含义、互不兼容的有效指令或超出授权的影响，暂停受影响部分，保留现场并请求人工确认；可独立完成的已授权工作继续。
-4. 不回滚或覆盖他人修改，不以自行改写 `FINAL_GOAL.md` 或任务范围解除限制。用户明确变更目标时，同步项目事实；AI 自行建议的范围扩展须先获批准。
+1. If the rule version changes, the record is outdated or the file is different from expectations, read and check the actual differences again first, and do not directly identify it as a substantial conflict.
+2. If the processing method can be clearly determined according to the priority and existing authorization in the project, it shall continue after recording the basis; when it involves new rules, read the detailed rules and update the receipt. The newer version number itself does not constitute a reason to overwrite other people's modifications.
+3. Actual task occupation, uncertain business meaning, incompatible valid instructions or the impact beyond the authorization, suspend the affected part, keep the site and request manual confirmation; the authorized work that can be completed independently continues.
+4. Do not roll back or overwrite other people's modifications, and do not remove restrictions by rewriting `FINAL_GOAL.md` or task scope by yourself. When the user clearly changes the goal, the project facts are synchronized; the scope expansion proposed by AI must be approved.
 
-## 规范读取回执
+## Rules-reading receipt
 
-AI 在开始实质性修改前必须使用以下格式向用户告知读取结果：
-
-```text
-规范读取回执
-- 规范版本：<rules/README.md 中的版本>
-- 已读取：FINAL_GOAL.md、TODO.md、AI_TASKS.md
-- 当前任务：<任务编号和执行 AI；未登记时先登记>
-- 适用规则：<本次实际读取的规则编号和名称>
-- 修改范围：<允许修改的服务、目录或文件>
-- 冲突检查：<无冲突，或说明需要人工确认的问题>
-```
-
-执行要求：
-
-1. 回执必须包含实际读取结果，不得预先套用模板后再补读文件。
-2. 修改任务尚未登记时，按上述启动顺序先完成最小登记，再给出回执；只读任务无需新增登记，不能因此修改文件。
-3. 适用规则发生变化时，应补读新规则并更新回执。
-4. 规范版本、任务归属或修改范围出现差异时，按“差异与冲突处理”核查；存在未解决的实质冲突时，不继续修改受影响内容。
-
-## 规则索引与任务路由
-
-- `01-microservice-architecture.md`：新增功能、调整目录、划分服务边界或跨服务通信时读取。
-- `02-git-review-before-commit.md`：执行提交、推送或合并前读取。
-- `03-logging-structure.md`：新增或修改日志、清理策略、日志目录时读取。
-- `04-git-branching-by-service.md`：创建分支、完成功能、人工测试或同步 `main` 时读取。
-- `05-local-secrets-security.md`：收到用户在对话中提供的凭据，或处理 API key、登录凭据、服务器信息、公私钥及本地敏感文件时读取。
-- `06-goal-todo-docs.md`：分发规范包，或修改目标、进度、任务状态、人类文档时读取。
-- `07-service-contracts.md`：新增或修改微服务职责、接口、启动方式或依赖时读取。
-- `08-dependencies-error-logs.md`：修改依赖、错误处理、日志等级或异常输出时读取。
-- `09-human-validation-and-scope.md`：需要人工测试、范围确认或记录未验证事项时读取。
-- `10-database-deploy-rollback.md`：修改数据库、部署方式、数据变更或回滚方案时读取。
-- `11-environment-isolation.md`：使用 Python、Node、Docker 或其他运行环境时读取。
-- `12-frontend-backend-api-docs.md`：新增、修改或停用前后端接口时读取。
-- `13-codex-claude-shared-instructions.md`：Codex、Claude Code 或其他 AI 混用时读取。
-- `14-multi-ai-task-worktree-handoff.md`：多个 AI、多个对话、并行任务、Worktree 或任务交接时读取。
-- `15-official-links-and-source-traceability.md`：涉及第三方平台、API、SDK、公钥、证书、控制台或外部资料时读取。
-- `16-project-template-bootstrap.md`：整包迁移、初始化新项目或把规范目录直接作为项目底座时读取。
-- `17-clawtask-project-packaging.md`：用户要求“请将项目打包为 clawtask 可用”、生成 Clawtask 导入 ZIP、适配或修改 Clawtask 部署方案时必须读取；每次相关修改前读取该规则指定的 `/Users/xty/Desktop/projctworks/5.clawtask/tools/skills/clawtask-package/assets/demo/` 最新内容，并核对 Skill、契约与本项目 ZIP 快照的差异。默认生成 conversation v2.0 群聊项目包，不将打包视为上线授权。
-
-## 公共执行原则
-
-1. 先判断任务属于哪个微服务，再修改对应服务目录。
-2. 微服务从文件夹层级区分，一个模块服务一个目录，保证独立修改。
-3. 修改前读取最终目标、当前进度和多 AI 任务状态，防止跑偏、任务中断或并行冲突。
-4. 不跨服务直接引用内部实现，服务间通过 API、消息队列或共享契约通信。
-5. 每次提交前执行文档筛选、敏感信息检查和任务范围检查。
-6. 每个微服务在自己的目录维护服务职责、结构、接口、启动、日志、依赖、部署和外部来源说明。
-7. `docs/` 使用 HTML，主要供人预览；AI 以根目录状态文件和微服务 Markdown 为执行依据。
-8. 日志统一进入 `logs/`，按服务分目录、每天一个文件、普通日志保留 30 天。
-9. API key、私钥、服务器登录凭据等敏感内容只存放在本地敏感目录，不进入 Git；用户在对话中提供时由 AI 按规则 05 代存，后续使用必须读取文件，不重复展示真实值。
-10. 客户业务内容不默认等同于登录凭据或密钥，可按业务需要存入数据库。
-11. 修改后的业务验证由 AI 与人工合作完成，不专门创建会污染业务数据的测试入口；验证状态写入 `TODO.md`。
-12. AI 不主动修改当前目标之外的内容，额外建议只记录为待办。
-13. 项目运行环境必须归属项目目录；Python 使用项目内 `.venv/`，Node 使用本地依赖，Docker 配置和项目资料放在项目内。
-14. 前后端接口变化时先更新微服务 `CONTRACT.md`，再同步 `docs/api-interfaces.html`。
-15. 内容完成后提交到对应微服务或特性分支，用户确认指定提交测试通过后，才由 AI 同步到 `main`。
-16. AI 管理全部微服务和特性分支；用户主要管理和使用 `main`。同步记录注明来源分支、测试提交、执行 AI 和任务编号。
-17. Codex 与 Claude Code 使用本文件作为唯一公共控制规范，聊天记录和模型记忆不得覆盖项目文件。
-18. 多个 AI 或对话并行时，由协调者在规则 14 指定的权威 `AI_TASKS.md` 登记认领；各执行任务使用独立分支和 Worktree，不得共享未提交业务工作目录。
-19. 跨 AI 或跨对话继续任务时，在对应微服务的 `ai-tasks/` 中维护交接文件。
-20. 涉及外部平台、API、SDK、公钥、证书或控制台时，提供并核对官方网址，同时维护微服务 `REFERENCES.md`。
-21. 向其他项目分发本规范时，必须按根目录 `README.md` 复制全部受控内容并直接覆盖同名文件；`rules/` 必须按源目录完整替换，不得保留旧版规则并行生效。
-22. 本规范目录自身就是项目模板，不建立额外 `templates/`；根目录预建 `services/`、`logs/` 和 `local-secrets/` 安全骨架，整包复制后直接在目标副本中填写和扩展。
-23. 规范源目录的 `local-secrets/` 只能包含空总账与安全说明，`logs/` 只能包含目录说明；真实凭据和真实日志不得进入规范源或随规范包分发。
-24. Clawtask 项目打包按规则 17 和随包附件执行；有网页的项目必须添加规则 17 指定的网页底部部署标识及官网链接，并纳入交付检查。该 ZIP 是受控规范工具，必须随 `rules/` 分发，不全局安装，也不作为业务导入包或嵌套进业务 ZIP。
-
-## 项目内优先级
-
-在不违反平台系统规则、安全限制和用户权限的前提下，项目内部信息冲突时按以下顺序处理：
-
-1. 用户在当前任务中的明确要求。
-2. 本文件与其索引的强制规则。
-3. `FINAL_GOAL.md` 的项目范围和验收标准。
-4. `AI_TASKS.md` 中当前任务的认领范围。
-5. 当前微服务的 `SERVICE.md`、`CONTRACT.md`、`DEPLOY.md`、`REFERENCES.md` 和交接文件。
-6. `TODO.md` 中已确认的进度与待办。
-7. 根目录 `AGENTS.md` 的项目专用补充。
-8. AI 对话记录、本地记忆或自行推断。
-
-`AGENTS.md` 的项目专用补充不得覆盖本文件、最终目标、已认领任务范围或微服务契约。出现无法安全解决的冲突时，不得擅自选择或覆盖。
-
-## 结束任务前
-
-1. 修改任务更新受影响的微服务说明和相关文档；只读任务不为结束流程写文件。
-2. 修改任务按规则 14 更新任务记录并汇总到 `TODO.md` 和权威 `AI_TASKS.md`；按规则 09 区分实现、自检、人工验收和 main 同步状态。
-3. 重新读取本文件，比较任务开始时与结束时的规范版本。
-4. 重新读取与提交、人工验证和当前任务相关的规则。
-5. 重新核对权威任务索引中的执行 AI、任务状态、修改范围、分支和 Worktree；只读任务注明“只读，未登记”。
-6. 检查是否出现其他 AI 的新修改或任务范围变化。
-7. 在最终答复中给出“结束复核回执”；未完成复核不得宣告任务完成。
-
-## 结束复核回执
-
-AI 结束任务或准备提交前必须使用以下格式复核：
+AI must use the following format to inform users of the reading results before starting the substantive modification:
 
 ```text
-结束复核回执
-- 规范版本：开始 <版本> / 结束 <版本>
-- 任务归属：<任务编号、执行 AI、最终状态>
-- 实际修改范围：<实际修改的服务、目录或文件>
-- 规则复核：<已重新读取的规则编号和名称>
-- 文档状态：<已同步，或说明不需要同步的原因>
-- 验证状态：<已验证、待人工测试或未验证原因>
-- Git 状态：<分支、提交编号、是否同步 main；非 Git 项目明确说明>
-- 遗留事项：<无，或列出待办和人工确认项>
+Rules-reading receipt
+- Standard version: <version in rules/README.md>
+- Read: FINAL_GOAL.md, TODO.md, AI_TASKS.md
+- Current task: <task number and execution AI; register first when not registered>
+- Applicable rules: <The rule number and name actually read this time>
+- Modification scope: <Services, directories or files that are allowed to be modified>
+- Conflict check: <No conflict, or indicate the problem that needs to be confirmed manually>
 ```
 
-如果结束时规范版本不同于开始版本，AI 必须重新读取新版本、重新检查适用规则和修改结果，并按“差异与冲突处理”复核；未解决的实质冲突影响提交或验收时，不得宣告相应工作完成。
+Implementation requirements:
+
+1. The receipt must contain the actual reading results, and the template must not be used in advance before supplementing the file.
+2. When the modification task has not been registered, complete the minimum registration according to the above activation order first, and then give a receipt; the read-only task does not need to add new registration, and the file cannot be modified.
+3. When the applicable rules change, you should read the new rules and update the receipt.
+4. When there is a difference in the specification version, task attribution or modification scope, it will be verified according to "Difference and Conflict Handling"; when there is an unresolved substantive conflict, do not continue to modify the affected content.
+
+## Rule index and task routing
+
+- `01-microservice-architecture.md`: Read when adding new functions, adjusting directories, dividing service boundaries or cross-service communication.
+- `02-git-review-before-commit.md`: Read before executing submission, push or merge.
+- `03-logging-structure.md`: Read when adding or modifying logs, cleaning policies, and log directories.
+- `04-git-branching-by-service.md`: Read when creating branches, completing functions, manual testing or synchronizing `main`.
+- `05-local-secrets-security.md`: Read when receiving the credentials provided by the user in the conversation or processing API key, login credentials, server information, public and private keys and local sensitive files.
+- `06-goal-todo-docs.md`: Read when distributing specification packages, or modifying goals, progress, task status, and human documents.
+- `07-service-contracts.md`: Read when adding or modifying microservice responsibilities, interfaces, startup methods or dependencies.
+- `08-dependencies-error-logs.md`: Read when modifying dependencies, error handling, log levels or abnormal output.
+- `09-human-validation-and-scope.md`: Read when manual testing, scope confirmation or recording unverified matters are required.
+- `10-database-deploy-rollback.md`: Read when modifying the database, deployment method, data change or rollback scheme.
+- `11-environment-isolation.md`: Read when using Python, Node, Docker or other running environments.
+- `12-frontend-backend-api-docs.md`: Read when adding, modifying or disabling front-end and back-end interfaces.
+- `13-codex-claude-shared-instructions.md`: Read when Codex, Claude Code or other AI are mixed.
+- `14-multi-ai-task-worktree-handoff.md`: Read when multiple AI, multiple conversations, parallel tasks, Worktree or task handover.
+- `15-official-links-and-source-traceability.md`: Read when it involves third-party platforms, APIs, SDKs, public keys, certificates, consoles or external data.
+- `16-project-template-bootstrap.md`: Read when the whole package is migrated, new projects are initialized, or the specification directory is directly used as the project base.
+- `17-clawtask-project-packaging.md`: Users Require "Please Package The Project As Clawtask Available", Generate Clawtask To Import ZIP, Adapt Or Modify The Clawtask Deployment Scheme; Read The Latest Content Of `/Users/xty/Desktop/projctworks/5.clawtask/tools/skills/clawtask-package/assets/demo/` Specified By The Rule Before Each Relevant Modification, And Check The Difference Between Skill, Contract And The ZIP Snapshot Of This Project. By default, the conversation v2.0 group chat project package is generated, and the packaging is not regarded as online authorization.
+
+## Principles of public execution
+
+1. First judge which microservice the task belongs to, and then modify the corresponding service directory.
+2. Microservices are distinguished from the folder hierarchy, and one module serves one directory to ensure independent modification.
+3. Read the final goal, current progress and multi-AI task status before modification to prevent deviations, task interruptions or parallel conflicts.
+4. Do not directly refer to the internal implementation across services, and communicate between services through API, message queues or shared contracts.
+5. Perform document screening, sensitive information check and task scope check before each submission.
+6. Each microservice maintains service responsibilities, structures, interfaces, startups, logs, dependencies, deployment and external source descriptions in its own directory.
+7. `docs/` uses HTML for preview; AI is based on root directory status files and microservice Markdown.
+8. Logs are uniformly entered into `logs/`, divided into catalogs by service, one file per day, and ordinary logs are kept for 30 days.
+9. API key, private key, server login credentials and other sensitive contents are only stored in the local sensitive directory and do not enter Git; when the user provides it in the dialogue, it will be stored by AI according to Rule 05, and the file must be read for subsequent use, and the real value must not be displayed repeatedly.
+10. The customer's business content is not equivalent to the login credentials or keys by default, and can be stored in the database according to business needs.
+11. The modified business verification is completed by AI and manual cooperation, and the test entrance that will pollute the business data is not specifically created; the verification status is written to `TODO.md`.
+12. AI does not actively modify the content outside the current goal, and additional suggestions are only recorded as to be done.
+13. The project running environment must belong to the project directory; Python uses `.venv/` in the project, Node uses local dependencies, and Docker configuration and project data are placed in the project.
+14. When the front-end and back-end interfaces change, update the microservice `CONTRACT.md` first, and then synchronize `docs/api-interfaces.html`.
+15. After the content is completed, it is submitted to the corresponding microservice or feature branch. After the user confirms that the designated submission test has passed, it will be synchronized by AI to `main`.
+16. AI manages all microservices and feature branches; users mainly manage and use `main`. The synchronous record indicates the source branch, test submission, execution AI and task number.
+17. Codex and Claude Code use this file as the only public control specification, and the chat records and model memory shall not overwrite the project file.
+18. When multiple AIs or dialogues are parallel, the coordinator shall register and claim in the authoritative `AI_TASKS.md` designated by Rule 14; each execution task uses independent branches and Worktree, and the unsubmitted business work catalog shall not be shared.
+19. When continuing tasks across AI or cross-dialogues, maintain the handover file in the `ai-tasks/` corresponding to the microservice.
+20. When involving external platforms, APIs, SDKs, public keys, certificates or consoles, provide and check the official website, and maintain the microservice `REFERENCES.md` at the same time.
+21. When distributing this specification to other projects, all the controlled content must be copied according to the root directory `README.md` and the file of the same name must be directly overwritten; `rules/` must be completely replaced according to the source directory, and the old version of the rules must not be retained to take effect in parallel.
+22. This specification directory itself is the project template, and no additional `templates/` is established; the root directory pre-builds `services/`, `logs/` and `local-secrets/` security skeletons, and fills in and expands directly in the target copy after copying the whole package.
+23. The `local-secrets/` of the standard source directory can only contain empty ledger and security instructions, and `logs/` can only contain directory descriptions; real credentials and real logs shall not be entered into the standard source or distributed with the standard package.
+24. Clawtask project packaging is executed according to Rule 17 and package attachments; projects with web pages must add the deployment logo and official website link at the bottom of the web page specified by Rule 17, and include them in the delivery inspection. This ZIP is a controlled specification tool. It must be distributed with `rules/` and must not be installed globally, nor is it used as a business import package or nested into the business ZIP.
+
+## Priority within the project
+
+Under the premise of not violating the rules of the platform system, security restrictions and user permissions, the internal information conflict of the project shall be handled in the following order:
+
+1. The user's clear requirements in the current task.
+2. The mandatory rules of this file and its index.
+3. Project scope and acceptance standards of `FINAL_GOAL.md`.
+4. The claim scope of the current task in `AI_TASKS.md`.
+5. `SERVICE.md`, `CONTRACT.md`, `DEPLOY.md`, `REFERENCES.md` and handover documents of the current microservice.
+6. Confirmed progress and to be done in `TODO.md`.
+7. Project-specific supplement of the root directory `AGENTS.md`.
+8. AI conversation records, local memory or self-inference.
+
+Project-specific supplements of `AGENTS.md` shall not cover this document, the ultimate goal, the scope of the claimed task or the microservice contract. When there is a conflict that cannot be solved safely, it is not allowed to choose or overwrite without authorization.
+
+## Before completing the task
+
+1. Modify tasks to update the affected microservice descriptions and related documents; read-only tasks do not write documents for the end of the process.
+2. Modify the task according to Rule 14 to update the task record and summarize it to `TODO.md` and the authoritative `AI_TASKS.md`; according to Rule 09, distinguish the implementation, self-inspection, human acceptance and main synchronization status.
+3. Read this file again and compare the standard version at the beginning and end of the task.
+4. Re-read the rules related to submission, manual verification and current tasks.
+5. Recheck the execution AI, task status, modification scope, branch and Worktree in the authoritative task index; indicate "read-only, unregistered" for read-only tasks.
+6. Check whether there are any new modifications or changes in the scope of tasks of other AI.
+7. In the final reply, give a "receipt of the end of the review"; if the review is not completed, the task shall not be declared complete.
+
+## Completion-review receipt
+
+AI must review in the following format before completing the task or preparing for submission:
+
+```text
+Completion-review receipt
+- Standard version: start <version> / end <version>
+- Task attribution: <task number, execution AI, final status>
+- Actual modification scope: <actual modified service, directory or file>
+- Rule review: <re-read rule number and name>
+- Document status: <synchronized, or explain the reason why you don't need to synchronize>
+- Verification status: <verified, pending manual testing or unverified reason>
+- Git status: <branch, submission number, whether to synchronize main; non-Git project clear description>
+- Remaining items: <None, or list pending and manual confirmation items>
+```
+
+If the standard version is different from the starting version at the end, the AI must re-read the new version, recheck the applicable rules and modified results, and review according to the "Difference and Conflict Handling"; when the unresolved substantive conflict affects the submission or acceptance, the corresponding work shall not be declared complete.
+
+## English edition (2026-10-10)
+
+Version 2026-10-10.1 translates specification 2026-09-29.1 and its controlled attachment into English. Approval requirements, rule routing, credential handling, service separation and task ownership retain the same meaning. The attachment checksum/language revision is recorded in rule 17. User-authored current instructions remain highest priority within the project. Literal paths to the user-provided source folder retain their real filesystem names.

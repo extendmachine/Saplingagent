@@ -1,5 +1,5 @@
-# 共享公开契约
+# Share the public contract
 
-runtime-api.md 为本地HTTP/SSE字段索引，各服务CONTRACT为详细权威。agent-tools.mjs仅共享工具参数规范化/指纹协议，用于MCP变更前与Agent匹配当前请求，不包含业务服务私有实现或真实凭据。前端HTTP类型在front/chat/runtime-api.ts；正式MCP输入schema由服务SDK注册。
+runtime-api.md is the local HTTP/SSE field index, and each service CONTRACT is the detailed authority. agent-tools.mjs only shares the tool parameter normalization/fingerprint protocol, which is used to match the current request with Agent before the MCP change, and does not include the private implementation or real credentials of business services. The front-end HTTP type is in front/chat/runtime-api.ts; the official MCP input schema is registered by the service SDK.
 
-当前契约v2为Full Access，无目录/强制验证门槛；通用文件和命令接口见runtime-api.md。
+The current contract v2 is Full Access, and there is no directory/compulsory verification threshold; see runtime-api.md for general files and command interfaces.

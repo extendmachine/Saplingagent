@@ -24,8 +24,8 @@ async function git(root, args) {
     return stdout;
   } catch (error) {
     const detail = String(error?.stderr || error?.message || '').trim();
-    if (/not a git repository/i.test(detail)) throw new GitVersionError('GIT_NOT_REPOSITORY', '当前文件夹不是 Git 仓库', 404);
-    throw new GitVersionError('GIT_COMMAND_FAILED', detail || 'Git 操作失败', 500);
+    if (/not a git repository/i.test(detail)) throw new GitVersionError('GIT_NOT_REPOSITORY', 'The current folder is not a Git repository', 404);
+    throw new GitVersionError('GIT_COMMAND_FAILED', detail || 'Git operation failed', 500);
   }
 }
 
@@ -125,14 +125,14 @@ export async function readGitVersion(root) {
 
 export async function switchGitBranch(root, branch) {
   if (typeof branch !== 'string' || !branch || branch.length > 255 || branch.startsWith('-') || /[\0\r\n]/.test(branch)) {
-    throw new GitVersionError('GIT_INVALID_BRANCH', '分支名称无效');
+    throw new GitVersionError('GIT_INVALID_BRANCH', 'Invalid branch name');
   }
   const state = await readGitVersion(root);
   const target = state.branches.find(candidate => candidate.name === branch);
-  if (!target) throw new GitVersionError('GIT_BRANCH_NOT_FOUND', '目标分支不存在', 404);
+  if (!target) throw new GitVersionError('GIT_BRANCH_NOT_FOUND', 'Target branch does not exist', 404);
   if (target.current) return state;
-  if (!state.branch) throw new GitVersionError('GIT_DETACHED', '当前目录未处于命名分支，无法自动保存后切换', 409);
-  if (target.occupied) throw new GitVersionError('GIT_BRANCH_IN_USE', `分支正在其他工作树中使用：${target.occupiedBy}`, 409);
+  if (!state.branch) throw new GitVersionError('GIT_DETACHED', 'This folder is not on a named branch; cannot auto-save and switch', 409);
+  if (target.occupied) throw new GitVersionError('GIT_BRANCH_IN_USE', `Branch is checked out in another worktree:${target.occupiedBy}`, 409);
   let autoCommit = null;
   if (!state.clean) {
     await git(root, ['add', '--all']);
@@ -147,7 +147,7 @@ export async function switchGitBranch(root, branch) {
 
 export async function commitGitVersion(root) {
   const state = await readGitVersion(root);
-  if (!state.branch) throw new GitVersionError('GIT_DETACHED', '当前目录未处于命名分支，无法保存提交', 409);
+  if (!state.branch) throw new GitVersionError('GIT_DETACHED', 'This folder is not on a named branch; cannot save a commit', 409);
   if (state.clean) return { ...state, savedCommit: null };
   await git(root, ['add', '--all']);
   const subject = `chore: save ${state.branch} from Saplingagent`;

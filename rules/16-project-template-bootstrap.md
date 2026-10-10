@@ -1,60 +1,60 @@
-# 16. 整目录项目模板与初始化
+# 16. Whole directory project template and initialization
 
-## 目标
+## Target
 
-`0.skills项目规范/` 整个目录本身就是项目模板。用户要求引入或复制规范时，直接把本目录全部受控内容复制到目标项目根目录并覆盖同名公共规范，再按授权范围初始化或整改。仅阅读 README 或审阅项目不触发复制和修改。禁止再建立 `templates/`、`template/` 或其他第二套规范模板目录。
+`0.skills项目规范/` The whole catalog itself is a project template. When the user requests to introduce or copy the specification, all the controlled content of this directory should be directly copied to the root directory of the target project and the public specification of the same name should be covered, and then initialized or rectified according to the scope of authorization. ONLY READING README OR REVIEWING ITEMS DO NOT TRIGGER COPYING AND MODIFICATION. It is forbidden to establish `templates/`, `template/` or other second sets of specification template directories.
 
-## 模板内容所在位置
+## The location of the template content
 
-1. 根目录 `FINAL_GOAL.md`：最终目标文件结构，复制后直接按目标项目重写。
-2. 根目录 `TODO.md`：项目进度、人工验证和 Git 分支管理结构，复制后直接重写。
-3. 根目录 `AI_TASKS.md`：任务索引、协调信息及填写格式；复制后清除规范源历史，恢复目标项目有效任务。启用协调 Worktree 时，按规则 14 定位权威索引。
-4. `rules/07-service-contracts.md`：微服务 `SERVICE.md` 和 `CONTRACT.md` 填写格式。
-5. `rules/10-database-deploy-rollback.md`：微服务 `DEPLOY.md` 填写格式。
-6. `rules/15-official-links-and-source-traceability.md`：微服务 `REFERENCES.md` 填写格式。
-7. `rules/14-multi-ai-task-worktree-handoff.md`：微服务 `ai-tasks/<task-id>.md` 交接格式。
-8. `rules/05-local-secrets-security.md`：本地私密信息目录和总账 JSON 格式。
-9. `rules/03-logging-structure.md`：微服务日志填写格式。
-10. `rules/11-environment-isolation.md`：项目内运行环境填写格式。
-11. `docs/`：给人审阅的项目说明、接口和官方网址 HTML 文件，复制后按目标项目同步更新。
-12. `services/README.md`：微服务根目录说明，复制后直接在同级创建真实服务目录。
-13. `logs/README.md`：日志根目录安全骨架，目标项目直接在同级创建各服务日志目录。
-14. `local-secrets/`：分类目录、安全说明和空的 `notes/project-secrets.json`，复制后直接填写目标项目私密信息。
+1. Root directory `FINAL_GOAL.md`: the final target file structure, which is directly rewritten according to the target project after copying.
+2. Root directory `TODO.md`: project progress, manual verification and Git branch management structure, copy and rewrite directly.
+3. Root directory `AI_TASKS.md`: task index, coordinate information and fill in the format; after copying, clear the normal source history, and restore the valid tasks of the target project. When coordinating Worktree is enabled, locate the authoritative index according to Rule 14.
+4. `rules/07-service-contracts.md`: Fill in the format of microservices `SERVICE.md` and `CONTRACT.md`.
+5. `rules/10-database-deploy-rollback.md`: microservice `DEPLOY.md` fill in the format.
+6. `rules/15-official-links-and-source-traceability.md`: Microservice `REFERENCES.md` fill in the format.
+7. `rules/14-multi-ai-task-worktree-handoff.md`: microservice `ai-tasks/<task-id>.md` handover format.
+8. `rules/05-local-secrets-security.md`: Local private information directory and general ledger JSON format.
+9. `rules/03-logging-structure.md`: microservice log filling format.
+10. `rules/11-environment-isolation.md`: The format of filling in the running environment in the project.
+11. `docs/`: HTML files for project descriptions, interfaces and official websites for people to review, and update them synchronously according to the target project after copying.
+12. `services/README.md`: microservice root directory description, after copying, create a real service directory directly at the same level.
+13. `logs/README.md`: The log root directory security skeleton, and the target project directly creates the service log directory at the same level.
+14. `local-secrets/`: classified directory, security instructions and empty `notes/project-secrets.json`, copy and fill in the private information of the target project directly.
 
-## 整体迁移后的初始化顺序
+## Initialization order after overall migration
 
-1. 覆盖前读取目标项目已有目标、进度、权威任务记录和项目专用要求，将需要恢复的项目事实保存到不会被覆盖的项目内任务记录；协调受影响的进行中任务，不保存秘密值。
-2. 按根目录 `README.md` 将本规范目录全部受控内容复制到目标项目根目录，同名文件直接覆盖，`rules/` 完整替换。
-   `logs/` 和 `local-secrets/` 被 Git 忽略，必须通过本地整目录复制获得；已有项目只补缺失骨架，不覆盖真实本地数据。
-3. 按根 README 完成复制阶段核对，再从目标项目读取入口、规则和状态文件；已有协调 Worktree 时读取其中的权威记录。
-4. 结合目标代码、用户要求和保存的事实重建根状态文件，删除规范源历史；恢复目标项目有效认领、协调者和授权信息，不重置已有协调 Worktree 的实时状态。
-5. 识别微服务边界，在已授权范围内补齐真实服务的职责、契约、部署、来源和交接文件；未授权的业务重构记录计划，不能在复制时顺带执行。
-6. 检查已复制的 `local-secrets/` 分类目录和空总账，直接填写目标项目信息，并确认整个目录未被 Git 跟踪。
-7. 在授权范围内配置独立日志子目录、按天记录和 30 天清理方式；未完成项如实列为后续任务。
-8. 运行环境继续按规则 11 归属项目内部，实际环境迁移保留相关批准要求；已完成配置写入服务说明或部署说明。
-9. 根据微服务内容同步 `docs/index.html`、`docs/api-interfaces.html` 和 `docs/references.html`。
-10. 按根 README 完成初始化阶段核对，给出覆盖回执和结束复核回执，分别说明实现、自检、人工验收和 main 同步状态，不把待实施计划算作已完成。
+1. Read the existing goals, progress, authoritative task records and project-specific requirements of the target project before coverage, and save the project facts that need to be restored to the task records in the project that will not be covered; coordinate the affected ongoing tasks and do not save the secret value.
+2. Copy all the controlled contents of this specification directory to the root directory of the target project according to the root directory `README.md`, the file of the same name is directly overwritten, and `rules/` is completely replaced.
+   `logs/` and `local-secrets/` are ignored by Git and must be obtained through local whole directory replication; existing projects only make up for the missing skeleton and do not cover the real local data.
+3. Complete the replication stage check according to the root README, and then read the entrance, rule and status file from the target project; read the authoritative records in it when there is a coordinated Worktree.
+4. Rebuild the root state file in combination with the target code, user requirements and saved facts, delete the standard source history; restore the effective claim, coordinator and authorization information of the target project, and do not reset the real-time status of the existing coordination Worktree.
+5. Identify the boundaries of microservices, and complete the responsibilities, contracts, deployments, sources and handover documents of the real service within the authorized scope; the unauthorized business restructuring record plan cannot be executed by the time of copying.
+6. Check the copied `local-secrets/` catalog and empty ledger, fill in the target project information directly, and confirm that the entire directory is not tracked by Git.
+7. Configure independent log subdirectories, day-by-day recording and 30-day cleaning methods within the scope of authorization; unfinished items are listed as follow-up tasks.
+8. The running environment continues to belong to the project according to Rule 11, and the actual environment migration retains the relevant approval requirements; the configuration has been completed to write the service description or deployment description.
+9. Synchronize `docs/index.html`, `docs/api-interfaces.html` and `docs/references.html` according to the microservice content.
+10. Complete the initialization stage check according to the root README, give the coverage receipt and the end review receipt, and explain the implementation, self-inspection, human acceptance and main synchronization status respectively, and do not count the pending implementation plan as completed.
 
-## 禁止事项
+## Prohibited matters
 
-1. 禁止创建独立 `templates/` 目录保存第二份项目模板。
-2. 禁止只引用原始 `0.skills项目规范/` 的绝对路径；目标项目必须能独立读取和运行。
-3. 禁止把本规范项目的历史目标、TODO 或任务编号当作目标项目事实。
-4. 禁止在规则示例、文档或回复中填写真实私密信息。
-5. 禁止将规范源目录的安全空骨架误认为真实敏感信息；也禁止把目标项目已填写的 `local-secrets/`、真实日志、环境目录、依赖缓存或 `.git/` 带回分发包。
-6. 禁止保留未处理占位符、虚假服务、虚假接口或不适用的环境配置。
+1. It is forbidden to create an independent `templates/` directory to save the second project template.
+2. It is forbidden to refer only to the absolute path of the original `0.skills项目规范/`; the target project must be able to read and run independently.
+3. It is forbidden to regard the historical objectives, TODO or task numbers of this specification project as the facts of the target project.
+4. It is forbidden to fill in real and private information in rule examples, documents or replies.
+5. It is forbidden to mistake the security empty skeleton of the standardized source directory for real sensitive information; it is also forbidden to bring back the `local-secrets/`, real log, environment directory, dependent cache or `.git/` of the target project back to the distribution package.
+6. It is forbidden to retain unprocessed placeholders, false services, fake interfaces or inapplicable environmental configurations.
 
-## 阶段验收
+## Stage acceptance
 
-复制阶段核对公共规范文件与源一致；初始化阶段核对项目事实和合规结构。合法的 `AGENTS.md` 项目专用补充不要求与源逐字一致，目标总账可填写实际内容，只有规范源总账必须为空。
+In the replication stage, check that the public specification document is consistent with the source; in the initialization stage, check the project facts and compliance structure. The legal `AGENTS.md` project-specific supplement does not require consistency with the source word by word. The target general ledger can be filled in the actual content, and only the standard source general ledger must be empty.
 
-下面各项按当前授权范围核对；缺失项必须报告，只有本次要求的阶段全部完成才能宣告该阶段完成：
+The following items are checked according to the current scope of authorization; the missing items must be reported, and only when all the required stages are completed can the stage be declared completed:
 
-1. 目标项目根目录包含全部规范入口、状态文件、`rules/`、`docs/`、`services/`、`logs/` 和 `local-secrets/`，不存在 `templates/`。
-2. 目标项目不再包含本规范项目的历史任务、进度和任务编号。
-3. 每个实际微服务拥有独立目录及 `SERVICE.md`、`CONTRACT.md`、`DEPLOY.md`、`REFERENCES.md` 和 `ai-tasks/`。
-4. 目标项目本地存在 `local-secrets/notes/project-secrets.json`，且 `local-secrets/` 未被 Git 跟踪。
-5. 每个微服务已有独立日志规划，日志文件按天命名并保留 30 天。
-6. 项目运行环境、依赖、Docker 配置和运行产物全部位于项目目录内。
-7. 人类 HTML 文档与微服务 Markdown 契约和来源记录一致。
-8. 权威索引与协调者可定位，目标项目原有有效任务和授权已恢复，不从其他 Worktree 的过时快照重新认领范围。
+1. The root directory of the target project contains all specification entrances, status files, `rules/`, `docs/`, `services/`, `logs/` and `local-secrets/`, and there is no `templates/`.
+2. The target project no longer contains the historical tasks, progress and task numbers of this specification project.
+3. Each actual microservice has an independent directory and `SERVICE.md`, `CONTRACT.md`, `DEPLOY.md`, `REFERENCES.md` and `ai-tasks/`.
+4. The target project exists locally `local-secrets/notes/project-secrets.json`, and `local-secrets/` is not tracked by Git.
+5. Each microservice has an independent log plan, and the log file is named by day and kept for 30 days.
+6. The project running environment, dependencies, Docker configuration and running products are all located in the project directory.
+7. Human HTML documents are consistent with microservice Markdown contracts and source records.
+8. The authoritative index and coordinator can be located, and the original valid tasks and authorizations of the target project have been restored, and the scope is not re-claimed from the outdated snapshots of other Worktree.

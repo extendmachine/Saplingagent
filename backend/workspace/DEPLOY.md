@@ -1,9 +1,9 @@
-# workspace 本地运行与恢复
+# Workspace local run and recovery
 
-环境 Node >=22；没有npm依赖安装步骤。应用根目录必须存在，启动器先创建本地token文件（权限600），服务不生成或展示其值。
-从根 node backend/workspace/server.mjs，或本目录 npm start；SEED_ROOT 可切换独立种子目录，SEED_WORKSPACE_PORT 默认4311。绑定固定127.0.0.1，Ctrl+C/终止统一启动器停止。npm test 在服务目录自建临时应用根，结束移除，不污染真实会话。
+Environment Node >=22; no npm depends on the installation steps. The root directory of the application must exist, and the launcher first creates a local token file (permission 600), and the service does not generate or display its value.
+From the root node backend/workspace/server.mjs, or this directory npm start; SEED_ROOT can switch independent seed directories, SEED_WORKSPACE_PORT defaults to 4311. Binding fixed 127.0.0.1, Ctrl+C/terminate the unified launcher to stop. Npm test self-built temporary application root in the service directory, end removal, do not pollute the real session.
 
-检查 GET http://127.0.0.1:4311/health；业务请求仅由内部agent/MCP通过Bearer发送。确认会话刷新恢复、续聊与偏好证据，人工结果由根TODO记录。
-恢复数据：停服务，完整备份 data/workspace/；JSON schema当前v1，无自动迁移。损坏JSON明确报CORRUPT_STORAGE，不能以空数据覆盖；恢复最后可信备份后再启动。快照/代码回退不应顺带回滚消息或偏好。仅支持单进程对同一存储写入。
-日志自动保留30天，归项目 logs/workspace/，不在服务代码目录保存真实运行日志；所有凭据保持 local-secrets，打包须排除。
-无外部发布、Git/main同步或人工验收记录。官方资料见 REFERENCES.md。
+Check GET http://127.0.0.1:4311/health; business requests are only sent by internal agent/MCP through Bearer. Confirm the session refresh recovery, continuation and preference evidence, and the manual results are recorded by the root TODO.
+Restore data: stop service, complete backup data/workspace/; JSON schema current v1, no automatic migration. Damaged JSON clearly reports CORRUPT_STORAGE, which cannot be overwritten with empty data; restore the last trusted backup before starting. Snapshot/code rollback should not be brought back messages or preferences. Only a single process is supported to write to the same storage.
+The log is automatically kept for 30 days and belongs to the project logs/workspace/, and the real running log is not saved in the service code directory; all credentials are kept local-secrets, and packaging must be excluded.
+No external release, Git/main synchronization or human acceptance record. For official information, please refer to REFERENCES.md.

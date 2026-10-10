@@ -1,54 +1,54 @@
-# 15. 官方网址与资料来源追溯
+# 15. Official website and source traceability
 
-## 目标
+## Target
 
-涉及第三方平台、API、SDK、证书、公钥、控制台、部署平台或外部技术规范时，AI 必须给出可直接使用的官方网址和用途说明，避免用户根据模糊名称自行搜索，也避免不同 AI 使用来源不明或过期的资料。
+When involving third-party platforms, APIs, SDKs, certificates, public keys, consoles, deployment platforms or external technical specifications, AI must provide the official website and usage instructions that can be used directly to avoid users searching by themselves according to vague names, and to avoid different AI using unknown or expired information.
 
-## 必须提供网址的场景
+## The scene where the URL must be provided
 
-1. 第三方平台的开发者文档、开放平台和管理控制台。
-2. API 接口、SDK 下载、版本说明和示例仓库。
-3. 公钥、平台证书、证书链和签名配置的官方获取页面。
-4. OAuth、回调地址、Webhook、权限申请和应用审核页面。
-5. 云服务、服务器、数据库或支付平台的部署配置页面。
-6. 依赖项存在版本兼容或弃用风险时的官方版本文档。
+1. Developer documents, open platforms and management consoles of third-party platforms.
+2. API interface, SDK download, version description and sample repository.
+3. The official acquisition page of public key, platform certificate, certificate chain and signature configuration.
+4. OAuth, callback address, Webhook, permission application and application review page.
+5. The deployment configuration page of cloud service, server, database or payment platform.
+6. The official version document when there is a risk of version compatibility or abandonment of dependencies.
 
-## 每条资料必须记录
+## Each piece of information must be recorded.
 
-1. 资料名称。
-2. 可点击的完整网址。
-3. 官方机构或官方域名。
-4. 该网址用于完成什么操作。
-5. 是否需要登录、申请权限或选择应用。
-6. 适用的产品、接口或版本。
-7. AI 最后核对日期。
-8. 对应微服务和任务编号。
+1. Name of the information.
+2. The full URL can be clicked.
+3. Official institutions or official domain names.
+4. What operation is this URL used to complete?
+5. Do you need to log in, apply for permissions or select applications?
+6. Applicable products, interfaces or versions.
+7. AI finally checks the date.
+8. Corresponding to the microservice and task number.
 
-## 公钥、证书和密钥规则
+## Public key, certificate and key rules
 
-1. AI 提到平台公钥、证书或签名配置时，必须同时提供官方获取或配置页面的网址。
-2. 例如接入支付宝时，应给出支付宝开放平台官方的公钥或证书配置入口及对应开发文档，而不是只说“获取支付宝公钥”。
-3. 平台公钥和平台证书可以按业务需要保存，但必须记录来源网址、获取时间、适用应用和有效期。
-4. 私钥、API key、登录密码和访问 token 仍属于敏感信息，只能存放在 `local-secrets/`，不得显示在文档、回复、日志和 Git 中。
-5. 不得把“公钥可公开”等同于“来源可以不验证”；来源不明的公钥不得用于生产环境。
+1. When AI mentions the public key, certificate or signature configuration of the platform, it must also provide the URL of the official acquisition or configuration page.
+2. For example, when accessing Alipay, the official public key or certificate configuration entrance of the Alipay open platform and the corresponding development documents should be given, instead of just saying "obtaining the Alipay public key".
+3. The public key of the platform and the platform certificate can be saved according to business needs, but the source URL, acquisition time, applicable application and validity period must be recorded.
+4. Private keys, API keys, login passwords and access tokens are still sensitive information and can only be stored in `local-secrets/` and cannot be displayed in documents, replies, logs and Git.
+5. "Public key can be made public" shall not be equiated with "the source can not be verified"; public keys of unknown origin shall not be used in the production environment.
 
-## 支付宝示例
+## Example of Alipay
 
-截至 2026-07-26，涉及支付宝公钥、应用密钥、签名或验签时，AI 至少应提供并核对以下支付宝开放平台官方入口：
+As of 2026-07-26, when it comes to Alipay public key, application key, signature or signature verification, AI should at least provide and check the following official entrance of Alipay open platform:
 
-1. 支付宝开放平台帮助中心：<https://open.alipay.com/support/supportCenter.htm>
-   - 用途：查找“公私钥生成上传”“支付宝公钥查看”“参数签名”和“响应验签”等官方说明。
-   - 登录要求：部分应用配置和公钥查看操作需要登录支付宝开放平台并选择对应应用。
-2. 支付宝开发者工具：<https://open.alipay.com/tool>
-   - 用途：进入官方密钥管理、SDK、签名、验签、格式转换和密钥匹配工具。
-3. 支付宝开放平台首页：<https://open.alipay.com/>
-   - 用途：登录开发者控制台、选择应用并进入开发配置。
+1. Alipay Open Platform Help Center: <https://open.alipay.com/support/supportCenter.htm>
+   - Purpose: Find official instructions such as "public and private key generation upload", "Alipay public key viewing", "parameter signature" and "response to verification".
+   - Login requirements: Some application configurations and public key viewing operations require you to log in to the Alipay open platform and select the corresponding application.
+2. Alipay developer tool: <https://open.alipay.com/tool>
+   - Purpose: Enter the official key management, SDK, signature, signature verification, format conversion and key matching tools.
+3. Alipay Open Platform Homepage: <https://open.alipay.com/>
+   - Purpose: Log in to the developer console, select the application and enter the development configuration.
 
-这些网址只是规范示例。实际项目仍应根据应用类型、签名模式和当前支付宝页面重新核对，并把最终使用的网址写入对应服务的 `REFERENCES.md`。
+These URLs are just standard examples. The actual project should still be rechecked according to the application type, signature mode and the current Alipay page, and the final URL should be written to the `REFERENCES.md` of the corresponding service.
 
-## 来源文件
+## Source file
 
-每个使用外部平台的微服务应维护：
+Each microservice using an external platform should maintain:
 
 ```text
 services/
@@ -56,30 +56,30 @@ services/
     └── REFERENCES.md
 ```
 
-`REFERENCES.md` 是 AI 执行时读取的来源文件。给人审阅的资料汇总维护在 `docs/references.html`，但不得只在 HTML 中保存关键来源。
+`REFERENCES.md` is the source file read by AI during execution. The data summary for review is maintained in `docs/references.html`, but the key sources must not be saved only in HTML.
 
-## REFERENCES.md 填写格式
+## REFERENCES.md fill in the format
 
 ```markdown
-# <SERVICE_NAME> 官方资料
+# <SERVICE_NAME> Official Information
 
-| 资料名称 | 官方网址 | 官方机构/域名 | 用途 | 登录或权限 | 适用版本 | 最后核对日期 | 任务编号 |
+|Name of information|Official website|Official institutions/domain names|Purpose|Login or permission|Applicable version|Final check date|Task number|
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `<NAME>` | `<https://official.example/path>` | `<DOMAIN>` | `<PURPOSE>` | `<REQUIREMENT>` | `<VERSION>` | `<YYYY-MM-DD>` | `<TASK-ID>` |
 
-## 核对要求
+## Check the requirements
 
-1. 只使用官方平台、官方文档或官方代码仓库。
-2. 公钥、证书、SDK 和控制台必须记录实际入口及用途。
-3. 私钥、API key、密码和 Token 只记录本地文件路径，不在本文件写真实内容。
-4. 无法联网核实时标记“未核实”，并写入根目录 `TODO.md`。
+1. Only use the official platform, official document or official code repository.
+2. The public key, certificate, SDK and console must record the actual entrance and purpose.
+3. Private keys, API keys, passwords and Tokens only record the local file path and do not record the actual content in this file.
+4. When the network cannot be verified, mark it as "not verified" and write it to the root directory `TODO.md`.
 ```
 
-## AI 执行规则
+## AI execution rules
 
-1. 优先使用平台官方域名和官方文档，不以搜索结果摘要、论坛、博客或 AI 记忆代替官方来源。
-2. 提供网址前应实际核对页面可访问性、页面用途和当前内容。
-3. 无法联网或无法确认官方网址时，必须明确标记“未核实”，写入 `TODO.md`，不得编造网址。
-4. 官方网址需要登录时，仍应提供入口并说明登录后应查找的菜单或配置项。
-5. 外部平台接口或配置发生修改时，同步更新 `REFERENCES.md`、相关契约、部署说明和人类审阅文档。
-6. 最终回复中涉及用户下一步操作时，应直接给出相应官方网址。
+1. Priority is given to the official domain name and official documents of the platform, and do not replace the official source with search result abstracts, forums, blogs or AI memories.
+2. Before providing the URL, you should actually check the page accessibility, page purpose and current content.
+3. When the network cannot be connected or the official website cannot be confirmed, it must be clearly marked as "unverified" and written into `TODO.md`, and the website must not be fabricated.
+4. When the official website needs to be logged in, it should still provide an entrance and explain the menu or configuration items to be found after logging in.
+5. When the external platform interface or configuration is modified, `REFERENCES.md`, relevant contracts, deployment instructions and human review documents will be updated synchronously.
+6. When the final reply involves the user's next step, the corresponding official website should be given directly.

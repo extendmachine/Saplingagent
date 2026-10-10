@@ -1,20 +1,20 @@
-# 10. 数据库服务、部署与回滚
+# 10. Database service, deployment and rollback
 
-## 目标
+## Target
 
-数据库管理属于独立微服务范畴。每个微服务可以有自己的特殊管理方案，不强制统一数据库结构、迁移方式或部署方式。部署和回滚说明应写入对应微服务目录内，方便独立维护。
+Database management belongs to the category of independent microservices. Each microservice can have its own special management scheme without forcing the unified database structure, migration method or deployment method. Deployment and rollback instructions should be written into the corresponding microservice directory for independent maintenance.
 
-## 数据库规则
+## Database rules
 
-1. 数据库管理可以作为一个独立微服务。
-2. 每个微服务可以根据业务需要选择自己的数据管理方案。
-3. 项目规范不强制限定数据库类型、表结构、迁移工具或种子数据方式。
-4. 如果某个微服务直接管理数据库，应在该服务的 `SERVICE.md` 中说明。
-5. 客户内容可按业务需要正常存放数据库，不默认归入本地敏感信息文件夹。
+1. Database management can be used as an independent microservice.
+2. Each microservice can choose its own data management scheme according to business needs.
+3. Project specifications do not require database type, table structure, migration tool or seed data method.
+4. If a microservice directly manages the database, it should be explained in the `SERVICE.md` of the service.
+5. Customer content can be stored in the database normally according to business needs, and is not classified into the local sensitive information folder by default.
 
-## 部署说明
+## Deployment instructions
 
-每个需要部署的微服务，应在自己的目录内记录部署说明，建议放入：
+Each microservice that needs to be deployed should record the deployment instructions in its own directory, and it is recommended to put them in:
 
 ```text
 services/
@@ -23,75 +23,75 @@ services/
     └── DEPLOY.md
 ```
 
-`DEPLOY.md` 建议包含：
+`DEPLOY.md` suggestions include:
 
-1. 部署环境。
-2. 部署路径。
-3. 启动命令。
-4. 依赖服务。
-5. 需要读取的本地敏感信息文件路径说明。
-6. 部署前检查项。
-7. 部署后人工确认项。
-8. 外部平台、控制台、证书或部署服务的官方参考网址入口。
+1. Deployment environment.
+2. Deployment path.
+3. Start the command.
+4. Rely on the service.
+5. The path description of the local sensitive information file that needs to be read.
+6. Pre-deployment inspection items.
+7. Manual confirmation after deployment.
+8. The official reference website entrance of external platforms, consoles, certificates or deployment services.
 
-## 回滚说明
+## Rollback instructions
 
-每个需要部署的微服务必须有回滚说明，可写在 `DEPLOY.md` 中。
+Each microservice that needs to be deployed must have a rollback description, which can be written in `DEPLOY.md`.
 
-回滚说明建议包含：
+The rollback instructions include:
 
-1. 可回滚的版本或备份位置。
-2. 回滚命令或人工操作步骤。
-3. 回滚后需要检查的服务状态。
-4. 回滚后是否需要人工确认。
+1. Rollback version or backup location.
+2. Rollback commands or manual operation steps.
+3. The service status that needs to be checked after rolling back.
+4. Do you need manual confirmation after rolling back?
 
-## AI 执行规则
+## AI execution rules
 
-1. 修改部署方式时，同步更新该微服务的 `DEPLOY.md`。
-2. 不把部署密钥、服务器密码、API key 写入 `DEPLOY.md`。
-3. 部署说明只写敏感文件路径或占位符，不写真实敏感内容。
-4. 不能确定数据库或部署方案时，不强行统一，先记录到 `TODO.md`。
+1. When modifying the deployment method, update the `DEPLOY.md` of the microservice synchronously.
+2. Do not write the deployment key, server password and API key to `DEPLOY.md`.
+3. The deployment instructions only write sensitive file paths or placeholders, and do not write sensitive content.
+4. When the database or deployment scheme cannot be determined, do not force unification and record it to `TODO.md` first.
 
-## DEPLOY.md 填写格式
+## DEPLOY.md Fill in the format
 
 ```markdown
-# <SERVICE_NAME> 部署与回滚
+# <SERVICE_NAME> Deployment and Rollback
 
-## 部署信息
+## Deployment information
 
-- 部署环境：<本地 / 开发 / 预发布 / 生产>
-- 项目内环境路径：<`.venv/`、服务目录或 Docker 配置路径>
-- 目标部署路径：<路径>
-- 启动命令：`<COMMAND>`
-- 依赖服务：<服务列表>
-- 本地敏感文件：`local-secrets/<category>/<file>`
+- Deployment environment: <local / development / pre-release / production>
+- In-project environment path: <`.venv/`, service directory or Docker configuration path>
+- Target deployment path: <path>
+- Start command: `<COMMAND>`
+- Dependent services: <Service list>
+- Local sensitive files: `local-secrets/<category>/<file>`
 
-## 部署前检查
+## Pre-deployment inspection
 
-1. <依赖、配置和目标提交检查>
-2. 确认敏感文件仅存在于 `local-secrets/`，且未进入 Git。
-3. 确认待部署提交与人工测试版本一致。
+1. <Dependency, configuration and target submission check>
+2. Confirm that the sensitive file only exists in `local-secrets/` and has not entered Git.
+3. Confirm that the submission to be deployed is consistent with the manual test version.
 
-## 部署步骤
+## Deployment steps
 
-1. <步骤一>
-2. <步骤二>
+1. <Step one>
+2. <Step two>
 
-## 部署后人工确认
+## Manual confirmation after deployment
 
-1. <健康检查>
-2. <关键业务流程>
-3. <日志和错误检查>
+1. <Health check>
+2. <Key business processes>
+3. <Log and error check>
 
-## 回滚
+## Roll back
 
-- 可回滚版本：`<COMMIT-OR-RELEASE>`
-- 备份位置：<项目内路径或受控位置>
-- 回滚命令或步骤：`<COMMAND-OR-STEPS>`
-- 回滚后检查：<服务状态和业务检查>
-- 人工确认：<负责人和结果>
+- ROLLABLE VERSION: `<COMMIT-OR-RELEASE>`
+- Backup location: <in-project path or controlled location>
+- Rollback command or step: `<COMMAND-OR-STEPS>`
+- Check after rollback: <Service status and business check>
+- Manual confirmation: <person in charge and result>
 
-## 外部平台入口
+## External platform entrance
 
-具体官方网址、权限和最后核对日期见 `REFERENCES.md`。
+See `REFERENCES.md` for the specific official website, permissions and last check date.
 ```

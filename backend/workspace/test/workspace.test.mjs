@@ -13,10 +13,10 @@ async function fixture(t) {
 }
 test('sessions persist safely across reload, revisions reject stale writers', async (t) => {
   const root = await fixture(t); const store = await createStore(root);
-  const session = await store.createSession({ title: '专注应用' });
-  const updated = await store.patchSession(session.id, { threadId: 'thread-001', running: true, activeRequestId: 'request-001', messages: [{ id: 'u-1', role: 'user', text: '你好', requestId: 'request-001' }], requests: [{ id: 'request-001', status: 'inProgress', startedAt: new Date().toISOString() }] });
+  const session = await store.createSession({ title: 'Focused application' });
+  const updated = await store.patchSession(session.id, { threadId: 'thread-001', running: true, activeRequestId: 'request-001', messages: [{ id: 'u-1', role: 'user', text: '\u4f60\u597d', requestId: 'request-001' }], requests: [{ id: 'request-001', status: 'inProgress', startedAt: new Date().toISOString() }] });
   assert.equal(updated.revision, 2);
-  assert.equal((await (await createStore(root)).getSession(session.id)).messages[0].text, '你好');
+  assert.equal((await (await createStore(root)).getSession(session.id)).messages[0].text, '\u4f60\u597d');
   assert.equal((await (await createStore(root)).getSession(session.id)).requests[0].status, 'inProgress');
   await assert.rejects(store.patchSession(session.id, { requests: [{ id: 'invalid', status: 'unknown', startedAt: new Date().toISOString() }] }), { code: 'INVALID_INPUT' });
   await assert.rejects(store.patchSession(session.id, { expectedRevision: 1, title: 'old writer' }), { code: 'CONFLICT' });
@@ -42,7 +42,7 @@ test('invalid IDs/messages and symlink storage never read or modify outside data
 test('preferences require explicit evidence and can be corrected by deletion', async (t) => {
   const store = await createStore(await fixture(t));
   await assert.rejects(store.createPreference({ key: 'theme', value: 'dark', evidence: '' }), { code: 'INVALID_INPUT' });
-  const preference = await store.createPreference({ key: 'theme', value: 'dark', evidence: '用户说：以后默认深色' });
+  const preference = await store.createPreference({ key: 'theme', value: 'dark', evidence: 'User asked: default to dark from now on' });
   assert.equal((await store.listPreferences())[0].evidence, preference.evidence);
   await store.deletePreference(preference.id); assert.deepEqual(await store.listPreferences(), []);
 });

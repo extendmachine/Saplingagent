@@ -13,7 +13,7 @@ const deltaKinds = new Map([
 export function turnTiming(config) {
   const read = (name, fallback) => {
     const value = config[name] === undefined ? fallback : config[name];
-    if (!Number.isInteger(value) || value < 0 || value > maxTimerMs) throw new Error(`${name} 必须是 0 至 ${maxTimerMs} 的整数毫秒值`);
+    if (!Number.isInteger(value) || value < 0 || value > maxTimerMs) throw new Error(`${name} must be an integer millisecond value from 0 to ${maxTimerMs}`);
     return value;
   };
   return { turnTimeoutMs: read('turnTimeoutMs', 0), turnIdleWarningMs: read('turnIdleWarningMs', 600000) };
@@ -27,10 +27,10 @@ export function createTurnProgress({ turnTimeoutMs, turnIdleWarningMs, onIdle, o
   const phase = () => waiting.size ? 'waiting-user' : tools.size ? 'tool-running' : 'working';
   const snapshot = () => ({ startedAt: new Date(startedAt).toISOString(), lastProgressAt: new Date(lastProgressAt).toISOString(), lastProgressKind, idle, phase: phase() });
   const idleLabel = () => phase() === 'waiting-user'
-    ? '本轮正在等待你的确认；你可以继续等待或点击停止，系统不会自动重发。'
+    ? 'This turn is waiting for your confirmation. Wait or click Stop; the system will not automatically resend.'
     : phase() === 'tool-running'
-      ? '本轮暂时没有新的进展，工具仍在运行；你可以继续等待或点击停止，系统不会自动重发。'
-      : '本轮暂时没有新的进展；你可以继续等待或点击停止，系统不会自动重发。';
+      ? 'There has been no recent progress; a tool is still running. Wait or click Stop; the system will not automatically resend.'
+      : 'There has been no recent progress. Wait or click Stop; the system will not automatically resend.';
   function scheduleIdle() {
     clock.clearTimeout(idleTimer); idleTimer = undefined;
     if (stopped || !turnIdleWarningMs || idle) return;
@@ -46,7 +46,7 @@ export function createTurnProgress({ turnTimeoutMs, turnIdleWarningMs, onIdle, o
     if (stopped) return;
     const resumed = idle;
     lastProgressAt = clock.now(); lastProgressKind = kind; idle = false;
-    scheduleIdle(); if (resumed) onResume('已收到新的进展，继续运行…');
+    scheduleIdle(); if (resumed) onResume('New progress received. Continuing…');
   }
   function notification(method, p) {
     if (stopped) return false;
@@ -72,7 +72,7 @@ export function createTurnProgress({ turnTimeoutMs, turnIdleWarningMs, onIdle, o
   if (turnTimeoutMs > 0) hardTimer = clock.setTimeout(() => { if (!stopped) { stop(); onHardTimeout(); } }, turnTimeoutMs);
   return {
     notification, snapshot, stop,
-    statusLabel: () => idle ? idleLabel() : waiting.size ? '正在等待你的确认…' : undefined,
+    statusLabel: () => idle ? idleLabel() : waiting.size ? 'Waiting for your confirmation…' : undefined,
     waitForUser(id) { if (!stopped) waiting.add(id); },
     answered(id) { waiting.delete(id); },
     isWaiting(id) { return waiting.has(id); },

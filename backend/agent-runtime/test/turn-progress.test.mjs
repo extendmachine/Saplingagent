@@ -65,10 +65,10 @@ test('valid lifecycle distinguishes silent tools and actual user waits; duplicat
   const f = fixture({ turnIdleWarningMs: 100 });
   assert.equal(f.monitor.notification('item/started', { item: { id: 'c', type: 'commandExecution' } }), true);
   f.clock.advance(99); assert.equal(f.monitor.notification('item/started', { item: { id: 'c', type: 'commandExecution' } }), false);
-  f.clock.advance(1); assert.match(f.warnings[0], /工具仍在运行/); assert.equal(f.stopped, 0);
+  f.clock.advance(1); assert.match(f.warnings[0], /a tool is still running/); assert.equal(f.stopped, 0);
   f.monitor.notification('item/completed', { item: { id: 'c', type: 'commandExecution' } });
   f.monitor.waitForUser(23); assert.equal(f.monitor.snapshot().phase, 'waiting-user');
-  const last = f.monitor.snapshot().lastProgressAt; f.clock.advance(100); assert.match(f.warnings[1], /等待你的确认/);
+  const last = f.monitor.snapshot().lastProgressAt; f.clock.advance(100); assert.match(f.warnings[1], /waiting for your confirmation/);
   f.monitor.answered(23); assert.equal(f.monitor.snapshot().phase, 'working'); assert.equal(f.monitor.snapshot().lastProgressAt, last); f.monitor.stop();
 });
 test('stop clears both timers and prevents late progress from rearming', () => {

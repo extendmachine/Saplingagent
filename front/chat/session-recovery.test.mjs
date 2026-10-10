@@ -137,14 +137,14 @@ test('recovery-confirmed missing session after transport failure permits an expl
   } }); t.after(() => h.close());
   await h.send();
   assert.equal(h.storage.get(KEY), undefined); assert.equal(h.current.retryable, true);
-  assert.match(h.current.error, /会话.*不存在/);
+  assert.match(h.current.error, /[Ss]ession.*does not exist/);
   assert.equal(h.current.messages.length, 1); assert.equal(h.requests.filter(request => request.url === '/api/chat').length, 1);
 });
 
 test('non-session failures retain the saved ID and do not silently create a session', async t => {
   const failures = [
     () => json({ error: { code: 'NOT_FOUND', message: 'Endpoint does not exist' } }, 404),
-    () => json({ error: { code: 'NOT_FOUND', message: '接口不存在' } }, 404),
+    () => json({ error: { code: 'NOT_FOUND', message: 'Endpoint does not exist' } }, 404),
     () => new Response('<h1>missing route</h1>', { status: 404 }),
     () => json({ error: { code: 'NOT_FOUND', message: 'Session does not exist' } }, 500),
     () => json({ error: { code: 'NOT_FOUND', message: 'Session does not exist' } }, 503),
@@ -170,7 +170,7 @@ test('timeout during restoration retains the saved ID', async t => {
     request.signal.addEventListener('abort', () => reject(new DOMException('synthetic timeout', 'AbortError')), { once: true });
   }) }); t.after(() => h.close());
   h.tick(10000); await h.settle();
-  assert.equal(h.storage.get(KEY), 'retained'); assert.match(h.current.error, /超时/);
+  assert.equal(h.storage.get(KEY), 'retained'); assert.match(h.current.error, /timed out/);
 });
 
 test('missing-session cleanup leaves a different ID written by another tab intact', async t => {
@@ -227,7 +227,7 @@ test('a missing session during active snapshot polling releases running and keep
   assert.equal(h.current.isLoading, false); assert.equal(h.current.isRunning, false);
   assert.equal(h.current.retryable, true); assert.equal(h.storage.get(KEY), undefined);
   assert.equal(h.current.messages.at(-1).text, 'synthetic active input');
-  assert.match(h.current.error, /会话.*不存在/);
+  assert.match(h.current.error, /[Ss]ession.*does not exist/);
   assert.equal(h.requests.filter(request => request.url === '/api/chat').length, 0);
 });
 
@@ -243,7 +243,7 @@ test('bootstrap active-session recovery 404 retains the pending input for retry 
 });
 
 test('POST route and bare 404 failures retain the original session and never automatically POST again', async t => {
-  for (const failure of [() => json({ error: { code: 'NOT_FOUND', message: '接口不存在' } }, 404), () => new Response('proxy route missing', { status: 404 })]) {
+  for (const failure of [() => json({ error: { code: 'NOT_FOUND', message: 'Endpoint does not exist' } }, 404), () => new Response('proxy route missing', { status: 404 })]) {
     let reads = 0;
     const h = await harness({ savedId: 'retained', route: request => {
       if (request.url === '/api/sessions/retained') return ++reads === 1 ? json({ session: session('retained') }) : json({ error: { code: 'INTERNAL_ERROR', message: 'synthetic storage outage' } }, 500);
@@ -296,7 +296,7 @@ test('a late final 404 cannot clear a subsequently created session', async t => 
 test('a mismatched snapshot ID is rejected without binding a different conversation', async t => {
   const h = await harness({ savedId: 'retained', route: () => json({ session: session('different', [message('foreign', 'synthetic data')]) }) }); t.after(() => h.close());
   assert.equal(h.storage.get(KEY), 'retained'); assert.equal(h.current.messages.length, 0);
-  assert.match(h.current.error, /格式不正确/);
+  assert.match(h.current.error, /Invalid.*format/);
 });
 
 test('a list failure about a different missing session does not invalidate the selected ID', async t => {

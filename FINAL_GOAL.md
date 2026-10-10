@@ -1,72 +1,78 @@
-# Saplingagent 最终目标与构想
+# Saplingagent Ultimate Goal and Concept
 
-## 项目名称（2026-10-09）
+> English translation of committed project records. Historical task statuses below retain their original time and scope. Live development ownership/progress are authoritative in the original project's .worktrees/coordination when present. This candidate does not assert human acceptance or branch synchronization.
 
-用户明确项目以后统一叫 **Saplingagent**；页面、运行身份、安装与交付使用此名称。历史构想原文和内部协议/状态标识保留，已有会话无需迁移。
+## Project Name (2026-10-09)
 
-## 最终目标
+After the user specifies the project, it is uniformly called **Saplingagent**; this name is used for page, running identity, installation and delivery. The original text of the historical concept and the internal protocol/status identification are retained, and the existing session does not need to be migrated.
 
-制作 Saplingagent：以本地文件夹为应用边界，用户通过与 AI 对话构建应用，实现应用快速开发和个性化适配。长期对话形成偏好，持续调整同一工作页面，并以可追溯依据和使用效果判断改进。
-“所有 app”是长期产品愿景；首阶段采用 React 网页，原生平台能力与适配器后续按需求定义，不能宣称通用能力已实现。
+## The ultimate goal
 
-## 用户原始构想（2026-10-09）
+Make Saplingagent: With the local folder as the application boundary, users can build applications through dialogue with AI to achieve rapid application development and personalized adaptation. Long-term dialogue forms preferences, continuously adjusts the same working page, and judges and improves based on traceability and use effect.
+"All apps" is a long-term product vision; the React web page is adopted in the first stage, and the native platform capabilities and adapters are defined according to the needs in the future, and it cannot be claimed that the general capabilities have been realized.
 
-1.目标是制作一个seedagent，用ai来构建一个应用，实现所有app的快速开发和个性化适配
-2.本地端，包括--ai对话框，除基础对话框（用开源的成熟的对话框）外其他组件全部需要ai自己修改自己。页面形式干脆使用网页，走react框架，方便加入布局，方便修改。
-3.ai端--ai可以链接服务器去寻找资料，自己写mcp来修改自己，让自己适配用户需求
-4.需要一个最小部署脚本，每当用户需要开一个新功能时，复制一份脚本到本地文件夹即可
-5.脚本记得带上我的rules
-6.云端我们回做一个服务器，用于用户上传和下载最新的ai内容，云端先不处理
-7.每个应用都需要将自己的全部资料放到本地文件夹内，确保方便处理，方便打包，打包的基础脚本可以给客户写好
-8.页面上预留好几个修改区域，做好组件隔离和微服务构建，确保前后端分离，然后需要什么用户可以和ai自己聊天完成构建，完成后一般后端保存在backend文件夹对应位置上，前端保存到front文件夹，区分，文档在docs，你现在就可以修改一下目前的布局，确保文件结构正常
+## User's original concept (2026-10-09)
 
-## 已确定要求
+1.The goal is to make a seedagent, use AI to build an application, and realize the rapid development and personalized adaptation of all apps.
+2.The local terminal, including -- ai dialog box, except for the basic dialog box (a mature dialog box with open source), all other components need to be modified by AI itself. The page form simply uses the web page and follows the react framework, which is convenient for adding layout and modification.
+3.ai terminal--ai can link to the server to find information, write mcp by yourself to modify yourself, and adapt yourself to user needs.
+4.A minimum deployment script is required. Whenever the user needs to open a new feature, just copy a script to the local folder.
+5.Remember to bring my rules to the script.
+6.We will make a server in the cloud for users to upload and download the latest AI content. The cloud will not handle it for the time being.
+7.Each application needs to put all its information in the local folder to ensure convenient processing and packaging, and the basic script of packaging can be written for customers.
+8.Reserve several modification areas on the page, do a good job of component isolation and microservice construction, ensure the separation of front-end and back-end, and then need any users can chat with AI to complete the construction. After completion, the general back-end is saved in the corresponding position of the backend folder, and the front-end is saved in the front folder. Distinguish, the document is in docs. You can now modify the current layout to ensure that the file structure is normal.
 
-分支约定（TASK018，2026-10-09）：用户已完成上一交付版本测试，仅保留main纯AI聊天、testcode用户测试页面、release客户版（TASK018时与main同提交；后续main变更不自动同步release）。已测Mac安装器与AppServer接入内容保留在main/release；其它临时分支删除，来源保留于Git历史。testcode的用户演进内容不合入纯聊天版本。
+## The requirements have been determined.
 
-1. 本地网页采用 React，基础对话入口复用成熟开源方案；其他可见界面组件由 AI 创建、修改和个性化适配。
-2. 用户在 TASK-20261009-004 明确调整起点：初始只有单网页和一个对话框，不预置画布、导航或功能组件。后续通过 AI 对话修改组件、添加内容；画布不再是必须的初始界面。
-3. 本地 Agent 可连接外部资料服务，能生成自己的 MCP 工具以扩展和修改应用；密钥从本地文件读取。
-4. 新应用与新功能可通过最小启动入口创建，并带上 rules、AI 入口及初始化状态文件。
-5. 每个应用的源码、规则、说明、资料、记忆、业务数据、依赖清单、布局版本和本地环境归属应用文件夹。
-6. 前端放 front/，后端按服务放 backend/，人类说明放 docs/；微服务 Markdown 放实际服务目录。services/ 作为单一索引，不重复存放代码。
-7. 后续为客户提供基础启动与打包脚本，云端内容上传下载服务本阶段不处理。
+Branch agreement (TASK018, 2026-10-09): The user has completed the previous delivery version test, and only keeps the main pure AI chat, testcode user test page, and release client version (TASK018 is submitted with main; subsequent main changes are not automatically released synchronously). The tested Mac installer and AppServer access content remain in main/release; other temporary branches are deleted, and the source is retained in Git history. The user evolution content of testcode does not fit into the pure chat version.
 
-## 当前权限决定（2026-10-09）
+1. The local web page uses React, and the basic dialogue entrance reuses mature open source schemes; other visible interface components are created, modified and personalized by AI.
+2. The user clearly adjusts the starting point in TASK-20261009-004: initially, there is only a single web page and a dialog box, and the canvas, navigation or functional components are not preset. Subsequently, modify components and add content through AI dialogue; the canvas is no longer a necessary initial interface.
+3. Local Agents can connect to external data services and generate their own MCP tools to extend and modify applications; the key is read from the local file.
+4. New applications and new functions can be created through the minimum startup entrance, with rules, AI entrances and initialization status files.
+5. The source code, rules, instructions, data, memory, business data, dependency list, layout version and local environment of each application belong to the application folder.
+6. The front end is placed front/, the back-end is placed by service, and the human description is placed docs/; the microservice Markdown is placed in the actual service directory. Services/ As a single index, the code is not stored repeatedly.
+7. In the future, customers will be provided with basic startup and packaging scripts, and the cloud content upload and download service will not be processed at this stage.
 
-用户明确取消Saplingagent MCP的backend/及全部文件保护，授予当前系统用户的Full Access。整个应用、基础聊天、后端、MCP、Skills、配置与依赖可修改，文件和shell无需逐次确认；编译、AST/YAML/hash检查不作为操作门槛，不自动回退。候选/文件原件可记录供用户主动撤销；任意命令或原生写入的副作用不承诺可完整回退。系统自身权限仍适用，不自动提权root。
+## Current authority decision (2026-10-09)
 
-## macOS安装与交付（TASK015，2026-10-09）
+The user clearly cancels the backend/ and all file protection of Saplingagent MCP, and grants Full Access to the current system user. The whole application, basic chat, back-end, MCP, Skills, configuration and dependency can be modified, and files and shells do not need to be confirmed one by one; compilation, AST/YAML/hash check are not used as the operation threshold and do not automatically return. The original candidate/document can be recorded for the user to actively revoke; any side effect of arbitrary commands or native writing does not promise to be completely returned. The system's own permissions are still applicable, and the root is not automatically upgraded.
 
-用户已授权制作目前只支持macOS的安装与Codex AppServer接入脚本、说明及可交付本地源包。本候选从main单聊天起点创建，保留Full Access；支持macOS13.5+的Apple Silicon/Intel、项目内Node/Codex、用户自登录、自动MCP/Skills就绪启动和干净打包。用户真实资料不分发，接收者状态文件初始化。云端、商业SIWC及原生App签名/公证另行实施。
+## macOS Installation and Delivery (TASK015, 2026-10-09)
 
-## 本次任务范围
+The user has been authorized to make scripts, instructions and deliverable local source packages that currently only support macOS installation and Codex AppServer access. This candidate is created from the main single chat starting point and retains Full Access; supports macOS 13.5+ Apple Silicon/Intel, in-project Node/Codex, user self-login, automatic MCP/Skills ready start-up and clean packaging. The user's real information will not be distributed, and the recipient's status file will be initialized. Cloud, commercial SIWC and native App signature/notarization will be implemented separately.
 
-- TASK017（2026-10-09）：用户明确授权将全部公开源码分支推送到https://github.com/extendmachine/Saplingagent.git，并编写产品README，重点说明macOS安装、本人Codex登录和App Server接入。采用独立chore/project/github-delivery从Mac安装候选创建首页版本，保留main/testcode及冻结候选；当前远程为私有仓库。源码上传不包含真实凭据/运行资料，不代表商业认证、云端运行或main合并。
+## The scope of this task
 
-- TASK005至009完成真实AI/MCP/Skills；TASK010至013按用户新要求移除强制保护，保留现有单页和用户已生成业务内容。
-- 构建本地 Agent 运行、workspace 持久化、Full Access文件/命令与可选快照服务、MCP 工具与项目 Skills，前端流式展示和停止/失败处理。
-- 采用已登录本机 Codex App Server，选择目录中真实可用的模型并验证。用户后续通过对话决定页面内容。
-- 本机开发运行、项目内环境、适当验证与文档同步已授权；不公开发布或建设云端。2026-10-09 用户在TASK014明确授权初始化本地Git，保存当前代码到testcode、经确认的原始版本到main；不等同于合并当前改动到main或远程推送。
+- TASK017 (2026-10-09): The user explicitly authorizes to push all public source code branches to https://github.com/extendmachine/Saplingagent.git, and write the product README, focusing on macOS installation, my Codex login and App Server access. Use independent chore/project/github-delivery to install candidates from Mac to create the home page version, retain main/testcode and freeze candidates; at present, the remote is a private repository. The source code upload does not contain real credentials/running data, and does not represent commercial authentication, cloud operation or main merger.
 
-## 方案建议与待选事项
+- TASK005 to 009 completes real AI/MCP/Skills; TASK010 to 013 removes mandatory protection according to the user's new requirements, and retains the existing single page and user-generated business content.
+- Build local Agent run, workspace persistence, Full Access file/command and optional snapshot services, MCP tools and project Skills, front-end streaming display and stop/failure processing.
+- Use the local Codex App Server that has been logged in to select the models that are actually available in the directory and verify. The user subsequently decides the content of the page through the dialogue.
+- The development and operation of this machine, the in-project environment, appropriate verification and document synchronization have been authorized; do not publish or build the cloud. 2026-10-09 The user explicitly authorizes to initialize the local Git in TASK014, save the current code to testcode, and the confirmed original version to main; it is not equivalent to merging the current changes to main or remote push.
 
-- 单页前端采用 assistant-ui 0.15.26，React Flow 已移除；React 19.3.0 / TypeScript 7.0.2 / Vite 8.3.4，已安装并通过构建和浏览器检查。
-- 本地后端已采用Node.js原生ESM服务，以独立HTTP/stdio边界协作；统一Node >=24.11（本机26.4.0）。
-- 当前会话/偏好为原子JSON文件存储；Codex thread与认证运行资料在项目CODEX_HOME。未迁移SQLite业务库。
-- 已实现agent-runtime、workspace、app-builder、mcp-runtime四项后端职责；features/由用户业务对话逐步建立。
-- 三个回环HTTP进程与Codex托管的MCP stdio进程；共享公开契约，不导入其他服务私有实现。
-- 首版为本机macOS网页开发运行，采用本机已登录Codex App Server0.146.1；实际模型gpt-5.6-sol/medium。macOS本地源包与安装脚本见TASK015；原生能力与其他平台交付仍待实施。
+## Program suggestions and matters to be selected
 
-## 验收方向
+- The single-page front end adopts assistant-ui 0.15.26, and React Flow has been removed; React 19.3.0 / TypeScript 7.0.2 / Vite 8.3.4 has been installed and passed the construction and browser check.
+- The local back-end has adopted Node.js native ESM service to collaborate with independent HTTP/stdio boundary; unified Node >=24.11 (local 26.4.0).
+- The current session/preference is stored in the atomic JSON file; Codex thread and authentication running data are in the project CODEX_HOME. The SQLite business library has not been migrated.
+- The four back-end responsibilities of agent-runtime, workspace, app-builder and mcp-runtime have been realized; features/are gradually established by user business dialogue.
+- Three loop HTTP processes and MCP stdio processes hosted by Codex; share public contracts and do not import other services for private implementation.
+- The first version is developed and run by the local macOS web page, using the local machine that has logged in Codex App Server 0.146.1; the actual model is gpt-5.6-sol/medium. See TASK015 for macOS local source packages and installation scripts; native capabilities and other platform delivery are still to be implemented.
 
-1. 复制启动入口和随附种子资料到新目录后，可在该目录恢复完整应用；不会依赖开发者电脑的固定路径。
-2. 基础对话入口可持续使用；AI可以修改全部组件与后端；用户按需选用候选/快照和主动恢复，不强制验证或自动恢复。
-3. 前后端分离，新增功能同名对应，服务之间按契约通信；开发组织沿用公开服务接口；MCP文件与命令工具不以目录权限阻止源码修改。
-4. 应用保存完整项目资料；代码和数据的恢复策略可区分，打包携带 rules，排除真实凭据与日志。
-5. 长期偏好、临时要求和用户纠正可区分；主动布局改动能关联依据、效果和撤销反馈。
-6. 原生平台或外部依赖能力如未实现，明确标记范围，不使用“支持所有 app”作为已完成事实。
+## Acceptance direction
 
-## 当前不做
+1. After copying the startup entrance and the attached seed data to the new directory, the complete application can be restored in the directory; it will not rely on the fixed path of the developer's computer.
+2. The basic dialogue entrance can be used sustainably; AI can modify all components and back-ends; users can choose candidates/snapshots and active recovery on demand, without mandatory verification or automatic recovery.
+3. The front-end and back-end are separated, the new functions correspond to the same name, and the services communicate according to the contract; the development organization follows the public service interface; MCP files and command tools do not use directory permissions to prevent source code modification.
+4. The application saves the complete project data; the recovery strategy of code and data can be distinguished, packaged and carried rules, and real credentials and logs are excluded.
+5. Long-term preferences, temporary requirements and user corrections can be distinguished; active layout changes are related to the basis, effect and revocation feedback.
+6. If the native platform or external dependency is not realized, clearly mark the scope, and do not use "support all apps" as the completed fact.
 
-本地后端、模型和MCP/Skills已实现，Full Access沿用。TASK015新增macOS本地源包/安装与用户自登录，TASK017已授权GitHub源码上传及接入README；云端上传下载、外部应用上线和商业SIWC认证仍不做。后续以 TODO 的实际验证结果为准。
+## Don't do it now.
+
+The local back-end, model and MCP/Skills have been implemented, and Full Access is used. TASK015 adds macOS local source package/installation and user self-login, TASK017 has authorized GitHub source code upload and access to README; cloud upload and download, external application launch and commercial SIWC certification are still not done. The follow-up shall be subject to the actual verification results of TODO.
+
+## Current release requirements (2026-10-10)
+
+User requests English throughout project-owned UI, prompts, installers, rules, Skills and documentation, with the same approved source content on main/testcode/release. Main is the shared development baseline; preserve old branch history. Project-owned source uses PolyForm Noncommercial 1.0.0, with separate written permission required for commercial use. Prepare a clean macOS source package; public visibility and commercial authentication are not completed by preparing the candidate. Existing user messages, credentials and private runtime data are not translated or distributed.

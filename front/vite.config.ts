@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     rolldownOptions: {
       onwarn(warning, warn) {
-        // 纯浏览器 SPA 不使用 React Server Components，这些依赖声明无需保留。
+        // This browser SPA does not use React Server Components; omit their dependency directives.
         if (warning.code === 'MODULE_LEVEL_DIRECTIVE' && warning.message.includes('use client')) return;
         warn(warning);
       },

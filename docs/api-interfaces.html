@@ -1,53 +1,53 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>可调用接口 v2</title>
+<title>Callable interface v2</title>
 <style>body{margin:0;background:#f6f7f4;color:#283128;font:16px/1.75 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:32px 22px 64px}nav{display:flex;flex-wrap:wrap;gap:18px}section{background:#fff;padding:22px;border:1px solid #dde2d8;border-radius:14px;margin:22px 0}h1{line-height:1.25}table{border-collapse:collapse;width:100%}td,th{padding:10px;border:1px solid #dde2d8;text-align:left;vertical-align:top}pre{background:#edf0e9;padding:16px;overflow:auto}a{color:#456a39}img{max-width:100%;border:1px solid #dde2d8;border-radius:12px}@media(max-width:650px){main{padding:22px 12px}section{padding:16px}table{display:block;overflow:auto}}</style>
 </head>
 <body>
-<main><p><strong>main单聊天基线</strong>：本分支无后加应用组件，Full Access核心保留。恢复来源与本次检查见<a href="git-versions.html">Git版本说明</a>；历史页面截图和任务记录保留其当时含义。</p>
+<main><p><strong>Main single chat baseline</strong>: There are no later application components in this branch, and the Full Access core is retained. See the recovery source and this inspection<a href="git-versions.html">Git version description</a>; Screenshots and task records of the history page retain their meaning at that time.</p>
 <nav>
-<a href="index.html">概览</a>
-<a href="runtime.html">运行与演进</a>
-<a href="frontend-preview.html">单页预览</a>
-<a href="api-interfaces.html">接口</a>
-<a href="references.html">官方资料</a>
-<a href="seedagent-plan.html">早期方案</a>
+<a href="index.html">Outline</a>
+<a href="runtime.html">Operation and evolution</a>
+<a href="frontend-preview.html">Single-page preview</a>
+<a href="api-interfaces.html">Port</a>
+<a href="references.html">Official information</a>
+<a href="seedagent-plan.html">Early plan</a>
 </nav>
-<h1>可调用接口 v2</h1>
-<p>公开机器契约 <a href="../contracts/runtime-api.md">contracts/runtime-api.md</a>，各服务 CONTRACT.md 为执行依据。前端同源5173代理Agent4310；workspace4311和builder4312为内部Bearer接口。所有地址127.0.0.1，无云端。</p>
+<h1>Callable interface v2</h1>
+<p>Open machine contract<a href="../contracts/runtime-api.md">contracts/runtime-api.md</a>, each service CONTRACT.md is the basis for execution. The front-end same source 5173 agent Agent4310; workspace4311 and builder4312 are internal Bearer interfaces. All addresses are 127.0.0.1, no cloud.</p>
 <section>
-<h2>前端 → Agent</h2>
+<h2>Front-end → Agent</h2>
 <table>
 <tr>
-<th>方法/路径</th>
-<th>内容</th>
+<th>Method/Path</th>
+<th>Content</th>
 </tr>
 <tr>
 <td>GET /api/status</td>
-<td>真实ready/authenticated/provider/model、permissions(Full Access)、Skills与MCP目录</td>
+<td>Real ready/authenticated/provider/model, permissions (Full Access), Skills and MCP catalog</td>
 </tr>
 <tr>
 <td>GET /api/git</td>
-<td>当前仓库、分支/HEAD、短版本号与状态指纹、工作区改动、本地分支、最近提交与其它Worktree占用状态；右上面板与底部版本更新提醒使用</td>
+<td>Current warehouse, branch/HEAD, short version number and status fingerprint, work area change, local branch, recent submission and other Worktree occupancy status; upper right panel and bottom version update reminder use</td>
 </tr>
 <tr>
 <td>POST /api/git/commit</td>
-<td>将当前未忽略改动保存为本地Git提交；已干净时不重复提交，不推送远程，不创建或切换分支</td>
+<td>Save the current unignored changes as a local Git submission; do not repeat the submission when it is clean, do not push remote, do not create or switch branches.</td>
 </tr>
 <tr>
 <td>POST /api/git/switch</td>
-<td>{branch} → 安全切换已有本地分支；当前命名分支有改动时先自动提交，活跃对话、detached HEAD、并发切换或目标被占用时返回409，不自动stash/force/fetch/push</td>
+<td>{Branch} → Securely switch existing local branches; when the current named branch is changed, it will be automatically submitted first, and 409 will be returned when active dialogues, detached HEAD, concurrent switching or targets are occupied, and will not automatically stash/force/fetch/push</td>
 </tr>
 <tr>
 <td>GET /api/sessions</td>
-<td>本地会话列表</td>
+<td>Local session list</td>
 </tr>
 <tr>
 <td>GET /api/sessions/:id</td>
-<td>消息、threadId、requests、running、activeRequestId与pendingApprovals</td>
+<td>Message, threadId, requests, running, activeRequestId and pendingApprovals</td>
 </tr>
 <tr>
 <td>POST /api/chat</td>
@@ -55,42 +55,42 @@
 </tr>
 <tr>
 <td>GET /api/events?sessionId=…</td>
-<td>重连：先snapshot，订阅后续事件与heartbeat</td>
+<td>Reconnect: first snapshot, subscribe for follow-up events and heartbeat</td>
 </tr>
 <tr>
 <td>POST /api/sessions/:id/cancel</td>
-<td>真实turn/interrupt</td>
+<td>Real turn/interrupt</td>
 </tr>
 <tr>
 <td>POST /api/approvals/:id</td>
-<td>{decision:accept或decline}，兼容接口；当前标准工具执行自动允许</td>
+<td>{Decision: accept or decline}, compatible interface; the current standard tool execution is automatically allowed</td>
 </tr>
 </table>
-<p>text最多32000字符；requestId幂等，重试不同文本冲突409；同会话其他运行请求409；未就绪503；错误返回error.code/message。SSE最终status为completed、failed或interrupted。当前Codex为danger-full-access/never，native file/shell与MCP执行自动允许。</p>
-<p>TASK-20261010-006进展监测：活动轮session可带可选progress对象，含startedAt、lastProgressAt（ISO时间）、lastProgressKind（started/text/reasoning/plan/command-output/file-output/mcp-progress/item-started/item-completed）、idle（布尔）和phase（working/tool-running/waiting-user）。元数据仅在Agent内存中，结束省略，不修改workspace存储或返回推理/工具原文。默认turnTimeoutMs=0（缺字段同样0）关闭整轮硬时限；turnIdleWarningMs=600000在连续10分钟没有有效进展时通过既有status.label提醒，仍running，无error/done，不自动停止或重发。每段闲置提醒一次，新进展继续；GET /api/events及相同请求重连补发当前提醒。非空文本/推理/计划、不同的有效计划更新、有效item开始/结束、命令输出和MCP progress.message更新进展，心跳/HTTP轮询/重连/保存/错误重试不续期，旧thread/turn不能续期或结束新轮。静默工具提示仍在运行；标准Full Access确认继续自动允许，未新增自由问题界面。显式正总时限仍真实中断，两个配置均只接受0至2147483647整数毫秒，0关闭对应计时器。详见<a href="../backend/agent-runtime/ai-tasks/TASK-20261010-006.md">任务交接</a>。</p>
-<p>会话恢复修复候选（TASK-20261010-003）：所选会话请求返回404、NOT_FOUND且message为“Session does not exist”时，前端解除匹配的旧会话指针；专属SESSION_NOT_FOUND同样适用。列表、路由/裸404和网络、超时、401、500/503不清指针。保留原输入与requestId，用户点击重试才发送，不自动发起模型请求；旧异步响应不覆盖新会话，其他标签的新缓存不被清除。接口字段不变，候选测试与同步状态见<a href="../front/ai-tasks/TASK-20261010-003.md">交接记录</a>。</p>
+<p>Text up to 32,000 characters; requestId power, etc., retry different text conflicts 409; other running requests in the same session 409; not ready 503; error return error.code/message. The final status of SSE is completed, failed or interrupted. At present, Codex is dangerous-full-access/never, and native file/shell and MCP execute automatic permission.</p>
+<p>TASK-20261010-006 Progress monitoring: Activity round session can have optional progress objects, including startedAt, lastProgressAt (ISO time), lastProgressKind (started/text/reasoning/plan/command-output/file-output/mcp-progress/item-started/item-completed), idle and phase (working/tool-running/waiting-user). The metadata is only in the Agent memory, and the end is omitted. The workspace storage is not modified or the original inference/tool is returned. The default turnTimeoutMs=0 (the missing field is also 0) closes the whole round of hard time limit; turnIdleWarningMs=600000 is still running through the existing status.label reminder when there is no effective progress for 10 consecutive minutes, no error/done, and does not automatically stop or resend. Each idle reminder is once, and the new progress continues; GET /api/events and the same request are reconnected to reissue the current reminder. Non-empty text/reasoning/plan, different valid plan updates, valid item start/end, command output and MCP progress.message update progress, heartbeat/HTTP polling/reconnection/save/error retry will not be renewed, old thread/turn cannot be renewed or end the new round. The silent tool prompt is still running; the standard Full Access confirmation continues to be allowed automatically, and the free question interface has not been added. The explicit positive total time limit is still really interrupted. Both configurations only accept 0 to 2147483647 integer milliseconds, and 0 closes the corresponding timer. See details<a href="../backend/agent-runtime/ai-tasks/TASK-20261010-006.md">Task handover</a>。</p>
+<p>Session recovery repair candidate (TASK-20261010-003): When the selected session request returns 404, NOT_FOUND and the message is "Session does not exist", the front-end unmatched old session pointer; the exclusive SESSION_NOT_FOUND is also applicable. List, routing/naked 404 and network, timeout, 401, 500/503 unclear pointers. Keep the original input and requestId, and the user will click to retry before sending, and the model request will not be automatically initiated; the old asynchronous response will not overwrite the new session, and the new cache of other tags will not be cleared. The interface field remains unchanged. See the candidate test and synchronization status.<a href="../front/ai-tasks/TASK-20261010-003.md">Handover record</a>。</p>
 </section>
 <section>
-<h2>内部 HTTP</h2>
-<p>MCP → Agent：POST /internal/register-task {tool,fingerprint}，Bearer认证并绑定当前真实MCP调用，尝试记录taskId；登记失败不作为操作权限门槛。project_context({modification:true})供修改前登记；普通聊天与只读不登记。</p>
+<h2>Internal HTTP</h2>
+<p>MCP → Agent: POST /internal/register-task {tool,fingerprint}, Bearer authenticates and binds the current real MCP call, and tries to record taskId; registration failure is not used as the operation permission threshold. Project_context({modification:true}) for registration before modification; general chat and read-only do not register.</p>
 <p>
-<a href="../backend/workspace/CONTRACT.md">workspace契约</a>：GET/POST sessions、GET/PATCH sessions/:id、GET/POST preferences、DELETE preferences/:id；GET health开放。原子JSON存储、显式证据、单进程队列。</p>
+<a href="../backend/workspace/CONTRACT.md">Workspace contract</a>: GET/POST sessions, GET/PATCH sessions/:id, GET/POST preferences, DELETE preferences/:id; GET health is open. Atomic JSON storage, explicit evidence, single process queue.</p>
 <p>
-<a href="../backend/app-builder/CONTRACT.md">app-builder契约</a>：GET files/file/changes；POST files/write与files/delete直接操作文件并尽力记录原件；快照失败不阻止操作，以warnings和changeId为准；POST commands {command,cwd?,timeoutMs?}返回真实exitCode/stdout/stderr/timedOut/cancelled。POST changes返回ready候选、不强制验证；apply直接应用；rollback仅用户主动覆盖恢复，不拦截后续修改。允许所有当前OS用户可访问路径，绝对/相对和符号链接均可用。</p>
+<a href="../backend/app-builder/CONTRACT.md">App-builder contract</a>: GET files/file/changes; POST files/write and files/delete directly operate the file and try their best to record the original; snapshot failure does not prevent the operation, subject to warnings and changeId; POST commands {command,cwd?,timeoutMs?} Return the real exitCode/stdout/stderr/timedOut/cancelled. POST changes return ready candidate, no mandatory verification; apply directly; rollback only the user actively overwrites the recovery, and does not intercept subsequent modifications. All current OS users are allowed to access the path, and absolute/relative and symbolic links are available.</p>
 </section>
 <section>
-<h2>MCP 目录</h2>
+<h2>MCP Catalog</h2>
 <p>
-<a href="../backend/mcp-runtime/CONTRACT.md">正式MCP schema</a>，官方SDK stdio，15个工具：</p>
+<a href="../backend/mcp-runtime/CONTRACT.md">Official MCP schema</a>, official SDK stdio, 15 tools:</p>
 <pre>workspace_list_files / workspace_read_file / project_context
 workspace_write_file / workspace_delete_file / workspace_run_command
 page_propose / page_apply / page_rollback / page_changes
 preferences_get / preferences_set / preferences_forget
 skills_list / skills_read</pre>
-<p>参数规模使用实际MCP schema上限；reason最多4000。工具返回结构化状态，错误isError，不伪造成功。HTTPtoken仅服务读取，认证详情不在此文档或前端返回。</p>
+<p>The parameter scale uses the actual MCP schema upper limit; reason is up to 4000. The tool returns to the structured state, the error is Error, and the forge is not successful. HTTPtoken is only for reading, and the authentication details are not returned in this document or front-end.</p>
 </section>
 <p>
-<small>2026-10-10 · TASK-20261010-004/005 · 规范2026-09-29.1 · 本地分支切换前自动提交，面板不创建分支</small>
+<small>2026-10-10 · TASK-20261010-004/005 · Specification 2026-09-29.1 · Automatic submission before local branch switching, and the panel does not create branches</small>
 </p>
 </main>
 </body>

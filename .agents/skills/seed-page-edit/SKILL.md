@@ -1,23 +1,21 @@
 ---
 name: seed-page-edit
-description: 根据用户对话创建或调整 Saplingagent 的 React 页面、组件和所需应用能力，使用当前用户权限的文件与命令工具完成实现和验证。用于用户要求改页面或添加功能；只讨论方案或调研时不修改源码。
+description: Create or adapt Saplingagent React pages, components and application features requested in conversation. Implement and verify with current-user file and command tools. Keep research and proposal-only requests read-only.
 ---
 
-# Saplingagent 页面演进
+# Saplingagent page evolution
 
-项目起点是单网页、单对话框。用户要求什么，就添加什么；不自动恢复画布、导航、仪表盘或示例组件。通常业务组件放 `front/features/`，通过 `front/App.tsx` 组合；前端在 `front/`、后端在 `backend/`、文档在 `docs/`，服务间按公开接口通信。这是组织方式，不是目录权限限制。
+Start with a single page and chat interface. Add what the user requests; do not automatically introduce a canvas, navigation, dashboard or sample features. Normally put application components in `front/features/` and compose them in `front/App.tsx`. Frontend belongs in `front/`, backend in `backend/`, and human documentation in `docs/`. Services communicate through public contracts. These are organizational conventions, not file permission restrictions.
 
-只讨论方案时用普通 `project_context` 核对当前目标和规则，保持只读，不登记修改任务。用户明确要求实现后，先用 `project_context({modification:true})` 尝试记录归属；登记警告不阻止已授权修改，不伪造 taskId。读取相关规则和现有代码，给出规范读取回执后继续。查看 `preferences_get` 的已有证据辅助选择，不把偏好当作额外授权，不把一次页面请求写成长期偏好。不要在回复或普通日志中展示真实凭据。
+For discussion only, use ordinary `project_context` to inspect goals/rules and remain read-only. For explicit implementation, first attempt `project_context({modification:true})` to register ownership. Registration warnings do not block authorized work; never fabricate a taskId. Read relevant rules and existing code and give the required rules receipt. Read evidence from `preferences_get` when useful, without treating preferences as authorization or a one-time page request as a permanent preference. Never display real credentials in replies or ordinary logs.
 
-用户当前请求已授权相应页面修改；一般不再要求确认同一动作。未指定的常规视觉细节可以合理决定；新增云端、外部发送或无法从现有范围判断的功能需先明确范围。
+The current request authorizes the relevant implementation. Do not repeatedly ask to approve the same action. Decide routine visual details reasonably. Clarify scope for new cloud capabilities, external sending or features whose authorization cannot be inferred. Preserve explicit project approval requirements for tested commits/main synchronization.
 
-实现与验证：
+1. Read target files with `workspace_read_file`; paths default to the project root and may be absolute, parent-relative or symlinks. Continue large reads using nextOffset. Inspect existing changes before writing.
+2. Use `workspace_write_file` directly, and `workspace_run_command` or actual native tools for commands, dependencies and service changes. Chat, main, backend, MCP, Skills and dependencies are writable under the current OS user's permissions; this does not imply root elevation or expanded task authorization.
+3. Optionally record a multi-file change through `page_propose` → `page_apply`. `ready` means recorded, not compiled. expectedHash is metadata, not an overwrite gate. Only `applied` confirms the call applied. Direct write/delete snapshots are best-effort: an applied result may include warnings and no changeId, so restoration cannot be promised. Handle actual filesystem errors. After a write timeout/disconnection, inspect state/files before retrying.
+4. Run appropriate checks. If browser tools are available, inspect the actual page/chat; otherwise report verified checks and the remaining visual review. Backend/MCP/dependency changes may need a restart. A successful write/build is not human acceptance.
 
-1. 用 `workspace_read_file` 读取目标文件；目录默认项目根，允许绝对路径、父级路径和符号链接，较大文件按返回的 nextOffset 续读。核对现有变化后修改相关文件。
-2. 可直接 `workspace_write_file`，需要命令、依赖或服务调整时用 `workspace_run_command` 或实际可用的原生工具。允许修改聊天底座、main、后端、MCP、Skills 和依赖，权限等同当前 OS 用户，不代表 root。当前完整权限模式无逐次人工确认门槛。
-3. 需要记录多文件候选时，可选 `page_propose` → `page_apply`。ready 只表示已记录，不证明编译；expectedHash 是元数据，不拦截覆盖。直接写入或 apply 返回 applied 才表明该调用已应用；直接写删的快照仅尽力保存，可能 applied 同时有 warning、无 changeId，此时不能承诺快照恢复。真实文件系统错误如实处理。写请求超时或断线先核对状态和目标文件，再决定是否重试。
-4. 按改动运行必要检查；有浏览器能力时检查实际页面和聊天可用性，否则说明实际完成的验证与待查看部分。MCP、后端或依赖变化可能需要重启后加载，核对实际生效结果。不要把成功写入或可编译描述成人工体验验收。
+For user-requested restoration, identify the record with `page_changes`, then call `page_rollback`. It overwrites later edits with recorded originals; explain which files were restored. Never automatically roll back. Shell, native-tool, network and business-data side effects are not guaranteed reversible.
 
-用户要求撤销时，用 `page_changes` 确定具体记录并调用 `page_rollback`。恢复会按原件覆盖后续修改，说明实际恢复的文件；不自动回退。只有已记录的文件原件可据此恢复，shell、原生工具、网络或业务数据副作用不能保证全部回退。
-
-最终回复交代可见结果、真实验证与已记录的恢复标识，简洁为主；不凭权限扩大用户要求的功能范围。
+Finish with visible results, actual verification and any recorded restoration ID. Keep the response concise and within the requested feature scope.

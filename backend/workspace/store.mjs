@@ -110,7 +110,7 @@ export async function createStore(applicationRoot) {
       return serialize(async () => {
         if (!input || typeof input !== 'object' || Array.isArray(input)) fail('Invalid session input');
         const now = new Date().toISOString();
-        const session = { id: randomUUID(), title: input.title === undefined ? '新对话' : text(input.title, 'title', 200), threadId: null, messages: [], running: false, activeRequestId: null, createdAt: now, updatedAt: now, revision: 1 };
+        const session = { id: randomUUID(), title: input.title === undefined ? 'New conversation' : text(input.title, 'title', 200), threadId: null, messages: [], running: false, activeRequestId: null, createdAt: now, updatedAt: now, revision: 1 };
         await atomicJson(root, `data/workspace/sessions/${session.id}.json`, session);
         return session;
       });

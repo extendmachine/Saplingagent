@@ -103,7 +103,7 @@ async function fixture(config = {}) {
     async cleanup() { for (const hold of gates) hold.release(); for (const channel of channels) await channel.cancel(); await server.shutdown(); workspace.closeAllConnections(); await new Promise(resolve => workspace.close(resolve)); await fs.rm(root, { recursive: true, force: true }); },
   };
 }
-const idleWarnings = ch => ch.events.filter(e => e.type === 'status' && /暂时没有新的进展|本轮正在等待/.test(e.label));
+const idleWarnings = ch => ch.events.filter(e => e.type === 'status' && /no recent progress|waiting for your confirmation/.test(e.label));
 
 test('actual HTTP runtime continues beyond former ten minutes, warns once, replays idle on reconnect and resumes', async () => {
   const f = await fixture();
@@ -119,7 +119,7 @@ test('actual HTTP runtime continues beyond former ten minutes, warns once, repla
     assert.equal(idleWarnings(ch).length, 1); assert.equal(f.starts.length, 1); assert.equal(f.interrupts.length, 0);
     assert.equal((await f.session(ch.sessionId)).progress.lastProgressAt, idle.progress.lastProgressAt);
     f.notify(turn, 'item/mcpToolCall/progress', { itemId: 'tool', message: 'PRIVATE_TOOL_PROGRESS' });
-    assert.equal((await f.session(ch.sessionId)).progress.idle, false); await until(() => ch.events.some(e => e.type === 'status' && /新的进展，继续/.test(e.label)));
+    assert.equal((await f.session(ch.sessionId)).progress.idle, false); await until(() => ch.events.some(e => e.type === 'status' && /New progress received/.test(e.label)));
     assert.doesNotMatch(JSON.stringify([...f.sessions.values(), ch.events]), /PRIVATE_REASONING|PRIVATE_TOOL_PROGRESS/);
     await f.complete(turn); assert.equal(f.clock.pending, 0); assert.equal((await f.session(ch.sessionId)).progress, undefined);
   } finally { await f.cleanup(); }
@@ -144,7 +144,7 @@ test('concurrent sessions have independent idle states, silent tools and cancell
     const a = await f.chat('session-a'), b = await f.chat('session-b'); await until(() => f.starts.length === 2);
     f.notify(f.starts[1], 'item/started', { item: { id: 'command', type: 'commandExecution', status: 'inProgress' } });
     f.clock.advance(90); f.notify(f.starts[0], 'item/agentMessage/delta', { itemId: 'text', delta: 'hello' }); f.clock.advance(10);
-    await until(() => idleWarnings(b).length === 1); assert.equal(idleWarnings(a).length, 0); assert.match(idleWarnings(b)[0].label, /工具仍在运行/);
+    await until(() => idleWarnings(b).length === 1); assert.equal(idleWarnings(a).length, 0); assert.match(idleWarnings(b)[0].label, /a tool is still running/);
     const bp = (await f.session(b.sessionId)).progress; assert.equal(bp.phase, 'tool-running'); assert.equal(f.interrupts.length, 0);
     assert.equal((await f.request(`/api/sessions/${b.sessionId}/cancel`, {})).status, 200); await until(() => !f.sessions.get(b.sessionId).running);
     assert.equal(f.interrupts.length, 1); assert.equal(f.interrupts[0].turnId, f.starts[1].turnId); assert.equal(f.clock.pending, 1);
@@ -174,7 +174,7 @@ test('explicit positive hard timeout interrupts the real current turn and does n
     const ch = await f.chat('hard-timeout'), turn = f.starts[0]; f.clock.advance(900);
     f.notify(turn, 'item/reasoning/textDelta', { itemId: 'r', delta: 'still thinking' }); f.clock.advance(100);
     await until(() => f.interrupts.length === 1); await until(() => ch.events.some(e => e.type === 'done'));
-    assert.equal(f.interrupts[0].turnId, turn.turnId); assert.equal(ch.events.find(e => e.type === 'done').status, 'failed'); assert.match(ch.events.find(e => e.type === 'error').message, /配置的总时限/); assert.equal(f.clock.pending, 0);
+    assert.equal(f.interrupts[0].turnId, turn.turnId); assert.equal(ch.events.find(e => e.type === 'done').status, 'failed'); assert.match(ch.events.find(e => e.type === 'error').message, /configured total time limit/); assert.equal(f.clock.pending, 0);
   } finally { await f.cleanup(); }
 });
 test('Full Access confirmation remains automatic and cannot masquerade as model progress or a user wait', async () => {
@@ -183,7 +183,7 @@ test('Full Access confirmation remains automatic and cannot masquerade as model 
     const ch = await f.chat('approval'), turn = f.starts[0], before = (await f.session(ch.sessionId)).progress.lastProgressAt;
     f.rpc.emit('request', { id: 73, method: 'mcpServer/elicitation/request', params: { ...turn, serverName: 'seedagent', mode: 'form', message: 'Synthetic confirmation', requestedSchema: { type: 'object', properties: { confirm: { type: 'boolean' } }, required: ['confirm'] } } });
     assert.equal(f.replies[0].id, 73); assert.equal((await f.session(ch.sessionId)).progress.phase, 'working');
-    f.clock.advance(100); await until(() => idleWarnings(ch).length === 1); assert.doesNotMatch(idleWarnings(ch)[0].label, /等待你的确认/);
+    f.clock.advance(100); await until(() => idleWarnings(ch).length === 1); assert.doesNotMatch(idleWarnings(ch)[0].label, /waiting for your confirmation/);
     const after = await f.session(ch.sessionId); assert.equal(after.progress.lastProgressAt, before); assert.equal(ch.events.some(e => e.type === 'approval'), false); await f.complete(turn);
   } finally { await f.cleanup(); }
 });
@@ -222,7 +222,7 @@ test('hard deadline during pending preferences remains failed with its cause and
     const ch = await f.stream('/api/chat', { requestId: 'hard-limit-before-model', text: 'Synthetic test' }); await until(() => hold.entered);
     f.clock.advance(1000); assert.equal(f.clock.pending, 0); hold.release(); await until(() => ch.events.some(e => e.type === 'done'));
     const session = await f.session(ch.sessionId); assert.equal(session.running, false); assert.equal(session.requests.at(-1).status, 'failed');
-    assert.equal(ch.events.find(e => e.type === 'done').status, 'failed'); assert.match(ch.events.find(e => e.type === 'error').message, /配置的总时限/);
+    assert.equal(ch.events.find(e => e.type === 'done').status, 'failed'); assert.match(ch.events.find(e => e.type === 'error').message, /configured total time limit/);
     assert.equal(f.starts.length, 0); assert.equal(f.interrupts.length, 0); assert.equal(f.clock.pending, 0);
   } finally { await f.cleanup(); }
 });
