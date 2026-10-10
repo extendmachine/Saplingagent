@@ -7,7 +7,7 @@
 <style>body{margin:0;background:#f6f7f4;color:#283128;font:16px/1.75 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:32px 22px 64px}nav{display:flex;flex-wrap:wrap;gap:18px}section{background:#fff;padding:22px;border:1px solid #dde2d8;border-radius:14px;margin:22px 0}h1{line-height:1.25}table{border-collapse:collapse;width:100%}td,th{padding:10px;border:1px solid #dde2d8;text-align:left;vertical-align:top}pre{background:#edf0e9;padding:16px;overflow:auto}a{color:#456a39}img{max-width:100%;border:1px solid #dde2d8;border-radius:12px}@media(max-width:650px){main{padding:22px 12px}section{padding:16px}table{display:block;overflow:auto}}</style>
 </head>
 <body>
-<main><p><strong>main单聊天基线</strong>：本分支无后加应用组件，Full Access核心保留。恢复来源与本次检查见<a href="git-versions.html">Git版本说明</a>；历史页面截图和任务记录保留其当时含义。</p>
+<main>
 <nav>
 <a href="index.html">概览</a>
 <a href="runtime.html">运行与演进</a>
@@ -53,6 +53,22 @@
 <td>POST /api/approvals/:id</td>
 <td>{decision:accept或decline}，兼容接口；当前标准工具执行自动允许</td>
 </tr>
+<tr>
+<td>GET /api/project-files</td>
+<td>按path、limit、cursor分页列出项目文件树，返回absolutePath</td>
+</tr>
+<tr>
+<td>GET /api/project-files/content</td>
+<td>读取最多4MiB的utf8内容、完整SHA256、大小和绝对地址</td>
+</tr>
+<tr>
+<td>PUT /api/project-files/content</td>
+<td>携带expectedHash保存文本；磁盘内容变化时返回409并保留浏览器草稿</td>
+</tr>
+<tr>
+<td>POST /api/project-files/changes/:id/rollback</td>
+<td>用户主动恢复文件浏览器最近一次有记录的保存</td>
+</tr>
 </table>
 <p>text最多32000字符；requestId幂等，重试不同文本冲突409；同会话其他运行请求409；未就绪503；错误返回error.code/message。SSE最终status为completed、failed或interrupted。当前Codex为danger-full-access/never，native file/shell与MCP执行自动允许。</p>
 </section>
@@ -62,7 +78,7 @@
 <p>
 <a href="../backend/workspace/CONTRACT.md">workspace契约</a>：GET/POST sessions、GET/PATCH sessions/:id、GET/POST preferences、DELETE preferences/:id；GET health开放。原子JSON存储、显式证据、单进程队列。</p>
 <p>
-<a href="../backend/app-builder/CONTRACT.md">app-builder契约</a>：GET files/file/changes；POST files/write与files/delete直接操作文件并尽力记录原件；快照失败不阻止操作，以warnings和changeId为准；POST commands {command,cwd?,timeoutMs?}返回真实exitCode/stdout/stderr/timedOut/cancelled。POST changes返回ready候选、不强制验证；apply直接应用；rollback仅用户主动覆盖恢复，不拦截后续修改。允许所有当前OS用户可访问路径，绝对/相对和符号链接均可用。</p>
+<a href="../backend/app-builder/CONTRACT.md">app-builder契约</a>：GET files/file/changes；POST files/write与files/delete直接操作文件并尽力记录原件；POST files/write-checked专供浏览器文本编辑，确认完整SHA256未变化后原子替换，冲突返回409。快照失败不阻止普通直写，以warnings和changeId为准；POST commands {command,cwd?,timeoutMs?}返回真实exitCode/stdout/stderr/timedOut/cancelled。POST changes返回ready候选、不强制验证；apply直接应用；rollback仅用户主动覆盖恢复，不拦截后续修改。允许所有当前OS用户可访问路径，绝对/相对和符号链接均可用。</p>
 </section>
 <section>
 <h2>MCP 目录</h2>

@@ -15,9 +15,9 @@ const instructions = `You are SeedAgent, a local application-building assistant.
 
 class ApiError extends Error { constructor(code, message, status = 400) { super(message); this.code = code; this.status = status; } }
 const send = (res, code, value) => { if (res.writableEnded || res.destroyed) return; res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(value)); };
-async function readBody(req) {
+async function readBody(req, maxBytes = 128 * 1024) {
   const parts = []; let size = 0;
-  for await (const chunk of req) { size += chunk.length; if (size > 128 * 1024) throw new ApiError('PAYLOAD_TOO_LARGE', '消息太长', 413); parts.push(chunk); }
+  for await (const chunk of req) { size += chunk.length; if (size > maxBytes) throw new ApiError('PAYLOAD_TOO_LARGE', '请求内容过大', 413); parts.push(chunk); }
   try { return JSON.parse(Buffer.concat(parts).toString('utf8')); } catch { throw new ApiError('INVALID_JSON', '请求格式错误'); }
 }
 const validId = id => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(id);
@@ -28,6 +28,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   const registerTask = createTaskRegistry(root);
   const token = (await fs.readFile(path.join(root, 'local-secrets/runtime/service-token'), 'utf8')).trim();
   const workspaceBase = `http://127.0.0.1:${process.env.SEED_WORKSPACE_PORT || config.workspacePort}`;
+  const builderBase = `http://127.0.0.1:${process.env.SEED_BUILDER_PORT || config.builderPort}`;
   const logDir = path.join(root, 'logs/agent-runtime'); await fs.mkdir(logDir, { recursive: true });
   let logDay = '';
   const log = async (event, fields = {}) => {
@@ -42,6 +43,22 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     const response = await fetch(workspaceBase + route, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: data === undefined ? undefined : JSON.stringify(data), signal: AbortSignal.timeout(15000) });
     const value = await response.json();
     if (!response.ok) throw new ApiError(value.error?.code || 'WORKSPACE_ERROR', value.error?.message || '本地会话服务不可用', response.status);
+    return value;
+  }
+  async function appBuilder(route, method = 'GET', data) {
+    let response;
+    try {
+      response = await fetch(builderBase + route, {
+        method,
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: data === undefined ? undefined : JSON.stringify(data),
+        signal: AbortSignal.timeout(30000),
+      });
+    } catch {
+      throw new ApiError('PROJECT_FILES_UNAVAILABLE', '项目文件服务暂不可用', 503);
+    }
+    const value = await response.json().catch(() => ({ error: { code: 'PROJECT_FILES_ERROR', message: '项目文件服务返回了无效响应' } }));
+    if (!response.ok) throw new ApiError(value.error?.code || 'PROJECT_FILES_ERROR', value.error?.message || '项目文件操作失败', response.status);
     return value;
   }
   let rpc, startup, closing = false, lastStart = 0;
@@ -280,6 +297,32 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       }
       if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ready: true, service: 'agent-runtime', agentReady: status.ready && !startup });
       if (req.method === 'GET' && url.pathname === '/api/status') { if ((!rpc || rpc.closed) && !startup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...status, ready: status.ready && !startup }); }
+      if (req.method === 'GET' && url.pathname === '/api/project-files') {
+        const query = new URLSearchParams({
+          path: url.searchParams.get('path') || '.',
+          limit: url.searchParams.get('limit') || '2000',
+          cursor: url.searchParams.get('cursor') || '0',
+        });
+        return send(res, 200, await appBuilder(`/files?${query}`));
+      }
+      if (req.method === 'GET' && url.pathname === '/api/project-files/content') {
+        const file = url.searchParams.get('path');
+        if (!file) throw new ApiError('INVALID_INPUT', '缺少文件路径');
+        const query = new URLSearchParams({
+          path: file,
+          encoding: 'utf8',
+          offset: url.searchParams.get('offset') || '0',
+          maxBytes: url.searchParams.get('maxBytes') || String(4 * 1024 * 1024),
+        });
+        return send(res, 200, await appBuilder(`/file?${query}`));
+      }
+      if (req.method === 'PUT' && url.pathname === '/api/project-files/content') {
+        const input = await readBody(req, 8 * 1024 * 1024);
+        return send(res, 200, await appBuilder('/files/write-checked', 'POST', { ...input, encoding: 'utf8', reason: input.reason || 'Project file browser edit' }));
+      }
+      if (req.method === 'GET' && url.pathname === '/api/project-files/changes') return send(res, 200, await appBuilder('/changes'));
+      const restoreId = url.pathname.match(/^\/api\/project-files\/changes\/([a-f0-9-]{36})\/rollback$/)?.[1];
+      if (req.method === 'POST' && restoreId) return send(res, 200, await appBuilder(`/changes/${restoreId}/rollback`, 'POST', {}));
       if (req.method === 'GET' && url.pathname === '/api/sessions') return send(res, 200, await ws('/sessions'));
       const sessionId = url.pathname.match(/^\/api\/sessions\/([a-zA-Z0-9_-]+)$/)?.[1];
       if (req.method === 'GET' && sessionId) { const run = active.get(sessionId); if (run?.loaded) await run.loaded; const session = run?.session || dirtySessions.get(sessionId) || (await ws(`/sessions/${sessionId}`)).session; return send(res, 200, { session: publicSession(session) }); }

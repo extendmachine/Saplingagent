@@ -9,6 +9,7 @@
 | GET /file | path；encoding utf8/base64；offset默认0；maxBytes默认1MiB，1..4MiB | {path,absolutePath,content,encoding,hash,hashScope,size,offset,returnedBytes,truncated,nextOffset?} |
 | GET /changes | 无 | {changes}创建时间倒序；坏记录可显示unreadable |
 | POST /files/write | {path,content,encoding?:utf8/base64,reason?} | 200 {changeId?,status:'applied',files,checks:[],warnings?,...} |
+| POST /files/write-checked | {path,content,expectedHash,encoding?:utf8/base64,reason?} | 200同直写；仅在当前普通文件完整SHA256仍等于expectedHash时原子替换，冲突409 FILE_CHANGED |
 | POST /files/delete | {path,reason?} | 200 {changeId?,status:'applied',files,checks:[],warnings?,...} |
 | POST /commands | {command,cwd?,timeoutMs?} | 200 {exitCode,stdout,stderr,timedOut,cancelled,stdoutTruncated,stderrTruncated,warnings?} |
 | POST /changes | {reason,files:[{path,content,expectedHash?,encoding?}]} | 201 {changeId,status:'ready',reason,createdAt,updatedAt,files,checks:[],warnings?,error?} |
@@ -21,7 +22,7 @@ path非空无NUL，绝对、../、dot目录、symlink及任意扩展名支持。
 
 目录列表为指定目录单层列表，可继续列其子目录。type为file/directory/symlink/other；writable:true表示无应用层门槛，不替代OS权限。hash为SHA256：完整文件hashScope:'file'，分页为'returnedBytes'；offset/nextOffset以字节计，utf8可在字符边界之外分页，二进制可用base64。
 
-直写/删除尽力保存原件；记录失败仍执行目标并返回applied及SNAPSHOT_UNAVAILABLE或RECORD_UNAVAILABLE warning，未确认可用记录时省略changeId。单个原件备份失败明确originalSnapshot:false/backupError及BACKUP_UNAVAILABLE，不能承诺恢复；目标写入不被其阻止。目录删除的原生unlink错误如实返回，目录操作可用shell。日志失败成功结果附LOG_UNAVAILABLE。
+直写/删除尽力保存原件；记录失败仍执行目标并返回applied及SNAPSHOT_UNAVAILABLE或RECORD_UNAVAILABLE warning，未确认可用记录时省略changeId。单个原件备份失败明确originalSnapshot:false/backupError及BACKUP_UNAVAILABLE，不能承诺恢复；目标写入不被其阻止。目录删除的原生unlink错误如实返回，目录操作可用shell。日志失败成功结果附LOG_UNAVAILABLE。write-checked专供浏览器文本编辑器避免覆盖外部修改：要求完整文件hash、拒绝symlink/目录/文件消失，并在同目录临时文件后原子替换；它不改变其他Full Access写接口忽略expectedHash的行为。
 
 ## 可选候选与主动恢复
 
@@ -39,6 +40,6 @@ command非空无NUL，交给当前用户shell -lc；cwd默认项目根，接受�
 
 ## 错误与兼容
 
-错误{error:{code,message,requestId}}：400 INVALID_INPUT/INVALID_JSON及真实EISDIR/EINVAL/ENAMETOOLONG；401 UNAUTHORIZED；404 NOT_FOUND及真实ENOENT/ENOTDIR；403真实EACCES/EPERM/EROFS；413 PAYLOAD_TOO_LARGE；500 CORRUPT_SNAPSHOT/BACKUP_UNAVAILABLE或其他实际执行/存储错误。不再返回保护路径、秘密文本、编译、hash冲突或权限审批错误。
+错误{error:{code,message,requestId}}：400 INVALID_INPUT/INVALID_JSON/UNSUPPORTED_SYMLINK及真实EISDIR/EINVAL/ENAMETOOLONG；401 UNAUTHORIZED；404 NOT_FOUND及真实ENOENT/ENOTDIR；409 FILE_CHANGED（仅write-checked）；403真实EACCES/EPERM/EROFS；413 PAYLOAD_TOO_LARGE；500 CORRUPT_SNAPSHOT/BACKUP_UNAVAILABLE或其他实际执行/存储错误。不再返回保护路径、秘密文本、编译或权限审批错误。
 
 HTTP请求头10秒、接收150秒属于接收阶段，命令由timeoutMs控制。日志仅元数据，不落请求正文/命令输出/栈。TASK008旧嵌套快照与状态保留，checks/hash只是历史信息，当前checks:[]；v2替代白名单与自动恢复。真实模型联调完成，人工体验未确认；根TASK010汇总，非Git无提交。

@@ -4,6 +4,8 @@
 
 GET /api/sessions列表；GET /api/sessions/:id返回session，包括messages、threadId、running、activeRequestId、requests及pendingApprovals。POST /api/chat {sessionId?,text,requestId?} SSE；requestId只接受字母数字下划线连字符，最长100，text1..32000字符。首次无sessionId按requestId查旧会话以免网络重试重复创建。相同requestId不同text409；并发同会话其他requestId409，已完成请求重放snapshot+done。
 
+项目文件浏览器同源代理：GET /api/project-files（path/limit/cursor）列目录；GET /api/project-files/content（path/maxBytes）读取utf8及完整hash；PUT /api/project-files/content {path,content,expectedHash,reason?}执行checked write；GET /api/project-files/changes列记录；POST /api/project-files/changes/:id/rollback主动恢复。浏览器不接触内部Bearer，单次读取最多4MiB、写入请求最多8MiB。
+
 SSE事件session、snapshot、text_delta(itemId=持久化assistant消息id)、status、tool、approval、error、done。GET /api/events?sessionId订阅当前snapshot和未来增量；15s heartbeat；done状态仅completed/failed/interrupted；保存确认后终态。允许多个连接，不因单连接关闭取消turn。
 
 POST /api/sessions/:id/cancel调用真实interrupt，启动前取消不发模型请求；5s RPC失败可重试。POST /api/approvals/:id {decision:accept|decline}保留既有兼容接口；当前标准MCP执行确认及native file/shell审批自动允许，不推送逐次确认表单。需要真实数据的非确认问题仍不伪造。

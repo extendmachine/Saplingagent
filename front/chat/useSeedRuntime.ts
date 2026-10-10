@@ -124,6 +124,7 @@ export function useSeedRuntime() {
         flush();
         setRunning(false);
         setApprovals([]);
+        setTools(current => current.map(tool => ['completed', 'complete', 'succeeded', 'failed', 'error'].includes(tool.status) ? tool : { ...tool, status: event.status === 'completed' ? 'completed' : 'failed' }));
         setMessages(current => current.map(message => message.status === 'streaming' ? { ...message, status: String(event.status) } : message));
         setActivity(event.status === 'interrupted' ? '已停止' : event.status === 'failed' ? '执行失败' : '');
         if (event.status === 'failed') {

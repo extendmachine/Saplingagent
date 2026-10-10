@@ -14,6 +14,8 @@ GET /api/sessions/:id -> {session:{id,title,threadId,messages,updatedAt,running,
 POST /api/chat {sessionId?,text,requestId?} -> SSE：session、snapshot、text_delta、status、tool、error、done；保留兼容approval事件与POST /api/approvals/:id，但本地权限/MCP执行自动放行，不要求逐次确认。
 POST /api/sessions/:id/cancel -> {ok:true}；GET /api/events?sessionId=... -> snapshot+后续SSE。运行断线不会自动停止。会话持久化、请求去重、真实取消/错误状态保持。Stop不能撤销已经产生的文件或命令副作用。
 
+项目文件浏览器经同源Agent代理访问app-builder：GET /api/project-files?path=.&limit=2000&cursor=0；GET /api/project-files/content?path=...&maxBytes=4194304；PUT /api/project-files/content {path,content,expectedHash,reason?}；GET /api/project-files/changes；POST /api/project-files/changes/:id/rollback。浏览器不接触内部Bearer。保存使用完整SHA256进行乐观并发控制，磁盘已变化返回409 FILE_CHANGED并保留草稿；文本请求上限8MiB。
+
 ## MCP -> agent 运行记录
 
 POST /internal/register-task {tool,fingerprint} -> {taskId:'RUN-<requestId>'}。Bearer内部调用，绑定当前活跃MCP调用以记录归属。project_context({modification:true})和修改工具尝试登记；登记不作为权限门槛，失败给元数据warning并继续操作，不伪造taskId。普通聊天/只读不登记。MCP配置通过显式env传项目根和端口。
@@ -29,6 +31,7 @@ GET /health -> {ready,service,version}。
 GET /files?path=.&limit=200&cursor=0 -> {files:[{path,size,type,writable:true}],truncated,nextCursor,...}。支持任何文件目录；分页是响应容量控制，不以保护路径拒绝。
 GET /file?path=...&encoding=utf8|base64&offset=0&maxBytes=1048576 -> {path,content,encoding,hash,hashScope,size,offset,nextOffset,truncated,...}；maxBytes最多4MiB，读取分页不是路径权限限制。
 POST /files/write {path,content,encoding?:'utf8'|'base64',reason?} -> {changeId?,status:'applied',warnings?,...}：直接写文件，尽力记录原件供手动撤销；快照失败仍写入，warning且没有可用changeId时不能承诺恢复。
+POST /files/write-checked {path,content,expectedHash,encoding?:'utf8'|'base64',reason?} -> 同直写结果：仅供浏览器文本编辑，确认普通文件完整SHA256未变化后原子替换；拒绝symlink/目录，冲突409，不改变其他Full Access接口行为。
 POST /files/delete {path,reason?} -> {changeId?,status:'applied',warnings?,...}：删除文件，尽力记录原件；快照失败不阻止删除，目录操作可用shell。
 POST /commands {command,cwd?,timeoutMs?} -> {exitCode,stdout,stderr,timedOut,cancelled,stdoutTruncated,stderrTruncated,...}：当前用户shell，无命令白名单；默认cwd项目，支持其他工作目录。默认60秒、可指定最多1小时；真实退出码、超时与取消，stdout/stderr分别1MiB输出上限并说明截断，不落盘正文。HTTP断开/请求取消/服务关闭会停止本次工具命令，不能撤销已经发生的副作用。MCP请求上限3615秒，聊天轮10分钟超时仍可中断。
 POST /changes {files:[{path,content,expectedHash?,encoding?}],reason} -> {changeId,status:'ready',checks:[],...}：可选候选记录，不编译、不执行AST/YAML/秘密文本验证、expectedHash不阻止写入。

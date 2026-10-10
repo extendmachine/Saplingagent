@@ -2,7 +2,7 @@
 
 TASK-20261009-005 / Codex/root；本地可运行开发版，人工体验见根TODO。Node >=24.11（统一环境），ESM原生HTTP。无第三方运行依赖，rpc.mjs连接本机官方Codex CLI0.146.1 App Server。
 
-职责：模型目录/认证、持续thread/turn、SSE文本与工具进展、审批、取消、去重、断线和重启恢复；tasks.mjs负责根AI_TASKS运行期登记及本服务ai-tasks/runtime记录。文件/命令可使用Native Codex或MCP/app-builder；服务实现仍通过公开契约通信。
+职责：模型目录/认证、持续thread/turn、SSE文本与工具进展、审批、取消、去重、断线和重启恢复；tasks.mjs负责根AI_TASKS运行期登记及本服务ai-tasks/runtime记录。文件/命令可使用Native Codex或MCP/app-builder；项目文件浏览器通过本服务的同源代理安全调用app-builder，浏览器不持有内部token。服务实现仍通过公开契约通信。
 
 默认回环4310；workspace内部HTTP4311、builder4312；浏览器通过Vite同源/api代理。统一启动node scripts/dev.mjs；单独node backend/agent-runtime/server.mjs前准备setup/workspace/builder与MCP依赖。GET /health为进程健康，GET /api/status.ready为模型/认证/MCP真正就绪，两者不同。
 

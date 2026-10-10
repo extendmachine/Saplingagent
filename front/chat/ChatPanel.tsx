@@ -6,7 +6,7 @@ import type { Message } from './runtime-api';
 
 const convertMessage = (message: Message): ThreadMessageLike => ({
   id: message.id, role: message.role, content: [{ type: 'text', text: message.text }],
-  ...(message.role === 'assistant' && { status: message.status === 'streaming' ? { type: 'running' as const } : message.status === 'interrupted' ? { type: 'incomplete' as const, reason: 'cancelled' as const } : message.status === 'failed' ? { type: 'incomplete' as const, reason: 'error' as const } : { type: 'complete' as const, reason: 'stop' as const } }),
+  ...(message.role === 'assistant' && { status: ['streaming', 'inProgress', 'running'].includes(message.status || '') ? { type: 'running' as const } : message.status === 'interrupted' ? { type: 'incomplete' as const, reason: 'cancelled' as const } : message.status === 'failed' ? { type: 'incomplete' as const, reason: 'error' as const } : { type: 'complete' as const, reason: 'stop' as const } }),
 });
 function MarkdownText() {
   return <MarkdownTextPrimitive className="markdown-text" defer components={{
@@ -22,8 +22,15 @@ function UserMessage() {
 }
 
 const toolLabel = (name: string) => {
-  const labels: Record<string, string> = { list_files: '查看项目文件', read_file: '阅读文件', propose_change: '验证页面变更', apply_change: '应用页面变更', rollback_change: '恢复页面版本', get_preferences: '读取偏好', set_preference: '记录偏好', search_web: '检索资料' };
-  return labels[name.split(/[./]/).at(-1) || ''] || (name.includes('command') ? '执行项目检查' : '使用项目工具');
+  const labels: Record<string, string> = {
+    workspace_list_files: '浏览文件目录', workspace_read_file: '读取文件',
+    workspace_write_file: '写入文件', workspace_delete_file: '删除文件', workspace_run_command: '执行命令',
+    page_propose: '准备页面变更', page_apply: '应用页面变更', page_rollback: '恢复页面版本', page_changes: '查看变更记录',
+    preferences_get: '读取已有偏好', preferences_set: '记录已确认偏好', preferences_forget: '忘记指定偏好',
+    skills_list: '查找可用流程', skills_read: '阅读工作流程', project_context: '核对项目规范',
+    webSearch: '检索资料', commandExecution: '执行命令', fileChange: '修改文件',
+  };
+  return labels[name.split(/__|[./]/).at(-1) || ''] || '使用项目工具';
 };
 const decisionLabel = (decision: string) => ({ accept: '允许执行', decline: '拒绝', acceptForSession: '本次会话允许', cancel: '取消' }[decision] || decision);
 

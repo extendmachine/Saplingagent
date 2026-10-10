@@ -7,7 +7,7 @@
 <style>body{margin:0;background:#f6f7f4;color:#283128;font:16px/1.75 system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:32px 22px 64px}nav{display:flex;flex-wrap:wrap;gap:18px}section{background:#fff;padding:22px;border:1px solid #dde2d8;border-radius:14px;margin:22px 0}h1{line-height:1.25}table{border-collapse:collapse;width:100%}td,th{padding:10px;border:1px solid #dde2d8;text-align:left;vertical-align:top}pre{background:#edf0e9;padding:16px;overflow:auto}a{color:#456a39}img{max-width:100%;border:1px solid #dde2d8;border-radius:12px}@media(max-width:650px){main{padding:22px 12px}section{padding:16px}table{display:block;overflow:auto}}</style>
 </head>
 <body>
-<main><p><strong>main单聊天基线</strong>：本分支无后加应用组件，Full Access核心保留。恢复来源与本次检查见<a href="git-versions.html">Git版本说明</a>；历史页面截图和任务记录保留其当时含义。</p>
+<main>
 <nav>
 <a href="index.html">概览</a>
 <a href="runtime.html">运行与演进</a>
@@ -37,12 +37,17 @@ node scripts/login.mjs     # 需要本项目登录时</pre>
 <p>三个Skills提供页面修改、官方资料研究与可复用流程编写，可被AI修改；合法frontmatter是Codex发现格式，不是写入权限门槛。后端/MCP源码与依赖也可修改，运行进程重启后加载。</p>
 </section>
 <section>
+<h2>页面快捷能力</h2>
+<p>左侧项目文件栏可展开全部目录、查看和编辑文本文件，并从“…”复制绝对地址；保存使用完整文件hash避免覆盖外部修改，二进制、截断内容和符号链接保持只读。详情编辑器关闭后回到原单页聊天，窄屏文件栏使用抽屉。</p>
+<p>左上“截屏”按钮调用浏览器原生getDisplayMedia选择器。用户选择屏幕、窗口或标签页后，页面抓取单帧并直接下载带时间戳PNG；图像不上传后端。浏览器安全策略要求每次由用户发起并选择捕获来源，网页不能静默绕过。</p>
+</section>
+<section>
 <h2>用户主动回退</h2>
 <p>文件工具尽力保存原件，可选候选保存到snapshots/app-builder；快照失败不阻止直接文件操作，只有实际可用的记录才可恢复；用户需要时查看page_changes并调用page_rollback，可覆盖后续修改。不自动回退或阻止新的写入。任意shell、Codex原生文件操作及外部副作用不保证进入快照，也不保证完整可恢复。Stop请求中断当前turn，不撤销已发生的操作。</p>
 </section>
 <section>
 <h2>验证与后续</h2>
-<p>32项隔离/协议检查与前端构建通过；真实模型直接写backend临时文件、MCP读取、原生命令和主动恢复成功，确认弹窗0次，4个用户业务文件哈希一致。浏览器工具拒绝localhost访问，本次视觉复测未完成；服务/API/模型链路已实测。完整结果见根TODO与各服务交接。前版的白名单/强制验证说明已被TASK010至013取代。长期体验、布局效果指标、客户单文件种子、跨平台交付与云端仍后续实施，未发布或初始化Git。</p>
+<p>33项隔离/协议检查与前端构建通过；项目文件同源API已实测，四个本地服务保持运行。真实模型直接写backend临时文件、MCP读取、原生命令和主动恢复成功，确认弹窗0次。浏览器工具拒绝localhost访问，本次自动视觉复测和真实屏幕授权点击未完成；截屏需用户在浏览器中人工体验。完整结果见根TODO与各服务交接。长期体验、客户单文件种子、跨平台交付与云端仍后续实施，未发布或初始化Git。</p>
 </section>
 <p>
 <small>2026-10-09 · TASK010至013 · 规范2026-09-29.1 · 待人工体验</small>

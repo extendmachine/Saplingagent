@@ -1,1 +1,458 @@
 /* 用户通过对话新增的应用内容样式放在这里。基础聊天样式在 chat/chat.css。 */
+
+.seed-page {
+  padding-left: 286px;
+}
+
+.project-files,
+.project-file-detail,
+.project-files button {
+  font: inherit;
+}
+
+.project-files {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 28;
+  display: flex;
+  width: 286px;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid #dde2d8;
+  background: #f6f7f3;
+  color: #30362d;
+  box-shadow: 8px 0 24px rgb(38 54 32 / 4%);
+}
+
+.project-files-heading {
+  display: flex;
+  min-height: 66px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px 0 104px;
+  border-bottom: 1px solid #e2e6de;
+  background: rgb(250 251 248 / 94%);
+}
+
+.screenshot-button {
+  position: fixed;
+  top: 17px;
+  left: 14px;
+  z-index: 31;
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid #d9dfd4;
+  border-radius: 9px;
+  background: #fff;
+  color: #43503e;
+  box-shadow: 0 4px 14px rgb(37 57 26 / 7%);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+
+.screenshot-button:hover:not(:disabled) {
+  border-color: #becab8;
+  background: #f2f5ef;
+  color: #253120;
+}
+
+.screenshot-button:disabled {
+  cursor: wait;
+  opacity: .72;
+}
+
+.screenshot-button.is-done {
+  border-color: #b9cdb2;
+  background: #eef6eb;
+  color: #31552a;
+}
+
+.screenshot-button .is-spinning {
+  animation: screenshot-spin 800ms linear infinite;
+}
+
+@keyframes screenshot-spin {
+  to { transform: rotate(360deg); }
+}
+
+.project-files-heading > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.project-files-heading strong {
+  font-size: 14px;
+  letter-spacing: .01em;
+}
+
+.project-files-heading span {
+  color: #8a9185;
+  font-size: 10px;
+}
+
+.project-files-heading-actions {
+  display: flex;
+  gap: 3px;
+}
+
+.project-files-heading-actions button,
+.project-file-actions button,
+.project-files-mobile-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #697064;
+  cursor: pointer;
+}
+
+.project-files-heading-actions button {
+  width: 30px;
+  height: 30px;
+}
+
+.project-files-heading-actions button:hover,
+.project-file-actions button:hover:not(:disabled),
+.project-files-mobile-toggle:hover {
+  background: #e8ece4;
+  color: #283224;
+}
+
+.project-file-tree {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 7px 18px;
+}
+
+.project-file-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #555d51;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+
+.project-file-row:hover {
+  background: #e9ece5;
+  color: #252c22;
+}
+
+.project-file-row.is-selected {
+  background: #dde6d8;
+  color: #24321f;
+}
+
+.project-file-row > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-file-row svg {
+  flex: 0 0 auto;
+  transition: transform 140ms ease;
+}
+
+.project-file-row svg.is-rotated {
+  transform: rotate(90deg);
+}
+
+.project-file-spacer {
+  width: 13px;
+  flex: 0 0 13px;
+}
+
+.project-file-detail {
+  position: fixed;
+  inset: 78px 24px 24px 310px;
+  z-index: 25;
+  display: none;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #dce2d8;
+  border-radius: 16px;
+  background: #fff;
+  color: #30362d;
+  box-shadow: 0 18px 60px rgb(39 54 32 / 15%);
+}
+
+.project-file-detail.is-open {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.project-file-detail-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 12px 11px 16px;
+  border-bottom: 1px solid #e5e8e1;
+  background: #fafbf8;
+}
+
+.project-file-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.project-file-title > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.project-file-title strong,
+.project-file-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-file-title strong {
+  font-size: 13px;
+}
+
+.project-file-title span {
+  color: #8a9186;
+  font-size: 10px;
+}
+
+.project-file-actions {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.project-file-actions > button,
+.project-file-menu > button {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+}
+
+.project-file-actions .project-file-save {
+  gap: 5px;
+  padding: 0 11px;
+  background: #34472e;
+  color: #fff;
+  font-size: 11px;
+}
+
+.project-file-actions .project-file-save:hover:not(:disabled) {
+  background: #263921;
+  color: #fff;
+}
+
+.project-file-actions button:disabled {
+  cursor: default;
+  opacity: .4;
+}
+
+.project-file-unsaved {
+  color: #9b632c;
+  font-size: 10px;
+}
+
+.project-file-menu {
+  position: relative;
+}
+
+.project-file-menu-popover {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  z-index: 3;
+  width: 158px;
+  padding: 5px;
+  border: 1px solid #dce2d8;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgb(33 47 28 / 16%);
+}
+
+.project-file-menu-popover button {
+  width: 100%;
+  height: 32px;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0 9px;
+  color: #384234;
+  font-size: 11px;
+}
+
+.project-file-editor {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: #fff;
+  color: #30352e;
+  padding: 18px 20px;
+  font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.project-file-editor[readonly] {
+  background: #f9faf7;
+  color: #697064;
+}
+
+.project-file-status {
+  min-height: 29px;
+  padding: 7px 14px;
+  border-top: 1px solid #e5e8e1;
+  background: #fafbf8;
+  color: #7d8579;
+  font-size: 10px;
+}
+
+.project-files-mobile-toggle,
+.project-files-mobile-close {
+  display: none;
+}
+
+.current-time {
+  position: fixed;
+  top: 18px;
+  right: 40px;
+  z-index: 10;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 13px;
+  border: 1px solid #e2e6dc;
+  border-radius: 12px;
+  background: rgb(250 251 248 / 92%);
+  color: #343931;
+  box-shadow: 0 4px 18px rgb(37 57 26 / 5%);
+  backdrop-filter: blur(10px);
+}
+
+.current-time__clock {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+.current-time__date {
+  color: #858c80;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .seed-page {
+    padding-left: 0;
+  }
+
+  .project-files {
+    width: min(86vw, 320px);
+    transform: translateX(-104%);
+    transition: transform 180ms ease;
+  }
+
+  .project-files.is-mobile-open {
+    transform: translateX(0);
+  }
+
+  .project-files-mobile-toggle {
+    position: fixed;
+    top: 12px;
+    left: 13px;
+    z-index: 20;
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    border: 1px solid #e2e6dc;
+    background: rgb(250 251 248 / 94%);
+    box-shadow: 0 4px 18px rgb(37 57 26 / 5%);
+  }
+
+  .screenshot-button {
+    top: 12px;
+    left: 54px;
+    width: 34px;
+    padding: 0;
+    justify-content: center;
+    background: rgb(250 251 248 / 94%);
+  }
+
+  .screenshot-button span {
+    display: none;
+  }
+
+  .project-files-heading {
+    padding-left: 104px;
+  }
+
+  .project-files-mobile-close {
+    display: inline-flex;
+  }
+
+  .project-file-detail {
+    inset: 58px 9px 9px;
+    z-index: 27;
+    border-radius: 12px;
+  }
+
+  .project-file-detail-header {
+    gap: 7px;
+    padding-left: 11px;
+  }
+
+  .project-file-title span,
+  .project-file-unsaved,
+  .project-file-actions .project-file-save svg {
+    display: none;
+  }
+
+  .project-file-actions .project-file-save {
+    padding: 0 9px;
+  }
+
+  .project-file-editor {
+    padding: 14px;
+    font-size: 11px;
+  }
+
+  .current-time {
+    top: 12px;
+    right: 16px;
+    gap: 7px;
+    padding: 8px 10px;
+  }
+
+  .current-time__clock {
+    font-size: 14px;
+  }
+
+  .current-time__date {
+    display: none;
+  }
+}

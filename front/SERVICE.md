@@ -1,12 +1,12 @@
 # front 模块说明
 
 - 模块：front / Codex/frontend；TASK009实现真实聊天，TASK013同步全权限工具文案与说明，全权限集成验证由root TASK010汇总。
-- 职责：保持单页聊天入口，将用户输入经公开 HTTP 契约交给 agent-runtime，平滑展示回复和运行状态。
+- 职责：保持单页聊天入口，将用户输入经公开 HTTP 契约交给 agent-runtime，平滑展示回复和运行状态；同时提供项目文件树、文本详情编辑、绝对路径复制、单次保存恢复及浏览器本地截屏下载。
 - 不负责：模型登录与凭据、工具执行、会话数据库、Skills 注册、源码候选验证和恢复，均由后端对应服务负责。
 
 ## 目录与边界
 
-main.tsx当前独立挂载聊天与App，App已引用用户通过对话生成的features/CurrentTime.tsx。chat/包含ChatPanel、useSeedRuntime、runtime-api、sse、ApplicationBoundary和chat.css；styles.css及features承载应用内容。本任务保留现有业务源码，全权限模式对main/chat等文件不设置写入保护。CONTRACT/DEPLOY/REFERENCES与ai-tasks提供维护记录。
+main.tsx当前独立挂载聊天与App，App引用features/CurrentTime.tsx、ProjectFileExplorer.tsx和ScreenshotButton.tsx。文件浏览器左侧常驻，详情编辑器按需覆盖聊天区，关闭后恢复单页聊天；窄屏使用抽屉。截屏按钮固定在左上，调用浏览器原生屏幕共享选择器并在本地下载单帧PNG，不把图像发送到后端。chat/包含ChatPanel、useSeedRuntime、runtime-api、sse、ApplicationBoundary和chat.css；styles.css及features承载应用内容。全权限模式对main/chat等文件不设置写入保护。CONTRACT/DEPLOY/REFERENCES与ai-tasks提供维护记录。
 
 ## 全权限运行方式
 

@@ -1,4 +1,13 @@
+import { CurrentTime } from './features/CurrentTime';
+import { ProjectFileExplorer } from './features/ProjectFileExplorer';
+import { ScreenshotButton } from './features/ScreenshotButton';
+
 export function App() {
-  // 用户通过对话提出内容需求后，AI 在此创建应用组件。
-  return null;
+  return (
+    <>
+      <ScreenshotButton />
+      <ProjectFileExplorer />
+      <CurrentTime />
+    </>
+  );
 }
