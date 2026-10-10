@@ -20,9 +20,9 @@ test('RPC handles fragmented UTF-8, notifications and out-of-order replies', asy
   const { rpc, child } = fixture();
   const a = rpc.call('a'), b = rpc.call('b');
   const event = once(rpc, 'notification');
-  const data = Buffer.from('{"method":"note","params":{"text":"流式"}}\n{"id":2,"result":"b"}\n{"id":1,"result":"a"}\n');
+  const data = Buffer.from('{"method":"note","params":{"text":"\u6d41\u5f0f"}}\n{"id":2,"result":"b"}\n{"id":1,"result":"a"}\n');
   for (let i = 0; i < data.length; i += 5) child.stdout.write(data.subarray(i, i + 5));
-  assert.equal((await event)[0].params.text, '流式'); assert.equal(await b, 'b'); assert.equal(await a, 'a'); rpc.close();
+  assert.equal((await event)[0].params.text, '\u6d41\u5f0f'); assert.equal(await b, 'b'); assert.equal(await a, 'a'); rpc.close();
 });
 test('RPC deadline rejects and removes pending requests', async () => {
   const { rpc } = fixture(); await assert.rejects(rpc.call('slow', {}, 10), /timed out/); assert.equal(rpc.pending.size, 0); rpc.close();
@@ -139,7 +139,7 @@ for (const stalled of [false, true]) test(`Agent shutdown is bounded during an a
     await until(() => pids.every(pid => !alive(pid)));
     assert.equal(await fs.access(f.interruptMarker).then(() => true, () => false), false, 'Shutdown must not await an interrupt RPC');
     if (!stalled) { assert.equal(f.saved.running, false); assert.equal(f.saved.requests[0].status, 'interrupted'); }
-    await assert.rejects(server.startAgent(), /服务正在停止/);
+    await assert.rejects(server.startAgent(), /Service is shutting down/);
   } finally {
     for (const [name, value] of Object.entries(original)) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
     if (response?.body) await response.body.cancel().catch(() => {});
