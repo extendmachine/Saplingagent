@@ -33,6 +33,7 @@ node scripts/login.mjs     # 需要本项目登录时</pre>
 <section>
 <h2>对话和工具</h2>
 <p>浏览器同源/api → Agent → 官方Codex App Server，SSE展示真回复及工具状态。会话持久化、请求去重、刷新重连、重启续聊、停止/错误重试沿用。当前实际模型gpt-5.6-sol/medium，配置首选不可用时选择模型目录默认。</p>
+<p>TASK-20261010-003候选修复：切换到使用独立数据的同源服务后，浏览器旧会话可能不存在。确认是会话404时，只解绑匹配旧指针并提示；原输入保留，点击重试或发送新消息才继续。网络和暂时服务错误保留指针，其他标签的新指针不被此次清理删除。20项合成检查、前端构建及独立审查通过，未操作真实浏览器或调用模型；候选待人工体验与main同步，详见<a href="../front/ai-tasks/TASK-20261010-003.md">任务交接</a>。</p>
 <p>15个MCP工具：读取文件/上下文、直接写入和删除文件、执行命令、可选候选与快照、偏好以及Skills发现。workspace_write_file/delete_file/run_command可直接操作；page_propose只生成ready候选，page_apply执行，page_rollback由用户主动请求。修改工具尝试登记根AI_TASKS，但登记失败不会挡住操作；只读聊天不登记。</p>
 <p>三个Skills提供页面修改、官方资料研究与可复用流程编写，可被AI修改；合法frontmatter是Codex发现格式，不是写入权限门槛。后端/MCP源码与依赖也可修改，运行进程重启后加载。</p>
 </section>

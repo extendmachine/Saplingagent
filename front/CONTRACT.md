@@ -17,6 +17,8 @@ SSE 每个 data 为 JSON；text_delta 含 itemId/delta。snapshot 含完整 sess
 发送空白不执行；运行时禁用重复发送，停止仍可用。失败重试复用原 requestId，不再追加一条用户消息；若服务仍运行，重连当前会话。单一输入框支持 Enter 发送、Shift+Enter 换行与 Markdown 文本展示。
 浏览器 localStorage 仅保存 seedagent.active-session.v1 的不透明 sessionId；消息由 workspace 本地持久化。旧 seedagent.layout-preview.v1 不读、不写、不清除。浏览器不存凭据。
 
+TASK-20261010-003错误恢复：HTTP错误保留status及error.code/message供客户端判断，对外接口字段不变。仅所选会话请求返回404且code为NOT_FOUND、message为`Session does not exist`（或明确SESSION_NOT_FOUND）时解绑该ID。列表、路由或裸404及网络/超时/401/500/503不解除指针。清理须匹配当前请求epoch、目标ID和浏览器缓存值；旧响应不能清新指针或覆盖新快照。发送/恢复确认会话缺失后保留已显示消息、text/requestId，重试仅去掉失效sessionId，由用户点击后POST；不自动发送新模型请求，也不重复追加用户消息。
+
 当前main独立挂载聊天与App，App使用用户生成的CurrentTime组件，保留既有业务内容。App渲染异常有独立边界；全权限模式允许修改main/chat及前后端其他文件，具体文件和命令执行由后端承担，范围为进程当前OS用户权限。不存在前端工具白名单或强制保护提示。
 
 tool事件统一接受id/name/status字符串；workspace_write_file、workspace_delete_file、workspace_run_command及原生commandExecution/fileChange均能显示，不依赖page_propose/validated或approval事件才继续。后台无需逐次审批或强制验证；候选与手动page_rollback可选，实际恢复范围由app-builder变更记录说明。工具错误仍按真实error/done处理，权限放开不把失败当成功。

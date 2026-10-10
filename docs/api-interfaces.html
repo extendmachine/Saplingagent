@@ -55,6 +55,7 @@
 </tr>
 </table>
 <p>text最多32000字符；requestId幂等，重试不同文本冲突409；同会话其他运行请求409；未就绪503；错误返回error.code/message。SSE最终status为completed、failed或interrupted。当前Codex为danger-full-access/never，native file/shell与MCP执行自动允许。</p>
+<p>会话恢复修复候选（TASK-20261010-003）：所选会话请求返回404、NOT_FOUND且message为“Session does not exist”时，前端解除匹配的旧会话指针；专属SESSION_NOT_FOUND同样适用。列表、路由/裸404和网络、超时、401、500/503不清指针。保留原输入与requestId，用户点击重试才发送，不自动发起模型请求；旧异步响应不覆盖新会话，其他标签的新缓存不被清除。接口字段不变，候选测试与同步状态见<a href="../front/ai-tasks/TASK-20261010-003.md">交接记录</a>。</p>
 </section>
 <section>
 <h2>内部 HTTP</h2>

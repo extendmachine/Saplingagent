@@ -6,9 +6,12 @@ ChatPanel.tsx只负责视图。useSeedRuntime.ts管理流与状态；runtime-api
 
 浏览器仅保存 sessionId；刷新恢复 workspace 消息，活跃运行订阅 /api/events，订阅失效可读取保存快照。新对话保留旧后端会话。状态定期核对真实 model/ready，不模拟 AI 回复；网络头部等待有 10s 超时，已建立 SSE 不设总体回复超时。
 
+TASK-20261010-003修复失效指针：runtime-api保留HTTP status/error code，区分会话缺失与路由/代理404。只在匹配epoch及目标ID的会话请求明确返回404 NOT_FOUND/`Session does not exist`（或SESSION_NOT_FOUND）时解绑ref及该重试sessionId；localStorage仍为该ID才删除。已显示消息、原text/requestId保留，点击重试才创建新会话；没有静默POST。网络、超时、401、500/503、列表或路由错误保留ID。HTTP header、启动/恢复及最后snapshot在await后再次核对epoch/目标ID，旧结果不覆盖后续会话。
+
 chat.css和main.tsx当前提供独立聊天入口，App在ApplicationBoundary中挂载。全权限模式允许修改聊天入口和其他源码，没有普通写入白名单；用户生成的CurrentTime与现有布局在本次文案任务中保留。候选准备与手动恢复是可选能力。tool事件按字符串id/name/status处理，新增写入/删除/执行命令和原生fileChange不被前端阻止；commandExecution显示“执行命令”，page_propose显示“准备页面变更”。没有原画布关键词操作，不自动添加内容。
 
 SSE 边界测试 `npm test`：跨字节中文与 emoji、CRLF/多行、末条 EOF、异常格式与心跳，已通过。真实集成及人工体验由 root TASK-005 汇总。
+同一命令新增16组会话状态/传输回归，实际载入useSeedRuntime/runtime-api/sse源码，以Node VM、合成fetch/localStorage和最小hook调度替身检查启动、发送、显式重试、活跃恢复、超时、不同错误来源、其他标签指针、晚响应和cleanup；不是DOM验证，不读真实消息、凭据或调用模型。无新增依赖，Node24.21内置VM实验提示保留；结果与待人工状态见TASK003交接。
 官方资料：https://www.assistant-ui.com/docs/runtimes/custom/external-store 、https://www.assistant-ui.com/docs/api-reference/primitives/composer 、https://www.assistant-ui.com/elements/markdown-text ，2026-10-09 已核对；实际 API 另读已安装版本类型。
 
 TASK019：表格必须有表头分隔行（例如`| --- | --- |`），已有`.markdown-text table/th/td`样式直接生效。保留流式defer、现有链接target/rel和图片说明；代码块与行内代码中的竖线仍按代码显示，不作为表格解析。修复仅作用于助手Markdown正文，不修改用户消息或聊天运行时。
