@@ -29,7 +29,7 @@ function readLoadedVersion(current: VersionState) {
 async function requestVersion(): Promise<VersionState> {
   const response = await fetch('/api/git', { cache: 'no-store' });
   const value = await response.json().catch(() => ({}));
-  if (!response.ok || !value.git) throw new Error(value.error?.message || `版本服务返回 ${response.status}`);
+  if (!response.ok || !value.git) throw new Error(value.error?.message || `Version service returned ${response.status}`);
   return value.git;
 }
 
@@ -58,13 +58,13 @@ export function VersionFooter() {
   }, [refresh]);
 
   const hasUpdate = Boolean(version && baseline.current && version.fingerprint !== baseline.current);
-  const label = version ? `${version.branch || 'detached'} · ${version.version}` : unavailable ? '版本暂不可用' : '正在读取版本…';
+  const label = version ? `${version.branch || 'detached'} · ${version.version}` : unavailable ? 'Version unavailable' : 'Loading version…';
 
   return <footer className={`version-footer${hasUpdate ? ' has-update' : ''}`} aria-live="polite">
-    <span className="version-footer-label"><span className="version-footer-dot" />当前版本 <code>{label}</code></span>
+    <span className="version-footer-label"><span className="version-footer-dot" />Current version <code>{label}</code></span>
     {hasUpdate ? <button type="button" onClick={() => window.location.reload()}>
       <RefreshCw size={13} aria-hidden="true" />
-      发现新版本，刷新更新
+      New version available - refresh
     </button> : null}
   </footer>;
 }

@@ -1,4 +1,4 @@
-# 画布规划目录
+# Canvas Planning Catalog
 
-TASK-20261009-004 已依据用户要求移除上一版画布、任务、笔记、工具和专注示例源码。当前目录只有说明，不加载到页面。
-初始产品是一张网页和一个对话框。未来是否需要画布及具体形式，由用户与 AI 对话决定；不预置固定插槽或组件。
+TASK-20261009-004 has removed the previous version of canvas, task, note, tool and focus sample source code according to user requirements. The current directory only has instructions and does not load to the page.
+The initial product is a web page and a dialog box. Whether canvases and specific forms are needed in the future will be decided by the user's dialogue with AI; fixed slots or components are not preset.

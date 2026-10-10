@@ -4,7 +4,7 @@ import { checkedFetch, cleanMessages, getSession, isMissingSession, readSessionI
 import { consumeEvents, type ServerEvent } from './sse';
 
 type ToolActivity = { id: string; name: string; status: string };
-const errorText = (error: unknown) => error instanceof Error ? error.message : '请求失败，请重试。';
+const errorText = (error: unknown) => error instanceof Error ? error.message : 'Request failed. Please try again.';
 const isAborted = (error: unknown) => error instanceof DOMException && error.name === 'AbortError';
 
 export function useSeedRuntime() {
@@ -12,7 +12,7 @@ export function useSeedRuntime() {
   const [status, setStatus] = useState<RuntimeStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
-  const [activity, setActivity] = useState('连接本地 Agent…');
+  const [activity, setActivity] = useState('Connecting to local Agent…');
   const [tools, setTools] = useState<ToolActivity[]>([]);
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [error, setError] = useState('');
@@ -64,7 +64,7 @@ export function useSeedRuntime() {
     setRunning(false);
     setApprovals([]);
     setActivity('');
-    setError(lastRequest.current ? '会话在当前服务中不存在。原输入已保留，点击重试可在新会话中继续。' : '上次会话在当前服务中不存在。发送新消息即可开始新会话。');
+    setError(lastRequest.current ? 'This session does not exist in the current service. Your input is retained; retry to continue in a new session.' : 'The previous session does not exist in the current service. Send a message to start a new session.');
     setRetryable(Boolean(lastRequest.current));
     return true;
   }, [currentTarget, flush, setRunning]);
@@ -80,7 +80,7 @@ export function useSeedRuntime() {
       if (user) lastRequest.current = { sessionId: saved.id, text: user.text, requestId: user.requestId || user.id };
     }
     if (!saved.running && saved.messages.at(-1)?.status === 'failed') {
-      setError(current => current || '上次执行失败，可以重试或提出新的要求。');
+      setError(current => current || 'The previous run failed. Retry or send a new request.');
       setRetryable(Boolean(lastRequest.current));
     }
   }, [flush]);
@@ -112,10 +112,10 @@ export function useSeedRuntime() {
         break;
       }
       case 'text_delta': {
-        if (typeof event.itemId !== 'string' || typeof event.delta !== 'string') throw new Error('回复增量格式不正确。');
+        if (typeof event.itemId !== 'string' || typeof event.delta !== 'string') throw new Error('Invalid response delta format.');
         pending.current.set(event.itemId, (pending.current.get(event.itemId) || '') + event.delta);
         if (!timer.current) timer.current = setTimeout(flush, 50);
-        setActivity('正在回复…');
+        setActivity('Responding…');
         break;
       }
       case 'status': {
@@ -126,19 +126,19 @@ export function useSeedRuntime() {
         if (typeof event.id !== 'string' || typeof event.name !== 'string' || typeof event.status !== 'string') break;
         const next = { id: event.id, name: event.name, status: event.status };
         setTools(current => [...current.filter(item => item.id !== next.id), next].slice(-4));
-        setActivity('正在使用工具…');
+        setActivity('Using tools…');
         break;
       }
       case 'approval': {
         if (typeof event.id !== 'string' || typeof event.description !== 'string') break;
         const next = event as unknown as Approval;
         setApprovals(current => [...current.filter(item => item.id !== next.id), next]);
-        setActivity('等待你的选择');
+        setActivity('Waiting for your choice');
         break;
       }
       case 'error': {
         flush();
-        setError(typeof event.message === 'string' ? event.message : 'Agent 执行失败。');
+        setError(typeof event.message === 'string' ? event.message : 'Agent execution failed.');
         break;
       }
       case 'done': {
@@ -146,9 +146,9 @@ export function useSeedRuntime() {
         setRunning(false);
         setApprovals([]);
         setMessages(current => current.map(message => message.status === 'streaming' ? { ...message, status: String(event.status) } : message));
-        setActivity(event.status === 'interrupted' ? '已停止' : event.status === 'failed' ? '执行失败' : '');
+        setActivity(event.status === 'interrupted' ? 'Stopped' : event.status === 'failed' ? 'Execution failed' : '');
         if (event.status === 'failed') {
-          setError(current => current || 'Agent 执行失败，请重试。');
+          setError(current => current || 'Agent execution failed. Please try again.');
           setRetryable(Boolean(lastRequest.current));
         } else {
           setRetryable(false);
@@ -162,9 +162,9 @@ export function useSeedRuntime() {
   // persisted snapshot before subscribing, so text is never replayed twice.
   const recover = useCallback(async (signal: AbortSignal, expectedEpoch: number, requiredRequestId?: string) => {
     const id = session.current;
-    if (!id) throw new Error('会话连接中断。请重试原请求。');
+    if (!id) throw new Error('Session connection interrupted. Retry your original request.');
     if (!currentTarget(signal, expectedEpoch, id)) return;
-    setActivity('正在恢复连接…');
+    setActivity('Reconnecting…');
     let saved: Session;
     try { saved = await getSession(id, signal); }
     catch (failure) {
@@ -172,13 +172,13 @@ export function useSeedRuntime() {
       throw failure;
     }
     if (!currentTarget(signal, expectedEpoch, id)) return;
-    if (requiredRequestId && !saved.messages.some(message => message.role === 'user' && (message.id === requiredRequestId || message.requestId === requiredRequestId))) throw new Error('原请求尚未保存，请重试。');
+    if (requiredRequestId && !saved.messages.some(message => message.role === 'user' && (message.id === requiredRequestId || message.requestId === requiredRequestId))) throw new Error('The original request was not saved. Please try again.');
     snapshot(saved);
     if (!saved.running) {
       setRunning(false);
       setActivity('');
       if (saved.messages.at(-1)?.status === 'failed') {
-        setError(current => current || 'Agent 执行失败，请重试。');
+        setError(current => current || 'Agent execution failed. Please try again.');
         setRetryable(Boolean(lastRequest.current));
       }
       return;
@@ -207,7 +207,7 @@ export function useSeedRuntime() {
         setActivity('');
         return;
       }
-      setActivity('已恢复连接，等待回复…');
+      setActivity('Reconnected. Waiting for a response…');
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
   }, [currentTarget, detachMissingSession, receive, setRunning, snapshot]);
@@ -244,7 +244,7 @@ export function useSeedRuntime() {
         }
       } catch (failure) {
         if (fetchingSavedSession && detachMissingSession(failure, id, bootstrap.signal, expectedEpoch)) id = null;
-        else if (currentTarget(bootstrap.signal, expectedEpoch, id) && !isAborted(failure) && id) setError(`无法恢复上次会话：${errorText(failure)}`);
+        else if (currentTarget(bootstrap.signal, expectedEpoch, id) && !isAborted(failure) && id) setError(`Unable to restore the previous session:${errorText(failure)}`);
       } finally {
         if (currentTarget(bootstrap.signal, expectedEpoch, id)) {
           setIsLoading(false);
@@ -274,7 +274,7 @@ export function useSeedRuntime() {
     setRetryable(false);
     setTools([]);
     setApprovals([]);
-    setActivity(isRetry ? '正在重试…' : '正在思考…');
+    setActivity(isRetry ? 'Retrying…' : 'Thinking…');
     if (!isRetry) setMessages(current => [...current, { id: request.requestId, requestId: request.requestId, role: 'user', text: request.text }]);
     try {
       const response = await checkedFetch('/api/chat', {
@@ -307,7 +307,7 @@ export function useSeedRuntime() {
       } catch { /* Keep the original actionable error when recovery also fails. */ }
       if (!currentTarget(controller.signal, expectedEpoch, id)) return;
       setRunning(false);
-      setActivity('连接失败');
+      setActivity('Connection failed');
       setError(errorText(failure));
       setRetryable(true);
     }
@@ -321,13 +321,13 @@ export function useSeedRuntime() {
 
   const onCancel = useCallback(async () => {
     if (!session.current) {
-      setError('正在建立会话，稍后可停止。');
+      setError('Creating the session. You can stop shortly.');
       return;
     }
-    setActivity('正在停止…');
+    setActivity('Stopping…');
     try {
       await checkedFetch(`/api/sessions/${encodeURIComponent(session.current)}/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    } catch (failure) { setError(`停止失败：${errorText(failure)}`); }
+    } catch (failure) { setError(`Unable to stop:${errorText(failure)}`); }
   }, []);
 
   const startNew = useCallback(() => {
@@ -358,8 +358,8 @@ export function useSeedRuntime() {
       await checkedFetch(`/api/approvals/${encodeURIComponent(id)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision }) });
       setApprovals(current => current.filter(item => item.id !== id));
       setError('');
-      setActivity('继续执行…');
-    } catch (failure) { setError(`操作未确认：${errorText(failure)}`); }
+      setActivity('Continuing…');
+    } catch (failure) { setError(`Action not confirmed:${errorText(failure)}`); }
     finally { setApprovalBusy(false); }
   }, []);
 
