@@ -35,3 +35,9 @@ agent-runtime 暂不可用时输入仍可编辑，发送暂停，简洁显示状
 ## 维护入口
 
 CONTRACT.md、DEPLOY.md、REFERENCES.md、ai-tasks/TASK-20261009-013.md；历史聊天接入见TASK009，根TASK010负责当前权限集成和人类HTML同步。
+
+## GFM聊天渲染（TASK019）
+
+新增运行依赖remark-gfm 4.0.1，安装于front/node_modules并锁定front/package.json/package-lock.json。ChatPanel的MarkdownTextPrimitive配置remarkPlugins={[remarkGfm]}，将竖线表格解析为table/thead/tbody/th/td，沿用chat.css的边框与横向滚动；同时支持GFM删除线、任务列表等语法。保留defer和现有外链/图片覆盖，不启用原始HTML或代码执行。当前main候选仍为空App的单聊天，没有新增业务组件、后端接口或CSS。
+
+检查：TypeScript/Vite构建、4项SSE测试通过；实际ChatPanel隔离合成消息的表格DOM、列对齐、1px边框、overflow-x:auto、任务框/删除线、代码块竖线均核对通过。真实后端/用户会话未写入、模型未调用；新版本人工验收与main同步状态见权威协调索引。构建JS743.90kB/gzip225.93kB，沿用原有500kB体积提示。
