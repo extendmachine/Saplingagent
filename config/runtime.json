@@ -5,6 +5,7 @@
   "frontPort": 5173,
   "preferredModel": "gpt-6.1-sol",
   "reasoningEffort": "medium",
-  "turnTimeoutMs": 600000,
+  "turnTimeoutMs": 0,
+  "turnIdleWarningMs": 600000,
   "permissionMode": "full-access"
 }
