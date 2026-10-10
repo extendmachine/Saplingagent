@@ -21,3 +21,7 @@ TASK016补充退出生命周期：收到SIGINT、SIGTERM或macOS终端关闭的S
 运行期MCP在受控变更前调用Agent内部POST /internal/register-task，Bearer认证且绑定当前App Server MCP item指纹。修改前project_context({modification:true})尝试返回taskId；只读不登记；登记失败不阻止操作。原生操作与任意命令副作用不保证可撤销；仅用户要求时恢复快照。
 
 最新任务TASK-20261009-010 / Codex/root；旧TASK005权限方案已被本次用户明确要求取代。
+
+## Saplingagent 更名（2026-10-09）
+
+产品名称统一为 Saplingagent，私有包名改为 saplingagent-*。本次仅名称及展示元数据，接口、权限、模型和数据结构不变；SEED_*/SEEDAGENT_*、seedagent MCP/client ID、浏览器会话键、运行期标记和 seed-* Skill ID 保留兼容。验证和待测提交见权威 .worktrees/coordination/AI_TASKS.md；本条不代表 main 已同步。
