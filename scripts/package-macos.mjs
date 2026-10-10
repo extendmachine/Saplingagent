@@ -17,8 +17,8 @@ export function distributable(file) {
 
 function initialProjectRecords(commit) {
   return {
-    'FINAL_GOAL.md': `# SeedAgent 最终目标\n\n从单网页、单聊天入口开始，用户通过与AI对话构建和逐步适配本地应用。前端在front/，后端在backend/，文档在docs/，资料、会话、规则和运行环境归应用文件夹。\n\n## 已实现\n\nmacOS13.5+项目内安装，用户自己的Codex登录，官方App Server、15个MCP工具和3个项目Skills，流式聊天与本地会话。当前OS用户Full Access，无MCP文件保护或逐次确认，不自动提权root；恢复仅由用户主动请求。\n\n## 当前边界\n\n本包用于本机开发/开源运行。商业/托管认证需另行Sign in with ChatGPT；云端、签名原生App、单文件自解包、Windows/Linux交付和长期布局效果尚未实现。用户自己的模型/额度/网络由实际请求验证。\n\n## 来源\n\n源码提交 ${commit}，交付清单delivery.json，安装指南docs/macos-install.html。此目录是独立新应用，开发者原项目任务和批准记录不作为本应用授权。后续修改由本应用用户的实际要求决定。\n`,
-    'TODO.md': `# SeedAgent 当前进度\n\n## 初始状态\n\n源码来源 ${commit}。用户尚未在此目录安装、登录或启动；使用根目录1-安装.command、2-登录Codex.command、3-启动SeedAgent.command，故障诊断4-诊断.command。完整步骤见docs/macos-install.html。\n\n## 待办\n\n- 本机安装和用户自己的账号登录。\n- 打开页面发送一条消息，核对实际模型回复。\n- 根据用户需求通过对话新增应用内容；记录本应用的实现、自检与人工验收。\n\n此目录解压后没有Git仓库或已批准的main提交。需要版本管理时按用户当前授权初始化，不沿用开发者项目的任务、测试或合并批准。\n`,
+    'FINAL_GOAL.md': `# Saplingagent 最终目标\n\n从单网页、单聊天入口开始，用户通过与AI对话构建和逐步适配本地应用。前端在front/，后端在backend/，文档在docs/，资料、会话、规则和运行环境归应用文件夹。\n\n## 已实现\n\nmacOS13.5+项目内安装，用户自己的Codex登录，官方App Server、15个MCP工具和3个项目Skills，流式聊天与本地会话。当前OS用户Full Access，无MCP文件保护或逐次确认，不自动提权root；恢复仅由用户主动请求。\n\n## 当前边界\n\n本包用于本机开发/开源运行。商业/托管认证需另行Sign in with ChatGPT；云端、签名原生App、单文件自解包、Windows/Linux交付和长期布局效果尚未实现。用户自己的模型/额度/网络由实际请求验证。\n\n## 来源\n\n源码提交 ${commit}，交付清单delivery.json，安装指南docs/macos-install.html。此目录是独立新应用，开发者原项目任务和批准记录不作为本应用授权。后续修改由本应用用户的实际要求决定。\n`,
+    'TODO.md': `# Saplingagent 当前进度\n\n## 初始状态\n\n源码来源 ${commit}。用户尚未在此目录安装、登录或启动；使用根目录1-安装.command、2-登录Codex.command、3-启动Saplingagent.command，故障诊断4-诊断.command。完整步骤见docs/macos-install.html。\n\n## 待办\n\n- 本机安装和用户自己的账号登录。\n- 打开页面发送一条消息，核对实际模型回复。\n- 根据用户需求通过对话新增应用内容；记录本应用的实现、自检与人工验收。\n\n此目录解压后没有Git仓库或已批准的main提交。需要版本管理时按用户当前授权初始化，不沿用开发者项目的任务、测试或合并批准。\n`,
     'AI_TASKS.md': `# 多 AI 任务管理\n\n## 协调信息\n\n- 权威索引：本应用根目录AI_TASKS.md；权威进度TODO.md。\n- 当前没有任务认领或正在执行的AI。\n- 来源提交：${commit}。\n- 本目录尚未初始化Git；后续并行修改按rules/14定位协调索引和独立Worktree。\n\n## 当前任务\n\n无。运行期实际修改由agent-runtime记录本应用的任务区块；只读聊天不登记，记录失败不构成文件权限门槛。开发者原项目的任务和授权未复制到本目录。\n`,
   };
 }
@@ -34,13 +34,13 @@ export async function packageMac({ ref = 'HEAD', outputDir = path.join(root, '.c
   });
   const files = entries.filter(entry => distributable(entry.path));
   if (files.some(entry => entry.mode === '120000')) throw new Error('分发源码含符号链接，请先核对并改为明确受控文件。');
-  const required = ['1-安装.command', '2-登录Codex.command', '3-启动SeedAgent.command', '4-诊断.command', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'scripts/macos/cli.mjs', 'docs/macos-install.html', 'rules/README.md', 'config/macos.json', 'front/package-lock.json', 'backend/mcp-runtime/package-lock.json'];
+  const required = ['1-安装.command', '2-登录Codex.command', '3-启动Saplingagent.command', '4-诊断.command', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'scripts/macos/cli.mjs', 'docs/macos-install.html', 'rules/README.md', 'config/macos.json', 'front/package-lock.json', 'backend/mcp-runtime/package-lock.json'];
   for (const file of required) if (!files.some(entry => entry.path === file)) throw new Error(`交付版本缺少 ${file}`);
   const ruleFiles = entries.filter(entry => entry.path.startsWith('rules/'));
   if (ruleFiles.some(entry => !files.some(file => file.path === entry.path))) throw new Error('rules 不完整，拒绝分发。');
   await fs.mkdir(outputDir, { recursive: true });
   const staging = path.join(sourceRoot, '.cache', 'macos-package', randomUUID());
-  const packageName = `SeedAgent-macOS-${commit.slice(0, 8)}`;
+  const packageName = `Saplingagent-macOS-${commit.slice(0, 8)}`;
   const directory = path.join(staging, packageName);
   const zip = path.join(path.resolve(outputDir), packageName + '.zip');
   const tempZip = zip + `.${randomUUID()}.tmp.zip`;

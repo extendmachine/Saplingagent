@@ -3,37 +3,43 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SeedAgent · Mac 安装与接入</title>
+<title>Saplingagent · Mac 安装与接入</title>
 <style>
 body{margin:0;background:#f5f6f3;color:#26302a;font:16px/1.8 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:940px;margin:auto;padding:40px 24px 70px}h1{font-size:36px;line-height:1.25;letter-spacing:-1px}h2{font-size:23px}section{background:white;border:1px solid #dde3dc;border-radius:16px;padding:22px 26px;margin:20px 0}a{color:#3c6844}pre,code{background:#edf1eb;border-radius:5px;font-size:14px}code{padding:2px 5px}pre{padding:15px;overflow:auto;line-height:1.6}table{border-collapse:collapse;width:100%}th,td{padding:11px;border-bottom:1px solid #e2e6df;text-align:left;vertical-align:top}.intro{font-size:19px;color:#58665c}.step{color:#49734f;font-weight:650}.small{font-size:14px;color:#65716a}@media(max-width:640px){main{padding:24px 14px}section{padding:18px}h1{font-size:29px}table{display:block;overflow:auto}}
 </style>
 </head>
 <body><main>
 <a href="index.html">← 项目说明</a>
-<h1>在你的 Mac 上启动 SeedAgent</h1>
+<h1>在你的 Mac 上启动 Saplingagent</h1>
 <p class="intro">解压到一个本地文件夹，安装运行环境，登录自己的账号，然后开始对话。初始页面只有聊天入口，应用内容由你和 AI 一起构建。</p>
 <section>
 <h2>准备</h2>
 <p>支持 macOS 13.5 及更新系统，Apple Silicon 和 Intel Mac。首次安装需要连接 Node.js 与 npm 官方站点；登录和模型调用需要连接 OpenAI。你需要自己的可用 Codex/ChatGPT 账号，模型与额度以该账号实际返回为准。</p>
-<p>先将整个 <code>SeedAgent-macOS-…</code> 文件夹解压到你有写入权限的位置，例如“文稿”。保留文件夹内所有源码、<code>rules/</code>、<code>.agents/skills/</code> 和锁文件。可以使用中文和带空格的路径。</p>
+<p>先将整个 <code>Saplingagent-macOS-…</code> 文件夹解压到你有写入权限的位置，例如“文稿”。保留文件夹内所有源码、<code>rules/</code>、<code>.agents/skills/</code> 和锁文件。可以使用中文和带空格的路径。</p>
+</section>
+<section>
+<h2>模型费用与账号</h2>
+<p>本地 Codex App Server 是开源组件，无需单独购买；AI 模型调用需要你自己的认证和可用额度。此安装入口使用本人 ChatGPT 登录，按账号套餐资格、模型权限和额度使用，无需填写 API key。Codex 的 API key 模式另按 API 用量收费，不包含在 ChatGPT 订阅额度内；此 Mac 入口尚未提供该登录选项。</p>
+<p>Free/Go 当前官方列出的能力为桌面 GPT-6 Luna 逐步开放，不能据此保证 Saplingagent 的 CLI/App Server 通路或配置模型免费可用。安装、登录或模型目录发现均不等于调用授权；启动与诊断不会自动发起收费模型请求。</p>
+<p>核对日期：2026-10-09。依据：<a href="https://learn.chatgpt.com/docs/auth">官方认证说明</a>、<a href="https://learn.chatgpt.com/docs/pricing">套餐与额度</a>。</p>
 </section>
 <section>
 <h2>三个步骤</h2>
 <p><span class="step">1 · 双击 1-安装.command</span><br>脚本自动按当前 Mac 架构下载 Node 24.21.0，核对官方 SHA-256 校验表；在项目内安装 Codex CLI 0.146.1 和应用锁定依赖。无需先安装 Node、Homebrew 或 Codex 桌面应用，也不需要 sudo。安装完成后会给出下一步；重复安装会复用已完成的同版本环境。</p>
 <p><span class="step">2 · 双击 2-登录Codex.command</span><br>官方 Codex 会打开浏览器，由你完成自己的账号登录。凭据存入此项目的 <code>local-secrets/codex/</code>；脚本不导入开发者或其他项目的认证，不改全局 Codex 配置。已保存的项目认证不会因重复安装而被覆盖。</p>
-<p><span class="step">3 · 双击 3-启动SeedAgent.command</span><br>脚本启动本地服务和独立的 Codex App Server，自动加载 SeedAgent MCP 与项目 Skills。确认账号、模型、MCP 和网页均就绪后打开浏览器，终端会显示实际模型以及工具数量。</p>
+<p><span class="step">3 · 双击 3-启动Saplingagent.command</span><br>脚本启动本地服务和独立的 Codex App Server，自动加载 Saplingagent MCP 与项目 Skills。确认账号、模型、MCP 和网页均就绪后打开浏览器，终端会显示实际模型以及工具数量。</p>
 <p>保持启动的终端窗口开启。按 <kbd>Control+C</kbd> 或关闭该窗口可停止本次启动的服务；网页聊天中的“停止”只停止当前对话轮。</p>
 <p class="small">macOS 若拦截下载的脚本，可右键脚本选择“打开”。若执行位被解压工具丢失，使用下面的终端方式。脚本不主动删除系统的隔离属性。</p>
-<pre>cd "/你的路径/SeedAgent-macOS-…"
+<pre>cd "/你的路径/Saplingagent-macOS-…"
 bash "1-安装.command"
 bash "2-登录Codex.command"
-bash "3-启动SeedAgent.command"</pre>
+bash "3-启动Saplingagent.command"</pre>
 </section>
 <section>
 <h2>接入是怎样完成的</h2>
-<p>网页对话 → 本地 <code>agent-runtime</code> → 官方 <code>codex app-server --listen stdio://</code> → SeedAgent MCP → 本地文件和命令。你不需要手工配置 MCP 地址，也不需要把应用放入 Codex 桌面的聊天窗口。</p>
+<p>网页对话 → 本地 <code>agent-runtime</code> → 官方 <code>codex app-server --listen stdio://</code> → Saplingagent MCP → 本地文件和命令。你不需要手工配置 MCP 地址，也不需要把应用放入 Codex 桌面的聊天窗口。</p>
 <p>每次启动根据当前文件夹重新计算路径，<code>CODEX_HOME</code> 使用项目认证目录，MCP 的根目录与服务端口显式传给 App Server。默认网页为 <code>http://127.0.0.1:5173/</code>，后端使用 4310、4311、4312；全部仅监听本机。修改 <code>config/runtime.json</code> 的端口后重启即可。</p>
-<p>本版本沿用用户选择的 Full Access：<code>danger-full-access</code>、<code>approval_policy=never</code>，SeedAgent MCP 自动批准，可按当前系统用户权限修改前后端、MCP、Skills 和其他可访问文件。文件保护与逐次确认未加入安装器；应用的改动按需由用户主动恢复。</p>
+<p>本版本沿用用户选择的 Full Access：<code>danger-full-access</code>、<code>approval_policy=never</code>，Saplingagent MCP 自动批准，可按当前系统用户权限修改前后端、MCP、Skills 和其他可访问文件。文件保护与逐次确认未加入安装器；应用的改动按需由用户主动恢复。</p>
 <p>固定依赖版本用于保持协议兼容；需要升级时先修改 <code>config/macos.json</code>、安装并验证，再分发。安装和移动文件夹都无需重新注册全局 MCP。</p>
 </section>
 <section>
