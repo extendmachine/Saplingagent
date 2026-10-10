@@ -10,6 +10,10 @@ TASK016退出处理同时支持SIGTERM与SIGHUP（关闭macOS终端）。Agent�
 
 保存sessionId/threadId后可刷新或重启续聊；启动修正磁盘遗留running状态。失败同requestId重试避免重复用户消息；停止/故障中止旧turn再释放会话，进行中的原子工具操作仍以变更记录为准。应用代码恢复经page_rollback，业务数据另存。
 
+TASK-20261010-006运行策略：config/runtime.json的turnTimeoutMs默认0，缺字段亦0，关闭整轮硬时限；turnIdleWarningMs默认600000，连续10分钟无有效进展仅提示等待/停止，不自动中断或重发。两项均需0..2147483647整数毫秒，负数/小数/字符串/null/超界值使启动拒绝，0关闭各自计时器；显式正turnTimeoutMs仍是不可续期的绝对总时限。配置加载于Agent启动，修改后重启才对新轮生效，既有运行轮不动态改策略。工具自身超时、真实Stop和错误处理仍生效。最后进展元数据仅在活动进程内，重启不是断点续跑；页面重连读取当前snapshot并补发闲置提醒。标准Full Access确认自动通过，不新增自由问题输入界面。
+
+单元/隔离HTTP测试使用mock clock、fake AppServer和内存workspace，所有临时资料在项目.cache/turn-progress-test/，无新依赖/真实账号/模型调用。独立候选基于main ea20b59，测试提交由权威coordination登记，人工确认后才同步main；恢复旧代码需重启Agent并恢复对应公开配置，不覆盖真实会话资料。
+
 依赖故障给真实503/error；App Server关闭后状态轮询间隔至少15s尝试重启，不伪造模型结果。日志目录与30天清理见SERVICE。系统隔离、客户种子打包和Windows/Linux上线未验证，详见根TODO。
 
 运行期MCP在受控变更前调用Agent内部POST /internal/register-task，Bearer认证且绑定当前App Server MCP item指纹。修改前project_context({modification:true})尝试返回taskId；只读不登记；回调失败不阻止操作。源码改动按进程加载方式重启；不自动回退，主动恢复可用文件快照，命令和原生操作副作用不保证可恢复。
