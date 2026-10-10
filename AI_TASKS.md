@@ -1,12 +1,14 @@
 # 多 AI 任务管理
 
+TASK017源码快照说明：本分支为GitHub交付版chore/project/github-delivery，用户授权源码上传和产品README；Codex/root只修改README、docs入口及根目标/任务/进度，业务源码与TASK015的f1c690d8完全一致。原始主项目存在.worktrees/coordination时，该目录AI_TASKS/TODO为权威协调记录；本文件不是实时占用索引。现有安装候选不改写，main/testcode不合并。本次发布结果和最终提交由权威协调记录记载。
+
 ## 协调信息
 
-- 当前模式：TASK014本地Git版本保存；只有root写文件，基线核查子任务只读。
-- 权威索引：项目根目录 AI_TASKS.md。
-- 权威进度：项目根目录 TODO.md。
-- 当前协调者：Codex / TASK-20261009-014；用户已授权初始化 Git 与保存 testcode/main，根索引串行协调。
-- 本次修改者：Codex/root；只读协助不认领写入范围。当前根testcode为唯一工作目录；后续并行修改须按规则14建立协调Worktree。
+- 当前模式：TASK017 GitHub交付源码快照；Codex/root负责README和发布，辅助审查只读。
+- 原项目权威索引/进度：主目录.worktrees/coordination/AI_TASKS.md、TODO.md；该目录存在时优先按规则14读取，GitHub对应chore/project/task-coordination分支。
+- 当前协调者：Codex/root / TASK-20261009-017。
+- 本次分支/位置：chore/project/github-delivery / .worktrees/github-delivery，从f1c690d8创建；main/testcode和安装候选保留。
+- 此文件为提交时的历史快照。新用户的本地占用和授权不能从开发者快照继承；客户分发脚本会初始化接收者状态。
 
 ## 使用规则
 
@@ -184,3 +186,7 @@
 <!-- seedagent-runtime-tasks:end -->
 
 TASK014版本说明：本文件所在源码版本为main；测试/恢复证据详见docs/git-versions.html。历史TASK001至013非Git描述不代表当前仓库状态。
+
+## TASK015候选快照说明
+
+当前本地权威索引为原始主项目.worktrees/coordination/AI_TASKS.md；本工作树为chore/project/macos-delivery，从main9271c18创建。TASK-20261009-015 Codex/root允许修改项目macOS安装/登录/启动/诊断、打包脚本、config/docs/相关部署资料及目标快照；TASK016的有界退出修复已从独立服务分支29f84a93d6a4集成。其它根历史记录只保留来源，不是实时认领。当前自检42项和构建通过，尚未批准main同步。冻结后结果仅回写权威协调记录；接收者包初始化自己的目标/任务/进度，不继承本开发项目授权。

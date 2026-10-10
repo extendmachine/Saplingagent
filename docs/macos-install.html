@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SeedAgent · Mac 安装与接入</title>
+<style>
+body{margin:0;background:#f5f6f3;color:#26302a;font:16px/1.8 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:940px;margin:auto;padding:40px 24px 70px}h1{font-size:36px;line-height:1.25;letter-spacing:-1px}h2{font-size:23px}section{background:white;border:1px solid #dde3dc;border-radius:16px;padding:22px 26px;margin:20px 0}a{color:#3c6844}pre,code{background:#edf1eb;border-radius:5px;font-size:14px}code{padding:2px 5px}pre{padding:15px;overflow:auto;line-height:1.6}table{border-collapse:collapse;width:100%}th,td{padding:11px;border-bottom:1px solid #e2e6df;text-align:left;vertical-align:top}.intro{font-size:19px;color:#58665c}.step{color:#49734f;font-weight:650}.small{font-size:14px;color:#65716a}@media(max-width:640px){main{padding:24px 14px}section{padding:18px}h1{font-size:29px}table{display:block;overflow:auto}}
+</style>
+</head>
+<body><main>
+<a href="index.html">← 项目说明</a>
+<h1>在你的 Mac 上启动 SeedAgent</h1>
+<p class="intro">解压到一个本地文件夹，安装运行环境，登录自己的账号，然后开始对话。初始页面只有聊天入口，应用内容由你和 AI 一起构建。</p>
+<section>
+<h2>准备</h2>
+<p>支持 macOS 13.5 及更新系统，Apple Silicon 和 Intel Mac。首次安装需要连接 Node.js 与 npm 官方站点；登录和模型调用需要连接 OpenAI。你需要自己的可用 Codex/ChatGPT 账号，模型与额度以该账号实际返回为准。</p>
+<p>先将整个 <code>SeedAgent-macOS-…</code> 文件夹解压到你有写入权限的位置，例如“文稿”。保留文件夹内所有源码、<code>rules/</code>、<code>.agents/skills/</code> 和锁文件。可以使用中文和带空格的路径。</p>
+</section>
+<section>
+<h2>三个步骤</h2>
+<p><span class="step">1 · 双击 1-安装.command</span><br>脚本自动按当前 Mac 架构下载 Node 24.21.0，核对官方 SHA-256 校验表；在项目内安装 Codex CLI 0.146.1 和应用锁定依赖。无需先安装 Node、Homebrew 或 Codex 桌面应用，也不需要 sudo。安装完成后会给出下一步；重复安装会复用已完成的同版本环境。</p>
+<p><span class="step">2 · 双击 2-登录Codex.command</span><br>官方 Codex 会打开浏览器，由你完成自己的账号登录。凭据存入此项目的 <code>local-secrets/codex/</code>；脚本不导入开发者或其他项目的认证，不改全局 Codex 配置。已保存的项目认证不会因重复安装而被覆盖。</p>
+<p><span class="step">3 · 双击 3-启动SeedAgent.command</span><br>脚本启动本地服务和独立的 Codex App Server，自动加载 SeedAgent MCP 与项目 Skills。确认账号、模型、MCP 和网页均就绪后打开浏览器，终端会显示实际模型以及工具数量。</p>
+<p>保持启动的终端窗口开启。按 <kbd>Control+C</kbd> 或关闭该窗口可停止本次启动的服务；网页聊天中的“停止”只停止当前对话轮。</p>
+<p class="small">macOS 若拦截下载的脚本，可右键脚本选择“打开”。若执行位被解压工具丢失，使用下面的终端方式。脚本不主动删除系统的隔离属性。</p>
+<pre>cd "/你的路径/SeedAgent-macOS-…"
+bash "1-安装.command"
+bash "2-登录Codex.command"
+bash "3-启动SeedAgent.command"</pre>
+</section>
+<section>
+<h2>接入是怎样完成的</h2>
+<p>网页对话 → 本地 <code>agent-runtime</code> → 官方 <code>codex app-server --listen stdio://</code> → SeedAgent MCP → 本地文件和命令。你不需要手工配置 MCP 地址，也不需要把应用放入 Codex 桌面的聊天窗口。</p>
+<p>每次启动根据当前文件夹重新计算路径，<code>CODEX_HOME</code> 使用项目认证目录，MCP 的根目录与服务端口显式传给 App Server。默认网页为 <code>http://127.0.0.1:5173/</code>，后端使用 4310、4311、4312；全部仅监听本机。修改 <code>config/runtime.json</code> 的端口后重启即可。</p>
+<p>本版本沿用用户选择的 Full Access：<code>danger-full-access</code>、<code>approval_policy=never</code>，SeedAgent MCP 自动批准，可按当前系统用户权限修改前后端、MCP、Skills 和其他可访问文件。文件保护与逐次确认未加入安装器；应用的改动按需由用户主动恢复。</p>
+<p>固定依赖版本用于保持协议兼容；需要升级时先修改 <code>config/macos.json</code>、安装并验证，再分发。安装和移动文件夹都无需重新注册全局 MCP。</p>
+</section>
+<section>
+<h2>常见问题</h2>
+<table><thead><tr><th>现象</th><th>处理</th></tr></thead><tbody>
+<tr><td>安装中断或网络失败</td><td>恢复网络后再次运行“1-安装”。需要强制修复已安装依赖时，用 <code>bash "1-安装.command" --repair</code>。Node 校验失败不会启用下载文件；依赖未全部成功时不会写入完成标记。重装保留源码、项目认证与会话。</td></tr>
+<tr><td>提示另一轮安装正在进行</td><td>先等安装窗口结束。若上次进程异常退出，确认所有安装窗口已关闭，再删除此项目的 <code>.runtime/node-install.lock</code> 或 <code>.runtime/macos-install.lock</code> 后重试。不要删除 <code>local-secrets/</code>。</td></tr>
+<tr><td>登录浏览器回调失败</td><td>在项目终端运行 <code>bash scripts/macos/bootstrap.sh login --device-auth</code>，按官方提示完成设备码登录。账号或管理员可能需要先允许该登录方式。</td></tr>
+<tr><td>已有认证，但请求提示过期</td><td>先运行 <code>bash scripts/macos/bootstrap.sh logout</code> 退出本项目账号，再执行“2-登录”。此操作保留应用文件和会话。</td></tr>
+<tr><td>端口被占用</td><td>关闭你之前启动的本项目终端，或调整 <code>config/runtime.json</code> 中的端口。脚本会报错退出，不会终止其他项目进程。</td></tr>
+<tr><td>启动等待超过 120 秒</td><td>运行“4-诊断.command”，查看安装、登录和配置端口状态。可检查终端错误与 <code>logs/</code> 中的服务元数据；诊断不发起模型请求、不显示凭据。</td></tr>
+<tr><td>模型与文档例子不同</td><td>App Server 按当前账号的模型目录选择配置首选或实际默认模型。已登录、发现模型和一次成功回复分别代表不同验证阶段；额度与网络以真实调用为准。</td></tr>
+</tbody></table>
+</section>
+<section>
+<h2>移动、保存和分享</h2>
+<p>先停止服务，再移动整个项目文件夹，重新双击启动。更换 Mac 架构或依赖锁文件后重跑安装。<code>.runtime/</code> 是项目运行环境，<code>data/</code> 保存会话，<code>snapshots/</code> 保存可用恢复记录，<code>logs/</code> 保存服务日志。</p>
+<p>接收者的目标、任务与进度会重新初始化，不继承开发者批准记录。分享应用时使用 <code>node scripts/package-macos.mjs &lt;提交编号&gt;</code> 生成干净源包。该包按明确 Git 提交提取源码与完整 rules，排除真实登录资料、会话、日志、快照、依赖和本地运行环境，附带文件校验清单。接收者安装并登录自己的账号。</p>
+</section>
+<section>
+<h2>当前交付方式与官方资料</h2>
+<p>本包用于用户本机开发/开源应用的自登录运行。OpenAI 官方将这种认证与商业或托管应用认证区分；未来商业发行需单独完成 Sign in with ChatGPT 注册及集成。本包尚未实现该商业认证流程，也不是签名、公证后的 macOS 原生应用。</p>
+<ul>
+<li><a href="https://learn.chatgpt.com/docs/codex/cli">Codex CLI 安装与使用</a></li>
+<li><a href="https://learn.chatgpt.com/docs/app-server">Codex App Server 协议与认证边界</a></li>
+<li><a href="https://learn.chatgpt.com/docs/auth">登录、凭据存储和设备码登录</a></li>
+<li><a href="https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server">Sign in with ChatGPT 的 App Server 集成</a></li>
+<li><a href="https://nodejs.org/en/blog/release/v24.21.0">固定 Node LTS 发布与官方校验文件</a></li>
+</ul>
+<p class="small">最后核对：2026-10-09。本机 Apple Silicon 的脚本与协议验证见候选交付记录；Intel 真机和 Finder 下载隔离提示需对应环境验证。</p>
+</section>
+</main></body></html>

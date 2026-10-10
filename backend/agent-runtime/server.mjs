@@ -28,6 +28,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   const registerTask = createTaskRegistry(root);
   const token = (await fs.readFile(path.join(root, 'local-secrets/runtime/service-token'), 'utf8')).trim();
   const workspaceBase = `http://127.0.0.1:${process.env.SEED_WORKSPACE_PORT || config.workspacePort}`;
+  const workspaceAbort = new AbortController();
   const logDir = path.join(root, 'logs/agent-runtime'); await fs.mkdir(logDir, { recursive: true });
   let logDay = '';
   const log = async (event, fields = {}) => {
@@ -39,12 +40,12 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     await fs.appendFile(path.join(logDir, `agent-runtime-${day}.log`), JSON.stringify({ time: new Date().toISOString(), event, ...fields }) + '\n', { mode: 0o600 });
   };
   async function ws(route, method = 'GET', data) {
-    const response = await fetch(workspaceBase + route, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: data === undefined ? undefined : JSON.stringify(data), signal: AbortSignal.timeout(15000) });
+    const response = await fetch(workspaceBase + route, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: data === undefined ? undefined : JSON.stringify(data), signal: AbortSignal.any([AbortSignal.timeout(15000), workspaceAbort.signal]) });
     const value = await response.json();
     if (!response.ok) throw new ApiError(value.error?.code || 'WORKSPACE_ERROR', value.error?.message || '本地会话服务不可用', response.status);
     return value;
   }
-  let rpc, startup, closing = false, lastStart = 0;
+  let rpc, startup, shutdown, closing = false, lastStart = 0;
   let status = { ready: false, authenticated: false, provider: 'Codex App Server', model: '', skills: [], mcp: { ready: false, tools: [] }, permissions };
   const active = new Map(), threads = new Map(), resumed = new Set(), subscribers = new Map(), approvals = new Map(), requestSessions = new Map(), dirtySessions = new Map();
   let effort = config.reasoningEffort;
@@ -66,8 +67,13 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     return run.saving;
   }
   function scheduleSave(run) { if (run.saveTimer || run.finished) return; run.saveTimer = setTimeout(() => { run.saveTimer = null; save(run).catch(() => abortRun(run, new Error('无法保存会话，请检查本地存储'))); }, 1000); }
-  async function finish(run, result, error) {
-    if (run.finished) return;
+  function finish(run, result, error) {
+    if (run.finishing) return run.finishing;
+    if (run.finished) return Promise.resolve();
+    run.finishing = finishRun(run, result, error);
+    return run.finishing;
+  }
+  async function finishRun(run, result, error) {
     run.finished = true; clearTimeout(run.timeout); clearTimeout(run.saveTimer);
     run.session.running = false; run.session.activeRequestId = null;
     const request = run.session.requests.find(r => r.id === run.requestId);
@@ -154,6 +160,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     status.ready = status.authenticated && status.mcp.ready;
   }
   async function start() {
+    if (closing) throw new ApiError('SHUTTING_DOWN', '服务正在停止', 503);
     if (startup) return startup;
     lastStart = Date.now();
     startup = (async () => {
@@ -166,7 +173,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       rpc = new AppServer({ cwd: root, env: { ...process.env, CODEX_HOME: path.join(root, 'local-secrets/codex'), SEED_ROOT: root, SEED_AGENT_MANAGED: '1', SEED_AGENT_PORT: String(process.env.SEED_AGENT_PORT || config.agentPort), SEEDAGENT_PROJECT_ROOT: root, SEEDAGENT_WORKSPACE_PORT: String(process.env.SEED_WORKSPACE_PORT || config.workspacePort), SEEDAGENT_BUILDER_PORT: String(process.env.SEED_BUILDER_PORT || config.builderPort) }, args });
       rpc.on('notification', message => notification(message).catch(error => log('notification_error', { code: error.code || 'INTERNAL' }).catch(() => {})));
       rpc.on('request', serverRequest);
-      rpc.on('disconnect', error => { status.ready = false; status.error = safeError(error); resumed.clear(); for (const run of active.values()) finish(run, 'failed', error).catch(() => {}); });
+      rpc.on('disconnect', error => { status.ready = false; status.error = safeError(error); resumed.clear(); if (!closing) for (const run of active.values()) if (run.session) finish(run, 'failed', error).catch(() => {}); });
       await rpc.call('initialize', { clientInfo: { name: 'seedagent', title: 'SeedAgent', version: '0.1.0' }, capabilities: { experimentalApi: true } });
       rpc.send({ method: 'initialized', params: {} });
       const account = await rpc.call('account/read', { refreshToken: false }); status.authenticated = !!account.account;
@@ -217,6 +224,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   }
   async function execute(run, text) {
     try {
+      if (closing) { await finish(run, 'interrupted'); return; }
       if (!rpc || rpc.closed) await start();
       if (!status.ready) throw new Error(status.error || 'Agent 尚未就绪');
       if (!run.session.threadId) {
@@ -369,11 +377,27 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   });
   server.requestTimeout = 0; server.headersTimeout = 10000;
   server.startAgent = start;
-  server.shutdown = async () => {
-    closing = true;
-    for (const run of active.values()) { await interrupt(run).catch(() => {}); await finish(run, 'interrupted'); }
-    rpc?.close(); for (const group of subscribers.values()) for (const res of group) res.end();
-    await new Promise(resolve => server.close(resolve));
+  server.shutdown = () => {
+    if (shutdown) return shutdown;
+    closing = true; status.ready = false;
+    // Close our detached App Server group first, before any RPC/storage wait.
+    // Waiting for turn/interrupt here can exceed the supervisor's stop deadline.
+    const stopped = rpc?.close();
+    const closed = new Promise(resolve => server.close(resolve));
+    const saving = Promise.allSettled([...active.values()].map(async run => {
+      run.cancelRequested = true;
+      await run.loaded;
+      if (run.session) await finish(run, 'interrupted');
+    }));
+    shutdown = (async () => {
+      let timer;
+      try { await Promise.race([Promise.allSettled([stopped, saving]), new Promise(resolve => { timer = setTimeout(resolve, 2000); })]); }
+      finally { clearTimeout(timer); workspaceAbort.abort(new Error('Agent shut down')); }
+      for (const group of subscribers.values()) for (const res of group) res.end();
+      server.closeAllConnections();
+      await closed;
+    })();
+    return shutdown;
   };
   return server;
 }
@@ -381,5 +405,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const server = await createAgentServer();
   server.listen(Number(process.env.SEED_AGENT_PORT || 4310), '127.0.0.1', () => { console.log('agent-runtime listening on loopback'); server.startAgent().catch(error => console.error(safeError(error))); });
-  for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => server.shutdown().then(() => process.exit(0)));
+  let stopping = false;
+  const stop = () => { if (stopping) return; stopping = true; server.shutdown().then(() => process.exit(0), () => process.exit(1)); };
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(signal, stop);
 }

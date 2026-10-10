@@ -12,6 +12,8 @@ TASK-20261009-005 / Codex/root；本地可运行开发版，人工体验见根TO
 
 数据经workspace公开接口原子持久化，API事件的snapshot为权威消息。每会话一个turn，请求账本去重。中途页面离开不取消后台；Stop真实中断；超时/存储失败中止旧turn，故障保留原因；磁盘不可写时保留进程内dirty快照并明确失败。源恢复不恢复聊天。
 
+TASK016补充退出生命周期：收到SIGINT、SIGTERM或macOS终端关闭的SIGHUP，先停止本服务创建的独立App Server进程组；750ms后仍存活则升级SIGKILL，进程清理最多等待1500ms，不扫描或终止其他服务/用户进程。会话终态并发尽力保存为interrupted，与进程清理一起最多等待2000ms，随后取消尚未完成的workspace请求并关闭SSE/HTTP连接。关闭为幂等操作，重复信号不会跳过清理；退出中不重启App Server。持久化服务故障时仍可能有未落盘末段，下次启动继续修正遗留running状态。
+
 日志logs/agent-runtime/agent-runtime-YYYY-MM-DD.log，跨日清理30天普通日志，仅事件、模型、ID、状态/错误类别，不记用户正文、MCP参数/结果、命令输出、原始stderr或认证。
 
 源文件server/rpc/tasks/approval/permissions.mjs；测试test/；接口CONTRACT、部署DEPLOY、来源REFERENCES、交接ai-tasks/TASK-20261009-005.md。

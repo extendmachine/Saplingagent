@@ -52,8 +52,33 @@ export class AppServer extends EventEmitter {
     this.closed = true;
     for (const pending of this.pending.values()) { clearTimeout(pending.timer); pending.reject(error); }
     this.pending.clear();
-    try { if (process.platform !== 'win32' && this.child.pid) process.kill(-this.child.pid, 'SIGTERM'); else this.child.kill('SIGTERM'); } catch {}
+    this.terminate();
     this.emit('disconnect', error);
   }
-  close() { this.fail(new Error('Agent shut down')); }
+  terminate() {
+    if (this.termination) return this.termination;
+    // detached gives this spawn its own process group, including stdio MCP children.
+    // Keep checking the group after its leader exits: descendants can ignore SIGTERM.
+    const pid = this.child.pid, grouped = process.platform !== 'win32' && !!pid;
+    const signal = name => { try { if (grouped) process.kill(-pid, name); else this.child.kill(name); } catch {} };
+    const alive = () => {
+      if (!pid) return false;
+      if (!grouped) return this.child.exitCode === null && this.child.signalCode === null;
+      try { process.kill(-pid, 0); return true; } catch (error) { return error.code !== 'ESRCH'; }
+    };
+    signal('SIGTERM');
+    this.termination = new Promise(resolve => {
+      if (!alive()) return resolve();
+      const started = Date.now();
+      const timer = setInterval(() => {
+        const elapsed = Date.now() - started;
+        if (alive() && elapsed >= 750) signal('SIGKILL');
+        if (!alive() || elapsed >= 1500) { clearInterval(timer); resolve(); }
+      }, 25);
+    }).finally(() => {
+      this.child.stdin.destroy(); this.child.stdout.destroy(); this.child.stderr.destroy();
+    });
+    return this.termination;
+  }
+  close() { this.fail(new Error('Agent shut down')); return this.termination; }
 }

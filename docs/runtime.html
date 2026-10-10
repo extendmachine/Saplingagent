@@ -8,7 +8,7 @@
 </head>
 <body>
 <main><p><strong>main单聊天基线</strong>：本分支无后加应用组件，Full Access核心保留。恢复来源与本次检查见<a href="git-versions.html">Git版本说明</a>；历史页面截图和任务记录保留其当时含义。</p>
-<nav>
+<nav><a href="macos-install.html">Mac安装与接入</a>
 <a href="index.html">概览</a>
 <a href="runtime.html">运行与演进</a>
 <a href="frontend-preview.html">单页预览</a>
@@ -18,7 +18,7 @@
 </nav>
 <h1>运行与Full Access</h1>
 <section>
-<h2>启动</h2>
+<h2>启动</h2><p>拿到macOS源包后，按<a href="macos-install.html">Mac安装指南</a>运行1-安装、2-登录Codex、3-启动SeedAgent。以下node命令保留为开发入口。</p>
 <p>Node≥24.11、npm、官方Codex CLI，本机Codex0.146.1。依赖归项目，默认网页127.0.0.1:5173，三个回环后端端口4310/4311/4312。</p>
 <pre>node scripts/install.mjs   # 首次依赖准备
 node scripts/dev.mjs       # 统一启动

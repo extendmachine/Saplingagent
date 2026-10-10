@@ -1,3 +1,7 @@
+# macOS候选交付说明
+
+TASK015候选基于main9271c18单聊天起点；当前App为空，features仅README，没有用户后加组件。Node24.21 LTS安装和统一入口见../../scripts/macos/README.md、../../docs/macos-install.html。下方TASK009/013描述保留其历史语境，不作为本候选存在CurrentTime的依据。
+
 # front 模块说明
 
 - 模块：front / Codex/frontend；TASK009实现真实聊天，TASK013同步全权限工具文案与说明，全权限集成验证由root TASK010汇总。
