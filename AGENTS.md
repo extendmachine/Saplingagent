@@ -21,6 +21,8 @@
 
 ## 项目专用补充
 
+- 2026-10-09 用户指定仅保留 main（纯AI聊天）、testcode（用户测试页面）、release（客户版，目前同main）。临时分支完成后按用户授权清理；当前本机 .worktrees/coordination 为 detached HEAD，仍保存权威任务记录，不另建竞争索引。完整规则保持 rules/README.md 为唯一来源。
+
 Codex、Claude Code 或其他 AI 可以在本节维护项目专用的简短入口提示，但不得删除上方的 `@rules/README.md`、必读文件列表或改变公共规则优先级。详细规则必须写入 `rules/`，项目进度必须写入 `TODO.md` 或 `AI_TASKS.md`。
 
 - 本项目为 SeedAgent；已实现本地Agent、workspace、app-builder、MCP与Skills，保留单页对话。实际验证与限制读取 FINAL_GOAL.md、TODO.md、AI_TASKS.md；启动 `node scripts/dev.mjs`。

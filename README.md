@@ -4,7 +4,7 @@
 
 SaplingAgent 是仓库名；当前代码、启动脚本和运行时使用 **SeedAgent** 名称。前端采用 React 与 assistant-ui，模型、对话线程和工具执行由官方 **Codex App Server** 驱动。应用源码、会话、Skills、规则和运行环境都归属本地项目文件夹。
 
-**当前支持 macOS 13.5+，自动识别 Apple Silicon / Intel。** 此首页所在 `chore/project/github-delivery` 分支包含 macOS 安装器与单聊天起点；`main` 保留原始单聊天基线，`testcode` 保存已演进的页面版本。
+**当前支持 macOS 13.5+，自动识别 Apple Silicon / Intel。** 仓库仅保留三个分支：`main` 为纯 AI 聊天与应用构建起点，包含 macOS 安装器；`testcode` 保存用户测试的演进页面；`release` 为客户使用版本，目前与 `main` 完全一致。
 
 ## 快速开始：安装 → 登录 → 启动
 
@@ -13,7 +13,7 @@ SaplingAgent 是仓库名；当前代码、启动脚本和运行时使用 **Seed
 有 Git 的用户可执行：
 
 ```bash
-git clone --branch chore/project/github-delivery https://github.com/extendmachine/Saplingagent.git
+git clone --branch main https://github.com/extendmachine/Saplingagent.git
 cd Saplingagent
 ```
 
@@ -213,14 +213,11 @@ if [ "$SEED_ARCH" = "x86_64" ]; then SEED_ARCH=x64; fi
 
 | 分支 | 用途 |
 | --- | --- |
-| `chore/project/github-delivery` | 此首页版本：单聊天起点、Mac 安装器与接入指南 |
-| `chore/project/macos-delivery` | 已交付的 Mac 安装候选，冻结提交 `f1c690d8` |
-| `main` | 原始单聊天基线，提交 `9271c188` |
+| `main` | 默认首页：已测试的纯 AI 聊天起点、Mac 安装器与接入指南 |
 | `testcode` | 当前已演进的页面，提交 `80cb9eb5` |
-| `fix/agent-runtime/macos-shutdown` | App Server 自身子进程退出清理 |
-| `chore/project/task-coordination` | 权威任务、进度和候选验证记录 |
+| `release` | 客户使用版本，目前与 `main` 指向同一提交 |
 
-页面演进版和初始安装版分别保留在上述分支中。进入 `main` 的改动按项目规则绑定人工测试的具体提交。
+用户已完成交付版测试；安装器、退出清理与完整 README 已归入纯聊天版本。其余临时分支已按用户要求清理，来源提交保留在 Git 历史。客户可用 `git clone --branch release https://github.com/extendmachine/Saplingagent.git` 获取相同的当前版本。后续进入 `main`、发布到 `release` 的改动继续绑定实际测试记录。
 
 ## 当前验证与认证边界
 

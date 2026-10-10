@@ -1,17 +1,29 @@
 # SeedAgent 当前进度
 
-## TASK017 GitHub代码与README交付
+## TASK018 当前三分支
+
+用户已完成交付64366886测试并授权归集与清理。main保持纯AI聊天，包含已测Mac安装器、Codex App Server/MCP/Skills和接入README；testcode保留80cb9eb用户测试页面；release客户版目前同main。运行根目录仍在testcode，业务源码/真实资料不改。main已归集已测提交（合并c626fb64febcf53596218372d9fe0fe92cab8945）；本次另同步README clone和三分支说明，GitHub默认main，临时分支按用户要求清理。
+
+| 分支 | 角色 | 当前验证/来源 |
+| --- | --- | --- |
+| main | 纯AI聊天起点、Mac安装与Codex接入 | 已测来源64366886；单聊天源码与原基线一致，当前分支整理仅改说明 |
+| testcode | 用户自测的演进页面 | 保留80cb9eb5457be76036dc92798d99903103c8fd9d，不合入业务组件 |
+| release | 客户使用版本 | 与main指向同一提交、全部文件相同 |
+
+权威协调记录继续在原主项目.worktrees/coordination，以detached HEAD保存；旧分支/任务历史不作为当前活跃分支。后续用户确认的发布按main→release同步，具体结果见实际Git refs与本机权威记录。
+
+## 历史TASK017 GitHub代码与README交付
 
 用户授权将全部源码上传到https://github.com/extendmachine/Saplingagent.git。此分支chore/project/github-delivery基于TASK015冻结安装候选f1c690d8，新增产品README：GitHub获取/ZIP安装、本人登录、项目内Codex AppServer stdio协议、自动MCP/Skills、模型配置、诊断/设备码/注销、权限与认证边界。原完整规范分发说明在README末尾折叠保留，19个rules原样；docs/index同步导航，业务源码未变。
 
 当前为源码交付候选快照；具体提交、推送与GitHub默认分支结果由协调分支的权威记录汇总，不回填冻结候选。远程私有空仓库已核查，已有main/testcode/Mac候选和修复分支均保留，未合并main。上一安装候选42测试/构建/真实模型验证仍见下方，当前仅文档修改采用链接、命令与源码一致性检查，不冒充用户本人登录和Intel真机已验收。
 
-## TASK015 macOS交付候选
+## 历史TASK015 macOS交付候选
 
 此工作树为chore/project/macos-delivery，从main9271c18创建；权威协调记录在原始主项目.worktrees/coordination。已实现四个.command、macOS13.5+项目内Node24.21/Codex0.146.1安装、用户自登录、自动MCP/Skills就绪启动、诊断及干净源码打包。TASK016退出清理修复已集成（源提交29f84a93d6a4）。真实Apple Silicon安装、重复安装、无全局auth导入、42项隔离/协议测试与TypeScript/Vite构建通过。交付包解压换目录及真实模型回归将在冻结候选后核对，最终结果见权威协调记录和交付回执。main/testcode未变；未远程发布；用户人工Finder/Intel流程待验证，main需指定提交测试确认。
 
 
-## Git分支管理（TASK014）
+## 历史Git分支管理（TASK014）
 
 用户授权保存当前testcode及AI在网页自行添加功能前的main单聊天基线；本文件随对应分支保存。确切SHA使用git log -1 <分支>核对，不要求提交中包含自身SHA。当前仅root写入，主工作目录保持testcode，不推送远程。
 
