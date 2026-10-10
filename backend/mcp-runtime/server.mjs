@@ -113,7 +113,7 @@ export function createSeedServer(options = {}) {
       if (!/^[A-Za-z0-9_-]{32,512}$/.test(token)) throw new Error('Invalid token format');
       tokenForRedaction = token;
       return token;
-    } catch { throw new ToolError('LOCAL_CONFIG', 'The local service token is missing or invalid. Start SeedAgent with its project launcher.'); }
+    } catch { throw new ToolError('LOCAL_CONFIG', 'The local service token is missing or invalid. Start Saplingagent with its project launcher.'); }
   }
 
   async function request(service, endpoint, { method = 'GET', body, timeout = 15_000, signal } = {}) {
@@ -145,8 +145,8 @@ export function createSeedServer(options = {}) {
     return result;
   }
 
-  const server = new McpServer({ name: 'seedagent', version: '0.1.0' }, {
-    instructions: 'SeedAgent full-access tools execute within the current OS user permissions, not root. Absolute paths, parent paths, symbolic links, backend, MCP, chat, main and dependencies are available. Direct file writes and shell commands are supported; candidate recording is optional and not validation. No automatic rollback. Requested snapshot rollback overwrites later edits; shell/native tool effects may not be recoverable. Task registration is best effort. Results describe actual outcomes, not assumed success. Discussion and research alone do not authorize edits. Do not infer lasting preferences from transient requests.',
+  const server = new McpServer({ name: 'seedagent', title: 'Saplingagent', version: '0.1.0' }, {
+    instructions: 'Saplingagent full-access tools execute within the current OS user permissions, not root. Absolute paths, parent paths, symbolic links, backend, MCP, chat, main and dependencies are available. Direct file writes and shell commands are supported; candidate recording is optional and not validation. No automatic rollback. Requested snapshot rollback overwrites later edits; shell/native tool effects may not be recoverable. Task registration is best effort. Results describe actual outcomes, not assumed success. Discussion and research alone do not authorize edits. Do not infer lasting preferences from transient requests.',
   });
 
   const readAnnotations = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true };
@@ -330,5 +330,5 @@ async function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  main().catch(() => { process.stderr.write('SeedAgent MCP could not start. Check project dependencies and configuration.\n'); process.exitCode = 1; });
+  main().catch(() => { process.stderr.write('Saplingagent MCP could not start. Check project dependencies and configuration.\n'); process.exitCode = 1; });
 }
