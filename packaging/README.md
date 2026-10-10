@@ -1,16 +1,11 @@
-# 客户打包交付规划
+# macOS source delivery
 
-状态：本次只定义包内容，没有打包脚本或业务 ZIP。
+The source packager is implemented in `scripts/package-macos.mjs`. It reads a committed Git revision, extracts an explicit allowlist, verifies source blobs, initializes recipient goal/task records and writes a ZIP, a SHA-256 sidecar and per-file `delivery.json` manifest.
 
-## 三种用途
+Include source, locked dependencies, all rules (including the English controlled attachment), project Skills, HTML guides and LICENSE/NOTICE/THIRD_PARTY_NOTICES. Exclude real credentials, sessions, preferences, logs, snapshots, installed runtimes/dependencies, Git history, worktrees and caches. Existing user business data is not included by default.
 
-- 种子初始化包：空业务与记忆状态、完整 rules 和 AI 入口、基础版本、依赖锁文件、启动入口、必要许可证；用于新建应用。
-- 应用分享包：已生成的 front/、backend/、contracts/、config/、docs/、规则和必要资源；默认不含个人会话、偏好和真实业务数据。
-- 本地恢复备份：源码、规则、配置、所需资源和明确选择的数据/快照；凭据需单独受保护保存，不进入普通分享或上传包。
+Run using the installed project Node: `node scripts/package-macos.mjs HEAD`, or use the exact project-runtime command in the root README. Output defaults to `.cache/releases/`. Validate the actual ZIP and hashes before sharing; do not zip the running application folder.
 
-## 基础脚本未来职责
+The recipient must install and log in independently. ZIP installation does not require Git; repackaging and version controls do. Commercial rights and third-party authentication requirements remain separate. This is a source package, not a signed/notarized native Mac app.
 
-根据用途确定清单，核对文件哈希与版本，检查真实凭据与日志排除，保留路径，附重建依赖说明，验证解包后的启动入口与关键功能。
-普通包排除 local-secrets/、真实 logs/、.git/、.worktrees/、node_modules/、.venv/、缓存与旧打包产物；规则内受控工具 ZIP 按原规范保留。
-业务导出产物放项目内 dist/；不创建另一套 templates/，种子以当前应用底座与分发清单生成。
-本次不生成 Clawtask 包、修改其部署或运行随附工具；未来明确要求时再按规则 17 读取最新 Demo 并执行。
+Full application/data backups are a distinct user-requested workflow. No Clawtask business ZIP or remote deployment is produced by this macOS task; rule 17 governs any future Clawtask packaging request.

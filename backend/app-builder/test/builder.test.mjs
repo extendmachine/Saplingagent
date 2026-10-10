@@ -45,7 +45,7 @@ test('all project areas, arbitrary content and outside paths are ready without c
   const paths = ['backend/agent-runtime/server.mjs', 'front/chat/ChatPanel.tsx', 'front/main.tsx', 'front/package.json', 'rules/README.md', '.agents/skills/example/SKILL.md', 'local-secrets/synthetic.txt', '.env', 'node_modules/synthetic.txt', 'dist/synthetic.txt', '../peer/relative.bin', path.join(peer, 'absolute.bin')];
   const content = 'FIXTURE_ONLY_SECRET sk-proj-synthetic-not-a-key\ninvalid TS { and YAML [';
   await put(path.join(root, paths[0]), 'original backend');
-  const change = await builder.propose({ reason: '全权限隔离验证', files: paths.map((file) => ({ path: file, content, expectedHash: 'intentionally-stale' })) });
+  const change = await builder.propose({ reason: 'Isolated Full Access check', files: paths.map((file) => ({ path: file, content, expectedHash: 'intentionally-stale' })) });
   assert.equal(change.status, 'ready'); assert.deepEqual(change.checks, []); assert.equal(builds, 0);
   assert.equal(await fs.readFile(path.join(root, paths[0]), 'utf8'), 'original backend');
   const candidateFiles = await fs.readdir(path.join(root, 'snapshots/app-builder/changes', change.changeId, 'candidate'));

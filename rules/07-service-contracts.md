@@ -1,12 +1,12 @@
-# 07. 微服务契约与服务说明
+# 07. Microservice contract and service description
 
-## 目标
+## Target
 
-每个微服务必须有独立的 Markdown 说明文件，记录服务职责、目录结构、接口、启动方式、日志位置和依赖服务。AI 修改微服务前，必须先阅读该服务目录内的说明文件。
+Each microservice must have an independent Markdown documentation document that records service responsibilities, directory structure, interface, startup method, log location and dependent services. Before AI modifies the microservice, you must read the instructions in the service catalog.
 
-## 必备文件
+## Required documents
 
-每个微服务目录内建议包含：
+The suggestions in each microservice catalog include:
 
 ```text
 services/
@@ -18,153 +18,153 @@ services/
     └── ai-tasks/
 ```
 
-## SERVICE.md 必须包含
+## SERVICE.md must contain
 
-1. 服务名称。
-2. 服务职责。
-3. 目录结构。
-4. 启动方式。
-5. 日志位置。
-6. 依赖服务。
-7. 部署与回滚说明入口。
+1. Service name.
+2. Service responsibilities.
+3. Catalog structure.
+4. Start-up method.
+5. Log location.
+6. Rely on the service.
+7. Deployment and rollback instructions entrance.
 
-## CONTRACT.md 必须包含
+## CONTRACT.md must contain
 
-1. 对外接口名称。
-2. 调用方式，例如 HTTP、消息队列、文件、数据库读写等。
-3. 输入参数。
-4. 输出结果。
-5. 错误码或错误说明。
-6. 依赖的上游和下游服务。
-7. 兼容性注意事项。
+1. External interface name.
+2. Call methods, such as HTTP, message queue, file, database reading and writing, etc.
+3. Enter the parameters.
+4. Output the result.
+5. Error code or error description.
+6. Dependent upstream and downstream services.
+7. Compatibility notes.
 
-## REFERENCES.md 必须包含
+## REFERENCES.md must contain
 
-1. 外部平台或资料名称。
-2. 官方网址和用途。
-3. 适用接口、SDK、证书或版本。
-4. 是否需要登录或权限。
-5. 最后核对日期。
+1. External platform or data name.
+2. Official website and purpose.
+3. Applicable interface, SDK, certificate or version.
+4. Do you need to log in or have permission?
+5. Finally, check the date.
 
-## AI 执行规则
+## AI execution rules
 
-1. 修改某个微服务前，先读取该服务的 `SERVICE.md` 和 `CONTRACT.md`。
-2. 改动接口时，必须同步更新 `CONTRACT.md`。
-3. 改动启动方式、日志位置、依赖服务时，必须同步更新 `SERVICE.md`。
-4. 不允许跨服务直接引用内部实现，必须按契约通信。
-5. 如果服务说明缺失，AI 应先补充服务说明，再继续开发。
-6. 涉及第三方平台、SDK、公钥或证书时，必须读取并更新 `REFERENCES.md`。
-7. 跨 AI 或跨对话接续任务时，必须先读取该服务 `ai-tasks/` 下的对应交接文件。
-8. 新建服务说明时直接按下方格式在微服务目录创建文件；不适用的内容应明确标记或删除，不得保留虚假占位信息。
+1. Before modifying a microservice, read the `SERVICE.md` and `CONTRACT.md` of the service.
+2. When changing the interface, `CONTRACT.md` must be updated synchronously.
+3. When changing the startup method, log location, and dependent services, `SERVICE.md` must be updated synchronously.
+4. Cross-service direct reference to internal implementation is not allowed, and must communicate according to the contract.
+5. If the service description is missing, AI should supplement the service description first and then continue to develop.
+6. When involving third-party platforms, SDKs, public keys or certificates, `REFERENCES.md` must be read and updated.
+7. When continuing tasks across AI or cross-dialogues, you must first read the corresponding handover file under the service `ai-tasks/`.
+8. When creating a new service description, directly create a file in the microservice directory in the above format; the inapplicable content should be clearly marked or deleted, and false placeholding information should not be retained.
 
-## SERVICE.md 填写格式
+## SERVICE.md fill in the format
 
 ```markdown
-# <SERVICE_NAME> 服务说明
+# <SERVICE_NAME> Service Description
 
-## 基本信息
+## Basic information
 
-- 服务名称：`<SERVICE_NAME>`
-- 服务目录：`services/<service-name>/`
-- 服务负责人：<用户 / AI / 团队>
-- 当前状态：<规划中 / 开发中 / 待人工验证 / 已启用 / 已停用>
+- Service name: `<SERVICE_NAME>`
+- Service directory: `services/<service-name>/`
+- Service Manager: <User / AI / Team>
+- Current status: <Planning / Developing / Pending manual verification / Enabled / Disabled>
 
-## 服务职责
+## Service responsibilities
 
-<说明该服务唯一负责的业务能力。>
+<It describes the business capabilities that the service is solely responsible for. >
 
-## 不负责的内容
+## Unresponsible content
 
-- <明确边界，避免其他功能被塞入本服务>
+- <Clarify the boundaries to avoid other functions being stuffed into this service>
 
-## 目录结构
+## Catalog structure
 
-<列出本服务实际目录和文件。>
+<List the actual directory and files of this service. >
 
-## 启动方式
+## Start-up method
 
-- 运行环境：<Python / Node / Docker / 其他>
-- 环境位置：<项目内路径>
-- 启动命令：`<COMMAND>`
-- 停止命令：`<COMMAND>`
-- 健康检查：<地址、命令或人工检查方式>
+- Running environment: <Python / Node / Docker / Other>
+- Environmental location: <path in the project>
+- Start command: `<COMMAND>`
+- Stop command: `<COMMAND>`
+- Health check: <address, order or manual check method>
 
-## 日志
+## Daily record
 
-- 日志目录：`logs/<service-name>/`
-- 文件格式：`<service-name>-YYYY-MM-DD.log`
-- 保留时间：30 天
-- 清理方式：<方式>
+- Log directory: `logs/<service-name>/`
+- File format: `<service-name>-YYYY-MM-DD.log`
+- Retention time: 30 days
+- Cleaning method: <way>
 
-## 依赖服务
+## Dependent service
 
-| 服务 | 依赖方式 | 用途 | 不可用时处理 |
+|Service|Dependent method|Purpose|Deal with it when it is not available|
 | --- | --- | --- | --- |
 | `<service-name>` | `<HTTP/MQ/contract>` | `<purpose>` | `<behavior>` |
 
-## 数据管理
+## Data management
 
-- 是否直接管理数据库：<是 / 否>
-- 管理方案：<数据库服务、独立存储或其他方案>
-- 数据变更入口：<迁移文件或说明路径>
+- Whether to directly manage the database: <Yes / No>
+- Management scheme: <database service, independent storage or other schemes>
+- Data change entrance: <migrate file or description path>
 
-## 文档入口
+## Document entrance
 
-- 接口契约：`CONTRACT.md`
-- 部署回滚：`DEPLOY.md`
-- 官方资料：`REFERENCES.md`
-- AI 任务交接：`ai-tasks/`
+- Interface contract: `CONTRACT.md`
+- Deployment rollback: `DEPLOY.md`
+- Official information: `REFERENCES.md`
+- AI task handover: `ai-tasks/`
 ```
 
-## CONTRACT.md 填写格式
+## CONTRACT.md Fill in the format
 
 ```markdown
-# <SERVICE_NAME> 接口契约
+# <SERVICE_NAME> Interface Contract
 
-## 契约信息
+## Contract information
 
-- 契约版本：`<VERSION>`
-- 服务名称：`<SERVICE_NAME>`
-- 最后更新：`<YYYY-MM-DD>`
-- 对应任务：`<TASK-ID>`
+- Contract version: `<VERSION>`
+- Service name: `<SERVICE_NAME>`
+- Last update: `<YYYY-MM-DD>`
+- Corresponding task: `<TASK-ID>`
 
-## 接口清单
+## Interface list
 
-| 接口 ID | 接口名称 | 调用方式 | 地址或主题 | 调用方 | 状态 |
+|Interface ID|Interface name|Call method|Address or theme|Caller|State|
 | --- | --- | --- | --- | --- | --- |
 | `<INTERFACE-ID>` | `<NAME>` | `<HTTP/MQ/File/DB>` | `<PATH-OR-TOPIC>` | `<CALLER>` | `<STATUS>` |
 
-## <INTERFACE-ID>：<接口名称>
+## <INTERFACE-ID>: <INTERFACE NAME>
 
-- 用途：<业务内容>
-- 调用方式：<HTTP 方法、消息主题、文件路径或其他契约>
-- 地址：`<METHOD /api/path>`
-- 身份验证：<认证方式，不写真实凭据>
+- Purpose: <Business Content>
+- Call method: <HTTP method, message subject, file path or other contract>
+- Address: `<METHOD /api/path>`
+- Authentication: <Authentication method, no real credentials>
 
-### 输入
+### Input
 
-| 字段 | 类型 | 必填 | 说明 |
+|Field|Type|Required|Explain|
 | --- | --- | --- | --- |
-| `<field>` | `<type>` | 是 | `<description>` |
+| `<field>` | `<type>` |Yes| `<description>` |
 
-### 成功输出
+### Successful output
 
-- 状态码或结果：`<CODE>`
+- Status code or result: `<CODE>`
 
-| 字段 | 类型 | 说明 |
+|Field|Type|Explain|
 | --- | --- | --- |
 | `<field>` | `<type>` | `<description>` |
 
-### 失败输出
+### Failure output
 
-| 错误码 | 触发条件 | 调用方处理 |
+|Error code|Trigger conditions|Handled by the caller|
 | --- | --- | --- |
 | `<ERROR_CODE>` | `<condition>` | `<action>` |
 
-## 服务依赖与兼容
+## Service dependence and compatibility
 
-- 上游服务：<服务和接口>
-- 下游服务：<服务和接口>
-- 兼容性要求：<版本、废弃策略和迁移说明>
-- 人工联调状态：<待验证 / 已验证，并注明提交编号>
+- Upstream services: <services and interfaces>
+- Downstream services: <services and interfaces>
+- Compatibility requirements: <version, discard policy and migration instructions>
+- Manual adjustment status: <to be verified / verified, and indicate the submission number>
 ```

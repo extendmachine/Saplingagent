@@ -45,9 +45,9 @@ export async function checkedFetch(url: string, options?: RequestInit): Promise<
   const timer = setTimeout(() => timeout.abort(), 10000);
   const signal = options?.signal ? AbortSignal.any([options.signal, timeout.signal]) : timeout.signal;
   try { response = await fetch(url, { ...options, signal }); } catch (error) {
-    if (timeout.signal.aborted && !options?.signal?.aborted) throw new Error('本地服务响应超时，请重试或重新启动服务。');
+    if (timeout.signal.aborted && !options?.signal?.aborted) throw new Error('Local service response timed out. Retry or restart the service.');
     if (error instanceof DOMException && error.name === 'AbortError') throw error;
-    throw new Error('本地服务连接失败。请确认 Saplingagent 后端正在运行。');
+    throw new Error('Unable to connect to the local service. Check that the Saplingagent backend is running.');
   } finally { clearTimeout(timer); }
   if (!response.ok) {
     let message: string | undefined;
@@ -57,7 +57,7 @@ export async function checkedFetch(url: string, options?: RequestInit): Promise<
       message = typeof body.error === 'string' ? body.error : typeof body.error?.message === 'string' ? body.error.message : typeof body.message === 'string' ? body.message : undefined;
       code = typeof body.error?.code === 'string' ? body.error.code : undefined;
     } catch { /* A proxy failure may return HTML, not JSON. */ }
-    throw new HttpError(message || (response.status === 404 ? '会话或服务接口不存在。' : `本地服务请求失败（${response.status}）。`), response.status, code, message);
+    throw new HttpError(message || (response.status === 404 ? 'Session or service endpoint does not exist.' : `Local service request failed (${response.status}).`), response.status, code, message);
   }
   return response;
 }
@@ -65,7 +65,7 @@ export async function checkedFetch(url: string, options?: RequestInit): Promise<
 export async function getSession(id: string, signal?: AbortSignal): Promise<Session> {
   const response = await checkedFetch(`/api/sessions/${encodeURIComponent(id)}`, { signal });
   const body = await response.json();
-  if (!body.session || body.session.id !== id || !Array.isArray(body.session.messages)) throw new Error('保存的会话格式不正确。');
+  if (!body.session || body.session.id !== id || !Array.isArray(body.session.messages)) throw new Error('Invalid saved session format.');
   return body.session;
 }
 

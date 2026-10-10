@@ -203,7 +203,7 @@ test('official MCP stdio transport, 15 full-access tools, HTTP mapping and nonbl
   const changes = result(await client.callTool({ name: 'page_changes', arguments: {} }));
   assert.equal(changes.changes[0].status, 'rolledBack');
 
-  const evidence = '以后都使用深色主题。';
+  const evidence = 'Always use the dark theme from now on.';
   const preference = result(await client.callTool({ name: 'preferences_set', arguments: { key: 'theme', value: { name: 'dark' }, evidence } }));
   assert.equal(preference.preference.evidence, evidence);
   assert.equal(result(await client.callTool({ name: 'preferences_get', arguments: {} })).preferences.length, 1);
@@ -233,7 +233,7 @@ test('official MCP stdio transport, 15 full-access tools, HTTP mapping and nonbl
     ['page_propose', { reason: '  Managed fixture candidate  ', files: [{ path: 'front/features/managed.tsx', content: 'export {}' }] }, '/changes'],
     ['page_apply', { changeId: 'candidate-1' }, '/changes/candidate-1/apply'],
     ['page_rollback', { changeId: 'candidate-1' }, '/changes/candidate-1/rollback'],
-    ['preferences_set', { key: '  theme  ', value: 'dark', evidence: ' 以后使用深色主题。 ' }, '/preferences'],
+    ['preferences_set', { key: '  theme  ', value: 'dark', evidence: ' Use the dark theme from now on. ' }, '/preferences'],
     ['preferences_forget', { id: 'pref-1' }, '/preferences/pref-1'],
     ['workspace_write_file', { path: '/fixture/direct', content: 'written', reason: '  managed write  ' }, '/files/write'],
     ['workspace_delete_file', { path: '../fixture-direct', reason: '  managed delete  ' }, '/files/delete'],

@@ -1,20 +1,20 @@
-# 13. Codex 与 Claude Code 公共规范
+# 13. Codex and Claude Code Public Specification
 
-## 目标
+## Target
 
-同一项目可以由 Codex、Claude Code 或其他 AI 共同维护，但所有 AI 必须使用同一套项目事实、规则和任务状态。不得依赖单个对话、模型记忆或工具私有记录代替项目文件。
+The same project can be maintained by Codex, Claude Code or other AI, but all AI must use the same set of project facts, rules and task status. Do not rely on single dialogues, model memory or tool private records to replace project files.
 
-## 唯一公共规则源
+## The only public rule source
 
-1. `rules/README.md` 是项目公共控制规范和规则索引的唯一来源。
-2. 根目录 `AGENTS.md` 是 Codex 和其他 AI 的轻量入口，必须包含 `@rules/README.md` 和必读文件指引。
-3. 根目录 `CLAUDE.md` 是 Claude Code 入口，使用 `@AGENTS.md` 进入同一条规则链。
-4. `AGENTS.md` 可以由 AI 维护项目专用的简短提示，但不得复制完整公共规则、删除规则入口或覆盖公共规则优先级。
-5. 公共控制规范变更时，应修改 `rules/README.md` 和对应规则文件；只有入口方式变化时才修改 `AGENTS.md` 或 `CLAUDE.md`。
-6. 规范版本和最后更新时间记录在 `rules/README.md`，便于多个 AI 识别公共规则是否变化。
-7. 全局入口的默认要求只补充项目未规定的事项；项目已规定的内容以项目规则为准。个人 Skill 提供方法和工具要求，不授予额外操作权限。
+1. `rules/README.md` is the only source of project public control specifications and rule indexes.
+2. The root directory `AGENTS.md` is a lightweight entrance to Codex and other AI, which must contain `@rules/README.md` and must-read document guidelines.
+3. The root directory `CLAUDE.md` is the entrance to Claude Code. Use `@AGENTS.md` to enter the same rule chain.
+4. `AGENTS.md` can be a short prompt dedicated to the AI maintenance project, but it is not allowed to copy the complete public rules, delete the rule entrance or override the public rule priority.
+5. When the public control specification is changed, `rules/README.md` and the corresponding rule file should be modified; `AGENTS.md` or `CLAUDE.md` should be modified only when the entrance method changes.
+6. The specification version and the last update time are recorded in `rules/README.md`, which is convenient for multiple AIs to identify whether public rules have changed.
+7. The default requirements of the global entrance only supplement the items not stipulated in the project; the content stipulated by the project shall be subject to the project rules. Personal Skill provides methods and tool requirements, and does not grant additional operating permissions.
 
-推荐结构：
+Recommended structure:
 
 ```text
 project-root/
@@ -27,43 +27,43 @@ project-root/
     └── README.md
 ```
 
-## 项目内优先级
+## Priority within the project
 
-在不违反平台系统规则、安全限制和用户权限的前提下，项目内部信息冲突时按以下顺序处理：
+Under the premise of not violating the rules of the platform system, security restrictions and user permissions, the internal information conflict of the project shall be handled in the following order:
 
-1. 用户在当前任务中的明确要求。
-2. `rules/README.md` 与其索引的强制规则。
-3. `FINAL_GOAL.md` 的项目范围和验收标准。
-4. `AI_TASKS.md` 中当前已认领任务的范围。
-5. 当前微服务的 `SERVICE.md`、`CONTRACT.md`、`DEPLOY.md` 和 `REFERENCES.md`。
-6. `TODO.md` 中已确认的进度和待办。
-7. `AGENTS.md` 中不冲突的项目专用补充。
-8. AI 对话记录、本地记忆或自行推断。
+1. The user's clear requirements in the current task.
+2. `rules/README.md` and the mandatory rules of its index.
+3. Project scope and acceptance standards of `FINAL_GOAL.md`.
+4. The scope of the currently claimed tasks in `AI_TASKS.md`.
+5. The current microservice `SERVICE.md`, `CONTRACT.md`, `DEPLOY.md` and `REFERENCES.md`.
+6. Confirmed progress and to be done in `TODO.md`.
+7. Special supplement for non-conflicting items in `AGENTS.md`.
+8. AI conversation records, local memory or self-inference.
 
-差异判断和暂停范围统一遵守 `rules/README.md` 的“差异与冲突处理”。版本变化或记录过时先核查；无法确定处理方式的实质冲突保留现场，由协调者记录并请求人工确认，只读审阅则在回复中报告。
+The scope of difference judgment and suspension uniformly complies with the "Difference and Conflict Handling" of `rules/README.md`. Version changes or outdated records should be verified first; if the substantive conflict of the handling method cannot be determined, the scene will be recorded by the coordinator and request manual confirmation. If it is read-only, it will be reported in the reply.
 
-## 每个 AI 开始任务前必须读取
+## Each AI must read before starting the task.
 
-1. 通过 `AGENTS.md` 或 `CLAUDE.md` 找到并完整读取 `rules/README.md`。
+1. Find and read `rules/README.md` completely through `AGENTS.md` or `CLAUDE.md`.
 2. `FINAL_GOAL.md`。
 3. `TODO.md`。
-4. `AI_TASKS.md`；并行时必须按规则 14 读取权威索引和进度，不将当前 Worktree 的副本当成实时状态。
-5. 当前微服务的说明、契约、部署、引用资料和已有任务交接文件。
-6. `rules/README.md` 路由出的任务相关细则。
+4. `AI_TASKS.md`; When paralleling, the authoritative index and progress must be read according to Rule 14, and the copy of the current Worktree must not be treated as a real-time state.
+5. The description, contract, deployment, reference information and existing task handover documents of the current microservice.
+6. `rules/README.md` routed task-related rules.
 
-## 会话与记忆规则
+## Conversation and memory rules
 
-1. 不假定 Codex 能看到 Claude Code 的聊天记录，也不假定 Claude Code 能看到 Codex 的聊天记录。
-2. 不把任何 AI 的本地记忆当作项目唯一事实来源。
-3. 修改任务的重要决定、范围、验证结果和下一步必须写入任务记录，由协调者汇总；只读审阅按规则索引输出结果，不为记忆要求写文件。
-4. 已运行的会话在继续修改前，应重新读取 `rules/README.md` 和规则 14 定位的权威 `TODO.md`、`AI_TASKS.md`，防止其他 AI 已更新规则或任务状态。
-5. 提交前必须再次读取权威 `AI_TASKS.md` 并检查 Git 状态，确认没有越过其他任务的认领范围。
-6. 所有 AI 都必须使用 `rules/README.md` 规定的规范读取回执和结束复核回执，不得用聊天记忆代替实际读取。
-7. 回执中的规范版本、任务编号和适用规则必须来自当前项目文件，不得根据其他 AI 的回复照抄。
+1. It is not assumed that Codex can see Claude Code's chat records, nor does it assume that Claude Code can see Codex's chat records.
+2. Do not regard the local memory of any AI as the only factual source of the project.
+3. The important decisions, scope, verification results and the next step of the modification task must be written into the task record and summarized by the coordinator; only read and review the output results according to the rules index, and do not write documents for memory requirements.
+4. Before continuing to modify, the run session should re-read `rules/README.md` and the authority `TODO.md` and `AI_TASKS.md` located in Rule 14 to prevent other AIs from updating the rules or task status.
+5. Before submitting, you must read the authority `AI_TASKS.md` again and check the Git status to confirm that it has not crossed the claim range of other tasks.
+6. All AI must use the specifications stipulated in `rules/README.md` to read the receipt and finish the review receipt, and must not replace the actual reading with chat memory.
+7. The standard version, task number and applicable rules in the receipt must come from the current project file and must not be copied according to the reply of other AI.
 
-## 工具专用配置
+## Special configuration for tools
 
-1. `.codex/` 和 `.claude/` 中的工具配置不得成为业务规则的唯一存放位置。
-2. 可以提交明确需要团队共享且不含敏感信息的项目配置。
-3. 本地权限、会话状态、缓存、个人记忆和包含本机路径的配置不得提交。
-4. 某个 AI 缺少所需工具或权限时，必须明确记录未完成项，不得声称已经执行。
+1. Tool configurations in `.codex/` and `.claude/` shall not be the only storage location for business rules.
+2. You can submit a project configuration that clearly needs to be shared by the team and does not contain sensitive information.
+3. Local permissions, session status, cache, personal memory and configurations containing local paths cannot be submitted.
+4. When an AI lacks the required tools or permissions, it must clearly record the unfinished items and must not claim to have been executed.

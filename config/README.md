@@ -1,5 +1,5 @@
-# 应用配置
+# Application configuration
 
-当前 runtime.json 已包含四个本地端口、首选模型、推理力度和每轮超时。模型以Codex官方App Server实际目录为准，首选缺失时选择目录默认；本机实际gpt-5.6-sol/medium。所有服务仅绑定回环；内部令牌以路径读取，无真实密钥进入公开配置。
-后续保存应用 ID、基础版本、启用功能、模型适配器引用、本地服务连接和 MCP 注册信息。
-路径相对应用根目录解析；复制后的应用创建新 ID，不继承旧应用状态。配置仅引用 local-secrets/，不包含真实密钥。
+The current runtime.json contains four local ports, preferred models, reasoning strength and timeouts per round. The model is subject to the actual directory of Codex official App Server. When the preference is missing, select the directory default; the actual gpt-5.6-sol/medium of the machine. All services only bind the loopback; the internal token is read by path, and there is no real key to enter the public configuration.
+Subsequent save application ID, basic version, enable function, model adapter reference, local service connection and MCP registration information.
+The path is relative to the root directory of the application; the copied application creates a new ID and does not inherit the old application status. The configuration only refers to local-secrets/ and does not contain the real key.

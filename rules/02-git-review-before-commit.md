@@ -1,31 +1,31 @@
-# 02. Git 提交前文档筛选
+# 02. Git pre-commit document screening
 
-## 目标
+## Target
 
-每次提交 git 之前，必须先做一次 review pass，防止敏感文件、临时文件、无关大文件或过期文档进入版本库。
+Before each commit of git, you must do a review pass to prevent sensitive files, temporary files, irrelevant large files or expired documents from entering the repository.
 
-## 提交前检查清单
+## Checklist before commit
 
-1. 检查待提交文件中是否包含敏感文件，例如密码、密钥、本地敏感信息文件夹、`selfdata.json`。
-2. 检查是否有临时文件、调试文件、构建产物、无关大文件被误加入。
-3. 检查 README、接口文档、配置说明是否与本次代码改动一致。
-4. 检查 `.gitignore` 是否覆盖日志、环境变量、服务器信息、临时文件等不应提交的内容。
-5. 确认本次提交只包含当前任务相关内容。
-6. 确认当前分支属于本次修改的微服务或特性，不得直接在 `main` 开发。
-7. 按规则 14 重新读取权威 `AI_TASKS.md`，确认任务仍由当前 AI 认领，修改范围未与其他任务重叠；不只检查当前 Worktree 的副本。
-8. 涉及外部平台时，检查 `REFERENCES.md` 中的官方网址、用途和核对日期是否已同步。
+1. Check whether the file to be submitted contains sensitive files, such as passwords, keys, local sensitive information folders, `selfdata.json`.
+2. Check whether temporary files, debugging files, build artifacts, and irrelevant large files have been added by mistake.
+3. CHECK WHETHER THE README, INTERFACE DOCUMENT AND CONFIGURATION INSTRUCTIONS ARE CONSISTENT WITH THIS CODE CHANGE.
+4. Check whether `.gitignore` covers logs, environment variables, server information, temporary files and other content that should not be submitted.
+5. Confirm that this commit only contains the content related to the current task.
+6. Confirm that the current branch belongs to the microservice or feature of this modification, and may not be developed directly in `main`.
+7. Re-read the authoritative `AI_TASKS.md` according to rule 14 to confirm that the task is still claimed by the current AI, and the scope of modification does not overlap with other tasks; not only check the copy of the current Worktree.
+8. When involving external platforms, check whether the official website, purpose and check date in `REFERENCES.md` have been synchronized.
 
-## AI 执行规则
+## AI execution rules
 
-1. 执行 `git commit` 或 `git push` 前，必须先查看 git 状态。
-2. 发现敏感文件或无关文件时，必须先修复，再继续提交。
-3. 文档与代码不一致时，应优先补齐文档。
-4. 不得提交 `selfdata.json`、本地敏感信息文件夹、日志文件、密钥文件、环境变量文件。
-5. 特性分支完成后，应提交并记录待测试提交编号，再交由用户测试。
-6. 同步到 `main` 前，必须核对用户测试的提交编号与实际待合并提交一致。
-7. `main` 的合并记录必须注明 `Source-Branch`、`Tested-Commit` 和人工验证信息。
-8. 提交说明或任务记录应注明执行 AI 和任务编号，便于 Codex 与 Claude Code 之间追溯。
+1. Before executing `git commit` or `git push`, you must check the git status.
+2. When sensitive or irrelevant files are found, they must be repaired first before continuing to submit.
+3. When the document is inconsistent with the code, the document should be supplemented first.
+4. Do not submit `selfdata.json`, local sensitive information folders, log files, key files, and environment variable files.
+5. After the completion of the feature branch, the commit SHA to be tested should be submitted and recorded, and then submitted to the user for testing.
+6. Before synchronizing to `main`, it must be checked that the commit SHA of the user test is consistent with the actual commit to be merged.
+7. The consolidated record of `main` must indicate `Source-Branch`, `Tested-Commit` and human verification information.
+8. The commit instructions or task records should indicate the execution AI and task number to facilitate traceability between Codex and Claude Code.
 
-## 提交准入
+## Submit access
 
-只有在 review pass 通过后，才允许执行提交或推送操作。
+Commit or push operations are only allowed after the review pass is passed.
