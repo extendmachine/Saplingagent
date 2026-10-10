@@ -1,41 +1,41 @@
-# app-builder 服务说明
+# App-builder service description
 
-- 目录 backend/app-builder/；Codex/workspace，TASK-20261009-012；版本0.2.0。
-- 当前状态：实现、13项隔离自检与真实模型联调完成，待人工体验。根 TASK010 汇总，非 Git，无提交/main同步。
-- 职责：按用户要求提供当前操作系统用户的完整文件与命令操作、可选候选记录及用户主动恢复。模型、会话和MCP协议分别由其他服务通过公开HTTP协调。
-- 当前没有读写白名单、扩展名、符号链接/越界、秘密文本、AST/YAML、固定聊天/入口/后端/rules保护，没有强制编译、hash冲突拦截或自动恢复。不提权 root。
+- Catalog backend/app-builder/; Codex/workspace, TASK-20261009-012; version 0.2.0.
+- Current status: Realization, 13 isolation self-examination and real model joint adjustment completed, waiting for manual experience. Root TASK010 summary, non-Git, no submission/main synchronization.
+- Responsibilities: Complete file and command operations of the current operating system user, optional candidate records and active recovery of the user according to the user's requirements. The model, session and MCP protocol are coordinated by other services through public HTTP respectively.
+- At present, there is no read and write whitelist, extension, symbolic link/border, secret text, AST/YAML, fixed chat/entrance/back-end/rules protection, no forced compilation, hash conflict interception or automatic recovery. Don't mention the right root.
 
-## 结构与运行环境
+## Structure and operating environment
 
-builder.mjs：原生读写、索引快照、主动恢复、shell生命周期。server.mjs：HTTP/loopback/Bearer认证、元数据日志。test/builder.test.mjs：隔离回归。package.json/package-lock.json归本服务。
-旧source-references.mjs及Babel/css-tree/yaml依赖已移除。Node >=24.11，本机测试26.4.0，仅使用Node内置模块，无第三方运行依赖，不需要前端编译器启动文件工具，不使用全局npm安装。
+builder.mjs: native read and write, index snapshot, active recovery, shell life cycle. server.mjs: HTTP/loopback/Bearer authentication, metadata log. test/builder.test.mjs: isolated regression. package.json/package-lock.json belongs to this service.
+The old source-references.mjs and Babel/css-tree/yaml dependencies have been removed. Node >=24.11, native test 26.4.0, only uses Node's built-in module, no third-party running dependency, no need for front-end compiler to start file tools, and does not use global npm installation.
 
-根执行 node backend/app-builder/server.mjs，或服务目录 npm start；服务目录可 npm ci。默认127.0.0.1:4312；SEED_BUILDER_PORT覆盖端口；SEED_ROOT覆盖项目根，默认模块相对推导。GET /health；Ctrl+C或统一启动器停止。shell取当前环境SHELL，未设置时macOS/Linux为/bin/sh，继承当前服务用户及环境。
+Root execution node backend/app-builder/server.mjs, or service directory npm start; service directory can be npm ci. The default is 127.0.0.1:4312; SEED_BUILDER_PORT covers the port; SEED_ROOT covers the project root, and the default module is derived relative. GET /health; Ctrl+C or the unified launcher stops. Shell takes the current environment SHELL. When it is not set, macOS/Linux is /bin/sh, inheriting the current service user and environment.
 
-## 文件、记录和恢复
+## Files, records and recovery
 
-相对路径基于项目根，绝对路径、../、dot目录和符号链接按原生文件系统处理。文件支持utf8/base64与字节分页；目录列表保留目录/symlink/other类型。writable:true表示服务没有写门槛，实际权限由OS决定。
+The relative path is based on the project root, and the absolute path, ../, dot directory and symbolic links are processed according to the native file system. The file supports utf8/base64 and byte paging; the directory list retains the directory/symlink/other type. Writable:true means that there is no write threshold for the service, and the actual permissions are determined by the OS.
 
-POST /files/write、/files/delete直接操作目标并尽力记录原件。快照或记录失败仍执行可执行目标，返回applied+warning；没有确认可用记录时省略changeId。原件备份失败明确originalSnapshot:false/backupError及BACKUP_UNAVAILABLE，不能承诺该文件可恢复。目录操作可用任意shell。
+POST /files/write, /files/delete directly operate the target and try your best to record the original. If the snapshot or record fails, the executable target is still executed, and the applied+warning is returned; changeId is omitted when the available record is not confirmed. The original backup failure clearly specifies originalSnapshot:false/backupError and BACKUP_UNAVAILABLE, and the file cannot be promised to be restored. Any shell can be used for directory operations.
 
-可选POST /changes成功仅返回ready/checks:[]，expectedHash接受但忽略，不复制完整前端或编译。apply兼容旧validated/failed候选；多文件中途失败保留已经完成的操作。单进程记录队列，无跨进程快照锁。
+Optional POST /changes successfully only returns ready/checks:[], expectedHash accepts but ignores, does not copy the complete front-end or compile. Apply is compatible with the old validated/failed candidate; multiple files fail halfway to keep the completed operation. Single-process recording queue, no cross-process snapshot lock.
 
-snapshots/app-builder/changes/<uuid>/保存meta.json、candidate/<index>和originals/<index>，绝对与../目标不改变快照自身布局；旧嵌套路径记录保留兼容。仅显式rollback按原件恢复、删除当时不存在的新文件，允许覆盖后续编辑。启动不解释applying/failed状态并自动还原文件，快照不自动删除。
+snapshots/app-builder/changes/<uuid>/save meta.json, candidate/<index> and originals/<index>, absolutely and.../The target does not change the snapshot's own layout; the old nested path record retains compatibility. Only explicit rollback restores and deletes new files that did not exist at that time according to the original, allowing subsequent edits to be overwritten. The startup does not explain the applying/failed status and automatically restores the file, and the snapshot is not automatically deleted.
 
-## 命令生命周期
+## Command life cycle
 
-POST /commands执行当前用户shell，无命令白名单或root提权。cwd默认项目根，可任意可访问目录；默认60秒，timeoutMs 1..3600000。stdout/stderr各最多1MiB并标截断；返回真实exitCode、timedOut、cancelled。
+POST /commands execute the current user shell, no command whitelist or root elevation. Cwd default project root, can access the directory at will; the default is 60 seconds, timeoutMs 1..3600000. stdout/stderr each up to 1MiB and marked truncation; return the real exitCode, timedOut, canceled.
 
-超时、HTTP请求取消/连接断开和server.close结束本次创建的shell进程组，其他命令组保持运行。停止不能撤销已发生副作用；shell与Codex原生操作不自动进入文件快照。独立脱离进程组的程序遵循其自身生命周期，不承诺完整回退。
+Timeout, HTTP request cancellation/disconnection and server.close end the shell process group created this time, and other command groups remain running. Stop cannot undo the side effects that have occurred; shell and Codex native operations do not automatically enter the file snapshot. Programs that are independent of the process group follow their own life cycle and do not promise a complete return.
 
-## 日志与依赖
+## Logs and dependencies
 
-logs/app-builder/app-builder-YYYY-MM-DD.log；启动和跨日清理30天前日志；info/warn/error。仅requestId/changeId/status/code/exitCode/timedOut/cancelled，不落输入、命令正文、输出或凭据。日志不可写不改变已完成操作结果，附LOG_UNAVAILABLE；真实文件系统错误仍返回。真实日志不进Git。
+logs/app-builder/app-builder-YYYY-MM-DD.log; start and cross-day cleaning 30 days ago logs; info/warn/error. Only requestId/changeId/status/code/exitCode/timedOut/cancelled, do not drop input, command body, output or credentials. The log cannot be written without changing the result of the completed operation, with LOG_UNAVAILABLE; the real file system error is still returned. The real log does not enter Git.
 
-上游backend/mcp-runtime通过HTTP；根启动器准备local-secrets/runtime/service-token，本服务启动读取做内部认证，浏览器不持有token。无跨服务私有导入或数据库依赖。
+Upstream backend/mcp-runtime through HTTP; root launcher prepares local-secrets/runtime/service-token, this service starts reading for internal authentication, and the browser does not hold token. No cross-service private import or database dependence.
 
-接口CONTRACT.md；部署/主动恢复DEPLOY.md；官方来源REFERENCES.md；当前交接ai-tasks/TASK-20261009-012.md。旧TASK008是历史受控方案，当前v2已替代。根AI_TASKS/TODO仅协调者更新。
+Interface CONTACT.md; Deployment/Active Recovery DEPLOY.md; Official Source REFERENCES.md; Current Handover ai-tasks/TASK-20261009-012.md. The old TASK008 is a historically controlled scheme, and the current v2 has been replaced. Root AI_TASKS/TODO is only updated by the coordinator.
 
-## Saplingagent 更名（2026-10-09）
+## Saplingagent name change (2026-10-09)
 
-产品名称统一为 Saplingagent，私有包名改为 saplingagent-*。本次仅名称及展示元数据，接口、权限、模型和数据结构不变；SEED_*/SEEDAGENT_*、seedagent MCP/client ID、浏览器会话键、运行期标记和 seed-* Skill ID 保留兼容。验证和待测提交见权威 .worktrees/coordination/AI_TASKS.md；本条不代表 main 已同步。
+The product name is unified as Saplingagent, and the private package name is changed to saplingagent-*. This time, only the name and display metadata, the interface, permission, model and data structure remain unchanged; SEED_*/SEEDAGENT_*, seedagent MCP/client ID, browser session key, runtime mark and seed-* Skill ID remain compatible. For verification and test submission, please refer to the authority .worktrees/coordination/AI_TASKS.md; this article does not mean that the main has been synchronized.
