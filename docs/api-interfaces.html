@@ -30,6 +30,14 @@
 <td>真实ready/authenticated/provider/model、permissions(Full Access)、Skills与MCP目录</td>
 </tr>
 <tr>
+<td>GET /api/git</td>
+<td>当前仓库、分支/HEAD、工作区改动、本地分支、最近提交与其它Worktree占用状态</td>
+</tr>
+<tr>
+<td>POST /api/git/switch</td>
+<td>{branch} → 安全切换已有本地分支；未提交改动、活跃对话、并发切换或目标被占用时返回409，不自动stash/force/fetch/push</td>
+</tr>
+<tr>
 <td>GET /api/sessions</td>
 <td>本地会话列表</td>
 </tr>
@@ -78,7 +86,7 @@ skills_list / skills_read</pre>
 <p>参数规模使用实际MCP schema上限；reason最多4000。工具返回结构化状态，错误isError，不伪造成功。HTTPtoken仅服务读取，认证详情不在此文档或前端返回。</p>
 </section>
 <p>
-<small>2026-10-09 · TASK-20261009-010 至 013 · 规范2026-09-29.1 · 非Git，待人工体验</small>
+<small>2026-10-10 · TASK-20261010-004/005 · 规范2026-09-29.1 · 候选待人工体验</small>
 </p>
 </main>
 </body>

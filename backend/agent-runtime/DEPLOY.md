@@ -14,6 +14,8 @@ TASK-20261010-006运行策略：config/runtime.json的turnTimeoutMs默认0，缺
 
 单元/隔离HTTP测试使用mock clock、fake AppServer和内存workspace，所有临时资料在项目.cache/turn-progress-test/，无新依赖/真实账号/模型调用。独立候选基于main ea20b59，测试提交由权威coordination登记，人工确认后才同步main；恢复旧代码需重启Agent并恢复对应公开配置，不覆盖真实会话资料。
 
+Git版本面板调用系统已有`git`可执行文件，不新增Node依赖或全局安装。分支切换会改变当前Worktree内受版本控制的文件；成功后浏览器重新载入目标版本，已启动的Node后端进程仍是切换前已加载代码，完整运行目标版本应按该版本入口重启。目标版本若不包含Git面板，重新载入后面板不会继续显示；可用Git命令或包含该功能的版本重新启动。接口从不自动覆盖未提交内容。
+
 依赖故障给真实503/error；App Server关闭后状态轮询间隔至少15s尝试重启，不伪造模型结果。日志目录与30天清理见SERVICE。系统隔离、客户种子打包和Windows/Linux上线未验证，详见根TODO。
 
 运行期MCP在受控变更前调用Agent内部POST /internal/register-task，Bearer认证且绑定当前App Server MCP item指纹。修改前project_context({modification:true})尝试返回taskId；只读不登记；回调失败不阻止操作。源码改动按进程加载方式重启；不自动回退，主动恢复可用文件快照，命令和原生操作副作用不保证可恢复。

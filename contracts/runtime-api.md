@@ -9,6 +9,8 @@ Codex sandbox danger-full-access、approvalPolicy never；seedagent MCP default_
 ## 前端 -> agent
 
 GET /api/status -> {ready,authenticated,provider,model,skills:[{name,description}],mcp:{ready,tools:[{name,description}]},permissions:{mode:'full-access',sandbox:'danger-full-access',approvalPolicy:'never',mcpApproval:'approve'},error?}。
+GET /api/git -> {git:{repository,branch,detached,head:{shortSha,sha,committedAt,subject},clean,changeCount,changes,changesTruncated,branches,recentCommits}}。读取当前项目Worktree的分支、提交、未提交文件、本地分支及其它Worktree占用状态；不访问网络。
+POST /api/git/switch {branch} -> {git,reloadRecommended:true}。只接受现有本地分支；AI对话运行中、工作区不干净、另一次切换进行中或目标分支被其他Worktree占用时返回409。接口不执行stash、force、discard、fetch、pull、push或远程分支创建。
 GET /api/sessions -> {sessions:[{id,title,updatedAt}]}。
 GET /api/sessions/:id -> {session:{id,title,threadId,messages,updatedAt,running,activeRequestId,requests,pendingApprovals:[],progress?}}。
 POST /api/chat {sessionId?,text,requestId?} -> SSE：session、snapshot、text_delta、status、tool、error、done；保留兼容approval事件与POST /api/approvals/:id，但本地权限/MCP执行自动放行，不要求逐次确认。

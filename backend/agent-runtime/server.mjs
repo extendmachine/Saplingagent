@@ -9,6 +9,7 @@ import { confirmationContent } from './approval.mjs';
 import { toolFingerprint } from '../../contracts/agent-tools.mjs';
 import { permissions, threadPermissions, permissionConfigArgs, automaticApproval } from './permissions.mjs';
 import { createTurnProgress, turnTiming } from './turn-progress.mjs';
+import { GitVersionError, readGitVersion, switchGitBranch } from './git-versions.mjs';
 
 const defaultRoot = fileURLToPath(new URL('../../', import.meta.url));
 const safeError = error => String(error?.message || 'Agent operation failed').replace(/Bearer\s+\S+|(?:sk-|eyJ)[\w.\-]{12,}/g, '[redacted]').slice(0, 800);
@@ -47,7 +48,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     if (!response.ok) throw new ApiError(value.error?.code || 'WORKSPACE_ERROR', value.error?.message || '本地会话服务不可用', response.status);
     return value;
   }
-  let rpc, startup, shutdown, closing = false, lastStart = 0;
+  let rpc, startup, shutdown, closing = false, gitSwitching = false, lastStart = 0;
   let status = { ready: false, authenticated: false, provider: 'Codex App Server', model: '', skills: [], mcp: { ready: false, tools: [] }, permissions };
   const active = new Map(), threads = new Map(), resumed = new Set(), subscribers = new Map(), approvals = new Map(), requestSessions = new Map(), dirtySessions = new Map();
   const currentRun = run => !run.finished && run.session && active.get(run.session.id) === run;
@@ -325,6 +326,18 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       }
       if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ready: true, service: 'agent-runtime', agentReady: status.ready && !startup });
       if (req.method === 'GET' && url.pathname === '/api/status') { if ((!rpc || rpc.closed) && !startup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...status, ready: status.ready && !startup }); }
+      if (req.method === 'GET' && url.pathname === '/api/git') return send(res, 200, { git: await readGitVersion(root) });
+      if (req.method === 'POST' && url.pathname === '/api/git/switch') {
+        if (gitSwitching) throw new ApiError('GIT_SWITCH_BUSY', '另一次版本切换正在进行', 409);
+        if (active.size) throw new ApiError('GIT_AGENT_BUSY', 'AI 对话仍在运行，请等待完成或停止后再切换版本', 409);
+        const { branch } = await readBody(req);
+        gitSwitching = true;
+        try {
+          const gitState = await switchGitBranch(root, branch);
+          await log('git_branch_switched', { branch: gitState.branch, sha: gitState.head.shortSha });
+          return send(res, 200, { git: gitState, reloadRecommended: true });
+        } finally { gitSwitching = false; }
+      }
       if (req.method === 'GET' && url.pathname === '/api/sessions') return send(res, 200, await ws('/sessions'));
       const sessionId = url.pathname.match(/^\/api\/sessions\/([a-zA-Z0-9_-]+)$/)?.[1];
       if (req.method === 'GET' && sessionId) { const run = active.get(sessionId); if (run?.loaded) await run.loaded; const session = run?.session || dirtySessions.get(sessionId) || (await ws(`/sessions/${sessionId}`)).session; return send(res, 200, { session: publicSession(session) }); }
@@ -417,7 +430,10 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         return;
       }
       throw new ApiError('NOT_FOUND', '接口不存在', 404);
-    } catch (error) { send(res, error.status || 500, { error: { code: error.code || 'INTERNAL_ERROR', message: safeError(error) } }); }
+    } catch (error) {
+      if (error instanceof GitVersionError) return send(res, error.status, { error: { code: error.code, message: safeError(error) } });
+      send(res, error.status || 500, { error: { code: error.code || 'INTERNAL_ERROR', message: safeError(error) } });
+    }
   });
   server.requestTimeout = 0; server.headersTimeout = 10000;
   server.startAgent = start;

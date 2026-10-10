@@ -4,6 +4,8 @@ TASK-20261009-005 / Codex/root；本地可运行开发版，人工体验见根TO
 
 职责：模型目录/认证、持续thread/turn、SSE文本与工具进展、审批、取消、去重、断线和重启恢复；tasks.mjs负责根AI_TASKS运行期登记及本服务ai-tasks/runtime记录。文件/命令可使用Native Codex或MCP/app-builder；服务实现仍通过公开契约通信。
 
+TASK-20261010-004在本服务增加Git版本读取与受保护切换：`git-versions.mjs`只通过参数数组调用项目内Git工作树，不拼接shell；读取当前HEAD、分支、未提交文件、最近提交和Worktree占用。切换仅面向现有本地分支，并在未提交改动、活跃AI对话、并发切换或目标被其它Worktree占用时拒绝，不自动stash或丢弃文件。切换成功仅记录分支与短SHA，不记录文件正文或绝对路径。
+
 默认回环4310；workspace内部HTTP4311、builder4312；浏览器通过Vite同源/api代理。统一启动node scripts/dev.mjs；单独node backend/agent-runtime/server.mjs前准备setup/workspace/builder与MCP依赖。GET /health为进程健康，GET /api/status.ready为模型/认证/MCP真正就绪，两者不同。
 
 模型选择实际model/list目录，首选可用则选，否则目录默认；本机实际gpt-5.6-sol/medium，已真实调用。CodeX_HOME在local-secrets/codex；既有本机auth首次复制，项目auth不被覆盖。所有认证仅服务读取，API不返回账户邮箱/秘密值。
@@ -18,7 +20,7 @@ TASK016补充退出生命周期：收到SIGINT、SIGTERM或macOS终端关闭的S
 
 日志logs/agent-runtime/agent-runtime-YYYY-MM-DD.log，跨日清理30天普通日志，仅事件、模型、ID、状态/错误类别，不记用户正文、MCP参数/结果、命令输出、原始stderr或认证。
 
-源文件server/rpc/tasks/approval/permissions/turn-progress.mjs；测试test/；接口CONTRACT、部署DEPLOY、来源REFERENCES、交接ai-tasks/TASK-20261009-005.md与TASK-20261010-006.md。
+源文件server/rpc/tasks/approval/permissions/turn-progress.mjs与git-versions.mjs；测试test/；接口CONTRACT、部署DEPLOY、来源REFERENCES、交接ai-tasks/TASK-20261009-005.md、TASK-20261010-004.md与TASK-20261010-006.md。
 
 运行期MCP在受控变更前调用Agent内部POST /internal/register-task，Bearer认证且绑定当前App Server MCP item指纹。修改前project_context({modification:true})尝试返回taskId；只读不登记；登记失败不阻止操作。原生操作与任意命令副作用不保证可撤销；仅用户要求时恢复快照。
 
