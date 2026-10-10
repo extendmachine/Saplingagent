@@ -1,4 +1,4 @@
 interface:
-  display_name: "资料研究"
-  short_description: "针对当前功能查询官方资料并给出有来源的方案和实际局限"
-  default_prompt: "使用 $seed-research 调研当前功能的可行方案并说明官方依据。"
+  display_name: "Technical research"
+  short_description: "Research official sources and explain feasible options and limitations."
+  default_prompt: "Use $seed-research to investigate this feature and explain the official evidence."
