@@ -1,4 +1,4 @@
 interface:
-  display_name: "页面演进"
-  short_description: "按对话修改页面与应用能力，核对实际结果并支持用户主动恢复"
-  default_prompt: "使用 $seed-page-edit 按我的要求调整当前 Saplingagent 页面。"
+  display_name: "Page evolution"
+  short_description: "Build and adapt the application through conversation, verify results, and support user-requested restoration."
+  default_prompt: "Use $seed-page-edit to update this Saplingagent page as requested."

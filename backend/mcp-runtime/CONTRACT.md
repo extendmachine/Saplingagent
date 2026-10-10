@@ -1,59 +1,59 @@
-# mcp-runtime 接口契约 v2 · Full Access
+# Mcp-runtime interface contract v2 · Full Access
 
-2026-10-09；TASK-20261009-011；公开 HTTP 总契约见根 `contracts/runtime-api.md` v2。
+2026-10-09; TASK-20261009-011; public HTTP general contract see root `contracts/runtime-api.md` v2.
 
-传输为官方 SDK MCP stdio / JSON-RPC。入口 `node <项目绝对路径>/backend/mcp-runtime/server.mjs`，不依赖 cwd。stdout 只传协议，日志进入 logs/mcp-runtime。
+Transfer to the official SDK MCP stdio / JSON-RPC. Entrance `node <project absolute path>/backend/mcp-runtime/server.mjs`, not dependent on cwd. Stdout only transmits the protocol, and the log enters logs/mcp-runtime.
 
-## 15 个工具
+## 15 tools
 
-所有 schemas 由真实 tools/list 输出。结果为 JSON 文本与相同 structuredContent；实际操作失败为 isError:true 与 `{error:{code,message}}`。命令非零退出以实际 exitCode 返回，不伪造成功。
+All schemas are output by real tools/list. The result is JSON text and the same structuredContent; the actual operation failure is isError:true and `{error:{code,message}}`. The non-zero exit of the command is returned to the actual exitCode without forging success.
 
-| 工具 | 输入 | 下游 | 结果含义 |
+|Tools|Input|Downstream|The meaning of the result|
 | --- | --- | --- | --- |
-| workspace_list_files | path? 默认`.`；limit? 1..2000；cursor? 十进制偏移字符串 | GET /files | files、truncated、nextCursor? |
-| workspace_read_file | path；encoding? utf8/base64；offset? 非负整数；maxBytes? 1..4194304 | GET /file | content、encoding、hash、size、truncated、nextOffset? |
-| workspace_write_file | path、content；encoding? utf8/base64；reason? | POST /files/write | applied、changeId?、warnings?；快照尽力保存 |
-| workspace_delete_file | path；reason? | POST /files/delete | applied、changeId?、warnings?；快照尽力保存 |
-| workspace_run_command | command；cwd? 默认项目；timeoutMs? 1..3600000 默认60000 | POST /commands | exitCode number/null、stdout、stderr、timedOut、cancelled、输出截断标记 |
-| page_propose | reason；files 1..20，path/content/encoding?/expectedHash? | POST /changes | ready、checks:[]、changeId；只记录，不验证或应用 |
-| page_apply | changeId | POST /changes/:id/apply | applied；兼容旧 validated/failed 候选 |
-| page_rollback | changeId | POST /changes/:id/rollback | rolledBack；主动按原件覆盖后续修改 |
-| page_changes | 无 | GET /changes | 实际候选与变更记录 |
-| preferences_get | 无 | workspace GET /preferences | 偏好与原文证据 |
-| preferences_set | key、JSON value、evidence | workspace POST /preferences | 保存明确长期偏好；一次任务不够 |
-| preferences_forget | id | workspace DELETE /preferences/:id | 遗忘指定偏好 |
-| skills_list | 无 | 本地 .agents/skills | 发现清单、独立 errors；完全空目录跳过，合法 symlink 可读 |
-| skills_read | name | 本地 .agents/skills/name/SKILL.md | name、description、path、content、hash |
-| project_context | modification?:boolean | 本地入口与可选记录回调 | files/errors、protected:[]、permissionMode:full-access、taskId?、warnings? |
+| workspace_list_files |Path? Default `.`; limit? 1..2000; cursor? Decimal offset string| GET /files | files、truncated、nextCursor? |
+| workspace_read_file |Path; encoding? utf8/base64; offset? Non-negative integer; maxBytes? 1..4194304| GET /file | content、encoding、hash、size、truncated、nextOffset? |
+| workspace_write_file | path、content；encoding? utf8/base64；reason? | POST /files/write |Applied, changeId?, warnings?; try to save the snapshot|
+| workspace_delete_file | path；reason? | POST /files/delete |Applied, changeId?, warnings?; try to save the snapshot|
+| workspace_run_command |Command; cwd? Default project; timeoutMs? 1..3600000 Default 60,000| POST /commands |exitCode number/null, stdout, stderr, timedOut, canceled, output truncation mark|
+| page_propose | reason；files 1..20，path/content/encoding?/expectedHash? | POST /changes |Ready, checks:[], changeId; only record, do not verify or apply|
+| page_apply | changeId | POST /changes/:id/apply |Applied; compatible with the old validated/failed candidate|
+| page_rollback | changeId | POST /changes/:id/rollback |rolledBack; take the initiative to cover the follow-up modification according to the original|
+| page_changes |Nothing| GET /changes |Actual candidates and change records|
+| preferences_get |Nothing| workspace GET /preferences |Preferences and original evidence|
+| preferences_set | key、JSON value、evidence | workspace POST /preferences |Save clear long-term preferences; one task is not enough|
+| preferences_forget | id | workspace DELETE /preferences/:id |Forget the specified preferences|
+| skills_list |Nothing|Local .agents/skills|Discover lists, independent errors; completely empty directory skip, legal symlink readable|
+| skills_read | name |Local .agents/skills/name/SKILL.md| name、description、path、content、hash |
+| project_context | modification?:boolean |Local entrance and optional record callback| files/errors、protected:[]、permissionMode:full-access、taskId?、warnings? |
 
-## 权限与输入预算
+## Permission and input budget
 
-允许任何当前 OS 用户可访问路径：项目内外、绝对路径、`../`、符号链接、私密目录、后端、MCP、chat/main 和依赖；不自动获得 root 权限。路径只检查非空、无 NUL、4096 字符内的常规 OS 参数预算。无目录或扩展名保护。
+Allow any current OS user to access the path: inside and outside the project, absolute path, `../`, symbolic link, private directory, back-end, MCP, chat/main and dependency; root permission is not automatically obtained. The path only checks the general OS parameter budget within non-empty, no NUL, and 4096 characters. No directory or extension protection.
 
-content 最多 16 Mi 字符，候选 files 序列化 JSON 最多 63 MiB，适配下游 64 MiB HTTP 总输入预算。单次更大资料用分段读取或命令处理；超出真实输入预算如实返回。reason 最多 4000 字符，propose 必须非空；value JSON 最多 64 KiB，evidence 最多 8192 字符。command 非空、无 NUL、最多 1 Mi 字符。
+Content up to 16 Mi characters, candidate files serialized JSON up to 63 MiB, adapting to the downstream 64 MiB HTTP total input budget. A single larger data is read by segmentation or command processing; beyond the real input budget, it will be returned truthfully. Reason up to 4000 characters, propose must not be empty; value JSON up to 64 KiB, evidence up to 8192 characters. Command is not empty, no NUL, up to 1 Mi character.
 
-expectedHash 为可选 SHA-256 元数据，不参与阻止写入。没有强制 AST/YAML/秘密文本验证或编译。Skills 名称/合法 YAML 只关系 Codex 发现；通用写入不据此拒绝。context/Skill 的一次自动文本读取预算 128 KiB；较大文件可用 workspace_read_file 分页，绝不是保护路径。
+expectedHash is an optional SHA-256 metadata and does not participate in blocking writing. There is no forced AST/YAML/secret text verification or compilation. Skills name/legal YAML is only related to Codex discovery; general writing is not rejected accordingly. The one-time automatic text reading budget of context/Skill is 128 KiB; larger files can be paging workspace_read_file, which is by no means a protection path.
 
-project_context 自动读取 AGENTS、FINAL_GOAL、TODO、AI_TASKS、rules/README 和公开运行契约，不自动把真实秘密加入上下文。它声明 editableAreas 可包含 front/chat、main、backend、MCP、Skills、依赖与任意 OS-accessible 文件。
+project_context automatically reads AGENTS, FINAL_GOAL, TODO, AI_TASKS, rules/README and public execution contracts, and does not automatically add true secrets to the context. It states that editableAreas can contain front/chat, main, backend, MCP, Skills, dependencies and any OS-accessible files.
 
-普通 HTTP 等待 15 秒，候选记录最多 180 秒；命令等待为 timeoutMs（默认60秒）+15秒运输余量。写请求超时/断线可能已产生副作用，须检查文件或记录后再决定重试。
+Ordinary HTTP waits for 15 seconds, and the candidate record is up to 180 seconds; the command waits for timeoutMs (default 60 seconds) + 15 seconds of transport margin. Writing request timeout/disconnection may have side effects, and you need to check the file or record before deciding to try again.
 
-MCP call 的 signal 传给 fetch；取消会断开 HTTP，builder 监听中断并终止命令进程组。client 工具超时由协调者配置为3615秒覆盖一小时上限；实际 Agent turn 仍有自身超时与停止机制。取消不能撤销已完成副作用。
+The signal of MCP call is passed to fetch; cancellation will disconnect HTTP, and the builder will listen to interrupt and terminate the command process group. The client tool timeout is configured by the coordinator to cover the one-hour upper limit of 3615 seconds; the actual Agent turn still has its own timeout and stop mechanism. Cancellation cannot undo the completed side effects.
 
-## 非阻断任务记录
+## Non-blocking task record
 
-managed env `SEED_AGENT_MANAGED=1` 时，context modification:true 与八个修改工具（propose/apply/rollback、preferences_set/forget、write/delete/run_command）先尝试 POST agent `/internal/register-task`，5秒请求预算，body `{tool,fingerprint}`。指纹使用公开 toolFingerprint，body 不含原始参数。
+When managed env `SEED_AGENT_MANAGED=1`, context modification:true and eight modification tools (propose/apply/rollback, preferences_set/forget, write/delete/run_command) first try POST agent `/internal/register-task`, 5 seconds to request the budget, body `{tool,fingerprint}`. Fingerprint uses public toolFingerprint, and body does not contain the original parameters.
 
-内部认证与真实 active MCP item 匹配仍由 agent 执行。成功才给 context taskId；拒绝、超时、无效响应或无法登记时附 `warnings:[{code:'TASK_REGISTRATION_FAILED',cause,message}]` 并继续实际 handler，不伪造 ID。登记不是权限门槛；操作自身错误仍如实失败。普通只读工具/context 不登记，非 managed SDK 开发直连不回调。
+Internal authentication and real active MCP item matching are still performed by agent. Only after success can you give context taskId; attach `warnings:[{code:'TASK_REGISTRATION_FAILED',cause,message}]` when rejecting, timeout, invalid response or unable to register, and continue the actual handler without forging the ID. Registration is not the threshold of authority; the operation of one's own error still fails truthfully. Ordinary read-only tools/context are not registered, and non-managed SDK development is directly connected without callback.
 
-## 真实错误与恢复
+## Real error and recovery
 
-SDK/schema 无效输入返回错误；NOT_FOUND、INVALID_SKILL、LOCAL_CONFIG、DEPENDENCY_UNAVAILABLE/PROTOCOL/TIMEOUT 等标识实际状态，下游稳定错误码原样透传。消息有上限，内部 token 与 Bearer 被脱敏。日志只有工具名/错误码，不含正文。
+SDK/schema invalid input returns an error; NOT_FOUND, INVALID_SKILL, LOCAL_CONFIG, DEPENDENCY_UNAVAILABLE/PROTOCOL/TIME OUT, etc. identify the actual state, and the downstream stable error code is transmitted as it is. There is an upper limit on the message, and the internal token and Bearer are desensitization. The log only contains the tool name/error code, not the body.
 
-当前项目 Codex 使用 danger-full-access、approval never、MCP default_tools_approval_mode approve；不要求逐次人工确认。注解描述工具属性，不改变系统权限或用户任务范围。
+The current project Codex uses danger-full-access, approval never, MCP default_tools_approval_mode approve; manual confirmation is not required. Annotation describes the attributes of the tool without changing the system permissions or the scope of user tasks.
 
-候选 ready 不等于已应用或验证；applied 不等于人工体验验收。page_rollback 仅在用户要求时恢复已记录原件，覆盖后续修改，没有自动回退；未记录的原生写、shell、网络与业务数据副作用不承诺全部恢复。MCP/后端源码修改需重启并实际核对工具/服务生效。
+Candidate ready does not mean applied or verified; applied does not mean manual experience acceptance. page_rollback only restores the recorded original at the request of the user, covers the subsequent modification, and does not automatically return; the side effects of unrecorded native writing, shell, network and business data are not promised to be restored. MCP/back-end source code modification needs to be restarted and actually checked that the tool/service takes effect.
 
-直接 write/delete 的快照或元数据失败不阻止目标操作，可能 applied + SNAPSHOT_UNAVAILABLE/RECORD_UNAVAILABLE warning 且无 changeId；原样保留 warning，不编造恢复标识。若同时登记失败，两类 warning 都保留。
+The failure of the snapshot or metadata of direct write/delete does not prevent the target operation. It may be applied + SNAPSHOT_UNAVAILABLE/RECORD_UNAVAILABLE warning and no changeId; keep the warning as it is, do not fabricate the recovery identification. If the registration fails at the same time, both types of warning will be retained.
 
-TASK023 更名展示元数据：serverInfo.name 保持 seedagent，新增 title 为 Saplingagent；工具名称、schema、协议与权限保持兼容。
+TASK023 renamed to display metadata: serverInfo.name keeps seedagent, add title to Saplingagent; tool name, schema, protocol and permissions remain compatible.

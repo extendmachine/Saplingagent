@@ -1,6 +1,6 @@
-# 服务任务交接
+# Handover of service tasks
 
-构想规划历史见根 AI_TASKS.md 的 TASK-20261009-002。
-MCP 与项目 Skills 实际实施见 TASK-20261009-006.md；权威状态仍由协调者在根 AI_TASKS.md / TODO.md 汇总。
+For the history of conceptual planning, see the ROOT OF AI_TASKS.md TASK-20261009-002.
+For the actual implementation of MCP and project Skills, see TASK-20261009-006.md; the authoritative status is still summarized by the coordinator in the root AI_TASKS.md / TODO.md.
 
-当前完整权限 MCP/Skills 修改见 TASK-20261009-011.md。TASK006 的路径保护、验证门槛、对话确认和阻断登记为旧版历史，已由用户明确授权的 TASK011 取代。
+For the current full permission MCP/Skills modification, see TASK-20261009-011.md. The path protection, verification threshold, dialogue confirmation and blocking registration of TASK006 are the old version of the history, which has been replaced by TASK011, which is clearly authorized by the user.

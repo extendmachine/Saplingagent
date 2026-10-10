@@ -1,49 +1,49 @@
-# mcp-runtime 服务说明
+# Mcp-runtime service description
 
-## 基本信息
+## Basic information
 
-- 职责：真实 stdio MCP 入口，提供文件、命令、候选记录、手动恢复、偏好证据和 Skills。
-- 实际目录：backend/mcp-runtime/；项目起点仍是单网页单对话框。
-- 当前任务：TASK-20261009-011，Codex/mcp；协调 TASK-20261009-010；初始实现历史 TASK-20261009-006。
-- 状态：新版实现、协议自检、Skills 格式与独立行为评估完成；新版实际 Agent/后端集成由协调者记录，待人工体验。
+- Responsibilities: Real stdio MCP entrance, providing documents, commands, candidate records, manual recovery, preference evidence and Skills.
+- Actual directory: backend/mcp-runtime/; the starting point of the project is still a single web page and a single dialog box.
+- Current task: TASK-20261009-011, Codex/mcp; coordination TASK-20261009-010; initial implementation history TASK-20261009-006.
+- Status: The implementation of the new version, protocol self-test, Skills format and independent behavior evaluation are completed; the actual Agent/back-end integration of the new version is recorded by the coordinator and waiting for manual experience.
 
-## 当前权限与职责
+## Current authority and responsibilities
 
-用户明确授权完整访问。15 个工具支持当前 OS 用户可访问的文件与 shell；允许绝对路径、父级路径、符号链接、前后端、聊天底座、main、MCP、Skills 和依赖。不自动提权为 root。没有路径/扩展名白名单、编译或 hash 写入门槛；候选记录可选，ready 不代表验证。变更恢复由用户主动发起，按快照原件覆盖后续修改；shell/原生工具/网络副作用不能保证全部回退。
+The user explicitly authorizes full access. 15 tools support files and shells accessible to current OS users; allow absolute paths, parent paths, symbolic links, front-end and back-end, chat base, main, MCP, Skills and dependencies. Do not automatically raise the power to root. There is no path/extension whitelist, compilation or hash write threshold; candidate records are optional, and ready does not represent verification. Change recovery is initiated by the user on the initiative, and subsequent modifications are covered according to the original snapshot; shell/native tool/network side effects cannot guarantee all return.
 
-直接写删仅尽力保存快照；快照或记录失败不阻止 OS 允许的操作，可能返回 applied + warnings 而没有 changeId，不能保证该次手动恢复。命令取消从 MCP signal 传递 HTTP 断开，builder 据此终止对应进程组；已经完成的副作用不会撤销。
+Direct writing and deletion only tries to save snapshots; snapshots or recording failures do not prevent the operation allowed by the OS, which may return applied + warnings without changeId, which cannot guarantee the manual recovery. The command cancels the HTTP disconnection from the MCP signal, and the builder terminates the corresponding process group accordingly; the completed side effects will not be undone.
 
-MCP 不承担模型流式通信、会话存储或云端仓库。文件与命令通过 app-builder 的公开 HTTP 接口执行，不导入其他服务私有实现。Skill 文本不会自动安装或注册新的可执行工具；MCP/后端源码修改需进程重启后核对实际效果。
+MCP does not undertake model streaming communication, session storage or cloud repository. Files and commands are executed through the public HTTP interface of app-builder and do not import other services for private implementation. Skill text will not automatically install or register new executable tools; MCP/back-end source code modification requires the process to restart and check the actual effect.
 
-## 实现与依赖
+## Realization and dependence
 
-`server.mjs` 使用 Node ESM，最低 Node 22，当前已验证 Node 26.4.0。生产依赖位于本服务 node_modules，精确锁定官方 @modelcontextprotocol/sdk 1.32.1、Zod 4.6.5 和 YAML 2.9.1；TASK011 无新依赖。官网主示例的拆分 SDK 2.x 与本实现稳定 1.x 不混用。
+`server.mjs` uses Node ESM, the minimum Node 22, and Node 26.4.0 has been verified at present. Production dependencies are located in this service node_modules, accurately locking the official @modelcontextprotocol/sdk 1.32.1, Zod 4.6.5 and YAML 2.9.1; TASK011 has no new dependencies. The split SDK 2.x of the main example of the official website is not mixed with this implementation stable 1.x.
 
-YAML 解析与名称格式用于 Skills 发现，不是文件写入保护。三个项目 Skills 位于 `.agents/skills/`。官方 skill-creator 格式检查使用本服务 `.venv/`（Python 3.14.7 / PyYAML 6.0.3），不属于生产运行依赖。
+YAML parsing and name formatting are used for Skills discovery, not file write protection. Three projects Skills are located in `.agents/skills/`. The official skill-creator format check uses this service `.venv/` (Python 3.14.7 / PyYAML 6.0.3), which is not dependent on production operation.
 
-- 启动：MCP client 执行 `node <项目绝对路径>/backend/mcp-runtime/server.mjs`，不依赖 cwd。
-- 自检：服务目录 `npm run check`、`npm test`；后者使用官方 SDK 的真实 stdio client 和隔离 HTTP 测试桩。
-- 停止：client 关闭 transport，或发送 SIGTERM/SIGINT。无 MCP HTTP listener，无另一个常驻服务端口。
+- Start: MCP client executes `node <project absolute path>/backend/mcp-runtime/server.mjs` without relying on cwd.
+- Self-test: service directory `npm run check`, `npm test`; the latter uses the real stdio client of the official SDK and the isolated HTTP test pile.
+- Stop: client closes transport or send SIGTERM/SIGINT. There is no MCP HTTP listener and no other resident service port.
 
-## 服务依赖
+## Service dependence
 
-| 服务 | 接口 | 用途 | 不可用时 |
+|Service|Interface|Purpose|When it is not available|
 | --- | --- | --- | --- |
-| agent-runtime / Codex App Server | MCP stdio client | 启动、发现、调用 | client 如实处理连接状态 |
-| workspace | 127.0.0.1:4311 HTTP | 带证据偏好读/写/遗忘 | 返回真实依赖错误 |
-| app-builder | 127.0.0.1:4312 HTTP | 任意文件/命令、候选/应用/恢复 | 返回真实依赖或系统错误 |
-| agent-runtime 记录 | managed 模式 127.0.0.1:4310 或 SEED_AGENT_PORT | 修改前记录归属 | 失败给 warning 并继续已授权操作 |
+| agent-runtime / Codex App Server | MCP stdio client |Start, discover, call|Client handles the connection status truthfully|
+| workspace | 127.0.0.1:4311 HTTP |Prefer reading/writing/forgetting with evidence|Return the real dependency error|
+| app-builder | 127.0.0.1:4312 HTTP |Any file/command, candidate/application/restore|Return to real dependency or system error|
+|Agent-runtime record|Managed mode 127.0.0.1:4310 or SEED_AGENT_PORT|Attribution of the record before modification|Fail to give warning and continue the authorized operation|
 
-公开契约为根 `contracts/runtime-api.md` v2；归属指纹从公开 `contracts/agent-tools.mjs` 导入。所有内部 HTTP 仍固定回环、Bearer 认证、拒绝重定向；启动器通过 env 配置项目根和三个端口。令牌从 `local-secrets/runtime/service-token` 文件读取，允许符号链接，不进入普通日志或自动上下文。
+The public contract is the root `contracts/runtime-api.md` v2; the belonging fingerprint is imported from the public `contracts/agent-tools.mjs`. All internal HTTPs are still fixed in loops, Bearer authentication, and rejection of redirection; the launcher configures the project root and three ports through env. The token is read from the `local-secrets/runtime/service-token` file, allowing symbolic links, without entering ordinary logs or automatic contexts.
 
-## 数据与日志
+## Data and logs
 
-会话/偏好归 workspace，原件与变更记录归 app-builder，Skill 指引归项目 `.agents/skills/`。MCP 不直接管理其他服务的数据存储。
+Sessions/preferences belong to workspace, originals and change records belong to app-builder, and skill guidelines belong to project `.agents/skills/`. MCP does not directly manage the data storage of other services.
 
-日志在 `logs/mcp-runtime/mcp-runtime-YYYY-MM-DD.log`，普通日志保留 30 天，首次记录与跨日清理过期匹配文件。字段仅 time、level、tool、code；不落参数、命令、文件内容、偏好原文、凭据或返回正文。登记失败单独记 TASK_REGISTRATION_FAILED。stdout 严格用于 MCP 协议，stderr 只给固定脱敏启动失败说明；日志失败不改变操作结果。
+The log is in `logs/mcp-runtime/mcp-runtime-YYYY-MM-DD.log`, and the ordinary log is kept for 30 days. The first record and cross-day cleaning of expired matching files. Fields only time, level, tool, code; do not lose parameters, commands, file content, prefer the original text, credentials or return to the body. If the registration fails, record TASK_REGISTRATION_FAILED separately. Stdout is strictly used for the MCP protocol, and stderr only gives a fixed desensitization startup failure explanation; log failure does not change the operation result.
 
-接口见 CONTRACT.md；部署见 DEPLOY.md；资料见 REFERENCES.md；交接见 ai-tasks/。
+For interface, see CONTRACT.md; for deployment, see DEPLOY.md; for data, see REFERENCES.md; for handover, see ai-tasks/.
 
-## Saplingagent 更名（2026-10-09）
+## Saplingagent name change (2026-10-09)
 
-产品名称统一为 Saplingagent，私有包名改为 saplingagent-*。本次仅名称及展示元数据，接口、权限、模型和数据结构不变；SEED_*/SEEDAGENT_*、seedagent MCP/client ID、浏览器会话键、运行期标记和 seed-* Skill ID 保留兼容。验证和待测提交见权威 .worktrees/coordination/AI_TASKS.md；本条不代表 main 已同步。
+The product name is unified as Saplingagent, and the private package name is changed to saplingagent-*. This time, only the name and display metadata, the interface, permission, model and data structure remain unchanged; SEED_*/SEEDAGENT_*, seedagent MCP/client ID, browser session key, runtime mark and seed-* Skill ID remain compatible. For verification and test submission, please refer to the authority .worktrees/coordination/AI_TASKS.md; this article does not mean that the main has been synchronized.
