@@ -1,31 +1,31 @@
-# front 单页聊天契约
+# Front single-page chat contract
 
-版本4；2026-10-09；TASK-20261009-013。SSE字段继续兼容TASK009；公开字段以../contracts/runtime-api.md为准，前端经HTTP调用agent-runtime。
+Version 4; 2026-10-09; TASK-20261009-013. SSE fields continue to be compatible with TASK009; public fields are subject to ../contracts/runtime-api.md, and the front-end calls agent-runtime through HTTP.
 
-| 接口 | 输入 | 输出及行为 |
+|Interface|Input|Output and behavior|
 | --- | --- | --- |
-| GET /api/status | 无 | ready/authenticated/model/skills/mcp；清晰显示服务不可用或登录问题 |
-| GET /api/git | 无 | 当前仓库、分支/HEAD、短版本号与状态指纹、工作区改动、本地分支/Worktree占用和最近提交；面板及底部版本条定时刷新 |
-| POST /api/git/commit | 无 | 右上面板将当前未忽略改动保存为本地提交；不推送远程，运行中对话或detached HEAD返回409 |
-| POST /api/git/switch | branch | 仅安全切换现有本地分支；成功返回最新Git状态并重新载入页面，409保留当前版本并显示原因 |
-| GET /api/sessions | 无 | sessions 的 id/title/updatedAt；用于确认已保存会话，不预置会话导航 |
-| GET /api/sessions/:id | 浏览器保存的 sessionId | session.messages，running、activeRequestId；刷新恢复同一会话 |
-| POST /api/chat | text、requestId、可选 sessionId | SSE session/text_delta/status/tool/approval/snapshot/done/error；真实流式展示 |
-| GET /api/events?sessionId=... | 当前 sessionId | 活跃会话重连订阅，snapshot 覆盖后接增量；无法订阅时读取保存快照 |
-| POST /api/sessions/:id/cancel | 当前 sessionId | ok；停止后等待服务最终状态，不先抛弃输出 |
-| POST /api/approvals/:id | decision | 保留已有前端交互事件兼容；当前全权限工具操作无需逐次审批 |
+| GET /api/status |Nothing|ready/authenticated/model/skills/mcp; clearly shows that the service is unavailable or there is a login problem|
+| GET /api/git |Nothing|Current repository, branch/HEAD, short version number and status fingerprint, work area change, local branch/Worktree occupation and recent submission; panel and bottom version bar regular refresh|
+| POST /api/git/commit |Nothing|The upper right panel saves the current non-neglected changes as local submission; does not push remote, running conversation or detached HEAD returns 409|
+| POST /api/git/switch | branch |Only switch existing local branches safely; successfully return to the latest Git status and reload the page. 409 keeps the current version and displays the reason.|
+| GET /api/sessions |Nothing|The id/title/updatedAt of sessions; used to confirm that the session has been saved, and the session navigation is not preset.|
+| GET /api/sessions/:id |sessionId saved by the browser|session.messages, running, activeRequestId; refresh and restore the same session|
+| POST /api/chat |Text, requestId, optional sessionId|SSE session/text_delta/status/tool/approval/snapshot/done/error; real streaming display|
+| GET /api/events?sessionId=... |Current sessionId|Active session reconnect subscription, snapshot overwrites the next increment; read and save snapshots when the subscription is not possible|
+| POST /api/sessions/:id/cancel |Current sessionId|Ok; stop and wait for the final state of the service, do not abandon the output first.|
+| POST /api/approvals/:id | decision |Keep the existing front-end interaction event compatibility; the current full-authority tool operation does not need to be approved one by one.|
 
-SSE 每个 data 为 JSON；text_delta 含 itemId/delta。snapshot 含完整 session，可用于幂等重试/断线恢复；done.status 是 completed/interrupted/failed。客户端按 UTF-8、SSE 行边界解析，50ms 合并增量刷新；HTTP 非成功、错误事件、意外断线分别明确处理。
+Each data of SSE is JSON; text_delta contains itemId/delta. Snapshot contains a complete session, which can be used for power-like retry/disconnection recovery; done.status is completed/interrupted/failed. The client parses according to the UTF-8 and SSE line boundaries, and refreshes 50ms by combining increments; HTTP unsuccessful, error events and unexpected disconnections are clearly handled separately.
 
-发送空白不执行；运行时禁用重复发送，停止仍可用。失败重试复用原 requestId，不再追加一条用户消息；若服务仍运行，重连当前会话。单一输入框支持 Enter 发送、Shift+Enter 换行与 Markdown 文本展示。
-浏览器 localStorage 仅保存 seedagent.active-session.v1 的不透明 sessionId；消息由 workspace 本地持久化。旧 seedagent.layout-preview.v1 不读、不写、不清除。浏览器不存凭据。
+Send blank will not be executed; repeat sending is disabled at runtime, and stop is still available. Fail to reuse the original requestId and no more user messages will be added; if the service is still running, reconnect the current session. The single input box supports Enter sending, Shift+Enter lineback and Markdown text display.
+The browser localStorage only saves the opaque sessionId of seedagent.active-session.v1; messages are persisted locally by workspace. Old seedagent.layout-preview.v1 does not read, does not write, does not clear. The browser does not store credentials.
 
-TASK-20261010-003错误恢复：HTTP错误保留status及error.code/message供客户端判断，对外接口字段不变。仅所选会话请求返回404且code为NOT_FOUND、message为`Session does not exist`（或明确SESSION_NOT_FOUND）时解绑该ID。列表、路由或裸404及网络/超时/401/500/503不解除指针。清理须匹配当前请求epoch、目标ID和浏览器缓存值；旧响应不能清新指针或覆盖新快照。发送/恢复确认会话缺失后保留已显示消息、text/requestId，重试仅去掉失效sessionId，由用户点击后POST；不自动发送新模型请求，也不重复追加用户消息。
+TASK-20261010-003 Error Recovery: HTTP error keeps status and error.code/message for client judgment, and the external interface field remains unchanged. Only unbind the ID when the selected session request returns 404 and the code is NOT_FOUND and the message is `Session does not exist` (or specify SESSION_NOT_FOUND). List, routing or naked 404 and network/timeout/401/500/503 do not release the pointer. The cleanup must match the current request epoch, target ID and browser cache value; the old response cannot refresh the pointer or overwrite the new snapshot. Send/restore to confirm that after the missing session, keep the displayed message, text/requestId, retry only remove the invalid sessionId, and POST after the user clicks; do not automatically send new model requests, and do not repeat additional user messages.
 
-当前main独立挂载聊天与App，App使用GitVersionPanel；App渲染异常有独立边界，面板错误不会替代聊天。Git切换只调用上述Agent公开接口，不处理凭据或shell，不提供stash/force/discard。选择已有分支时允许当前工作区有改动，由后端先自动提交全部未忽略文件再切换；面板显示最近已提交页面版本，但不创建或删除分支、不操作远程。全权限模式允许修改main/chat及前后端其他文件，具体通用文件和命令执行仍由后端承担，范围为进程当前OS用户权限。不存在前端工具白名单或强制保护提示。
-右上面板的“保存提交”仅在工作区有改动时可用，调用POST /api/git/commit后显示已保存的短SHA。按钮不推送远程，也不创建、删除或切换分支。
-底部VersionFooter同样只读调用GET /api/git，显示`分支 · 版本号`。它把本次页面加载时的指纹作为基线，每5秒及页面恢复可见时轮询；指纹变化后显示“发现新版本，刷新更新”，用户点击才执行浏览器刷新。完整刷新后基线更新，不自动重载或发送聊天请求。
+At present, the main mounts chat and App independently, and the App uses GitVersionPanel; App rendering exceptions have independent boundaries, and panel errors will not replace chats. Git switching only calls the above Agent public interface, does not process credentials or shells, and does not provide stash/force/discard. When selecting an existing branch, the current work area is allowed to be changed. The back-end will automatically submit all the files that have not been ignored before switching; the panel shows the recently submitted page version, but does not create or delete branches and does not operate remotely. The full permission mode allows the modification of main/chat and other front-end and back-end files. The specific general files and command execution are still borne by the back-end, and the scope is the current OS user permissions of the process. There is no front-end tool whitelist or mandatory protection prompt.
+"Save Submission" in the upper right panel is only available when there is a change in the workspace. After calling POST /api/git/commit, the saved short SHA is displayed. The button does not push remote, nor does it create, delete or switch branches.
+The bottom VersionFooter also calls GET /api/git only, displaying `branch · version number`. It takes the fingerprint when the page is loaded as the baseline, and polls every 5 seconds and when the page is restored to visibility; after the fingerprint changes, it displays "discover new version, refresh update", and the user clicks to perform the browser refresh. After the complete refresh, the baseline is updated, and the chat request will not be automatically reloaded or sent.
 
-tool事件统一接受id/name/status字符串；workspace_write_file、workspace_delete_file、workspace_run_command及原生commandExecution/fileChange均能显示，不依赖page_propose/validated或approval事件才继续。后台无需逐次审批或强制验证；候选与手动page_rollback可选，实际恢复范围由app-builder变更记录说明。工具错误仍按真实error/done处理，权限放开不把失败当成功。
+Tool events accept id/name/status strings uniformly; workspace_write_file, workspace_delete_file, workspace_run_command and native commandExecution/fileChange can be displayed and continue without relying on page_propose/validated or approve events. There is no need for approval or compulsory verification in the background; candidate and manual page_rollback can be selected, and the actual recovery scope is explained by the app-builder change record. Tool errors are still handled according to the real error/done, and the permission is released without taking failure as a success.
 
-开发和静态预览通过Vite /api代理到默认127.0.0.1:4310；统一启动器按config/runtime.json传入SEED_AGENT_PORT，代理仅接受整数端口并固定回环主机，支持自定义Agent端口。生产静态资源部署须配置同源反向代理，不能直接拿dist文件伪称后端接入。浏览器无API key、内部服务token或Codex登录数据。
+Development and static preview through Vite /api proxy to the default 127.0.0.1:4310; the unified launcher passes SEED_AGENT_PORT according to config/runtime.json, the agent only accepts integer ports and fixes the loop host, and supports custom Agent ports. Production static resource deployment must be configured with the same source reverse proxy, and cannot directly take the dist file pseudo-name back-end access. The browser has no API key, internal service token or Codex login data.

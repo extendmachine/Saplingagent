@@ -32,9 +32,9 @@ export class EventParser {
       const raw = this.data.join('\n');
       this.data = [];
       let event: unknown;
-      try { event = JSON.parse(raw); } catch { throw new Error('回复流格式错误，请重试。'); }
+      try { event = JSON.parse(raw); } catch { throw new Error('Invalid response stream format. Please try again.'); }
       if (!event || typeof event !== 'object' || !('type' in event) || typeof event.type !== 'string') {
-        throw new Error('回复流缺少事件类型，请重试。');
+        throw new Error('Response stream is missing an event type. Please try again.');
       }
       this.receive(event as ServerEvent);
       return;
@@ -49,7 +49,7 @@ export class EventParser {
 }
 
 export async function consumeEvents(response: Response, receive: (event: ServerEvent) => void) {
-  if (!response.body) throw new Error('服务没有返回回复流，请重试。');
+  if (!response.body) throw new Error('Service did not return a response stream. Please try again.');
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   const parser = new EventParser(receive);

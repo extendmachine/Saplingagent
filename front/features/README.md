@@ -1,5 +1,5 @@
-# 应用功能区
+# Application function area
 
-`git-version/`：TASK-20261010-005新增的Git版本监控与安全切换面板。它通过Agent公开HTTP接口读取当前项目状态，不在浏览器执行Git或保存本地路径/凭据。其它业务组件继续由用户后续通过对话创建。
+`git-version/`: TASK-20261010-005 New Git version monitoring and security switching panel. It reads the current project status through the Agent public HTTP interface and does not execute Git in the browser or save the local path/credentials. Other business components continue to be created by users through subsequent dialogues.
 
-`version/`：页面底部当前版本条。它通过同一Git读取接口轮询状态指纹，发现页面加载后的新修改时提供明确刷新按钮；不自动刷新、不执行Git操作。
+`version/`: the current version bar at the bottom of the page. It reads the same Git interface polling status fingerprints, and provides a clear refresh button when new modifications are found after the page is loaded; it does not automatically refresh and does not perform Git operations.
