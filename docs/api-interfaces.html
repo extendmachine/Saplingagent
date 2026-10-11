@@ -30,19 +30,19 @@
 <td>Real ready/authenticated/provider/model, permissions (Full Access), Skills and MCP catalog</td>
 </tr>
 <tr>
-<td>GET /api/git</td>
-<td>Current warehouse, branch/HEAD, short version number and status fingerprint, work area change, local branch, recent submission and other Worktree occupancy status; upper right panel and bottom version update reminder use</td>
+<td>GET /api/git?limit=25</td>
+<td>Current warehouse, branch/HEAD, short version number and status fingerprint, work area change, local branch, recent submission and other Worktree occupancy status; optional displayName, historyTruncated and 1..500 history limit; upper right panel and bottom version update reminder use</td>
 </tr>
 <tr>
 <td>POST /api/git/commit</td>
-<td>Save the current unignored changes as a local Git submission; do not repeat the submission when it is clean, do not push remote, do not create or switch branches.</td>
+<td>Save the current unignored changes as a local Git submission; do not repeat the submission when it is clean, do not push remote, do not create or switch branches. Detached saves are retained under recovery refs. Known private/runtime files are excluded even if historical ignore rules are absent; staged private files return GIT_PRIVATE_FILES (409).</td>
 </tr>
 <tr>
 <td>POST /api/git/switch</td>
-<td>{Branch} → Securely switch existing local branches; when the current named branch is changed, it will be automatically submitted first, and 409 will be returned when active dialogues, detached HEAD, concurrent switching or targets are occupied, and will not automatically stash/force/fetch/push</td>
+<td>{Branch} → Securely switch existing local branches; when the current named branch is changed, it will be automatically submitted first, and 409 will be returned when active dialogues, concurrent switching or targets are occupied, and will not automatically stash/force/fetch/push</td>
 </tr>
 <tr>
-<td>GET /api/sessions</td>
+<td>POST /api/git/checkout</td><td>{sha: full hexadecimal commit ID} → Load historical source in detached HEAD; auto-save pending work and retain detached saves under recovery refs; named branch tips remain unchanged by checkout. Returns {git,reloadRecommended:true}. GIT_INVALID_VERSION (400), GIT_VERSION_NOT_FOUND (404), active AI/concurrent Git (409). Restart services for backend changes.</td></tr><tr><td>POST /api/git/label</td><td>{sha,name} → Save/replace a local commit display name (trimmed, up to 80 characters; empty clears). Returns {git}. Names persist atomically in common Git metadata and do not change SHA/subject. Invalid commit/name (400/404), GIT_LABEL_BUSY (409), GIT_LABELS_INVALID (500). Same existing local Host/Origin/Bearer policy applies; no credentials in browser. Interface update 2026-10-11; see Agent and frontend CONTRACT.md.</td></tr><tr><td>GET /api/sessions</td>
 <td>Local session list</td>
 </tr>
 <tr>
