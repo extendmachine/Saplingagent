@@ -29,3 +29,6 @@ Npm test only uses this service .test-* to isolate app/peer, random loop port an
 TASK010 real model has completed backend file direct writing → shell reading exit0 → native exec → user active page_rollback, file withdrawal, approval event 0, user business file hash maintenance; see TASK012 handover for details. The user's manual experience is still to be confirmed. Non-Git, no branch/submission/main merge/cloud release.
 
 logs/app-builder is kept for 30 days on a daily basis, without dropping the body, command or stdout/stderr. Official information REFERENCES.md.
+
+## Managed restart
+The project runtime manager prepares this service using the internal contract before terminating its owned process group. Finish AI/file/Git work before Restart app or Restart backend; busy work refuses restart without interruption. Prepared services reject new mutations until release or replacement. The launcher keeps its gateway/control alive. See ../runtime-manager/CONTRACT.md and DEPLOY.md.
