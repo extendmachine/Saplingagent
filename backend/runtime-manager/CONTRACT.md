@@ -1,0 +1,14 @@
+# Runtime lifecycle and gateway contract
+
+The Mac launcher owns one persistent runtime manager. `frontPort` (5173) is its same-origin streaming HTTP/WebSocket gateway; Vite runs on `vitePort` (5174). `runtimeManagerPort` (4314) also exposes loopback control. The gateway survives frontend and backend restarts. No arbitrary commands, paths or PIDs are accepted.
+
+- GET `/api/runtime/status`: instanceId, generation, phase, busy, canRestart, jobId, scope, services [{name,pid,running}], error {code,message,service?}.
+- POST `/api/runtime/restart`: optional JSON `{scope: "all" | "backend"}`; defaults to all. 202 returns jobId/status. Concurrent requests share one job. All stops/relaunches frontend and all owned backends; backend preserves frontend. Generation advances only after selected components, authenticated Agent and MCP are ready.
+- GET `/__saplingagent/runtime`: persistent English recovery/control page with status, restart choices and Open app. It works even if a selected older UI has no restart button or Vite fails. Non-control `/api/*` streams to Agent; other HTTP/WebSocket traffic goes to internal Vite without buffering SSE.
+- Internal POST `/internal/runtime/prepare` and `/internal/runtime/release`: existing Bearer token required on each backend. Prepare atomically refuses active writes, AI, Git operations or unsaved sessions; prepared services reject new mutations with 503. Shared gate is `contracts/runtime-drain.mjs`.
+
+While preparing/restarting, the gateway rejects new ordinary mutations. Outstanding gateway writes refuse restart; supported services also gate direct authenticated callers. Legacy versions lacking drain endpoints use Agent session-running checks and gateway accounting. This fallback cannot observe direct legacy backend callers; finish their work first. A branch switch is a separate Git operation; choose a version first, then Restart app. Dirty files are saved by the existing Git switch API. No automatic chat resend, rollback, root elevation or new MCP protections.
+
+The current checkout determines service entrypoints on every restart. PDF is optional and launched only if its source exists. Changed port assignments or manager/launcher source require closing the launch window and running the Mac launcher again. Dependencies newly introduced by a branch must be installed with its installer before restarting. Older frontend versions may not implement draft restoration; persisted sessions and project credentials remain on disk.
+
+Only manager-owned child process groups are stopped. Failed startup remains observable and retryable through the gateway, including frontend failure. Same configured loopback Host/Origin rules apply to control and proxy traffic; script mutations require Bearer authentication. No CORS or browser token exposure. Responses/logs omit credentials, conversation content and raw child diagnostics. Lifecycle deadlines bound startup/shutdown, not AI turns.
