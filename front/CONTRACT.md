@@ -6,7 +6,7 @@ Version 4; 2026-10-09; TASK-20261009-013. SSE fields continue to be compatible w
 | --- | --- | --- |
 | GET /api/status |Nothing|ready/authenticated/model/skills/mcp; clearly shows that the service is unavailable or there is a login problem|
 | GET /api/git |Nothing|Current repository, branch/HEAD, short version number and status fingerprint, work area change, local branch/Worktree occupation and recent submission; panel and bottom version bar regular refresh|
-| POST /api/git/commit |Nothing|The upper right panel saves the current non-neglected changes as local submission; does not push remote, running conversation or detached HEAD returns 409|
+| POST /api/git/commit |Nothing|The upper right panel saves the current non-neglected changes as local submission; does not push remote, running conversation returns 409|
 | POST /api/git/switch | branch |Only switch existing local branches safely; successfully return to the latest Git status and reload the page. 409 keeps the current version and displays the reason.|
 | GET /api/sessions |Nothing|The id/title/updatedAt of sessions; used to confirm that the session has been saved, and the session navigation is not preset.|
 | GET /api/sessions/:id |sessionId saved by the browser|session.messages, running, activeRequestId; refresh and restore the same session|
@@ -29,3 +29,18 @@ The bottom VersionFooter also calls GET /api/git only, displaying `branch · ver
 Tool events accept id/name/status strings uniformly; workspace_write_file, workspace_delete_file, workspace_run_command and native commandExecution/fileChange can be displayed and continue without relying on page_propose/validated or approve events. There is no need for approval or compulsory verification in the background; candidate and manual page_rollback can be selected, and the actual recovery scope is explained by the app-builder change record. Tool errors are still handled according to the real error/done, and the permission is released without taking failure as a success.
 
 Development and static preview through Vite /api proxy to the default 127.0.0.1:4310; the unified launcher passes SEED_AGENT_PORT according to config/runtime.json, the agent only accepts integer ports and fixes the loop host, and supports custom Agent ports. Production static resource deployment must be configured with the same source reverse proxy, and cannot directly take the dist file pseudo-name back-end access. The browser has no API key, internal service token or Codex login data.
+
+## Historical versions and custom labels (2026-10-11)
+
+GET /api/git?limit=25 returns named branches and recentCommits (25 by default, integer 1..500), historyTruncated, and optional displayName on head/commit entries. Local custom names are keyed by full SHA and stored atomically in the repository common Git directory: saplingagent/version-labels.json. They survive branch changes/restarts and are not commit subjects or remotely published metadata. A malformed store returns GIT_LABELS_INVALID instead of being overwritten.
+
+POST /api/git/label {sha,name}: sha must be an existing full 40/64-character hexadecimal commit ID; name is trimmed, maximum 80 characters, with control characters rejected. Empty name clears the alias. Returns {git}. Writes are serialized and a repository label-file lock rejects concurrent writers (GIT_LABEL_BUSY,409). Names may use the user's language.
+
+POST /api/git/checkout {sha} loads an existing historical commit into detached HEAD, leaving main/testcode/release tips unchanged. Before checkout/switch, pending nonignored work is committed; detached commits are retained under refs/saplingagent/saved/<sha>. Branch switching now also works from detached HEAD, and POST /api/git/commit can save detached work under that recovery ref. All operations remain local, without force/reset/push. Historical code may lack this panel; use git switch main from Terminal to return. Browser reload changes frontend source; backend/dependency changes require a service restart. Ignored credentials and session data remain outside Git checkout.
+
+Agent rejects mutations during active AI (GIT_AGENT_BUSY), concurrent Git mutation (GIT_SWITCH_BUSY), and starting a new chat during a Git mutation. Invalid/missing commit errors use GIT_INVALID_VERSION/GIT_VERSION_NOT_FOUND. Label I/O failure uses GIT_LABELS_INVALID/GIT_LABEL_BUSY or the existing internal error path.
+
+Saving versions excludes known private/runtime artifacts even if historical ignore rules are absent; GIT_PRIVATE_FILES (409) rejects already staged private paths. History is bounded to 500 commits per read; older versions can also be loaded by a full commit ID through the API.
+
+## Restart app
+The version control is followed by Restart app (frontend and backends) and Restart backend. These use the runtime-manager contract and same-origin endpoints; polling survives Vite restart through the persistent gateway. Selected persisted conversations are reloaded after backend generation changes without sending model requests. Current frontend temporarily saves an unsent composer draft in sessionStorage before switching/restarting, restores only the same selected session, then removes the recovery copy. Legacy UIs may lack this support. Switching and restarting are two explicit steps.

@@ -14,3 +14,6 @@ The actual source location follows the user's front/backend requirements, and th
 EACH ACTUAL SERVICE HAS SERVICE/CONTRACT/DEPLOY/REFERENCES AND TASK HANDOVER. Run node scripts/dev.mjs; root TODO column actual verification and waiting for manual experience.
 
 2026-10-09 Latest permissions: Full Access, backend, MCP, front-end base, etc. without MCP directory protection or mandatory threshold; the old controlled scope is updated according to TASK010 to 013.
+
+## Persistent runtime control
+`scripts/dev.mjs` now supervises frontend and backends using backend/runtime-manager. Public frontPort is a persistent same-origin gateway; internal Vite uses vitePort (default5174). Restart app reloads selected source; Restart backend preserves frontend. Optional services are discovered from the selected checkout. Recovery route `/__saplingagent/runtime` stays available during failure; manager/launcher/port changes require the Mac launcher. See backend/runtime-manager/CONTRACT.md and DEPLOY.md.

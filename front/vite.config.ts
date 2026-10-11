@@ -1,8 +1,10 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 
-export default defineConfig({
-  server: { proxy: { '/api': { target: 'http://127.0.0.1:4310', changeOrigin: false } } },
-  preview: { proxy: { '/api': { target: 'http://127.0.0.1:4310', changeOrigin: false } } },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, '.', 'SEED_');
+  return {
+  server: { proxy: { '/api/runtime': { target: `http://127.0.0.1:${env.SEED_RUNTIME_MANAGER_PORT || 4314}`, changeOrigin: false }, '/api': { target: `http://127.0.0.1:${env.SEED_AGENT_PORT || 4310}`, changeOrigin: false } } },
+  preview: { proxy: { '/api/runtime': { target: `http://127.0.0.1:${env.SEED_RUNTIME_MANAGER_PORT || 4314}`, changeOrigin: false }, '/api': { target: `http://127.0.0.1:${env.SEED_AGENT_PORT || 4310}`, changeOrigin: false } } },
   build: {
     rolldownOptions: {
       onwarn(warning, warn) {
@@ -12,4 +14,5 @@ export default defineConfig({
       },
     },
   },
+  };
 });

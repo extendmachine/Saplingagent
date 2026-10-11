@@ -165,11 +165,11 @@ Historical description: The original layout is replaced by the user's latest sim
 
 <!-- seedagent-runtime-tasks:start -->
 
-## Saplingagent Authoritative Task Registration During The Running Period
+## Saplingagent runtime task records
 
-This block is continuously maintained by agent-runtime; the modification tool tries to register the user's request reference and actual range before execution, register it as a non-blocking record, and record the real round status at the end. Ordinary chat and read-only research only save the session and do not update the project task index. The last 50 are listed here, and the history is kept in backend/agent-runtime/ai-tasks/runtime/. The body of the user's chat is not written to the public index. This entrance is a coordinated record of the operation period of the current non-Git project, and does not change the public rules.
+agent-runtime maintains this section serially. Modification tools attempt to register the user request reference and actual scope before execution; registration is nonblocking, and the final record reflects the actual turn status. Ordinary chat and read-only research save sessions without updating this task index. The latest 50 entries appear here; history remains in backend/agent-runtime/ai-tasks/runtime/. Conversation text is excluded. These runtime records do not change the public rules or replace the authoritative development coordination index.
 
-|Task|Wheel status|The last update|Details|
+| Task | Turn status | Last update | Details |
 | --- | --- | --- | --- |
 | RUN-9cac3356-6e7f-4e4c-be7c-4382e895567d | interrupted | 2026-10-09T23:25:03.986Z |[Record](backend/agent-runtime/ai-tasks/runtime/RUN-9cac3356-6e7f-4e4c-be7c-4382e895567d.md)|
 | RUN-6e3bb149-1eaf-4816-89a5-f3faa1424eb3 | completed | 2026-10-09T23:25:31.706Z |[Record](backend/agent-runtime/ai-tasks/runtime/RUN-6e3bb149-1eaf-4816-89a5-f3faa1424eb3.md)|
@@ -194,6 +194,8 @@ This block is continuously maintained by agent-runtime; the modification tool tr
 | RUN-cdd3173b-6de6-4f55-be54-b91bdb9de818 | completed | 2026-10-10T10:59:37.110Z |[Record](backend/agent-runtime/ai-tasks/runtime/RUN-cdd3173b-6de6-4f55-be54-b91bdb9de818.md)|
 | RUN-19e0a395-6163-41c4-b0ec-6a5f1bdf7ba6 | interrupted | 2026-10-10T22:33:50.822Z |[Record](backend/agent-runtime/ai-tasks/runtime/RUN-19e0a395-6163-41c4-b0ec-6a5f1bdf7ba6.md)|
 | RUN-89cd5a9e-02df-49e9-ba82-654d225bb9bb | interrupted | 2026-10-10T22:40:43.545Z |[Record](backend/agent-runtime/ai-tasks/runtime/RUN-89cd5a9e-02df-49e9-ba82-654d225bb9bb.md)|
+| RUN-598befa4-ed03-46a8-b160-02aceb3b3903 | completed | 2026-10-11T05:29:08.558Z | [Record](backend/agent-runtime/ai-tasks/runtime/RUN-598befa4-ed03-46a8-b160-02aceb3b3903.md) |
+| RUN-a03d2ce2-ac9a-49dc-845c-6fd9728b3388 | completed | 2026-10-11T07:20:35.131Z | [Record](backend/agent-runtime/ai-tasks/runtime/RUN-a03d2ce2-ac9a-49dc-845c-6fd9728b3388.md) |
 
 <!-- seedagent-runtime-tasks:end -->
 
@@ -206,3 +208,7 @@ TASK015 recorded at that time: the authoritative index is located in the origina
 ## English release task snapshot
 
 TASK-20261010-013 through 018 / Codex/root / sequential detached candidate .worktrees/english-release based on main 78ac3a7. Project task 013 owns README, English public rules/distribution attachment, HTML guides, installers/packager, licensing and shared documentation. Service tasks 014/front, 015/agent-runtime, 016/mcp-runtime plus .agents/skills, 017/workspace and 018/app-builder have independent commits and handoff files. Scope excludes private runtime content and external publication. Implementation/self-checks completed; exact frozen SHA, source package and human acceptance remain authoritative in original project .worktrees/coordination. Existing TASK004/005 local coordination changes are preserved.
+
+## TASK-20261011-009 through 014 — Version-compatible restart candidate
+
+2026-10-11, Codex/root, detached .worktrees/branch-restart based on user-saved main07928eb. Runtime manager/gateway, Agent drain, frontend restart/draft/reconnect, workspace/builder drain, launcher/config/human docs implemented and self-checked with isolated tests and browser fixtures. No real inference/data/auth migration. Pending exact-version human test, main synchronization/push and first-adoption local launcher restart. Final test count and frozen SHA are recorded after freeze in .worktrees/coordination/{TODO,AI_TASKS}.md; main merge none. Other branch tips and independent canvas work preserved.

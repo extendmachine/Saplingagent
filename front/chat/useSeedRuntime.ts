@@ -20,6 +20,7 @@ export function useSeedRuntime() {
   const [approvalBusy, setApprovalBusy] = useState(false);
   const session = useRef<string | null>(readSessionId());
   const running = useRef(false);
+  const restarting = useRef(false);
   const lastRequest = useRef<Request | null>(null);
   const stream = useRef<AbortController | null>(null);
   const epoch = useRef(0);
@@ -90,7 +91,7 @@ export function useSeedRuntime() {
       const response = await checkedFetch('/api/status', { signal });
       const value = await response.json() as RuntimeStatus;
       if (signal?.aborted) return;
-      setStatus(value);
+      setStatus(restarting.current ? { ...value, ready: false } : value);
     } catch (failure) {
       if (signal?.aborted || isAborted(failure)) return;
       setStatus({ ready: false, authenticated: false, error: errorText(failure) });
@@ -261,8 +262,29 @@ export function useSeedRuntime() {
     };
   }, [currentTarget, detachMissingSession, recover, refreshStatus, setRunning, snapshot]);
 
+  useEffect(() => {
+    let signature = '', controller: AbortController | null = null;
+    const changed = (event: Event) => {
+      const state = (event as CustomEvent<{busy: boolean; phase: string; instanceId: string; generation: number}>).detail;
+      restarting.current = state.busy || state.phase !== 'ready';
+      if (restarting.current) { setStatus(current => current ? { ...current, ready: false } : null); setActivity('Restarting services…'); return; }
+      const next = `${state.instanceId}:${state.generation}`;
+      if (signature === next) return;
+      signature = next; controller?.abort(); controller = new AbortController();
+      const signal = controller.signal, expected = epoch.current, id = session.current;
+      void (async () => {
+        await refreshStatus(signal);
+        if (!currentTarget(signal, expected, id) || running.current) return;
+        if (id) { try { const saved = await getSession(id, signal); if (currentTarget(signal, expected, id)) snapshot(saved); } catch (failure) { detachMissingSession(failure, id, signal, expected); } }
+        if (currentTarget(signal, expected, id)) setActivity('');
+      })();
+    };
+    window.addEventListener('saplingagent:runtime', changed);
+    return () => { controller?.abort(); window.removeEventListener('saplingagent:runtime', changed); };
+  }, [currentTarget, detachMissingSession, refreshStatus, snapshot]);
+
   const runRequest = useCallback(async (request: Request, isRetry = false) => {
-    if (running.current) return;
+    if (running.current || restarting.current) return;
     const expectedEpoch = ++epoch.current;
     let id = session.current;
     const controller = new AbortController();
@@ -315,7 +337,7 @@ export function useSeedRuntime() {
 
   const onNew = useCallback(async (message: AppendMessage) => {
     const text = message.content.filter(part => part.type === 'text').map(part => part.type === 'text' ? part.text : '').join('\n').trim();
-    if (!text || running.current) return;
+    if (!text || running.current || restarting.current) return;
     await runRequest({ requestId: crypto.randomUUID(), text, ...(session.current ? { sessionId: session.current } : {}) });
   }, [runRequest]);
 

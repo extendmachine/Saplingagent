@@ -76,3 +76,6 @@ The local back-end, model and MCP/Skills have been implemented, and Full Access 
 ## Current release requirements (2026-10-10)
 
 User requests English throughout project-owned UI, prompts, installers, rules, Skills and documentation, with the same approved source content on main/testcode/release. Main is the shared development baseline; preserve old branch history. Project-owned source uses PolyForm Noncommercial 1.0.0, with separate written permission required for commercial use. Prepare a clean macOS source package; public visibility and commercial authentication are not completed by preparing the candidate. Existing user messages, credentials and private runtime data are not translated or distributed.
+
+## Version-compatible restart (2026-10-11)
+User requests bringing testcode restart capability into main and reloading both frontend and backend after a version switch. The selected checkout determines launched services; a persistent local gateway keeps control/recovery available during restart. Busy AI/writes refuse restart; only owned groups are stopped. Current UI retains an unsent draft; persisted sessions/login are preserved without resend. Legacy direct callers and old draft support have documented limits. Exact candidate acceptance and main merge remain pending; live task009–014 authority is .worktrees/coordination.

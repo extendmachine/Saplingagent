@@ -7,5 +7,7 @@
   "reasoningEffort": "medium",
   "turnTimeoutMs": 0,
   "turnIdleWarningMs": 600000,
-  "permissionMode": "full-access"
+  "permissionMode": "full-access",
+  "vitePort": 5174,
+  "runtimeManagerPort": 4314
 }

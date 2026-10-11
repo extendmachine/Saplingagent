@@ -30,19 +30,19 @@
 <td>Real ready/authenticated/provider/model, permissions (Full Access), Skills and MCP catalog</td>
 </tr>
 <tr>
-<td>GET /api/git</td>
-<td>Current warehouse, branch/HEAD, short version number and status fingerprint, work area change, local branch, recent submission and other Worktree occupancy status; upper right panel and bottom version update reminder use</td>
+<td>GET /api/git?limit=25</td>
+<td>Current warehouse, branch/HEAD, short version number and status fingerprint, work area change, local branch, recent submission and other Worktree occupancy status; optional displayName, historyTruncated and 1..500 history limit; upper right panel and bottom version update reminder use</td>
 </tr>
 <tr>
 <td>POST /api/git/commit</td>
-<td>Save the current unignored changes as a local Git submission; do not repeat the submission when it is clean, do not push remote, do not create or switch branches.</td>
+<td>Save the current unignored changes as a local Git submission; do not repeat the submission when it is clean, do not push remote, do not create or switch branches. Detached saves are retained under recovery refs. Known private/runtime files are excluded even if historical ignore rules are absent; staged private files return GIT_PRIVATE_FILES (409).</td>
 </tr>
 <tr>
 <td>POST /api/git/switch</td>
-<td>{Branch} → Securely switch existing local branches; when the current named branch is changed, it will be automatically submitted first, and 409 will be returned when active dialogues, detached HEAD, concurrent switching or targets are occupied, and will not automatically stash/force/fetch/push</td>
+<td>{Branch} → Securely switch existing local branches; when the current named branch is changed, it will be automatically submitted first, and 409 will be returned when active dialogues, concurrent switching or targets are occupied, and will not automatically stash/force/fetch/push</td>
 </tr>
 <tr>
-<td>GET /api/sessions</td>
+<td>POST /api/git/checkout</td><td>{sha: full hexadecimal commit ID} → Load historical source in detached HEAD; auto-save pending work and retain detached saves under recovery refs; named branch tips remain unchanged by checkout. Returns {git,reloadRecommended:true}. GIT_INVALID_VERSION (400), GIT_VERSION_NOT_FOUND (404), active AI/concurrent Git (409). Restart services for backend changes.</td></tr><tr><td>POST /api/git/label</td><td>{sha,name} → Save/replace a local commit display name (trimmed, up to 80 characters; empty clears). Returns {git}. Names persist atomically in common Git metadata and do not change SHA/subject. Invalid commit/name (400/404), GIT_LABEL_BUSY (409), GIT_LABELS_INVALID (500). Same existing local Host/Origin/Bearer policy applies; no credentials in browser. Interface update 2026-10-11; see Agent and frontend CONTRACT.md.</td></tr><tr><td>GET /api/sessions</td>
 <td>Local session list</td>
 </tr>
 <tr>
@@ -92,6 +92,6 @@ skills_list / skills_read</pre>
 <p>
 <small>2026-10-10 · TASK-20261010-004/005 · Specification 2026-09-29.1 · Automatic submission before local branch switching, and the panel does not create branches</small>
 </p>
-</main>
+<section id="runtime-control"><h2>Runtime manager — restart controls</h2><p>Contract v0.2 / updated 2026-10-11 / implemented, pending exact-version human acceptance. Backend: backend/runtime-manager/CONTRACT.md. Frontend: front/features/runtime-control.</p><table><thead><tr><th>Endpoint</th><th>Input and purpose</th><th>Success</th></tr></thead><tbody><tr><td>GET /api/runtime/status</td><td>No body/query parameters; poll lifecycle status independently of Agent and Vite.</td><td>200 {instanceId:string, generation:integer, phase:string, busy:boolean, canRestart:boolean, jobId:string|null, scope:all|backend, services:[{name,pid,running}], error:null|{code,message,service?}}</td></tr><tr><td>POST /api/runtime/restart</td><td>Optional Content-Type application/json body {scope:all|backend}, defaults all. Start an asynchronous lifecycle job. Duplicate requests return the existing job.</td><td>202 {jobId:string,status:runtime status}. Startup/readiness failure is reported by polling; generation advances only after selected services and authenticated Agent/MCP are ready.</td></tr><tr><td>GET /__saplingagent/runtime</td><td>No input. Persistent recovery page with both restart choices and Open app.</td><td>200 HTML, available during frontend/backend failure and for older UIs without controls.</td></tr><tr><td>POST /internal/runtime/prepare; POST /internal/runtime/release</td><td>Internal Agent/workspace/builder endpoints. Existing project Bearer token required, even for browser-origin requests. No input.</td><td>200 {prepared:boolean}. Prepare refuses pending writes, AI, Git operations and unsaved Agent sessions; new mutations are gated until release or process replacement.</td></tr></tbody></table><p>Configured loopback Host and frontend Origin required. Same-origin browser mutations accepted; script mutations require Authorization Bearer (never expose the real token). Cross-site access denied; no CORS. Error envelope {error:{code,message}}. 400 INVALID_SCOPE, 401 UNAUTHORIZED, 403 INVALID_HOST/INVALID_ORIGIN, 404 NOT_FOUND, 413 PAYLOAD_TOO_LARGE, 503 MANAGER_UNAVAILABLE. Asynchronous RUNTIME_BUSY preserves existing services; wait or stop work then retry. INVALID_CONFIG / SERVICE_NOT_READY / SERVICE_EXITED / PORT_OCCUPIED remain recoverable; repair and retry. LAUNCHER_RESTART_REQUIRED means stop and run the Mac launcher.</p><p>Gateway mutations receive 503 RUNTIME_RESTARTING during lifecycle work; unavailable upstream returns 503 SERVICE_UNAVAILABLE with recovery path. Streams and WebSocket upgrades are forwarded without SSE buffering. Public frontPort5173, internal vitePort5174, manager4314. Optional PDF starts only when its current source exists. Switch versions first, then Restart app; first adoption, manager/launcher code or ports require the Mac launcher. Install new dependencies before restart. Current UI restores an unsent draft; older versions may not. Legacy direct callers are outside gateway accounting. No automatic chat resend, source rollback or credential reset.</p></section></main>
 </body>
 </html>

@@ -7,3 +7,6 @@ Check GET http://127.0.0.1:4311/health; business requests are only sent by inter
 Restore data: stop service, complete backup data/workspace/; JSON schema current v1, no automatic migration. Damaged JSON clearly reports CORRUPT_STORAGE, which cannot be overwritten with empty data; restore the last trusted backup before starting. Snapshot/code rollback should not be brought back messages or preferences. Only a single process is supported to write to the same storage.
 The log is automatically kept for 30 days and belongs to the project logs/workspace/, and the real running log is not saved in the service code directory; all credentials are kept local-secrets, and packaging must be excluded.
 No external release, Git/main synchronization or human acceptance record. For official information, please refer to REFERENCES.md.
+
+## Managed restart
+The project runtime manager prepares this service using the internal contract before terminating its owned process group. Finish AI/file/Git work before Restart app or Restart backend; busy work refuses restart without interruption. Prepared services reject new mutations until release or replacement. The launcher keeps its gateway/control alive. See ../runtime-manager/CONTRACT.md and DEPLOY.md.

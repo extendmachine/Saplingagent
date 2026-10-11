@@ -219,3 +219,17 @@ test('closing the service cancels active command groups without automatic file r
   const result = await running; assert.equal(result.body.cancelled, true); assert.equal(result.body.timedOut, false); assert.equal(result.body.exitCode, null);
   await closed; await pause(1100); await assert.rejects(fs.stat(later), { code: 'ENOENT' });
 });
+
+test('restart preparation refuses a live command, then gates and releases writes', async t => {
+  const {root} = await fixture(t); const {request} = await listen(t, root);
+  const marker = path.join(root, 'command-started');
+  const command = request('/commands', {command: nodeCommand(`require('node:fs').writeFileSync(${JSON.stringify(marker)},'started');setTimeout(()=>{},400)`), timeoutMs: 5000});
+  await waitFor(marker);
+  assert.equal((await request('/internal/runtime/prepare', {})).status, 409);
+  assert.equal((await command).status, 200);
+  assert.equal((await request('/internal/runtime/prepare', {})).status, 200);
+  assert.equal((await request('/files/write', {path:'kept.txt',content:'blocked'})).status, 503);
+  await assert.rejects(fs.stat(path.join(root,'kept.txt')), {code:'ENOENT'});
+  assert.equal((await request('/internal/runtime/release', {})).status, 200);
+  assert.equal((await request('/files/write', {path:'kept.txt',content:'saved'})).status, 200);
+});
