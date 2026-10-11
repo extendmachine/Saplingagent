@@ -1,3 +1,4 @@
+import { createDrainGate } from '../../contracts/runtime-drain.mjs';
 import http from 'node:http';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
@@ -46,12 +47,17 @@ export async function createWorkspaceServer({ root = process.env.SEED_ROOT || de
   token ??= (await fs.readFile(await safePath(root, 'local-secrets/runtime/service-token'), 'utf8')).trim();
   if (!token || token.length < 20) throw new Error('Local service token is missing or invalid');
   const store = await createStore(root); const log = await createLogger(root);
+  const drain = createDrainGate();
   const server = http.createServer(async (request, response) => {
     const requestId = randomUUID();
+    let leave;
     try {
       const url = new URL(request.url, 'http://127.0.0.1');
       if (request.method === 'GET' && url.pathname === '/health') return send(response, 200, { ready: true, service: 'workspace', version: '0.1.0' });
       if (!authorized(request.headers.authorization, token)) throw new WorkspaceError('UNAUTHORIZED', 'Internal service authentication required', 401);
+      if (request.method === 'POST' && url.pathname === '/internal/runtime/prepare') return send(response, 200, drain.prepare());
+      if (request.method === 'POST' && url.pathname === '/internal/runtime/release') return send(response, 200, drain.release());
+      if (request.method !== 'GET') leave = drain.enter();
       const id = url.pathname.match(/^\/sessions\/([^/]+)$/)?.[1];
       const preferenceId = url.pathname.match(/^\/preferences\/([^/]+)$/)?.[1];
       if (request.method === 'GET' && url.pathname === '/sessions') return send(response, 200, { sessions: await store.listSessions() });
@@ -63,10 +69,10 @@ export async function createWorkspaceServer({ root = process.env.SEED_ROOT || de
       if (request.method === 'DELETE' && preferenceId) return send(response, 200, await store.deletePreference(preferenceId));
       throw new WorkspaceError('NOT_FOUND', 'Endpoint does not exist', 404);
     } catch (error) {
-      const known = error instanceof WorkspaceError;
+      const known = error instanceof WorkspaceError || ['RUNTIME_BUSY', 'RUNTIME_RESTARTING'].includes(error.code);
       await log(known && error.status < 500 ? 'warn' : 'error', 'request_failed', { requestId, code: known ? error.code : 'INTERNAL_ERROR' }).catch(() => {});
       send(response, known ? error.status : 500, { error: { code: known ? error.code : 'INTERNAL_ERROR', message: known ? error.message : 'Workspace operation failed', requestId } });
-    }
+    } finally { leave?.(); }
   });
   server.requestTimeout = 30000; server.headersTimeout = 10000;
   return server;

@@ -61,3 +61,16 @@ test('HTTP requires bearer auth, validates malformed JSON and exposes safe healt
   assert.ok(logs.length);
   assert.ok(!(await fs.readFile(path.join(root, 'logs/workspace', logs[0]), 'utf8')).includes(token));
 });
+
+test('restart preparation requires authentication and gates new session writes until release', async t => {
+  const root = await fixture(t), token='fixture-runtime-gate-token';
+  const server=await createWorkspaceServer({root,token});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const request=(route,authorized=true)=>fetch(`http://127.0.0.1:${server.address().port}${route}`,{method:'POST',headers:authorized?{Authorization:`Bearer ${token}`}:{},body:'{}'});
+  assert.equal((await request('/internal/runtime/prepare',false)).status,401);
+  assert.equal((await request('/internal/runtime/prepare')).status,200);
+  assert.equal((await request('/sessions')).status,503);
+  assert.equal((await request('/internal/runtime/release')).status,200);
+  assert.equal((await request('/sessions')).status,201);
+});
