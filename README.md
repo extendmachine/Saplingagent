@@ -4,7 +4,9 @@
   <img src="assets/brand/saplingagent-growth-logo.png" alt="Saplingagent: a technology sapling growing into a tree, connected by an arrow, with circuit traces and nodes in both." width="720">
 </p>
 
-**Grow a local application through conversation.**Start with a chat page, describe what you need, and let an AI adapt the application in your own folder.
+**Let your apps grow like trees.**
+
+Start with a chat page, describe what you need, and let an AI adapt the application in your own folder.
 
 Saplingagent combines a React interface with the official**Codex App Server**, project MCP tools and reusable Skills. Application code, conversations, preferences, rules and runtime stay in the application folder. The current page includes streaming chat, Markdown with GFM tables, and Git version controls; further features are added through conversation.
 
