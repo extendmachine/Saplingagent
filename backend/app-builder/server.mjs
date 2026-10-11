@@ -1,3 +1,4 @@
+import { createDrainGate } from '../../contracts/runtime-drain.mjs';
 import http from 'node:http';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
@@ -49,12 +50,16 @@ export async function createBuilderServer({ root = process.env.SEED_ROOT || defa
   token ??= (await fs.readFile(await safePath(root, 'local-secrets/runtime/service-token'), 'utf8')).trim();
   if (!token || token.length < 20) throw new Error('Local service token is missing or invalid');
   const builder = await createBuilder(root, build ? { build } : {}); const log = await logger(root);
+  const drain = createDrainGate();
   const server = http.createServer(async (request, response) => {
-    const requestId = randomUUID();
+    const requestId = randomUUID(); let leave;
     try {
       const url = new URL(request.url, 'http://127.0.0.1');
       if (request.method === 'GET' && url.pathname === '/health') return send(response, 200, { ready: true, service: 'app-builder', version: '0.2.0', permissions: 'os-user-full-access' });
       if (!authorized(request.headers.authorization, token)) throw new BuilderError('UNAUTHORIZED', 'Internal service authentication required', 401);
+      if (request.method === 'POST' && url.pathname === '/internal/runtime/prepare') return send(response, 200, drain.prepare());
+      if (request.method === 'POST' && url.pathname === '/internal/runtime/release') return send(response, 200, drain.release());
+      if (request.method !== 'GET') leave = drain.enter();
       if (request.method === 'GET' && url.pathname === '/files') return send(response, 200, await builder.listFiles(url.searchParams.get('path') || '.', { limit: url.searchParams.get('limit'), cursor: url.searchParams.get('cursor') }));
       if (request.method === 'GET' && url.pathname === '/file') return send(response, 200, await builder.readFile(url.searchParams.get('path'), { encoding: url.searchParams.get('encoding') || 'utf8', offset: url.searchParams.get('offset'), maxBytes: url.searchParams.get('maxBytes') }));
       if (request.method === 'GET' && url.pathname === '/changes') return send(response, 200, { changes: await builder.listChanges() });
@@ -84,13 +89,13 @@ export async function createBuilderServer({ root = process.env.SEED_ROOT || defa
       }
       throw new BuilderError('NOT_FOUND', 'Endpoint does not exist', 404);
     } catch (error) {
-      const known = error instanceof BuilderError;
+      const known = error instanceof BuilderError || ['RUNTIME_BUSY', 'RUNTIME_RESTARTING'].includes(error.code);
       const filesystemStatus = ['ENOENT', 'ENOTDIR'].includes(error.code) ? 404 : ['EACCES', 'EPERM', 'EROFS'].includes(error.code) ? 403 : ['EISDIR', 'EINVAL', 'ENAMETOOLONG', 'ERR_INVALID_ARG_VALUE', 'ERR_INVALID_ARG_TYPE'].includes(error.code) ? 400 : 500;
       const status = known ? error.status : filesystemStatus;
       const code = error.code || 'INTERNAL_ERROR';
       await log(status < 500 ? 'warn' : 'error', 'request_failed', { requestId, code }).catch(() => {});
       send(response, status, { error: { code, message: error.message || 'App builder operation failed', requestId } });
-    }
+    } finally { leave?.(); }
   });
   server.requestTimeout = 150000; server.headersTimeout = 10000;
   const close = server.close.bind(server);
