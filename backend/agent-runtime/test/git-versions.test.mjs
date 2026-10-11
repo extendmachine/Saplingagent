@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { promisify } from 'node:util';
-import { commitGitVersion, readGitVersion, switchGitBranch } from '../git-versions.mjs';
+import { checkoutGitVersion, commitGitVersion, nameGitVersion, readGitVersion, switchGitBranch } from '../git-versions.mjs';
 
 const exec = promisify(execFile);
 const run = (cwd, ...args) => exec('git', ['-C', cwd, ...args]);
@@ -69,4 +69,106 @@ test('saves all current changes as a local commit without switching branches', a
   assert.equal((await run(root, 'show', 'HEAD:new-page.txt')).stdout, 'new page\n');
   const unchanged = await commitGitVersion(root);
   assert.equal(unchanged.savedCommit, null);
+});
+
+test('custom names survive module reload and worktrees without changing commit subjects', async t => {
+  const root = await repository();
+  const worktree = `${root}-worktree`;
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  t.after(() => fs.rm(worktree, { recursive: true, force: true }));
+  const original = await readGitVersion(root);
+  await nameGitVersion(root, original.head.sha, '  Chat baseline  ');
+  assert.equal((await readGitVersion(root)).head.displayName, 'Chat baseline');
+  assert.equal((await run(root, 'show', '-s', '--format=%s', 'HEAD')).stdout.trim(), 'initial');
+  assert.equal((await run(root, 'status', '--porcelain')).stdout, '');
+  await run(root, 'worktree', 'add', '--detach', worktree, 'HEAD');
+  assert.equal((await readGitVersion(worktree)).head.displayName, 'Chat baseline');
+  const fresh = await import(`../git-versions.mjs?reload=${Date.now()}`);
+  assert.equal((await fresh.readGitVersion(root)).recentCommits[0].displayName, 'Chat baseline');
+  await nameGitVersion(worktree, original.head.sha, 'Second name');
+  assert.equal((await readGitVersion(root)).head.displayName, 'Second name');
+  await nameGitVersion(root, original.head.sha, '');
+  assert.equal((await readGitVersion(root)).head.displayName, undefined);
+});
+
+test('historical checkout preserves branch tips, ignored private data and detached edits', async t => {
+  const root = await repository();
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const baseline = (await readGitVersion(root)).head.sha;
+  await fs.writeFile(path.join(root, '.gitignore'), 'private/\n');
+  await fs.mkdir(path.join(root, 'private')); await fs.writeFile(path.join(root, 'private/session'), 'keep');
+  await fs.writeFile(path.join(root, 'note.txt'), 'latest\n');
+  const latest = await commitGitVersion(root);
+  const tip = latest.head.sha;
+  const older = await checkoutGitVersion(root, baseline);
+  assert.equal(older.detached, true);
+  assert.equal((await run(root, 'rev-parse', 'main')).stdout.trim(), tip);
+  assert.equal(await fs.readFile(path.join(root, 'private/session'), 'utf8'), 'keep');
+  await fs.writeFile(path.join(root, 'note.txt'), 'detached saved\n');
+  const saved = await commitGitVersion(root);
+  assert.equal((await run(root, 'rev-parse', `refs/saplingagent/saved/${saved.head.sha}`)).stdout.trim(), saved.head.sha);
+  await fs.writeFile(path.join(root, 'note.txt'), 'detached pending\n');
+  // The older version lacks ignore rules. Do not pretend an unignored file stays private.
+  await fs.rm(path.join(root, 'private'), { recursive: true });
+  const returned = await switchGitBranch(root, 'main');
+  assert.equal(returned.branch, 'main');
+  assert.equal(returned.head.sha, tip);
+  assert.equal((await run(root, 'show', `${returned.autoCommit.sha}:note.txt`)).stdout, 'detached pending\n');
+  assert.equal((await run(root, 'rev-parse', `refs/saplingagent/saved/${returned.autoCommit.sha}`)).stdout.trim(), returned.autoCommit.sha);
+  assert.ok(returned.recentCommits.some(commit => commit.sha === saved.head.sha));
+  assert.deepEqual(returned.branches.map(branch => branch.name), ['main', 'release']);
+});
+
+test('dirty named checkout first saves its latest work, then returns to that saved tip', async t => {
+  const root = await repository();
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const initial = (await readGitVersion(root)).head.sha;
+  await fs.writeFile(path.join(root, 'note.txt'), 'second\n'); await commitGitVersion(root);
+  await fs.writeFile(path.join(root, 'note.txt'), 'pending\n');
+  const older = await checkoutGitVersion(root, initial);
+  assert.ok(older.autoCommit);
+  const back = await switchGitBranch(root, 'main');
+  assert.equal(back.head.sha, older.autoCommit.sha);
+  assert.equal(await fs.readFile(path.join(root, 'note.txt'), 'utf8'), 'pending\n');
+});
+
+test('rejects bad commit/name inputs and retains malformed or locked label stores', async t => {
+  const root = await repository(); t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const initial = await readGitVersion(root);
+  await assert.rejects(() => checkoutGitVersion(root, '--force'), { code: 'GIT_INVALID_VERSION' });
+  await assert.rejects(() => checkoutGitVersion(root, 'a'.repeat(40)), { code: 'GIT_VERSION_NOT_FOUND' });
+  await assert.rejects(() => nameGitVersion(root, initial.head.sha, 'bad\nname'), { code: 'GIT_INVALID_LABEL' });
+  await assert.rejects(() => nameGitVersion(root, initial.head.sha, 'x'.repeat(81)), { code: 'GIT_INVALID_LABEL' });
+  const labels = path.join(root, '.git/saplingagent/version-labels.json');
+  await fs.mkdir(path.dirname(labels)); await fs.writeFile(labels, '{broken');
+  await assert.rejects(() => nameGitVersion(root, initial.head.sha, 'new'), { code: 'GIT_LABELS_INVALID' });
+  assert.equal(await fs.readFile(labels, 'utf8'), '{broken');
+  await fs.writeFile(labels, '{}'); await fs.writeFile(`${labels}.lock`, 'other writer');
+  await assert.rejects(() => nameGitVersion(root, initial.head.sha, 'new'), { code: 'GIT_LABEL_BUSY' });
+  assert.equal(await fs.readFile(`${labels}.lock`, 'utf8'), 'other writer');
+  assert.equal((await run(root, 'rev-parse', 'HEAD')).stdout.trim(), initial.head.sha);
+});
+
+test('history expands with limits and detached HEAD remains present', async t => {
+  const root = await repository(); t.after(() => fs.rm(root, { recursive: true, force: true }));
+  await fs.writeFile(path.join(root, 'note.txt'), 'second'); await commitGitVersion(root);
+  const limited = await readGitVersion(root, { limit: 1 });
+  assert.equal(limited.recentCommits.length, 1); assert.equal(limited.historyTruncated, true);
+  assert.equal((await readGitVersion(root, { limit: 10 })).recentCommits.length, 2);
+  await assert.rejects(() => readGitVersion(root, { limit: 0 }), { code: 'GIT_INVALID_LIMIT' });
+});
+
+test('saving historical source excludes credentials/runtime files even without old ignore rules', async t => {
+  const root = await repository(); t.after(() => fs.rm(root, { recursive: true, force: true }));
+  await fs.mkdir(path.join(root, 'local-secrets'));
+  await fs.writeFile(path.join(root, 'local-secrets/token'), 'SYNTHETIC_PRIVATE');
+  await fs.writeFile(path.join(root, '.env'), 'SYNTHETIC_PRIVATE');
+  await fs.writeFile(path.join(root, 'note.txt'), 'safe source');
+  const saved = await commitGitVersion(root);
+  const files = (await run(root, 'ls-tree', '-r', '--name-only', saved.head.sha)).stdout;
+  assert.doesNotMatch(files, /local-secrets|\.env/);
+  assert.equal(await fs.readFile(path.join(root, 'local-secrets/token'), 'utf8'), 'SYNTHETIC_PRIVATE');
+  await run(root, 'add', 'local-secrets/token');
+  await assert.rejects(() => commitGitVersion(root), { code: 'GIT_PRIVATE_FILES' });
+  assert.equal((await run(root, 'rev-parse', 'HEAD')).stdout.trim(), saved.head.sha);
 });

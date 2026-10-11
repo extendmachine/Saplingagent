@@ -80,7 +80,32 @@ async function createVersionFingerprint(root, sha, statusRaw, changes) {
   return hash.digest('hex').slice(0, 16);
 }
 
-export async function readGitVersion(root) {
+async function labelsPath(root) {
+  const common = (await git(root, ['rev-parse', '--path-format=absolute', '--git-common-dir'])).trim();
+  return path.join(common, 'saplingagent', 'version-labels.json');
+}
+
+async function readLabels(root) {
+  try {
+    const labels = JSON.parse(await fs.readFile(await labelsPath(root), 'utf8'));
+    if (!labels || typeof labels !== 'object' || Array.isArray(labels) || Object.entries(labels).some(([sha, name]) => !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sha) || typeof name !== 'string' || name.length > 80 || /[\x00-\x1f\x7f]/.test(name))) throw new Error('Invalid labels');
+    return labels;
+  } catch (error) {
+    if (error.code === 'ENOENT') return {};
+    throw new GitVersionError('GIT_LABELS_INVALID', 'Version names could not be read. Repair the repository label file before editing names', 500);
+  }
+}
+
+async function validateCommit(root, sha) {
+  if (typeof sha !== 'string' || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sha)) throw new GitVersionError('GIT_INVALID_VERSION', 'Select a full commit ID');
+  try {
+    if ((await git(root, ['cat-file', '-t', sha])).trim() !== 'commit') throw new Error('Not a commit');
+  } catch { throw new GitVersionError('GIT_VERSION_NOT_FOUND', 'This committed version does not exist', 404); }
+  return sha;
+}
+
+export async function readGitVersion(root, { limit = 25 } = {}) {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 500) throw new GitVersionError('GIT_INVALID_LIMIT', 'History limit must be an integer from 1 to 500');
   const [repositoryRoot, head, branchName, statusRaw, branchRaw, worktreeRaw, commitRaw] = await Promise.all([
     git(root, ['rev-parse', '--show-toplevel']),
     git(root, ['show', '-s', '--format=%h%x00%H%x00%aI%x00%s', 'HEAD']),
@@ -88,7 +113,7 @@ export async function readGitVersion(root) {
     git(root, ['status', '--porcelain=v1', '-z', '--untracked-files=all']),
     git(root, ['for-each-ref', '--format=%(refname:short)%00%(objectname:short)%00%(upstream:short)%00%(committerdate:iso-strict)%00%(subject)', 'refs/heads']),
     git(root, ['worktree', 'list', '--porcelain']),
-    git(root, ['log', '--all', '-n', '8', '--format=%h%x00%H%x00%aI%x00%s']),
+    git(root, ['log', '--all', 'HEAD', '-n', String(limit + 1), '--format=%h%x00%H%x00%aI%x00%s']),
   ]);
   const [shortSha, sha, committedAt, subject] = head.trimEnd().split('\0');
   const currentRoot = path.resolve(repositoryRoot.trim());
@@ -107,11 +132,14 @@ export async function readGitVersion(root) {
   }));
   const changes = parseStatus(statusRaw);
   const fingerprint = await createVersionFingerprint(currentRoot, sha, statusRaw, changes);
+  const labels = await readLabels(root);
+  const commits = parseRecords(commitRaw, ['shortSha', 'sha', 'committedAt', 'subject']);
+  const withLabel = commit => ({ ...commit, ...(labels[commit.sha] ? { displayName: labels[commit.sha] } : {}) });
   return {
     repository: path.basename(currentRoot),
     branch: branchName.trim() || null,
     detached: !branchName.trim(),
-    head: { shortSha, sha, committedAt, subject },
+    head: withLabel({ shortSha, sha, committedAt, subject }),
     version: changes.length === 0 ? shortSha : `${shortSha}+${fingerprint.slice(0, 6)}`,
     fingerprint,
     clean: changes.length === 0,
@@ -119,8 +147,65 @@ export async function readGitVersion(root) {
     changeCount: changes.length,
     changesTruncated: changes.length > 100,
     branches,
-    recentCommits: parseRecords(commitRaw, ['shortSha', 'sha', 'committedAt', 'subject']),
+    recentCommits: commits.slice(0, limit).map(withLabel),
+    historyTruncated: commits.length > limit,
   };
+}
+
+export async function nameGitVersion(root, sha, name) {
+  await validateCommit(root, sha);
+  if (typeof name !== 'string' || name.trim().length > 80 || /[\x00-\x1f\x7f]/.test(name)) throw new GitVersionError('GIT_INVALID_LABEL', 'Enter a version name of up to 80 characters without control characters');
+  const file = await labelsPath(root);
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  let lock;
+  try { lock = await fs.open(`${file}.lock`, 'wx', 0o600); }
+  catch (error) { if (error.code === 'EEXIST') throw new GitVersionError('GIT_LABEL_BUSY', 'Another version name is being saved. Retry shortly', 409); throw error; }
+  let renamed = false;
+  try {
+    const labels = await readLabels(root);
+    if (name.trim()) labels[sha] = name.trim(); else delete labels[sha];
+    await lock.writeFile(JSON.stringify(labels, null, 2) + '\n');
+    await lock.sync();
+    await lock.close();
+    await fs.rename(`${file}.lock`, file);
+    renamed = true;
+  } finally {
+    await lock.close().catch(() => {});
+    if (!renamed) await fs.rm(`${file}.lock`, { force: true });
+  }
+  return readGitVersion(root);
+}
+
+async function retainHead(root) {
+  const sha = (await git(root, ['rev-parse', 'HEAD'])).trim();
+  await git(root, ['update-ref', `refs/saplingagent/saved/${sha}`, sha]);
+}
+
+async function savePending(root, state, subject) {
+  if (state.clean) return null;
+  // An old version can lack today's ignore rules. Saving source must still
+  // exclude this application's private data and local runtime artifacts.
+  const privateFile = file => /(^|\/)(local-secrets|\.secrets|secrets|logs|data|snapshots|\.cache|\.runtime|\.worktrees|node_modules|\.venv|docker-images|dist|build)(\/|$)/.test(file) || /(^|\/)(selfdata\.json|\.env(?:\..*)?|CLAUDE\.local\.md|settings\.local\.json)$/.test(file) || /\.(key|pem|p12|pfx|log)$/.test(file);
+  const staged = (await git(root, ['diff', '--cached', '--name-only', '-z'])).split('\0').filter(Boolean);
+  if (staged.some(privateFile)) throw new GitVersionError('GIT_PRIVATE_FILES', 'Private runtime files are staged. Unstage them before saving a source version', 409);
+  const folders = ['local-secrets', '.secrets', 'secrets', 'logs', 'data', 'snapshots', '.cache', '.runtime', '.worktrees', 'node_modules', '.venv', 'docker-images', 'dist', 'build'];
+  const patterns = [...folders.map(folder => `**/${folder}/**`), '**/selfdata.json', '**/.env', '**/.env.*', '**/CLAUDE.local.md', '**/settings.local.json', '**/*.key', '**/*.pem', '**/*.p12', '**/*.pfx', '**/*.log'];
+  await git(root, ['add', '--all', '--', '.', ...patterns.map(pattern => `:(exclude,glob)${pattern}`)]);
+  if (!(await git(root, ['diff', '--cached', '--name-only'])).trim()) return null;
+  await git(root, ['commit', '-m', subject]);
+  const [shortSha, sha] = (await git(root, ['show', '-s', '--format=%h%x00%H', 'HEAD'])).trim().split('\0');
+  if (!state.branch) await retainHead(root);
+  return { shortSha, sha, subject };
+}
+
+export async function checkoutGitVersion(root, sha) {
+  await validateCommit(root, sha);
+  const state = await readGitVersion(root);
+  if (state.head.sha === sha) return state;
+  const autoCommit = await savePending(root, state, `chore: save ${state.branch || 'detached version'} before loading ${sha.slice(0, 8)}`);
+  await retainHead(root);
+  await git(root, ['switch', '--detach', sha]);
+  return { ...(await readGitVersion(root)), autoCommit };
 }
 
 export async function switchGitBranch(root, branch) {
@@ -131,27 +216,16 @@ export async function switchGitBranch(root, branch) {
   const target = state.branches.find(candidate => candidate.name === branch);
   if (!target) throw new GitVersionError('GIT_BRANCH_NOT_FOUND', 'Target branch does not exist', 404);
   if (target.current) return state;
-  if (!state.branch) throw new GitVersionError('GIT_DETACHED', 'This folder is not on a named branch; cannot auto-save and switch', 409);
   if (target.occupied) throw new GitVersionError('GIT_BRANCH_IN_USE', `Branch is checked out in another worktree:${target.occupiedBy}`, 409);
-  let autoCommit = null;
-  if (!state.clean) {
-    await git(root, ['add', '--all']);
-    const subject = `chore: save ${state.branch} before switching to ${branch}`;
-    await git(root, ['commit', '-m', subject]);
-    const [shortSha, sha] = (await git(root, ['show', '-s', '--format=%h%x00%H', 'HEAD'])).trim().split('\0');
-    autoCommit = { shortSha, sha, subject };
-  }
+  const autoCommit = await savePending(root, state, `chore: save ${state.branch || 'detached version'} before switching to ${branch}`);
+  if (!state.branch) await retainHead(root);
   await git(root, ['switch', '--', branch]);
   return { ...(await readGitVersion(root)), autoCommit };
 }
 
 export async function commitGitVersion(root) {
   const state = await readGitVersion(root);
-  if (!state.branch) throw new GitVersionError('GIT_DETACHED', 'This folder is not on a named branch; cannot save a commit', 409);
   if (state.clean) return { ...state, savedCommit: null };
-  await git(root, ['add', '--all']);
-  const subject = `chore: save ${state.branch} from Saplingagent`;
-  await git(root, ['commit', '-m', subject]);
-  const [shortSha, sha] = (await git(root, ['show', '-s', '--format=%h%x00%H', 'HEAD'])).trim().split('\0');
-  return { ...(await readGitVersion(root)), savedCommit: { shortSha, sha, subject } };
+  const savedCommit = await savePending(root, state, `chore: save ${state.branch || 'detached version'} from Saplingagent`);
+  return { ...(await readGitVersion(root)), savedCommit };
 }
