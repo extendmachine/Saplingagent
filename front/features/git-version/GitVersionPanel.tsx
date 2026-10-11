@@ -79,6 +79,7 @@ export function GitVersionPanel() {
   };
   const switchVersion = () => {
     if (!target || !canSwitch) return;
+    window.dispatchEvent(new Event('saplingagent:before-restart'));
     void mutate(target.kind === 'branch' ? 'switch' : 'checkout', target.kind === 'branch' ? { branch: target.id } : { sha: target.id });
   };
   const label = git ? `${git.branch || 'Version'} · ${git.head.displayName || git.head.shortSha}` : 'Versions';
@@ -128,7 +129,7 @@ export function GitVersionPanel() {
             <span className="git-branch-main"><span>{branch.name}</span><small>{branch.subject}</small></span><span className="git-branch-meta">{branch.current ? 'Current' : branch.occupied ? 'Other worktree' : branch.shortSha}</span>
           </button>)}
         </div>
-        <div className="git-switch-footer"><p>{selectedCommit ? `Load ${selectedCommit.displayName || selectedCommit.shortSha} as a historical version.` : selectedBranch ? `Switch to ${selectedBranch.name}.` : 'Select a version or branch.'}<br />Pending changes are saved first. Backend changes require a service restart.</p><button type="button" onClick={switchVersion} disabled={!canSwitch || Boolean(busy)}>{busy === 'switch' || busy === 'checkout' ? <LoaderCircle className="spinning" size={14} /> : <GitBranch size={14} />}{busy === 'switch' || busy === 'checkout' ? 'Switching' : 'Switch version'}</button></div>
+        <div className="git-switch-footer"><p>{selectedCommit ? `Load ${selectedCommit.displayName || selectedCommit.shortSha} as a historical version.` : selectedBranch ? `Switch to ${selectedBranch.name}.` : 'Select a version or branch.'}<br />Pending changes are saved first. After switching, use Restart app to load frontend and backend.</p><button type="button" onClick={switchVersion} disabled={!canSwitch || Boolean(busy)}>{busy === 'switch' || busy === 'checkout' ? <LoaderCircle className="spinning" size={14} /> : <GitBranch size={14} />}{busy === 'switch' || busy === 'checkout' ? 'Switching' : 'Switch version'}</button></div>
       </> : null}
     </div> : null}
   </aside>;

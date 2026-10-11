@@ -51,7 +51,9 @@ async function harness({ savedId = null, route, list = () => json({ sessions: []
       }
     },
   };
+  const events = new EventTarget();
   const context = vm.createContext({
+    window: events,
     ...react, Error, DOMException, AbortController, AbortSignal, Response, ReadableStream, TextDecoder, TextEncoder,
     crypto: { randomUUID: () => `fixture-request-${requests.filter(request => request.url === '/api/chat').length + 1}` },
     localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
@@ -86,6 +88,7 @@ async function harness({ savedId = null, route, list = () => json({ sessions: []
   render(); await settle();
   return {
     get current() { return rendered; }, requests, storage, settle,
+    runtime(detail) { const event = new Event('saplingagent:runtime'); event.detail = detail; events.dispatchEvent(event); },
     async send(text = 'synthetic request') { await rendered.onNew({ content: [{ type: 'text', text }] }); await settle(); },
     tick(delay) { for (const [id, timer] of [...timers]) if (timer.delay <= delay) { if (!timer.interval) timers.delete(id); timer.callback(); } },
     restartEffects() { for (const slot of slots) if (slot?.effect) { slot.cleanup?.(); slot.cleanup = slot.effect(); } },
@@ -312,4 +315,21 @@ test('a header arriving after unmount cannot bind a session', async t => {
   const input = h.requests.find(request => request.url === '/api/chat').input;
   h.close(); pending.resolve(sse('obsolete', [message(input.requestId, input.text)])); await sending;
   assert.equal(h.storage.get(KEY), undefined);
+});
+
+test('backend restart blocks sends and restores the saved session without POST or clearing history', async t => {
+  const h = await harness({ savedId: 'restart-saved', route: request => {
+    if (request.url === '/api/sessions/restart-saved') return json({session: session('restart-saved', [message('existing', 'existing conversation')])});
+  }});
+  t.after(() => h.close());
+  h.runtime({busy:false,phase:'ready',instanceId:'fixture',generation:1});
+  h.runtime({busy:true,phase:'stopping',instanceId:'fixture',generation:1});
+  await h.settle(); assert.equal(h.current.status.ready, false);
+  await h.send('must not send');
+  assert.equal(h.requests.filter(r => r.url === '/api/chat').length, 0);
+  h.runtime({busy:false,phase:'ready',instanceId:'fixture',generation:2});
+  await h.settle(); assert.equal(h.current.status.ready, true);
+  assert.equal(h.current.messages[0].text, 'existing conversation');
+  assert.equal(h.storage.get(KEY), 'restart-saved');
+  assert.equal(h.requests.filter(r => r.url === '/api/chat').length, 0);
 });

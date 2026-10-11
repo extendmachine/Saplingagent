@@ -1,0 +1,17 @@
+.runtime-controls { position: fixed; z-index: 32; top: 20px; right: 34px; display: flex; align-items: flex-start; gap: 10px; }
+.runtime-controls .git-version-anchor { position: relative; top: auto; right: auto; }
+.runtime-control { position: relative; display: flex; align-items: center; gap: 3px; }
+.runtime-restart-button { height: 38px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid #ffffffa8; border-radius: 12px; padding: 0 12px; background: #fffdfb82; color: #526048; box-shadow: 0 9px 30px #26351c12; backdrop-filter: blur(22px); font-size: 12px; font-weight: 600; }
+.runtime-restart-button:hover:not(:disabled) { background: #fff; border-color: #bfcbb5; }
+.runtime-restart-button:disabled { opacity: .65; cursor: default; }
+.runtime-control-notice { position: absolute; top: 45px; right: 0; width: max-content; max-width: min(330px, calc(100vw - 32px)); padding: 9px 12px; display: flex; align-items: flex-start; gap: 7px; border: 1px solid #dde7d8; border-radius: 10px; background: #fbfdf8f5; color: #526048; font-size: 11px; line-height: 1.5; box-shadow: 0 6px 24px #26351c14; }
+.runtime-control-notice.has-error { background: #fff9f3f5; color: #97552f; border-color: #efd8c4; }
+.runtime-control-notice svg { flex: none; margin-top: 2px; }
+@media (max-width: 600px) { .runtime-controls { top: 13px; right: 16px; gap: 7px; } .runtime-controls .git-version-trigger { max-width: 34vw; } .runtime-restart-button { width: 38px; padding: 0; justify-content: center; } .runtime-restart-button > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); } .runtime-control-notice { right: 0; } }
+
+.runtime-options summary { cursor: pointer; list-style: none; padding: 8px 4px; color: #526048; }
+.runtime-options > div { position: absolute; top: 45px; right: 0; z-index: 2; min-width: 170px; padding: 8px; background: #fffefb; border: 1px solid #dfe4da; border-radius: 12px; box-shadow: 0 8px 25px #26351c14; }
+.runtime-options button, .runtime-options a { display: block; padding: 9px 8px; width: 100%; text-align: left; font: 12px system-ui; color: #526048; border: 0; background: transparent; text-decoration: none; }
+
+.runtime-controls .git-version-popover { position: fixed; top: 66px; right: 34px; }
+@media (max-width: 600px) { .runtime-controls .git-version-popover { top: 58px; right: 16px; } }

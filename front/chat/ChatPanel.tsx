@@ -1,3 +1,4 @@
+import { RestartDraft } from './RestartDraft';
 import { AssistantRuntimeProvider, ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useExternalStoreRuntime, type ThreadMessageLike } from '@assistant-ui/react';
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -51,7 +52,7 @@ export function ChatPanel() {
       </ThreadPrimitive.Viewport>
       <div className="composer-area">
         {agent.error && <div className="chat-error" role="alert"><span>{agent.error}</span>{agent.retryable && <button type="button" disabled={agent.isRunning} onClick={() => { void agent.retry(); }}><RotateCcw size={12} />Retry</button>}</div>}
-        <ComposerPrimitive.Root className="composer">
+        <ComposerPrimitive.Root className="composer"><RestartDraft />
           <ComposerPrimitive.Input className="composer-input" placeholder="Describe your idea…" aria-label="Chat with Saplingagent" rows={2} autoFocus />
           <div className="composer-bottom"><span className="input-hint">Enter to send · Shift + Enter for a new line</span>{agent.isRunning ? <ComposerPrimitive.Cancel className="send-button stop-button" aria-label="Stop response"><Square size={14} fill="currentColor" /></ComposerPrimitive.Cancel> : <ComposerPrimitive.Send className="send-button" aria-label="Send message"><ArrowUp size={19} /></ComposerPrimitive.Send>}</div>
         </ComposerPrimitive.Root>
