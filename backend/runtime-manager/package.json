@@ -1,0 +1,1 @@
+{"name":"saplingagent-runtime-manager","version":"0.2.0","private":true,"type":"module","engines":{"node":">=24.11"},"scripts":{"test":"node --test test/*.test.mjs"},"license":"PolyForm-Noncommercial-1.0.0"}

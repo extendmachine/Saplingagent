@@ -1,0 +1,9 @@
+# Runtime deployment
+
+Launch via `3-Start-Saplingagent.command` after project installation/login, or project-local Node `scripts/dev.mjs` for development. First adoption requires stopping the previous launcher and starting the new one once. The manager itself has no install step. Keep the launch window open.
+
+Configured loopback listeners: public gateway frontPort5173, internal Vite vitePort5174, control runtimeManagerPort4314, Agent4310, workspace4311, builder4312, optional PDF4313. Check free ports before starting; foreign owners are never killed. PDF is unnecessary on main and only launched when its selected source exists. New branch dependencies must be installed first. The gateway keeps the same browser origin during frontend/backend restart, streams SSE, and forwards Vite WebSocket upgrades.
+
+Select a branch or historical version, then Restart app. Restart backend retains Vite. Recovery URL: `/__saplingagent/runtime`; it remains available if frontend/Agent startup fails or an older UI lacks controls. Repair the selected source, dependency installation, configuration or login then retry. Changed ports or manager/launcher code require Control+C and running the Mac launcher again. Reloading the manager is not supported by its own button.
+
+Startup health budgets are 20 seconds per service and 120 seconds for authenticated Agent/MCP; they do not limit AI turns. Shutdown terminates only owned groups with TERM, four-second wait and bounded KILL fallback. Manual SIGKILL cannot guarantee cleanup. No automatic restoration of source or application data. Legacy direct backend callers are outside gateway accounting; finish their operations before restarting an older version. Current UI restores an unsent draft; older UIs may not. Persisted workspace sessions and credentials are retained.
