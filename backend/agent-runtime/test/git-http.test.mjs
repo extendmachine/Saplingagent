@@ -58,3 +58,17 @@ test('Git reservation blocks a concurrent mutation and new chat before body pars
   hold.end(body.slice(1)); assert.equal(await done, 200);
   assert.equal((await f.request('/api/git/commit', {})).status, 200);
 });
+
+test('runtime prepare requires internal token even for browser origins and refuses an unfinished Git body', async t => {
+  const f = await fixture(t);
+  const headers = { Origin:'http://127.0.0.1:5173', Authorization:'' };
+  assert.equal((await f.request('/internal/runtime/prepare',{},headers)).status,401);
+  const text=JSON.stringify({sha:f.initial,name:'held'});
+  let finish; const done=new Promise(resolve=>{finish=resolve});
+  const hold=http.request({host:'127.0.0.1',port:f.server.address().port,path:'/api/git/label',method:'POST',headers:{Authorization:'Bearer SYNTHETIC_TEST_TOKEN','Content-Length':Buffer.byteLength(text)}},res=>{res.resume();res.on('end',()=>finish(res.statusCode))});hold.on('error',()=>finish(500));t.after(()=>hold.destroy());hold.write(text.slice(0,1));
+  let response;for(let i=0;i<30;i++){response=await f.request('/internal/runtime/prepare',{});if(response.status===409)break;await f.request('/internal/runtime/release',{});await new Promise(resolve=>setTimeout(resolve,10))}
+  assert.equal(response.status,409);hold.end(text.slice(1));assert.equal(await done,200);
+  assert.equal((await f.request('/internal/runtime/prepare',{})).status,200);
+  assert.equal((await f.request('/api/git/label',{sha:f.initial,name:'blocked'})).status,503);
+  assert.equal((await f.request('/internal/runtime/release',{})).status,200);
+});
