@@ -113,3 +113,7 @@ Latest modification: 2026-10-09; Codex/root TASK014 restores the main single cha
 ## English release preparation — TASK-20261010-013 to 018
 
 2026-10-10 / Codex/root. English source/UI/docs/rules/Skills/installers are prepared sequentially from main 78ac3a7. 86 existing isolated checks, frontend build and synthetic browser checks pass. Project-owned source uses PolyForm Noncommercial; commercial permission and OpenAI commercial authentication are separate. Syntax/metadata, local links and source-package exclusions are checked; final package/frozen SHA and recipient-install evidence are recorded in the authoritative coordination index after creation. No main/testcode/release synchronization or external publication is claimed. Existing credentials/conversations and previous task records remain intact.
+
+## TASK-20261011-009 through 014 — Version-compatible restart candidate
+
+2026-10-11, Codex/root, detached .worktrees/branch-restart based on user-saved main07928eb. Runtime manager/gateway, Agent drain, frontend restart/draft/reconnect, workspace/builder drain, launcher/config/human docs implemented and self-checked with isolated tests and browser fixtures. No real inference/data/auth migration. Pending exact-version human test, main synchronization/push and first-adoption local launcher restart. Final test count and frozen SHA are recorded after freeze in .worktrees/coordination/{TODO,AI_TASKS}.md; main merge none. Other branch tips and independent canvas work preserved.

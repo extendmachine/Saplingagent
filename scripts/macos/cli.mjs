@@ -145,6 +145,11 @@ async function start(noOpen) {
     while (!ended && !interrupted && Date.now() < deadline) {
       if (!launched) { await delay(100); continue; }
       try {
+        const lifecycleResponse = await fetch(`http://127.0.0.1:${config.frontPort}/api/runtime/status`, { signal: AbortSignal.timeout(1500) });
+        if (!lifecycleResponse.ok) { await delay(300); continue; }
+        const lifecycle = await lifecycleResponse.json();
+        if (lifecycle.phase === 'failed' && !lifecycle.busy) break;
+        if (lifecycle.phase !== 'ready' || lifecycle.busy) { await delay(300); continue; }
         const response = await fetch(`http://127.0.0.1:${config.agentPort}/api/status`, { signal: AbortSignal.timeout(1500) });
         const status = await response.json();
         if (status.ready && status.authenticated && status.mcp?.ready) {
@@ -161,8 +166,7 @@ async function start(noOpen) {
       await delay(300);
     }
     if (!ready && !ended && !interrupted) {
-      stopRequested = true; child.kill('SIGTERM');
-      throw new Error('Model/authentication/MCP did not become ready within 120 seconds. Run 4-Doctor.command; these services have been stopped.');
+      console.error(`Model/authentication/MCP is not ready. Keep this window open, inspect local diagnostics and retry at http://127.0.0.1:${config.frontPort}/__saplingagent/runtime. Run 4-Doctor.command to check installation/login.`);
     }
     const result = await exit;
     if (result.code !== 0 && !interrupted) throw new Error(`Services stopped (exit code ${result.code}). Check for port, installation or authentication errors.`);

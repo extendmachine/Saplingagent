@@ -81,6 +81,16 @@ Keep the startup terminal open. Press **Control+C**to stop its services. To star
 bash 3-Start-Saplingagent.command --no-open
 ```
 
+## Switch versions and restart
+
+Use the top-right Versions control to select `main`, `testcode`, `release` or a historical commit. Pending source changes are saved locally first. Version names remain editable and do not rewrite commit hashes.
+
+After switching, click **Restart app** to load that version's frontend, backend, Codex App Server and MCP. The options menu also offers **Restart backend** (keeps the current frontend process) and **Runtime recovery**. Wait for running AI/file work to finish or stop it yourself; restart refuses busy work.
+
+The stable recovery page is [http://127.0.0.1:5173/__saplingagent/runtime](http://127.0.0.1:5173/__saplingagent/runtime), or your configured `frontPort`. It survives frontend/backend failure and works when an older version lacks the restart button. Repair the source/dependencies/login and retry there. Current UI recovers an unsent draft; older UIs may not. Conversations and login files remain in the application folder. No automatic resend or code rollback.
+
+On first upgrade to this launcher, stop the existing launch window with Control+C and run `3-Start-Saplingagent.command` again. The public gateway keeps port5173; Vite moves to internal port5174. Manager4314 controls Agent4310, workspace4311, builder4312 and optional PDF4313 when its source exists. If a branch adds dependencies, install them first. Manager/launcher source or port changes require a full launcher restart. Legacy direct service callers cannot be tracked by the gateway; finish their work before restarting old versions.
+
 ## Authentication and costs**The local App Server does not charge a separate server fee. Model usage requires your own authentication and available quota.**Saplingagent includes no developer account, shared API key or promise of free model access.
 
 | Route | Authentication and billing |
@@ -140,7 +150,7 @@ Public settings live in [config/runtime.json](config/runtime.json).
 | --- | --- | --- |
 | Preferred model | `gpt-6.1-sol` | Uses the actual App Server catalog; falls back to its default/first model if unavailable |
 | Reasoning effort | `medium` | Must be supported by the selected model |
-| Frontend / Agent / Workspace / Builder ports | `5173` / `4310` / `4311` / `4312` | Local loopback services |
+| Gateway / Vite / Manager / Agent / Workspace / Builder ports | `5173` / `5174` / `4314` / `4310` / `4311` / `4312` | Local loopback services; PDF `4313` only when source exists |
 | Permission mode | `full-access` | Codex `danger-full-access`, `approvalPolicy: never` |
 | Total turn deadline | `turnTimeoutMs: 0` | Disabled by default; explicit nonzero configuration enables a total deadline |
 | Inactivity reminder | `turnIdleWarningMs: 600000` | Warns after 10 minutes without effective progress; does not stop or resend the turn |
