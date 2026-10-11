@@ -9,7 +9,7 @@ import { confirmationContent } from './approval.mjs';
 import { toolFingerprint } from '../../contracts/agent-tools.mjs';
 import { permissions, threadPermissions, permissionConfigArgs, automaticApproval } from './permissions.mjs';
 import { createTurnProgress, turnTiming } from './turn-progress.mjs';
-import { commitGitVersion, GitVersionError, readGitVersion, switchGitBranch } from './git-versions.mjs';
+import { checkoutGitVersion, commitGitVersion, GitVersionError, nameGitVersion, readGitVersion, switchGitBranch } from './git-versions.mjs';
 
 const defaultRoot = fileURLToPath(new URL('../../', import.meta.url));
 const safeError = error => String(error?.message || 'Agent operation failed').replace(/Bearer\s+\S+|(?:sk-|eyJ)[\w.\-]{12,}/g, '[redacted]').slice(0, 800);
@@ -48,7 +48,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     if (!response.ok) throw new ApiError(value.error?.code || 'WORKSPACE_ERROR', value.error?.message || 'Local session service unavailable', response.status);
     return value;
   }
-  let rpc, startup, shutdown, closing = false, gitSwitching = false, lastStart = 0;
+  let rpc, startup, shutdown, closing = false, gitSwitching = false, pendingChats = 0, lastStart = 0;
   let status = { ready: false, authenticated: false, provider: 'Codex App Server', model: '', skills: [], mcp: { ready: false, tools: [] }, permissions };
   const active = new Map(), threads = new Map(), resumed = new Set(), subscribers = new Map(), approvals = new Map(), requestSessions = new Map(), dirtySessions = new Map();
   const currentRun = run => !run.finished && run.session && active.get(run.session.id) === run;
@@ -326,26 +326,21 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       }
       if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ready: true, service: 'agent-runtime', agentReady: status.ready && !startup });
       if (req.method === 'GET' && url.pathname === '/api/status') { if ((!rpc || rpc.closed) && !startup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...status, ready: status.ready && !startup }); }
-      if (req.method === 'GET' && url.pathname === '/api/git') return send(res, 200, { git: await readGitVersion(root) });
-      if (req.method === 'POST' && url.pathname === '/api/git/commit') {
+      if (req.method === 'GET' && url.pathname === '/api/git') return send(res, 200, { git: await readGitVersion(root, { limit: url.searchParams.has('limit') ? Number(url.searchParams.get('limit')) : 25 }) });
+      if (req.method === 'POST' && ['/api/git/commit', '/api/git/switch', '/api/git/checkout', '/api/git/label'].includes(url.pathname)) {
         if (gitSwitching) throw new ApiError('GIT_SWITCH_BUSY', 'Another Git operation is in progress', 409);
-        if (active.size) throw new ApiError('GIT_AGENT_BUSY', 'AI is still running. Wait or stop before saving a version', 409);
+        if (active.size || pendingChats || dirtySessions.size) throw new ApiError('GIT_AGENT_BUSY', 'AI work is running or not yet saved. Wait or stop before changing versions', 409);
+        // Reserve before reading the request body; no new chat may enter mid-switch.
         gitSwitching = true;
         try {
-          const gitState = await commitGitVersion(root);
-          if (gitState.savedCommit) await log('git_version_committed', { branch: gitState.branch, sha: gitState.savedCommit.shortSha });
-          return send(res, 200, { git: gitState });
-        } finally { gitSwitching = false; }
-      }
-      if (req.method === 'POST' && url.pathname === '/api/git/switch') {
-        if (gitSwitching) throw new ApiError('GIT_SWITCH_BUSY', 'Another version switch is in progress', 409);
-        if (active.size) throw new ApiError('GIT_AGENT_BUSY', 'AI is still running. Wait or stop before switching versions', 409);
-        const { branch } = await readBody(req);
-        gitSwitching = true;
-        try {
-          const gitState = await switchGitBranch(root, branch);
-          await log('git_branch_switched', { branch: gitState.branch, sha: gitState.head.shortSha });
-          return send(res, 200, { git: gitState, reloadRecommended: true });
+          const input = url.pathname === '/api/git/commit' ? {} : await readBody(req);
+          let gitState;
+          if (url.pathname === '/api/git/commit') gitState = await commitGitVersion(root);
+          else if (url.pathname === '/api/git/switch') gitState = await switchGitBranch(root, input.branch);
+          else if (url.pathname === '/api/git/checkout') gitState = await checkoutGitVersion(root, input.sha);
+          else gitState = await nameGitVersion(root, input.sha, input.name);
+          await log('git_version_operation', { operation: url.pathname.split('/').at(-1), branch: gitState.branch, sha: gitState.head.shortSha });
+          return send(res, 200, { git: gitState, ...(['/api/git/switch', '/api/git/checkout'].includes(url.pathname) ? { reloadRecommended: true } : {}) });
         } finally { gitSwitching = false; }
       }
       if (req.method === 'GET' && url.pathname === '/api/sessions') return send(res, 200, await ws('/sessions'));
@@ -376,6 +371,9 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         approvals.delete(approvalId); return send(res, 200, { ok: true });
       }
       if (req.method === 'POST' && url.pathname === '/api/chat') {
+        if (gitSwitching) throw new ApiError('GIT_SWITCH_BUSY', 'A version operation is in progress. Retry after it finishes', 409);
+        pendingChats += 1;
+        try {
         const input = await readBody(req);
         if (typeof input.text !== 'string' || !input.text.trim() || input.text.length > 32000) throw new ApiError('INVALID_TEXT', 'Enter a message of 1 to 32000 characters');
         const requestId = input.requestId || randomUUID(); if (!validId(requestId) || (input.sessionId && !validId(input.sessionId))) throw new ApiError('INVALID_ID', 'Invalid request or session ID');
@@ -438,6 +436,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         }
         finally { loaded(); }
         return;
+        } finally { pendingChats -= 1; }
       }
       throw new ApiError('NOT_FOUND', 'Endpoint does not exist', 404);
     } catch (error) {

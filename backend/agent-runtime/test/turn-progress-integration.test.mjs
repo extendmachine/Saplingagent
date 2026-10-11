@@ -242,3 +242,17 @@ for (const setup of ['thread/start', 'thread/resume', 'preferences']) for (const
     f.clock.advance(10000); await new Promise(resolve => setImmediate(resolve)); assert.equal(f.starts.length, 0); assert.equal(f.clock.pending, 0);
   } finally { await f.cleanup(); }
 });
+
+test('all Git mutations reject an active AI turn without interrupting it', async () => {
+  const f = await fixture();
+  try {
+    await f.chat('version-operation-busy');
+    for (const route of ['commit', 'switch', 'checkout', 'label']) {
+      const response = await f.request(`/api/git/${route}`, {});
+      assert.equal(response.status, 409);
+      assert.equal((await response.json()).error.code, 'GIT_AGENT_BUSY');
+    }
+    assert.equal(f.interrupts.length, 0);
+    await f.complete(f.starts[0]);
+  } finally { await f.cleanup(); }
+});
