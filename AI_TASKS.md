@@ -208,3 +208,7 @@ TASK015 recorded at that time: the authoritative index is located in the origina
 ## English release task snapshot
 
 TASK-20261010-013 through 018 / Codex/root / sequential detached candidate .worktrees/english-release based on main 78ac3a7. Project task 013 owns README, English public rules/distribution attachment, HTML guides, installers/packager, licensing and shared documentation. Service tasks 014/front, 015/agent-runtime, 016/mcp-runtime plus .agents/skills, 017/workspace and 018/app-builder have independent commits and handoff files. Scope excludes private runtime content and external publication. Implementation/self-checks completed; exact frozen SHA, source package and human acceptance remain authoritative in original project .worktrees/coordination. Existing TASK004/005 local coordination changes are preserved.
+
+## TASK-20261011-009 through 014 — Version-compatible restart candidate
+
+2026-10-11, Codex/root, detached .worktrees/branch-restart based on user-saved main07928eb. Runtime manager/gateway, Agent drain, frontend restart/draft/reconnect, workspace/builder drain, launcher/config/human docs implemented and self-checked with isolated tests and browser fixtures. No real inference/data/auth migration. Pending exact-version human test, main synchronization/push and first-adoption local launcher restart. Final test count and frozen SHA are recorded after freeze in .worktrees/coordination/{TODO,AI_TASKS}.md; main merge none. Other branch tips and independent canvas work preserved.

@@ -77,3 +77,16 @@ test('failed staging preserves a complete old installation and repairs stripped 
   assert.equal(await fs.access(path.join(root, '.runtime/macos-install.lock')).then(() => true, () => false), false);
   assert.equal((await fs.readdir(path.join(root, '.runtime'))).some(x => x.startsWith('codex-install-')), false);
 });
+
+test('failed managed startup keeps the recovery gateway alive until the user stops the Mac launcher', async t => {
+  const root = await fixture(t, { auth: 'saved' });
+  const net = await import('node:net'); const probe = net.createServer(); await new Promise(resolve => probe.listen(0, '127.0.0.1', resolve)); const port = probe.address().port; await new Promise(resolve => probe.close(resolve));
+  const file = path.join(root, 'config/runtime.json'), config = JSON.parse(await fs.readFile(file, 'utf8')); config.frontPort = port; await fs.writeFile(file, JSON.stringify(config));
+  await fs.writeFile(path.join(root, 'scripts/dev.mjs'), `import http from 'node:http';const server=http.createServer((req,res)=>{res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({phase:'failed',busy:false,error:{code:'FIXTURE_NOT_READY'}}))});server.listen(${port},'127.0.0.1',()=>console.log('Saplingagent: http://127.0.0.1:${port}/'));process.on('SIGTERM',()=>{server.close(()=>process.exit(0));server.closeAllConnections()});`);
+  const child = spawn(process.execPath,[path.join(root,'scripts/macos/cli.mjs'),'start','--no-open'],{cwd:root,env:{...process.env,SEED_ROOT:root},stdio:['ignore','pipe','pipe']});
+  let output = ''; child.stdout.on('data',chunk=>output+=chunk);child.stderr.on('data',chunk=>output+=chunk);t.after(()=>{if(child.exitCode===null)child.kill('SIGTERM')});
+  const exited = new Promise(resolve=>child.once('exit',code=>resolve(code)));
+  const end=Date.now()+5000;while(!output.includes('Keep this window open')&&child.exitCode===null&&Date.now()<end)await new Promise(resolve=>setTimeout(resolve,30));
+  assert.match(output,/Keep this window open/);assert.equal(child.exitCode,null);assert.equal((await fetch(`http://127.0.0.1:${port}/api/runtime/status`)).status,200);
+  child.kill('SIGTERM');assert.equal(await exited,0);
+});
