@@ -37,3 +37,6 @@ POST /api/git/checkout {sha} loads an existing historical commit into detached H
 Agent rejects mutations during active AI (GIT_AGENT_BUSY), concurrent Git mutation (GIT_SWITCH_BUSY), and starting a new chat during a Git mutation. Invalid/missing commit errors use GIT_INVALID_VERSION/GIT_VERSION_NOT_FOUND. Label I/O failure uses GIT_LABELS_INVALID/GIT_LABEL_BUSY or the existing internal error path.
 
 Saving versions excludes known private/runtime artifacts even if historical ignore rules are absent; GIT_PRIVATE_FILES (409) rejects already staged private paths. History is bounded to 500 commits per read; older versions can also be loaded by a full commit ID through the API.
+
+## Runtime restart preparation
+Authenticated POST `/internal/runtime/prepare` atomically returns `{prepared:true}` or 409 `RUNTIME_BUSY` while mutations/work are pending. Prepared services reject subsequent mutations with 503 `RUNTIME_RESTARTING`; POST `/internal/runtime/release` returns `{prepared:false}`. These internal endpoints require the project Bearer token even for same-origin callers. Health remains available. This changes process lifecycle only, not OS-user Full Access.

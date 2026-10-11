@@ -256,3 +256,21 @@ test('all Git mutations reject an active AI turn without interrupting it', async
     await f.complete(f.starts[0]);
   } finally { await f.cleanup(); }
 });
+
+test('runtime prepare refuses active AI, drains idle mutations and releases without interrupting or resending', async t => {
+  const f = await fixture(); t.after(() => f.cleanup());
+  const ch = await f.chat('restart-fixture');
+  let response = await f.request('/internal/runtime/prepare', {});
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).error.code, 'RUNTIME_BUSY');
+  assert.equal(f.interrupts.length, 0);
+  await f.complete(f.starts[0]);
+  response = await f.request('/internal/runtime/prepare', {});
+  assert.equal(response.status, 200);
+  assert.equal((await (await f.request('/api/status')).json()).ready, false);
+  response = await f.request('/api/chat', {sessionId: ch.sessionId, requestId:'blocked-restart-fixture',text:'blocked'});
+  assert.equal(response.status, 503);
+  assert.equal(f.starts.length, 1);
+  assert.equal((await f.request('/internal/runtime/release', {})).status, 200);
+  assert.equal((await (await f.request('/api/status')).json()).ready, true);
+});

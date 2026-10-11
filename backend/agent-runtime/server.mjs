@@ -1,3 +1,4 @@
+import { createDrainGate } from '../../contracts/runtime-drain.mjs';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -295,10 +296,18 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       if (header.length !== expected.length || !timingSafeEqual(header, expected)) throw new ApiError('UNAUTHORIZED', 'Local script operations require a service token', 401);
     }
   }
+  const drain = createDrainGate(() => active.size || pendingChats || gitSwitching || dirtySessions.size);
   const server = http.createServer(async (req, res) => {
+    let leave;
     try {
       if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
       browserAllowed(req); const url = new URL(req.url, 'http://127.0.0.1');
+      if (req.method === 'POST' && ['/internal/runtime/prepare', '/internal/runtime/release'].includes(url.pathname)) {
+        const given = Buffer.from(req.headers.authorization || ''), expected = Buffer.from(`Bearer ${token}`);
+        if (given.length !== expected.length || !timingSafeEqual(given, expected)) throw new ApiError('UNAUTHORIZED', 'Internal authentication required', 401);
+        return send(res, 200, url.pathname.endsWith('/prepare') ? drain.prepare() : drain.release());
+      }
+      if (req.method !== 'GET') leave = drain.enter();
       if (req.method === 'POST' && url.pathname === '/internal/register-task') {
         const header = Buffer.from(req.headers.authorization || ''), expected = Buffer.from(`Bearer ${token}`);
         if (header.length !== expected.length || !timingSafeEqual(header, expected)) throw new ApiError('UNAUTHORIZED', 'Internal authentication required', 401);
@@ -325,7 +334,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         return send(res, 200, { taskId: `RUN-${run.requestId}` });
       }
       if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ready: true, service: 'agent-runtime', agentReady: status.ready && !startup });
-      if (req.method === 'GET' && url.pathname === '/api/status') { if ((!rpc || rpc.closed) && !startup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...status, ready: status.ready && !startup }); }
+      if (req.method === 'GET' && url.pathname === '/api/status') { if ((!rpc || rpc.closed) && !startup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...status, ready: status.ready && !startup && !drain.prepared, restarting: drain.prepared, activeRuns: active.size + pendingChats }); }
       if (req.method === 'GET' && url.pathname === '/api/git') return send(res, 200, { git: await readGitVersion(root, { limit: url.searchParams.has('limit') ? Number(url.searchParams.get('limit')) : 25 }) });
       if (req.method === 'POST' && ['/api/git/commit', '/api/git/switch', '/api/git/checkout', '/api/git/label'].includes(url.pathname)) {
         if (gitSwitching) throw new ApiError('GIT_SWITCH_BUSY', 'Another Git operation is in progress', 409);
@@ -442,7 +451,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     } catch (error) {
       if (error instanceof GitVersionError) return send(res, error.status, { error: { code: error.code, message: safeError(error) } });
       send(res, error.status || 500, { error: { code: error.code || 'INTERNAL_ERROR', message: safeError(error) } });
-    }
+    } finally { leave?.(); }
   });
   server.requestTimeout = 0; server.headersTimeout = 10000;
   server.startAgent = start;
