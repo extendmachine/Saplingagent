@@ -12,6 +12,12 @@ Saplingagent combines a React interface with the official**Codex App Server**, p
 
 **macOS 13.5+ · Apple Silicon and Intel installers · Source available for noncommercial use**Commercial use requires separate written permission. See [LICENSE](LICENSE), [NOTICE](NOTICE) and the authentication limits below. Saplingagent is independent software and is not an official OpenAI product.
 
+## Folder ownership and conversation receipts
+
+The delivered application folder contains all Saplingagent-owned code, rules, Skills, configuration, documentation and launcher helpers. Dependencies install into that folder; declared model services remain external. Developing this product does not require editing another repository, global installation or external source code. Keep the complete folder together.
+
+Customer Full Access stays enabled. Rules recommend keeping normal application changes within the folder, while an explicit request can target external code accessible to the current OS user. This recommendation does not add a path blocker or sandbox. Every final assistant reply, including read-only conversation, is instructed to include the same eight-field completion-review receipt with actual changes, checks and pending items. Read-only replies do not create task records. Model compliance requires real conversation validation.
+
 ## Install, configure, start
 
 Get the complete application folder:
