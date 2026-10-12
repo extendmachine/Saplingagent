@@ -58,7 +58,7 @@ The scope of difference judgment and suspension uniformly complies with the "Dif
 3. The important decisions, scope, verification results and the next step of the modification task must be written into the task record and summarized by the coordinator; only read and review the output results according to the rules index, and do not write documents for memory requirements.
 4. Before continuing to modify, the run session should re-read `rules/README.md` and the authority `TODO.md` and `AI_TASKS.md` located in Rule 14 to prevent other AIs from updating the rules or task status.
 5. Before submitting, you must read the authority `AI_TASKS.md` again and check the Git status to confirm that it has not crossed the claim range of other tasks.
-6. All AI must use the specifications stipulated in `rules/README.md` to read the receipt and finish the review receipt, and must not replace the actual reading with chat memory.
+6. All AI must use rules/README.md for reading receipts and include its eight-field completion-review receipt in every final conversational reply, including read-only work. Read-only work remains unregistered and does not create files. Do not replace actual readings/checks with chat memory or fabricate receipt fields.
 7. The standard version, task number and applicable rules in the receipt must come from the current project file and must not be copied according to the reply of other AI.
 
 ## Special configuration for tools

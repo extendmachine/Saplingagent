@@ -53,6 +53,9 @@ The user's current explicit instructions take priority within the project. This 
 
 - Frontend source belongs in front/, backend services in backend/, human guides in docs/, and project Skills in .agents/skills/. services/ is an index, not a duplicate source tree. Services communicate through documented interfaces.
 - Each application owns its files, context and business data. New projects receive their own goal/task records rather than inheriting the creator project's history or approval records.
+- Saplingagent maintainer development modifies code only within this project folder, including its contained worktrees. A distributed seed contains all project-owned code, rules, MCP/Skills, configuration, documentation and launcher helpers in one complete folder, with no required sibling checkout, fixed developer path or external source symlink. Dependencies are installed locally; declared remote model services and macOS system tools remain external requirements.
+- Recommend customer application edits stay inside their own folder by default. A customer may explicitly request external code edits using current Full Access; this advice creates no code permission restriction, path allowlist, sandbox or new per-operation approval.
+- Every final conversational reply, including ordinary chat and read-only work, includes the existing eight-field completion-review receipt. Report actual modifications/checks and pending work without inventing task IDs, tests or success. Read-only conversations remain unregistered.
 - Carry rules, AI entry points, dependency declarations and startup instructions with the seed. Exclude private credentials, real logs and existing conversations from default source packages; data migration/export is explicit and separate.
 - Current installation support is macOS. Other operating systems, native apps and device hosts require separate implementation and validation. Model services and integrations remain declared runtime dependencies.
 - Keep main, testcode and release as the named branches. main is the shared reviewed baseline; synchronize other branches only when requested. Preserve history and follow the existing exact-version review process.
@@ -71,6 +74,6 @@ Cloud content upload/download, cross-platform installers, native distribution an
 3. A representative user request can change the local interface or backend with a verifiable, reloadable result. The delivered project remains modifiable.
 4. Context, source and business data remain organized and identifiable. Restart/source switching preserve actual data/login state according to documented behavior, without silently resending a task.
 5. User-created functionality can remain application-specific. Common seed changes have a stated reuse need and avoid unnecessary default complexity.
-6. Rules, dependencies, installation and modification instructions agree with the delivered package. Unsupported platforms/dependencies and unverified adaptation are clearly identified.
+6. Rules, dependencies, installation and modification instructions agree with the complete-folder delivery boundary and the every-turn completion-review receipt; Full Access remains unchanged. Unsupported platforms/dependencies and unverified adaptation are clearly identified.
 
 These criteria define the desired product. Actual implementation, automated checks, human acceptance and branch synchronization are recorded separately in the authoritative TODO.md and AI_TASKS.md.

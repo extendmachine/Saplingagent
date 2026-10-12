@@ -4,7 +4,7 @@
 
 Before development, modification, commits, tests, deployment or documentation work, read `rules/README.md` in full and follow its task routing.
 
-Before the first substantive modification, provide the rules-reading receipt defined there. Before finishing or committing, provide its completion-review receipt. Receipts report results; they do not request approval. Read-only tasks, minimum registration and missing-file initialization follow `rules/README.md`.
+Before the first substantive modification, provide the rules-reading receipt defined there. Before every final conversational reply, including ordinary chat and read-only review, and before committing, provide its eight-field completion-review receipt. Receipts report results; they do not request approval. Read-only tasks stay unregistered; minimum registration and missing-file initialization follow `rules/README.md`.
 
 Also read:
 

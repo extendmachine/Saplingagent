@@ -90,3 +90,7 @@ project-root/
 ```
 
 AI must delete the inapplicable items or clearly state "not applicable", and must not keep unprocessed placeholders.
+
+## Saplingagent customer scope
+
+For this project, rule18 distinguishes maintainer development/delivery inside the project folder from a customer's explicit request to work on external code. The default isolation guidance is not a technical path permission restriction; keep Full Access and follow the actual user-authorized scope.
