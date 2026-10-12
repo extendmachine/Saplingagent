@@ -2,7 +2,7 @@
 
 - Contents: backend/workspace/, TASK-20261009-007, Codex/workspace.
 - Status: Implementation and isolation self-examination are completed, and the real joint adjustment is summarized by TASK-005; non-Git, no branch or submission.
-- Responsibilities: local session, Codex threadId, message, running status, request to reweight the ledger and long-term preferences with clear evidence. Used by agent/MCP through internal HTTP.
+- Responsibilities: local session, engine thread/session ID, immutable engine/provider/model binding, message, running status, request to reweight the ledger and long-term preferences with clear evidence. Used by agent/MCP through internal HTTP. Legacy sessions without selection fields normalize to Codex without rewriting their content on read.
 - It is not responsible for model calls, code generation, execution tools or cloud sharing, and does not automatically take temporary requirements as preferences.
 
 ## Structure and operation
