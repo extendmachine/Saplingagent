@@ -11,4 +11,6 @@ While preparing/restarting, the gateway rejects new ordinary mutations. Outstand
 
 The current checkout determines service entrypoints on every restart. PDF is optional and launched only if its source exists. Changed port assignments or manager/launcher source require closing the launch window and running the Mac launcher again. Dependencies newly introduced by a branch must be installed with its installer before restarting. Older frontend versions may not implement draft restoration; persisted sessions and project credentials remain on disk.
 
+`openCodePort` defaults to 4315 and is reserved as a distinct loopback port. OpenCode remains an Agent-owned child process, so backend/all restart and Agent shutdown terminate only that owned process group. The manager passes the selected port to Agent and does not expose OpenCode directly through the public gateway.
+
 Only manager-owned child process groups are stopped. Failed startup remains observable and retryable through the gateway, including frontend failure. Same configured loopback Host/Origin rules apply to control and proxy traffic; script mutations require Bearer authentication. No CORS or browser token exposure. Responses/logs omit credentials, conversation content and raw child diagnostics. Lifecycle deadlines bound startup/shutdown, not AI turns.

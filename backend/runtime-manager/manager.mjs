@@ -39,7 +39,7 @@ export class RuntimeManager {
   }
   launch(definition, config) {
     if (this.closed) throw failure('MANAGER_STOPPED', 'Runtime manager is stopping.');
-    const env = { ...process.env, SEED_ROOT: this.root, SEED_RUNTIME_MANAGER_PORT: String(config.runtimeManagerPort), SEED_AGENT_PORT: String(config.agentPort), SEED_WORKSPACE_PORT: String(config.workspacePort), SEED_BUILDER_PORT: String(config.builderPort), SEED_PDF_EDITOR_PORT: String(config.pdfEditorPort), ...definition.env };
+    const env = { ...process.env, SEED_ROOT: this.root, SEED_RUNTIME_MANAGER_PORT: String(config.runtimeManagerPort), SEED_AGENT_PORT: String(config.agentPort), SEED_WORKSPACE_PORT: String(config.workspacePort), SEED_BUILDER_PORT: String(config.builderPort), SEED_PDF_EDITOR_PORT: String(config.pdfEditorPort), SEED_OPENCODE_PORT: String(config.openCodePort), ...definition.env };
     const child = spawn(process.execPath, [path.join(this.root, definition.file), ...(definition.args || [])], { cwd: this.root, env, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
     this.children.set(definition.name, child);
     child.stdout.on('data', chunk => { if (this.output) process.stdout.write(`[${definition.name}] ${chunk}`); });
@@ -90,8 +90,8 @@ export class RuntimeManager {
     let config;
     try { config = JSON.parse(await fs.readFile(path.join(this.root, 'config/runtime.json'), 'utf8')); }
     catch { throw failure('INVALID_CONFIG', 'Runtime configuration could not be read. Repair config/runtime.json and retry.'); }
-    const ports = ['frontPort','agentPort','workspacePort','builderPort','pdfEditorPort','runtimeManagerPort','vitePort'];
-    config.vitePort ??= 5174; config.pdfEditorPort ??= 4313; config.runtimeManagerPort ??= 4314;
+    const ports = ['frontPort','agentPort','workspacePort','builderPort','pdfEditorPort','runtimeManagerPort','vitePort','openCodePort'];
+    config.vitePort ??= 5174; config.pdfEditorPort ??= 4313; config.runtimeManagerPort ??= 4314; config.openCodePort ??= 4315;
     if (ports.some(key => !Number.isInteger(config[key]) || config[key] < 1024 || config[key] > 65535) || new Set(ports.map(key => config[key])).size !== ports.length) throw failure('INVALID_CONFIG', 'Service ports must be distinct integers from 1024 to 65535.');
     if (this.config && ports.some(key => config[key] !== this.config[key])) throw failure('LAUNCHER_RESTART_REQUIRED', 'Service ports changed. Restart with the Mac launcher.');
     return config;
