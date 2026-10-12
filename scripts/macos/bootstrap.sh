@@ -23,11 +23,14 @@ if [ "$SEED_OS_MAJOR" -lt 13 ] || { [ "$SEED_OS_MAJOR" -eq 13 ] && [ "$SEED_OS_M
   exit 1
 fi
 SEED_MAC_ARCH="$(/usr/bin/uname -m)"
+# Detect Apple Silicon even when the terminal is running under Rosetta.
+if [ "$(/usr/sbin/sysctl -n hw.optional.arm64 2>/dev/null || true)" = "1" ]; then SEED_MAC_ARCH="arm64"; fi
 case "${SEED_MAC_ARCH}" in
   arm64) ;;
   x86_64) SEED_MAC_ARCH="x64" ;;
   *) say "Unsupported Mac architecture:${SEED_MAC_ARCH}" "不支持的 Mac 架构：${SEED_MAC_ARCH}" >&2; exit 1 ;;
 esac
+say "Detected device: macOS ${SEED_OS_VERSION}, ${SEED_MAC_ARCH}. Selecting matching project runtime." "检测到设备：macOS ${SEED_OS_VERSION}，${SEED_MAC_ARCH}。自动选择对应项目运行环境。"
 SEED_NODE_VERSION="$(/usr/bin/plutil -extract nodeVersion raw -o - "$SEED_PROJECT_DIR/config/macos.json")"
 if ! [[ "${SEED_NODE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   say "Invalid Node version in config/macos.json." "config/macos.json 中的 Node 版本无效。" >&2
@@ -36,7 +39,7 @@ fi
 SEED_NODE_DIR="$SEED_PROJECT_DIR/.runtime/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}"
 SEED_NODE_BIN="$SEED_NODE_DIR/bin/node"
 
-if [ ! -x "$SEED_NODE_BIN" ] || [ "$("$SEED_NODE_BIN" --version)" != "v${SEED_NODE_VERSION}" ]; then
+if [ ! -x "$SEED_NODE_BIN" ] || [ "$("$SEED_NODE_BIN" --version)" != "v${SEED_NODE_VERSION}" ] || [ "$("$SEED_NODE_BIN" -p 'process.arch')" != "$SEED_MAC_ARCH" ]; then
   if [ "$1" != "install" ]; then
     say "Project-local Node is not installed or has a different version. Open Saplingagent.sh and choose Install / update first." "项目内 Node 未安装或版本不符。请运行 bash Saplingagent.sh，先选择安装 / 更新。" >&2
     exit 1
@@ -63,6 +66,10 @@ if [ ! -x "$SEED_NODE_BIN" ] || [ "$("$SEED_NODE_BIN" --version)" != "v${SEED_NO
   (cd "$SEED_BOOTSTRAP_STAGE" && /usr/bin/shasum -a 256 -c checksum.txt)
   /usr/bin/tar -xzf "$SEED_BOOTSTRAP_STAGE/$SEED_NODE_ARCHIVE" -C "$SEED_BOOTSTRAP_STAGE"
   "$SEED_BOOTSTRAP_STAGE/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}/bin/node" --version
+  if [ "$("$SEED_BOOTSTRAP_STAGE/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}/bin/node" -p 'process.arch')" != "$SEED_MAC_ARCH" ]; then
+    say 'Downloaded Node architecture does not match this device.' '下载的 Node 架构与当前设备不匹配。' >&2
+    exit 1
+  fi
   # Keep the existing runtime until the replacement has downloaded and verified.
   if [ -e "$SEED_NODE_DIR" ]; then
     mv "$SEED_NODE_DIR" "$SEED_PROJECT_DIR/.runtime/node-replaced-$(date +%s)-$$"

@@ -34,20 +34,44 @@ function Choose-Language {
         }
     }
 }
+function Resolve-WindowsArchitecture([string]$NativeArchitecture, [string]$WowArchitecture, [string]$ProcessArchitecture) {
+    $detected = if ($NativeArchitecture) { $NativeArchitecture } elseif ($WowArchitecture) { $WowArchitecture } else { $ProcessArchitecture }
+    switch ($detected.ToUpperInvariant()) {
+        { $_ -eq 'AMD64' -or $_ -eq 'X64' } { return 'x64' }
+        'ARM64' { return 'arm64' }
+        default { throw "Unsupported device architecture: $detected. A 64-bit Windows x64 or ARM64 system is required." }
+    }
+}
+function Get-WindowsDevice {
+    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { throw 'Detected a non-Windows system. On macOS run bash Saplingagent.sh / 检测到非 Windows 系统，macOS 请运行 bash Saplingagent.sh。' }
+    # Registry build avoids compatibility-manifest OS version emulation.
+    $windows = Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+    $build = [int]$windows.CurrentBuildNumber
+    if ($build -lt 17763) { throw 'Windows 10 version 1809 or later is required. Update Windows before installation / 请先更新到 Windows 10 1809 或更新版本。' }
+    # Native OS architecture wins over an emulated/32-bit terminal's architecture.
+    $native = $null
+    try { $native = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString() } catch {}
+    if (!$native) { $native = [Environment]::GetEnvironmentVariable('PROCESSOR_ARCHITECTURE', 'Machine') }
+    $architecture = Resolve-WindowsArchitecture $native $env:PROCESSOR_ARCHITEW6432 $env:PROCESSOR_ARCHITECTURE
+    return @{ Platform = 'Windows'; Architecture = $architecture; Version = "10.0.$build" }
+}
 function Ensure-Node([bool]$Install) {
-    if ($env:OS -ne 'Windows_NT') { throw 'This installer requires native Windows / 此安装入口需要原生 Windows。' }
-    $architecture = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
-    if ($architecture -ne 'AMD64') { throw 'This release targets Windows x64 (Intel/AMD), not ARM or 32-bit Windows.' }
+    $device = Get-WindowsDevice
+    $architecture = $device.Architecture
+    Say ("Detected device: Windows {0}, {1}. Selecting matching project runtime." -f $device.Version, $architecture) ("检测到设备：Windows {0}，{1}。自动选择对应项目运行环境。" -f $device.Version, $architecture)
     $settings = Get-Content -LiteralPath (Join-Path $SaplingRoot 'config/windows.json') -Raw | ConvertFrom-Json
-    if ($settings.nodeVersion -notmatch '^\d+\.\d+\.\d+$' -or $settings.nodeSha256 -notmatch '^[a-f0-9]{64}$') { throw 'Invalid Windows runtime configuration.' }
+    $expectedHash = $settings.nodeSha256.$architecture
+    if ($settings.nodeVersion -notmatch '^\d+\.\d+\.\d+$' -or $expectedHash -notmatch '^[a-f0-9]{64}$') { throw 'Invalid Windows runtime configuration.' }
     $runtime = Join-Path $SaplingRoot '.runtime'
-    $folderName = "node-v$($settings.nodeVersion)-win-x64"
+    $folderName = "node-v$($settings.nodeVersion)-win-$architecture"
     $target = Join-Path $runtime $folderName
     $node = Join-Path $target 'node.exe'
     if (Test-Path -LiteralPath $node) {
         $version = & $node --version
-        if ($LASTEXITCODE -eq 0 -and $version -eq "v$($settings.nodeVersion)") { return $node }
-        throw 'Project Node is damaged. Stop the app, remove only its .runtime/node-v*-win-x64 folder, then install again.'
+        $versionPassed = $LASTEXITCODE -eq 0 -and $version -eq "v$($settings.nodeVersion)"
+        $nodeArchitecture = & $node -p 'process.arch'
+        if ($versionPassed -and $LASTEXITCODE -eq 0 -and $nodeArchitecture -eq $architecture) { return $node }
+        throw 'Project Node is damaged. Stop the app, remove only its .runtime/node-v*-win-<detected-architecture> folder, then install again.'
     }
     if (!$Install) { throw 'Install first / 请先选择安装。No runtime will be downloaded by this action.' }
     New-Item -ItemType Directory -Path $runtime -Force | Out-Null
@@ -63,11 +87,13 @@ function Ensure-Node([bool]$Install) {
         Say 'Downloading project-local Node from nodejs.org...' '正在从 nodejs.org 下载项目内 Node…'
         [Net.ServicePointManager]::SecurityProtocol = $oldTls -bor [Net.SecurityProtocolType]::Tls12
         Invoke-WebRequest -UseBasicParsing -Uri "https://nodejs.org/dist/v$($settings.nodeVersion)/$folderName.zip" -OutFile $archive
-        if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $settings.nodeSha256) { throw 'Node SHA-256 mismatch. Installation stopped.' }
+        if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedHash) { throw 'Node SHA-256 mismatch. Installation stopped.' }
         Expand-Archive -LiteralPath $archive -DestinationPath $stage
         $staged = Join-Path $stage $folderName
         $version = & (Join-Path $staged 'node.exe') --version
         if ($LASTEXITCODE -ne 0 -or $version -ne "v$($settings.nodeVersion)") { throw 'Downloaded Node cannot run on this computer.' }
+        $nodeArchitecture = & (Join-Path $staged 'node.exe') -p 'process.arch'
+        if ($LASTEXITCODE -ne 0 -or $nodeArchitecture -ne $architecture) { throw 'Downloaded Node architecture does not match this device.' }
         Move-Item -LiteralPath $staged -Destination $target
         return $node
     } finally {

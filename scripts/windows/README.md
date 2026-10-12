@@ -1,6 +1,6 @@
 # Native Windows source launcher
 
-TASK-20261011-028 / Codex/root, 2026-10-11. User-selected target: Windows10 x64 Intel/AMD; updated Windows10 (19045 recommended), PowerShell5.1+, or Windows11 x64. ARM/32-bit Windows not implemented. Root Saplingagent.ps1 is the single bilingual Windows entry; macOS keeps Saplingagent.sh. Both use scripts/launcher/cli.mjs; scripts/macos/cli.mjs is a compatibility wrapper.
+TASK-20261011-028 / Codex/root, 2026-10-11. User-selected target: Windows10 x64 Intel/AMD; updated Windows10 (19045 recommended), PowerShell5.1+, or Windows11 x64. Native x64/ARM64 selected automatically; 32-bit Windows not implemented. Root Saplingagent.ps1 is the single bilingual Windows entry; macOS keeps Saplingagent.sh. Both use scripts/launcher/cli.mjs; scripts/macos/cli.mjs is a compatibility wrapper.
 
 Node24.21.0 ZIP from https://nodejs.org/dist/v24.21.0/node-v24.21.0-win-x64.zip is pinned to SHA256158f7685b44de51f6c0df1d153526cbcd3e1bc739a8dfc607721cef75de9e541 in config/windows.json, verified against https://nodejs.org/dist/v24.21.0/SHASUMS256.txt on2026-10-11. Stage/exclusive lock/version check/rename prevents incomplete Node success. Install only downloads; doctor/login/start never bootstrap implicitly. Business installer has its own lock/signature marker and staged Codex replacement, then locked npm ci. npm runs through this Node's npm-cli.js, native executable Codex/OpenCode avoid .cmd spawning. Windows CLI env points to local credentials; no global account import, PATH/registry/permanent policy mutation.
 
@@ -18,3 +18,11 @@ Official sources checked2026-10-11 (public unless model auth noted):
 Self-checks use synthetic processes/no credentials or paid inference. PowerShell7.6.6 portable Mac parser/menu validation is not WinPS5.1/Windows10 acceptance. Native Windows test script skips OS integration on Mac; installed runtime --version checks require explicit SAPLING_WINDOWS_INSTALLED_TEST=1. Test source SHA/main status is authoritative in coordination records; do not treat this README as human approval.
 
 - Exact Node24.21 source https://raw.githubusercontent.com/nodejs/node/v24.21.0/lib/child_process.js — checked2026-10-11, cmd /d /s /c outer quoting and windowsVerbatimArguments; follows native Node shell argument semantics. Public, no login.
+
+## Automatic device selection (TASK032, 2026-10-11)
+
+Get-WindowsDevice verifies Win32NT and prefers RuntimeInformation.OSArchitecture; if unavailable, the native machine PROCESSOR_ARCHITECTURE (read-only) and WOW64/process environment are fallbacks. Resolve-WindowsArchitecture maps AMD64/X64→x64 and ARM64→arm64; others fail before downloads. Matching ZIP/hash are selected from config/windows.json. Native Node then chooses the installed Codex/OpenCode optional package through process.arch. ARM64 Node archive official SHA2568779b1bde1d39f8d420e3b57aa657b39891af434d3de44a919044cec06785921 was verified at the same checksum URL on2026-10-11. Mac checks hw.optional.arm64 before uname to select native Apple Silicon from Rosetta; both bootstrap and Codex wrapper use this decision. No device inventory is persisted or uploaded.
+
+Exact Node platform source https://raw.githubusercontent.com/nodejs/node/v24.21.0/BUILDING.md lists Windows x64 and arm64 Windows10+ support tiers; exact npm0.146.1/1.19.0 metadata confirms both Windows native binaries. Public sources checked2026-10-11, no login for metadata. Native Windows/hardware/model acceptance remains unverified, despite user's explicit instruction to adopt and push main now.
+
+Windows build is read locally from HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion and must be17763+ (Windows10 version1809+) before downloads, avoiding .NET compatibility-manifest version emulation. Registry is read only; native OS build/architecture is shown in the terminal, not persisted or uploaded.

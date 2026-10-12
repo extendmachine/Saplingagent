@@ -10,7 +10,7 @@ Saplingagent is a minimal software seed package that you can modify yourself, di
 
 Saplingagent combines a React interface with the official**Codex App Server**, project MCP tools and reusable Skills. Application code, conversations, preferences, rules and runtime stay in the application folder. The current page includes streaming chat, Markdown with GFM tables, and Git version controls; further features are added through conversation.
 
-**macOS 13.5+ · Windows 10/11 x64 · Source available for noncommercial use**
+**macOS 13.5+ · Windows 10/11 x64 and ARM64 · Source available for noncommercial use**
 
 Commercial use requires separate written permission. See [LICENSE](LICENSE), [NOTICE](NOTICE) and the authentication limits below. Saplingagent is independent software and is not an official OpenAI product.
 
@@ -33,13 +33,13 @@ Or download and extract a ZIP from the chosen branch. A private repository requi
 
 Open Terminal in the application folder and run:
 
-On **Windows 10/11 x64**, extract the whole folder, open PowerShell in that folder and run:
+On **Windows 10/11 x64 and ARM64**, extract the whole folder, open PowerShell in that folder and run:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1
 ```
 
-Choose English or Chinese, then **Install / update → Configure AI → Start app**. `-Lang zh` opens Chinese directly. ExecutionPolicy Bypass applies only to that new PowerShell process; the installer does not change machine policy, registry or global PATH. It installs official SHA-256-checked Node24.21.0 and pinned Codex0.146.1 plus locked OpenCode1.19.0 inside this folder. No WSL, global Node or Codex desktop app is required. Use an updated Windows10 x64 system with PowerShell5.1; Windows11 x64 is also a target. ARM/32-bit Windows is not supported by this installer. See [Windows guide](docs/windows-install.html) / [中文 Windows 安装说明](docs/windows-install.zh.html).
+Choose English or Chinese, then **Install / update → Configure AI → Start app**. `-Lang zh` opens Chinese directly. ExecutionPolicy Bypass applies only to that new PowerShell process; the installer does not change machine policy, registry or global PATH. It installs official SHA-256-checked Node24.21.0 and pinned Codex0.146.1 plus locked OpenCode1.19.0 inside this folder. No WSL, global Node or Codex desktop app is required. Use Windows10 version1809 or newer (fully updated recommended), x64/ARM64 with PowerShell5.1; Windows11 x64/ARM64 is also a target. 32-bit Windows is unsupported. The installer detects the native OS/CPU architecture automatically, including ARM64 when PowerShell is emulated; you do not choose x64 or ARM64 manually. See [Windows guide](docs/windows-install.html) / [中文 Windows 安装说明](docs/windows-install.zh.html).
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1 -Lang zh -Action install -Repair
@@ -214,7 +214,7 @@ Stop services before moving the application. Move the whole folder. On the same 
 ```text
 Saplingagent/
 ├── Saplingagent.sh          # macOS English / Chinese menu
-├── Saplingagent.ps1         # Windows x64 English / Chinese menu
+├── Saplingagent.ps1         # Windows x64/ARM64 English / Chinese menu
 ├── front/                     # React chat and application features
 ├── backend/
 │   ├── agent-runtime/         # App Server client, turns, SSE, Git API
@@ -293,6 +293,10 @@ To produce a clean Windows source ZIP from a committed checkout:
 <project-node> scripts/package-windows.mjs HEAD .cache/releases
 ```
 
-Use .runtime/node-v24.21.0-win-x64/node.exe on Windows or the project-local Mac Node. The packager runs on either platform, exports committed source, initializes recipient goal/task records, includes all rules and both platform launchers, and excludes credentials, real sessions/logs/dependencies and Git. A single .ps1 file is insufficient; distribute the complete folder. Native Windows checks after installation: `.runtime\node-v24.21.0-win-x64\node.exe --test scripts/test/windows.test.mjs`. Set SAPLING_WINDOWS_INSTALLED_TEST=1 only to add pinned-binary --version checks; no login or model request is sent by these tests.
+Use .runtime/node-v24.21.0-win-<detected-architecture>/node.exe on Windows or the project-local Mac Node. The packager runs on either platform, exports committed source, initializes recipient goal/task records, includes all rules and both platform launchers, and excludes credentials, real sessions/logs/dependencies and Git. A single .ps1 file is insufficient; distribute the complete folder. Native Windows checks after installation: `.runtime\node-v24.21.0-win-x64\node.exe --test scripts/test/windows.test.mjs`. Set SAPLING_WINDOWS_INSTALLED_TEST=1 only to add pinned-binary --version checks; no login or model request is sent by these tests.
 
 If a canceled install leaves .runtime/windows-node.lock or .runtime/windows-install.lock, first confirm that this application's installer has stopped. Remove only the stale lock, then retry Install / update. The installer never treats a partial install as complete. Proxy/firewall/execution-policy constraints imposed by the computer's administrator may require their assistance; this app does not bypass organizational policy.
+
+## Automatic device selection
+
+Use the operating system's built-in launcher: Bash Saplingagent.sh on macOS, Windows PowerShell Saplingagent.ps1 on Windows. Each verifies its OS and automatically selects the architecture; no CPU menu or manual dependency download is required. macOS selects Intel x64 or Apple Silicon arm64 (also from a Rosetta terminal). Windows selects x64 or ARM64 using native OS architecture before emulated-terminal fallback. Installation prints the detected device, validates the matching official Node checksum, and installs the pinned CLI binaries for the selected Node architecture. Unsupported OS/32-bit CPU reports an error before downloads. Dependency installs remain in this folder; the device is detected again when moved to another computer, and Install / update must run there. Runtime folders can coexist, but service node_modules and credentials are not a portable preinstalled environment. Native Windows10/11 x64/ARM64 login/model/restart/hardware checks still require the corresponding system. This main publication was explicitly requested by the user; it is not a claim of native Windows human acceptance.
