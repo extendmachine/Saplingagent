@@ -408,6 +408,6 @@ export function useSeedRuntime() {
 
   const selectedEngine = engines.find(engine => engine.id === selection.engine);
   const engineReady = selection.engine === 'codex' ? Boolean(status?.codexReady ?? status?.ready) : Boolean(selectedEngine?.ready && selectedEngine.authenticated && selection.providerId && selection.modelId);
-  const engineError = selection.engine === 'opencode' && !selectedEngine?.authenticated ? 'Connect an OpenCode provider before starting this conversation' : selectedEngine?.error || '';
+  const engineError = selection.engine !== 'codex' && !selectedEngine?.authenticated ? 'Configure this agent provider in AI setup before starting this conversation' : selectedEngine?.error || '';
   return { messages, status, engines, selection, setSelection, engineReady, engineError, canSelectEngine: !session.current && !isRunning, isLoading, isRunning, activity, tools, approvals, approvalBusy, error, retryable, onNew, onCancel, startNew, retry, respondApproval, refreshStatus, refreshEngines };
 }

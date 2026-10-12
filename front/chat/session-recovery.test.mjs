@@ -348,3 +348,8 @@ test('new chat uses saved default scheme while manual selection and restored leg
 test('aggregate OpenCode readiness cannot enable sending on an unavailable Codex engine',async t=>{
  const h=await harness({runtimeStatus:{ready:true,authenticated:true,codexReady:false,defaultEngine:'opencode'},route:()=>undefined});t.after(()=>h.close());assert.equal(h.current.selection.engine,'codex');assert.equal(h.current.engineReady,false);
 });
+
+test('Claude default is ready without Codex login and restored conversation retains Claude binding',async t=>{
+ const selection={engine:'claude',providerId:'sapling-synthetic',modelId:'synthetic-claude'};const catalog={defaultSelection:selection,engines:[{id:'claude',ready:true,authenticated:true,providers:[{id:selection.providerId,models:[{id:selection.modelId}]}]}]};
+ const h=await harness({engineCatalog:catalog,runtimeStatus:{ready:true,codexReady:false},savedId:'claude-saved',route:r=>r.url==='/api/sessions/claude-saved'?json({session:{...session('claude-saved'),...selection}}):undefined});t.after(()=>h.close());assert.deepEqual({...h.current.selection},selection);assert.equal(h.current.engineReady,true);assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0);
+});

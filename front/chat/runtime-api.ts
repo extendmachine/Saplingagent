@@ -1,11 +1,11 @@
 export type Message = { id: string; role: 'user' | 'assistant'; text: string; status?: string; requestId?: string };
 export type Approval = { id: string; kind: string; description: string; choices?: (string | { label?: string; value?: string; decision?: string })[] };
-export type EngineSelection = { engine: 'codex' | 'opencode'; providerId?: string | null; modelId?: string | null };
+export type EngineSelection = { engine: 'codex' | 'opencode' | 'claude'; providerId?: string | null; modelId?: string | null };
 export type ModelOption = { id: string; label: string };
 export type ProviderOption = { id: string; label: string; defaultModelId?: string | null; models: ModelOption[] };
-export type EngineOption = { id: 'codex' | 'opencode'; label: string; ready: boolean; authenticated: boolean; model?: string; providers?: ProviderOption[]; error?: string | null };
+export type EngineOption = { id: 'codex' | 'opencode' | 'claude'; label: string; ready: boolean; authenticated: boolean; model?: string; providers?: ProviderOption[]; error?: string | null };
 export type Session = EngineSelection & { id: string; title?: string; messages: Message[]; running?: boolean; activeRequestId?: string | null; pendingApprovals?: Approval[] };
-export type RuntimeStatus = { ready: boolean; codexReady?: boolean; defaultEngine?: 'codex' | 'opencode'; authenticated: boolean; provider?: string; model?: string; skills?: { name: string; description: string }[]; mcp?: { ready: boolean; tools?: { name: string; description: string }[] }; error?: string };
+export type RuntimeStatus = { ready: boolean; codexReady?: boolean; defaultEngine?: 'codex' | 'opencode' | 'claude'; authenticated: boolean; provider?: string; model?: string; skills?: { name: string; description: string }[]; mcp?: { ready: boolean; tools?: { name: string; description: string }[] }; error?: string };
 export type Request = EngineSelection & { requestId: string; sessionId?: string; text: string };
 
 export const SESSION_KEY = 'seedagent.active-session.v1';
