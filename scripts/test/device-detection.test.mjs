@@ -50,3 +50,16 @@ test('actual PowerShell resolver prefers native OS over emulation, handles WOW64
   const result = spawnSync(powershell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', program], { encoding: 'utf8', env: { ...process.env, SAPLING_TEST_POWERSHELL: embedded }, timeout: 10000 });
   assert.equal(result.status, 0, result.stderr); assert.match(result.stdout, /Native architecture cases passed/);
 });
+
+test('actual PowerShell bootstrap reports its startup boundary before a device check fails', { skip: !powershell || process.platform === 'win32' }, async () => {
+  const helper = await fs.readFile(path.join(root, 'scripts/windows/bootstrap.sh'), 'utf8');
+  const embedded = helper.split("<<'SAPLING_POWERSHELL'\n")[1].split('\nSAPLING_POWERSHELL')[0];
+  const result = spawnSync(powershell, ['-NoLogo', '-NoProfile', '-EncodedCommand', Buffer.from(embedded, 'utf16le').toString('base64')], {
+    encoding: 'utf8', timeout: 10000,
+    env: { ...process.env, SAPLING_BOOTSTRAP_ROOT: root, SAPLING_BOOTSTRAP_ACTION: 'doctor', SAPLING_LANG: 'zh' },
+  });
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stdout, /Windows 安装器已启动/);
+  assert.match(result.stdout, /non-Windows system/);
+  assert.doesNotMatch(result.stdout, /Downloading|正在从 nodejs/);
+});

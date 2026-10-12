@@ -30,6 +30,7 @@ $SaplingLanguage = $env:SAPLING_LANG
 function Say([string]$English, [string]$Chinese) {
     if ($script:SaplingLanguage -eq 'zh') { Write-Host $Chinese } else { Write-Host $English }
 }
+Say 'Windows bootstrap ready. Checking this device...' 'Windows 安装器已启动，正在检查设备…'
 function Resolve-WindowsArchitecture([string]$NativeArchitecture, [string]$WowArchitecture, [string]$ProcessArchitecture) {
     $detected = if ($NativeArchitecture) { $NativeArchitecture } elseif ($WowArchitecture) { $WowArchitecture } else { $ProcessArchitecture }
     switch ($detected.ToUpperInvariant()) {
@@ -148,7 +149,14 @@ SAPLING_POWERSHELL
 SAPLING_WINDOWS_ENCODED="$(printf '%s' "$SAPLING_WINDOWS_PROGRAM" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\r\n')"
 export MSYS2_ARG_CONV_EXCL='*'
 export MSYS2_ENV_CONV_EXCL='SAPLING_BOOTSTRAP_ROOT'
-if [ -t 0 ] && [ -t 1 ] && command -v winpty >/dev/null 2>&1; then
-  exec winpty powershell.exe -NoLogo -NoProfile -EncodedCommand "$SAPLING_WINDOWS_ENCODED"
-fi
+# Install/diagnostics do not need a terminal bridge. Keep winpty only for
+# native interactive authentication or app startup, with a foreground parent.
+case "$SAPLING_WINDOWS_ACTION" in
+  login|opencode|start)
+    if [ -t 0 ] && [ -t 1 ] && command -v winpty >/dev/null 2>&1; then
+      say "Starting Windows $SAPLING_WINDOWS_ACTION (PowerShell / winpty)..." "正在启动 Windows ${SAPLING_WINDOWS_ACTION}（PowerShell / winpty）…"
+      exec winpty powershell.exe -NoLogo -NoProfile -EncodedCommand "$SAPLING_WINDOWS_ENCODED"
+    fi ;;
+esac
+say "Starting Windows $SAPLING_WINDOWS_ACTION (PowerShell)..." "正在启动 Windows ${SAPLING_WINDOWS_ACTION}（PowerShell）…"
 exec powershell.exe -NoLogo -NoProfile -EncodedCommand "$SAPLING_WINDOWS_ENCODED"
