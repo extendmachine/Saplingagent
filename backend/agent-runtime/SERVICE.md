@@ -43,3 +43,9 @@ The starting page remains chat with Git controls/footer. The earlier uncommitted
 
 ## Managed restart
 The project runtime manager prepares this service using the internal contract before terminating its owned process group. Finish AI/file/Git work before Restart app or Restart backend; busy work refuses restart without interruption. Prepared services reject new mutations until release or replacement. The launcher keeps its gateway/control alive. See ../runtime-manager/CONTRACT.md and DEPLOY.md.
+
+## Folder scope and every-turn receipt (TASK-20261011-026)
+
+Shared Codex/OpenCode instructions and per-turn context recommend customer edits in the active folder by default, permitting explicit external-code requests with unchanged Full Access. Saplingagent maintainer development/delivery is confined to its own complete project folder. Every final conversational reply, including read-only chat, is instructed to include the eight-field completion-review receipt in the user's language. Read-only work does not register a modification; unavailable fields/checks are reported honestly. See rules/README.md version2026-10-11.1 and rule18 for the authoritative policy.
+
+These are model instructions, not tool permissions or output rewriting. No changes to native/MCP path access, sandbox/approval policy, OpenCode external_directory permission, public API/SSE schemas or stop/error behavior. Initial/resumed Codex threads and OpenCode system prompts receive the shared policy; each turn receives it again with its active folder. Protocol tests verify delivery and unchanged Full Access. Actual model format compliance remains real-conversation validation; a stopped/failed turn before a final response does not gain a fabricated receipt. Restart is required to load this source; no automatic production restart is performed.

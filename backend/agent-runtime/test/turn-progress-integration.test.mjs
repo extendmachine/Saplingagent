@@ -17,7 +17,7 @@ async function fixture(config = {}) {
   await fs.mkdir(cache, { recursive: true });
   const root = await fs.mkdtemp(path.join(cache, 'progress-')), sessions = new Map(), clock = fakeClock();
   let nextSession = 0, nextThread = 0, nextTurn = 0, rpc;
-  const starts = [], interrupts = [], replies = [], channels = [];
+  const prompts = [], threadSetups = [], starts = [], interrupts = [], replies = [], channels = [];
   let beforeAck, nextPatchGate, nextPreferencesGate, nextThreadGate;
   const gates = [];
   function gate() { let release; const value = { entered: false, ready: new Promise(resolve => { release = resolve; }), release: () => release() }; gates.push(value); return value; }
@@ -29,10 +29,12 @@ async function fixture(config = {}) {
       if (method === 'model/list') return { data: [{ model: 'synthetic-model', isDefault: true, supportedReasoningEfforts: [{ reasoningEffort: 'medium' }], defaultReasoningEffort: 'medium' }] };
       if (method === 'skills/list') return { data: [] };
       if (method === 'mcpServerStatus/list') return { data: [{ name: 'seedagent', tools: { fake: {} } }] };
+      if (['thread/start', 'thread/resume'].includes(method)) threadSetups.push(p);
       if (['thread/start', 'thread/resume'].includes(method) && !p.ephemeral && nextThreadGate) { const hold = nextThreadGate; nextThreadGate = undefined; hold.entered = true; await hold.ready; }
       if (method === 'thread/start') return { thread: { id: `thread-${++nextThread}` }, sandbox: { type: 'dangerFullAccess' }, approvalPolicy: 'never' };
       if (method === 'thread/resume') return {};
       if (method === 'turn/start') {
+        prompts.push(p);
         const turnId = `turn-${++nextTurn}`, turn = { threadId: p.threadId, turnId };
         starts.push(turn);
         if (beforeAck) { const callback = beforeAck; beforeAck = undefined; await callback(turn); }
@@ -90,7 +92,7 @@ async function fixture(config = {}) {
     await until(() => events.some(e => e.type === 'snapshot')); return channel;
   }
   return {
-    server, clock, starts, interrupts, replies, sessions,
+    server, clock, prompts, threadSetups, starts, interrupts, replies, sessions,
     get rpc() { return rpc; }, set beforeAck(value) { beforeAck = value; },
     delayNextSave() { return nextPatchGate = gate(); },
     delayPreferences() { return nextPreferencesGate = gate(); },
@@ -273,4 +275,32 @@ test('runtime prepare refuses active AI, drains idle mutations and releases with
   assert.equal(f.starts.length, 1);
   assert.equal((await f.request('/internal/runtime/release', {})).status, 200);
   assert.equal((await (await f.request('/api/status')).json()).ready, true);
+});
+
+
+test('new and resumed conversations receive truthful every-turn receipt guidance without reducing Full Access', async () => {
+  const f = await fixture();
+  try {
+    const first = await f.chat('receipt-first');
+    await f.complete(f.starts[0]);
+    await f.chat('receipt-resumed', first.sessionId);
+    await until(() => f.prompts.length === 2);
+    for (const prompt of f.prompts) {
+      const text = prompt.input[0].text;
+      assert.ok(text.startsWith('Synthetic test'));
+      assert.match(text, /Active application folder:/);
+      assert.match(text, /explicit customer request can target external code/);
+      assert.match(text, /not a technical permission restriction/);
+      assert.match(text, /Every final assistant reply, including ordinary chat/);
+      assert.match(text, /Read-only work remains unregistered/);
+      assert.match(text, /Never invent task IDs/);
+      for (const field of ['Standard version (start/end)', 'Task attribution', 'Actual modification scope', 'Rule review', 'Document status', 'Verification status', 'Git status', 'Remaining items']) assert.ok(text.includes(field));
+    }
+    for (const setup of f.threadSetups) {
+      assert.equal(setup.sandbox, 'danger-full-access');
+      assert.equal(setup.approvalPolicy, 'never');
+      assert.match(setup.developerInstructions, /Completion-review receipt/);
+    }
+    await f.complete(f.starts[1]);
+  } finally { await f.cleanup(); }
 });
