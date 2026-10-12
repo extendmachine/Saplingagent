@@ -10,7 +10,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const settings = JSON.parse(await fs.readFile(path.join(root, 'config/macos.json'), 'utf8'));
 const cli = path.join(root, '.runtime/codex/node_modules/.bin/codex');
 const stampFile = path.join(root, '.runtime/macos-install.json');
-const services = ['front', 'backend/app-builder', 'backend/mcp-runtime'];
+const services = ['front', 'backend/app-builder', 'backend/mcp-runtime', 'backend/agent-runtime'];
 const authArgs = ['-c', 'cli_auth_credentials_store="file"'];
 const env = { ...process.env, SEED_ROOT: root, SEED_CODEX_BIN: path.join(root, 'scripts/macos/codex.sh'), SEED_IMPORT_EXISTING_AUTH: '0', CODEX_HOME: path.join(root, 'local-secrets/codex'), npm_config_cache: path.join(root, '.cache/npm') };
 for (const key of ['OPENAI_API_KEY', 'CODEX_API_KEY', 'CODEX_ACCESS_TOKEN']) delete env[key];
@@ -47,7 +47,8 @@ async function installed() {
     const stamp = JSON.parse(await fs.readFile(stampFile, 'utf8'));
     return stamp.signature === await signature() && stamp.arch === process.arch && await exists(cli)
       && await exists(path.join(root, 'front/node_modules/vite/bin/vite.js'))
-      && await exists(path.join(root, 'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json'));
+      && await exists(path.join(root, 'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json'))
+      && await exists(path.join(root, 'backend/agent-runtime/node_modules/.bin/opencode'));
   } catch { return false; }
 }
 async function localSetup() {
@@ -71,7 +72,7 @@ async function install(repair = false) {
   }
   const stage = path.join(root, '.runtime', `codex-install-${randomUUID()}`);
   try {
-    for (const file of ['1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', '4-Doctor.command', 'scripts/macos/bootstrap.sh', 'scripts/macos/entry.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
+    for (const file of ['1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', '4-Doctor.command', '5-Configure-OpenCode.command', 'scripts/macos/bootstrap.sh', 'scripts/macos/entry.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
     if (!repair && await installed()) {
       await localSetup();
       console.log('The project environment is installed and up to date. Log in or start; repair damaged dependencies with bash "1-Install.command" --repair.');
@@ -97,8 +98,10 @@ async function install(repair = false) {
     await fs.rm(stampFile, { force: true });
     for (const service of services) {
       console.log(`Installing locked dependencies for ${service}…`);
-      await required('npm', ['ci', '--include=optional', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: path.join(root, service) });
+      const installArgs = ['ci', '--include=optional', ...(service === 'backend/agent-runtime' ? [] : ['--ignore-scripts']), '--no-audit', '--no-fund'];
+      await required('npm', installArgs, { cwd: path.join(root, service) });
     }
+    await required(path.join(root, 'backend/agent-runtime/node_modules/.bin/opencode'), ['--version'], { capture: true });
     await localSetup();
     await fs.writeFile(stampFile, JSON.stringify({ schemaVersion: 1, nodeVersion: process.versions.node, codexVersion: settings.codexVersion, arch: process.arch, signature: await signature(), installedAt: new Date().toISOString() }, null, 2) + '\n');
     console.log('Installation complete. Double-click 2-Login-Codex.command to log in with your own account, then 3-Start-Saplingagent.command.');
@@ -119,6 +122,19 @@ async function logout() {
   if (!await exists(cli)) throw new Error('Run 1-Install.command first.');
   await required(cli, [...authArgs, 'logout'], { capture: true });
   console.log('Logged out of the Codex account for this project; application files and sessions are retained. Run 2-Login-Codex.command to log in again.');
+}
+async function configureOpenCode() {
+  if (!await installed()) throw new Error('Double-click 1-Install.command first.');
+  const data = path.join(root, 'local-secrets/opencode/data');
+  const config = path.join(root, 'local-secrets/opencode/config');
+  await Promise.all([fs.mkdir(data, { recursive: true, mode: 0o700 }), fs.mkdir(config, { recursive: true, mode: 0o700 })]);
+  console.log('OpenCode will configure a provider for this Saplingagent folder. Provider credentials stay under local-secrets/opencode/.');
+  const commandEnv = { ...env, XDG_DATA_HOME: data, XDG_CONFIG_HOME: config, OPENCODE_DISABLE_AUTOUPDATE: 'true' };
+  const command = path.join(root, 'backend/agent-runtime/node_modules/.bin/opencode');
+  const child = spawn(command, ['auth', 'login'], { cwd: root, env: commandEnv, stdio: 'inherit' });
+  const result = await new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', code => resolve(code ?? 1)); });
+  if (result !== 0) throw new Error(`OpenCode provider setup failed (exit code ${result}).`);
+  console.log('OpenCode provider saved. Restart Saplingagent, start a new conversation, then choose OpenCode.');
 }
 async function start(noOpen) {
   if (!await installed()) throw new Error('Installation is incomplete or dependency lockfiles have changed. Run 1-Install.command first.');
@@ -208,5 +224,6 @@ try {
   else if (action === 'start' && args.every(x => x === '--no-open')) await start(args.includes('--no-open'));
   else if (action === 'doctor' && !args.length) await doctor();
   else if (action === 'logout' && !args.length) await logout();
-  else throw new Error('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout.');
+  else if (action === 'opencode' && !args.length) await configureOpenCode();
+  else throw new Error('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / opencode.');
 } catch (error) { console.error(error.message); process.exitCode = 1; }

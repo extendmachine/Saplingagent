@@ -16,6 +16,7 @@ Direct dependency metadata checked from the installed locked packages on 2026-10
 | MCP TypeScript SDK | 1.32.1 | MIT |
 | yaml | 2.9.1 | ISC |
 | zod | 4.6.5 | MIT |
+| OpenCode SDK / CLI | 1.19.0 | MIT |
 
 This list covers direct packages, not every transitive dependency. Installed packages retain their own LICENSE/NOTICE files. The source ZIP does not embed node_modules or the Node/Codex binaries: the installer retrieves them from their original sources. Redistributing an installed runtime requires retaining the applicable notices of all included components.
 

@@ -24,7 +24,7 @@ async function stop(code = 0) {
 for (const signal of ['SIGINT','SIGTERM','SIGHUP']) process.once(signal, () => void stop());
 try {
   const config = await manager.loadConfig(); manager.config = config;
-  for (const port of [config.frontPort,config.vitePort,config.runtimeManagerPort]) await availablePort(port);
+  for (const port of [config.frontPort,config.vitePort,config.runtimeManagerPort,config.openCodePort]) await availablePort(port);
   await fs.access(path.join(root,'front/node_modules/vite/bin/vite.js'));
   await fs.access(path.join(root,'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json'));
   const options = { manager, token, frontPort: config.frontPort, managerPort: config.runtimeManagerPort };

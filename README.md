@@ -102,6 +102,18 @@ Installation, saved authentication and `model/list` discovery are separate from 
 
 For current eligibility and costs, consult [Codex authentication](https://learn.chatgpt.com/docs/auth) and [Codex pricing and usage limits](https://learn.chatgpt.com/docs/pricing); no plan price or free-tier entitlement is hard-coded here.**Commercial and hosted authentication:**the current implementation uses local Codex login. OpenAI documents continuation for existing local or open-source applications and recommends migration to Sign in with ChatGPT. App Server authentication has never been permitted for commercial or hosted services. This project has not completed commercial Sign in with ChatGPT registration/integration. A separate Saplingagent commercial license does not grant OpenAI authentication rights. Before commercial distribution, resolve both permissions. See [App Server authentication](https://learn.chatgpt.com/docs/app-server) and [Sign in with ChatGPT integration](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server).
 
+## Optional OpenCode providers
+
+Codex remains the default. To use Anthropic, OpenRouter, a custom OpenAI-compatible endpoint, or another provider supported by OpenCode, first install the current lockfiles and run:
+
+```bash
+bash 5-Configure-OpenCode.command
+```
+
+Provider credentials are stored only under `local-secrets/opencode/`. Restart Saplingagent, choose **OpenCode** before the first message of a new conversation, then choose a connected provider and model. Each conversation stays bound to its original engine/model across refresh and restart; start a new conversation to switch. There is no automatic fallback between providers.
+
+Claude uses an Anthropic API credential through OpenCode. A Claude Desktop subscription or login is not imported and Claude Desktop is not automated as an inference backend. Desktop extensions let Claude call MCP servers; that is a different integration direction. See the official [OpenCode provider guide](https://opencode.ai/docs/providers/) and [Anthropic client SDK guidance](https://platform.claude.com/docs/en/api/client-sdks).
+
 ## How Codex App Server connects
 
 The installer and launcher perform the integration. Users do not need to add an MCP server to the Codex desktop app or operate a remote server.
@@ -150,7 +162,7 @@ Public settings live in [config/runtime.json](config/runtime.json).
 | --- | --- | --- |
 | Preferred model | `gpt-6.1-sol` | Uses the actual App Server catalog; falls back to its default/first model if unavailable |
 | Reasoning effort | `medium` | Must be supported by the selected model |
-| Gateway / Vite / Manager / Agent / Workspace / Builder ports | `5173` / `5174` / `4314` / `4310` / `4311` / `4312` | Local loopback services; PDF `4313` only when source exists |
+| Gateway / Vite / Manager / Agent / Workspace / Builder ports | `5173` / `5174` / `4314` / `4310` / `4311` / `4312` | Local loopback services; PDF `4313` only when source exists; Agent-owned OpenCode uses `4315` |
 | Permission mode | `full-access` | Codex `danger-full-access`, `approvalPolicy: never` |
 | Total turn deadline | `turnTimeoutMs: 0` | Disabled by default; explicit nonzero configuration enables a total deadline |
 | Inactivity reminder | `turnIdleWarningMs: 600000` | Warns after 10 minutes without effective progress; does not stop or resend the turn |
