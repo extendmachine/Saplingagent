@@ -12,6 +12,7 @@ import { toolFingerprint } from '../../contracts/agent-tools.mjs';
 import { permissions, threadPermissions, permissionConfigArgs, automaticApproval } from './permissions.mjs';
 import { createTurnProgress, turnTiming } from './turn-progress.mjs';
 import { checkoutGitVersion, commitGitVersion, GitVersionError, nameGitVersion, readGitVersion, switchGitBranch } from './git-versions.mjs';
+import { ClaudeProvider } from './providers/claude.mjs';
 import { OpenCodeProvider } from './providers/opencode.mjs';
 import { assertSessionSelection, validateEngineSelection } from './providers/contract.mjs';
 
@@ -29,7 +30,7 @@ async function readBody(req) {
 }
 const validId = id => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(id);
 
-export async function createAgentServer({ root = process.env.SEED_ROOT || defaultRoot, AppServerClass = AppServer, OpenCodeProviderClass = OpenCodeProvider, progressClock } = {}) {
+export async function createAgentServer({ root = process.env.SEED_ROOT || defaultRoot, AppServerClass = AppServer, OpenCodeProviderClass = OpenCodeProvider, ClaudeProviderClass = ClaudeProvider, progressClock } = {}) {
   root = await fs.realpath(root);
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   const timing = turnTiming(config);
@@ -53,13 +54,14 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     if (!response.ok) throw new ApiError(value.error?.code || 'WORKSPACE_ERROR', value.error?.message || 'Local session service unavailable', response.status);
     return value;
   }
-  let rpc, startup, openCodeStartup, shutdown, closing = false, gitSwitching = false, pendingChats = 0, lastStart = 0;
+  let rpc, startup, openCodeStartup, claudeStartup, shutdown, closing = false, gitSwitching = false, pendingChats = 0, lastStart = 0;
   const connections = await readConnections(root);
   const selectedConnection = connections.profiles.find(p => p.id === connections.activeId);
   const configuredSelection = defaultSelection(connections);
-  const canStartOptionalCodex = configuredSelection.engine === 'opencode' && (await codexCredentialStatus(root)).saved;
+  const canStartOptionalCodex = configuredSelection.engine !== 'codex' && (await codexCredentialStatus(root)).saved;
   let status = { ready: false, authenticated: false, provider: 'Codex App Server', model: '', skills: [], mcp: { ready: false, tools: [] }, permissions };
   let openCodeStatus = { id: 'opencode', label: 'OpenCode', ready: false, authenticated: false, providers: [], error: null };
+  let claudeStatus = { id: 'claude', label: 'Claude Agent', ready: false, authenticated: false, providers: [], error: null };
   const active = new Map(), threads = new Map(), resumed = new Set(), subscribers = new Map(), approvals = new Map(), requestSessions = new Map(), dirtySessions = new Map();
   const currentRun = run => !run.finished && run.session && active.get(run.session.id) === run;
   let effort = config.reasoningEffort;
@@ -199,24 +201,37 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       openCodeStatus = { ...openCodeStatus, ready: false, error: safeError(error) };
       if (!closing) for (const run of active.values()) if (run.session?.engine === 'opencode') finish(run, 'failed', error).catch(() => {});
     },
-    onEvent: (run, event) => {
+    onEvent: providerEvent,
+  });
+  const claude = new ClaudeProviderClass({ root, mcpEnv: sharedMcpEnv, instructions, onEvent: providerEvent });
+  function providerEvent(run, event) {
       if (!currentRun(run)) return;
+      if (!run.cancelRequested) {
+        if (event.type === 'text') run.progress?.notification('item/agentMessage/delta', { itemId: event.id, delta: event.delta });
+        else if (event.type === 'progress') run.progress?.notification('item/reasoning/textDelta', { itemId: event.id, delta: event.delta });
+        else if (event.type === 'tool') run.progress?.notification(['pending','running','inProgress'].includes(event.status) ? 'item/started' : 'item/completed', { item: { id: event.id, type: 'mcpToolCall' } });
+      }
       if (event.type === 'text') {
         const item = assistant(run, event.id);
         item.text += event.delta;
         broadcast(run.session.id, { type: 'text_delta', itemId: event.id, delta: event.delta });
         scheduleSave(run);
       } else if (event.type === 'tool') {
-        const tool = event.name?.startsWith('seedagent_') ? event.name.slice('seedagent_'.length) : event.name;
+        const tool = event.name?.replace(/^(?:mcp__seedagent__|seedagent_)/, '');
         run.mcpCalls ||= new Map();
-        if (event.name?.startsWith('seedagent_') && ['pending', 'running', 'inProgress'].includes(event.status)) run.mcpCalls.set(event.id, { tool, fingerprint: toolFingerprint(tool, event.input || {}) });
+        if (/^(?:mcp__seedagent__|seedagent_)/.test(event.name || '') && ['pending', 'running', 'inProgress'].includes(event.status)) run.mcpCalls.set(event.id, { tool, fingerprint: toolFingerprint(tool, event.input || {}) });
         else run.mcpCalls.delete(event.id);
         broadcast(run.session.id, { type: 'tool', id: event.id, name: tool || 'tool', status: event.status });
       } else if (event.type === 'status') broadcast(run.session.id, { type: 'status', label: event.label });
       else if (event.type === 'error') finish(run, 'failed', event.error).catch(() => {});
       else if (event.type === 'done') finish(run, event.status).catch(() => {});
-    },
-  });
+  }
+  async function startClaude() {
+    if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
+    if (claudeStartup) return claudeStartup;
+    claudeStartup = claude.start().then(catalog => (claudeStatus = { ...catalog, error: catalog.error || null })).catch(error => (claudeStatus = { ...claudeStatus, ready: false, error: safeError(error) })).finally(() => { claudeStartup = null; });
+    return claudeStartup;
+  }
   async function startOpenCode() {
     if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
     if (openCodeStartup) return openCodeStartup;
@@ -242,7 +257,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       rpc = new AppServerClass({ cwd: root, env: { ...process.env, ...connection.env, CODEX_HOME: path.join(root, 'local-secrets/codex'), SEED_ROOT: root, SEED_AGENT_MANAGED: '1', SEED_AGENT_PORT: String(process.env.SEED_AGENT_PORT || config.agentPort), SEEDAGENT_PROJECT_ROOT: root, SEEDAGENT_WORKSPACE_PORT: String(process.env.SEED_WORKSPACE_PORT || config.workspacePort), SEEDAGENT_BUILDER_PORT: String(process.env.SEED_BUILDER_PORT || config.builderPort) }, args });
       rpc.on('notification', message => notification(message).catch(error => log('notification_error', { code: error.code || 'INTERNAL' }).catch(() => {})));
       rpc.on('request', serverRequest);
-      rpc.on('disconnect', error => { status.ready = false; status.error = safeError(error); resumed.clear(); if (!closing) for (const run of active.values()) if (run.session && run.session.engine !== 'opencode') finish(run, 'failed', error).catch(() => {}); });
+      rpc.on('disconnect', error => { status.ready = false; status.error = safeError(error); resumed.clear(); if (!closing) for (const run of active.values()) if (run.session && (run.session.engine || 'codex') === 'codex') finish(run, 'failed', error).catch(() => {}); });
       await rpc.call('initialize', { clientInfo: { name: 'seedagent', title: 'Saplingagent', version: '0.1.0' }, capabilities: { experimentalApi: true } });
       rpc.send({ method: 'initialized', params: {} });
       const account = await rpc.call('account/read', { refreshToken: false }); status.authenticated = !!account.account || account.requiresOpenaiAuth === false;
@@ -264,9 +279,11 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     return startup;
   }
   function runtimeStatus() {
-    if(configuredSelection.engine !== 'opencode')return {...status,ready:status.ready&&!startup&&!drain.prepared};
-    const ready = openCodeStatus.ready && openCodeStatus.authenticated && openCodeStatus.mcp?.ready && openCodeStatus.providers.some(p=>p.id===configuredSelection.providerId&&p.models.some(m=>m.id===configuredSelection.modelId)) && !openCodeStartup && !drain.prepared;
-    return {ready:Boolean(ready),authenticated:openCodeStatus.authenticated,provider:'OpenCode',model:selectedConnection?.model||'',skills:[],mcp:openCodeStatus.mcp||{ready:false,tools:[]},permissions,error:openCodeStatus.error||undefined};
+    if (configuredSelection.engine === 'codex') return {...status,ready:status.ready&&!startup&&!drain.prepared};
+    const engineStatus = configuredSelection.engine === 'claude' ? claudeStatus : openCodeStatus;
+    const starting = configuredSelection.engine === 'claude' ? claudeStartup : openCodeStartup;
+    const ready = engineStatus.ready && engineStatus.authenticated && engineStatus.mcp?.ready && engineStatus.providers.some(p=>p.id===configuredSelection.providerId&&p.models.some(m=>m.id===configuredSelection.modelId)) && !starting && !drain.prepared;
+    return {ready:Boolean(ready),authenticated:engineStatus.authenticated,provider:engineStatus.label,model:selectedConnection?.model||'',skills:engineStatus.skills||[],mcp:engineStatus.mcp||{ready:false,tools:[]},permissions,error:engineStatus.error||undefined};
   }
   async function recoverSavedRuns() {
       // A stopped process cannot leave a saved session permanently running.
@@ -281,7 +298,11 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   }
   async function start() {
     lastStart=Date.now();
-    if(configuredSelection.engine==='opencode'){
+    if(configuredSelection.engine==='claude'){
+      await startClaude();
+      if (!runtimeStatus().ready) throw new ApiError('AGENT_NOT_READY',claudeStatus.error || 'Claude Agent is not ready. Check AI configuration.',503);
+      await recoverSavedRuns();
+    }else if(configuredSelection.engine==='opencode'){
       await startOpenCode();
       if(!openCodeStatus.ready||!openCodeStatus.authenticated||!openCodeStatus.mcp?.ready||!openCodeStatus.providers.some(p=>p.id===configuredSelection.providerId&&p.models.some(m=>m.id===configuredSelection.modelId)))throw new ApiError('AGENT_NOT_READY',openCodeStatus.error||'OpenCode provider or MCP is not ready. Check AI configuration.',503);
       await recoverSavedRuns();
@@ -291,6 +312,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     run.cancelRequested = true;
     run.progress?.stop();
     if (run.session?.engine === 'opencode') return openCode.interrupt(run);
+    if (run.session?.engine === 'claude') return claude.interrupt(run);
     if (run.turnId && !run.interruptSent && !run.finished) {
       run.interruptSent = true;
       try { await rpc.call('turn/interrupt', { threadId: run.session.threadId, turnId: run.turnId }, 5000); }
@@ -309,7 +331,8 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       });
     } catch {}
     if (!run.finished) {
-      if (run.session?.engine !== 'opencode') rpc?.close();
+      if ((run.session?.engine || 'codex') === 'codex') rpc?.close();
+      if (run.session?.engine === 'claude') await claude.interrupt(run);
       await finish(run, 'failed', error);
     }
   }
@@ -374,8 +397,19 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       await finish(run, run.cancelRequested ? 'interrupted' : 'failed', run.cancelRequested ? undefined : error);
     }
   }
+  async function executeClaude(run, text) {
+    try {
+      const catalog = await startClaude();
+      if (!currentRun(run)) return;
+      if (!catalog.ready) throw new Error(catalog.error || 'Claude Agent is not ready');
+      const { preferences } = await ws('/preferences');
+      if (!currentRun(run)) return;
+      run.save = () => save(run);
+      await claude.execute(run, text + runtimeContext(preferences, run, 'Claude Agent SDK'));
+    } catch (error) { if (currentRun(run)) await finish(run, run.cancelRequested ? 'interrupted' : 'failed', run.cancelRequested ? undefined : error); }
+  }
   function execute(run, text) {
-    return run.session.engine === 'opencode' ? executeOpenCode(run, text) : executeCodex(run, text);
+    return run.session.engine === 'claude' ? executeClaude(run, text) : run.session.engine === 'opencode' ? executeOpenCode(run, text) : executeCodex(run, text);
   }
   function browserAllowed(req) {
     const host = req.headers.host?.split(':')[0];
@@ -427,12 +461,13 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         return send(res, 200, { taskId: `RUN-${run.requestId}` });
       }
       if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ready: true, service: 'agent-runtime', agentReady: runtimeStatus().ready });
-      if (req.method === 'GET' && url.pathname === '/api/status') { if (!runtimeStatus().ready && !startup && !openCodeStartup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...runtimeStatus(), codexReady: status.ready && !startup && !drain.prepared, defaultEngine: configuredSelection.engine, restarting: drain.prepared, activeRuns: active.size + pendingChats }); }
+      if (req.method === 'GET' && url.pathname === '/api/status') { if (!runtimeStatus().ready && !startup && !openCodeStartup && !claudeStartup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...runtimeStatus(), codexReady: status.ready && !startup && !drain.prepared, defaultEngine: configuredSelection.engine, restarting: drain.prepared, activeRuns: active.size + pendingChats }); }
       if (req.method === 'GET' && url.pathname === '/api/engines') {
         if (!openCode.ready && !openCodeStartup) await startOpenCode();
+        if (connections.profiles.some(p=>p.engine==='claude') && !claude.ready && !claudeStartup) await startClaude();
         if(canStartOptionalCodex && !rpc && !startup)startCodex().catch(()=>{});
         const codex = { id: 'codex', label: 'Codex', ready: status.ready && !startup, authenticated: status.authenticated, model: status.model, error: status.error || null };
-        return send(res, 200, { defaultEngine: configuredSelection.engine, defaultSelection: configuredSelection, engines: [codex, openCodeStatus] });
+        return send(res, 200, { defaultEngine: configuredSelection.engine, defaultSelection: configuredSelection, engines: [codex, openCodeStatus, claudeStatus] });
       }
       if (req.method === 'GET' && url.pathname === '/api/git') return send(res, 200, { git: await readGitVersion(root, { limit: url.searchParams.has('limit') ? Number(url.searchParams.get('limit')) : 25 }) });
       if (req.method === 'POST' && ['/api/git/commit', '/api/git/switch', '/api/git/checkout', '/api/git/label'].includes(url.pathname)) {
@@ -486,7 +521,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         if (typeof input.text !== 'string' || !input.text.trim() || input.text.length > 32000) throw new ApiError('INVALID_TEXT', 'Enter a message of 1 to 32000 characters');
         const requestId = input.requestId || randomUUID(); if (!validId(requestId) || (input.sessionId && !validId(input.sessionId))) throw new ApiError('INVALID_ID', 'Invalid request or session ID');
         const requestedSelection = input.sessionId && input.engine === undefined ? null : validateEngineSelection(input);
-        if ((!requestedSelection || requestedSelection.engine === 'codex') && (!status.ready || startup)) throw new ApiError('AGENT_NOT_READY', status.error || 'Codex is starting. Try again shortly', 503);
+        if (requestedSelection?.engine === 'codex' && (!status.ready || startup)) throw new ApiError('AGENT_NOT_READY', status.error || 'Codex is starting. Try again shortly', 503);
         let id = input.sessionId;
         if (!id) {
           if (!requestSessions.has(requestId)) {
@@ -520,7 +555,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           if (dirty) { await ws(`/sessions/${id}`, 'PATCH', { messages: dirty.messages, requests: dirty.requests, threadId: dirty.threadId, running: false, activeRequestId: null }); dirtySessions.delete(id); }
           run.session = (await ws(`/sessions/${id}`)).session;
           assertSessionSelection(run.session, requestedSelection);
-          if (run.session.engine === 'codex' && (!status.ready || startup)) throw new ApiError('AGENT_NOT_READY', status.error || 'Codex is starting. Try again shortly', 503);
+          if ((run.session.engine || 'codex') === 'codex' && (!status.ready || startup)) throw new ApiError('AGENT_NOT_READY', status.error || 'Codex is starting. Try again shortly', 503);
           run.session.requests ||= [];
           const prior = run.session.requests.find(r => r.id === requestId);
           const priorUser = run.session.messages.find(m => m.id === requestId);
@@ -564,7 +599,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     for (const run of active.values()) run.progress?.stop();
     // Close our detached App Server group first, before any RPC/storage wait.
     // Waiting for turn/interrupt here can exceed the supervisor's stop deadline.
-    const stopped = Promise.allSettled([rpc?.close(), openCode.close()]);
+    const stopped = Promise.allSettled([rpc?.close(), openCode.close(), claude.close()]);
     const closed = new Promise(resolve => server.close(resolve));
     const saving = Promise.allSettled([...active.values()].map(async run => {
       run.cancelRequested = true;

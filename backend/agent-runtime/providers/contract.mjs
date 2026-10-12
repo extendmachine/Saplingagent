@@ -1,6 +1,7 @@
 export const ENGINE_CODEX = 'codex';
 export const ENGINE_OPENCODE = 'opencode';
-export const ENGINE_IDS = Object.freeze([ENGINE_CODEX, ENGINE_OPENCODE]);
+export const ENGINE_CLAUDE = 'claude';
+export const ENGINE_IDS = Object.freeze([ENGINE_CODEX, ENGINE_OPENCODE, ENGINE_CLAUDE]);
 
 export function validateEngineSelection(input = {}) {
   const engine = input.engine === undefined ? ENGINE_CODEX : input.engine;
@@ -12,7 +13,7 @@ export function validateEngineSelection(input = {}) {
     return { engine, providerId: null, modelId: null };
   }
   if (typeof providerId !== 'string' || !/^[a-zA-Z0-9_.:/-]{1,160}$/.test(providerId) || typeof modelId !== 'string' || !modelId.trim() || modelId.length > 240) {
-    throw Object.assign(new Error('OpenCode requires a valid provider and model'), { code: 'INVALID_ENGINE_SELECTION', status: 400 });
+    throw Object.assign(new Error('This engine requires a valid provider and model'), { code: 'INVALID_ENGINE_SELECTION', status: 400 });
   }
   return { engine, providerId, modelId };
 }

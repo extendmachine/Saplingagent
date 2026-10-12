@@ -15,3 +15,5 @@ test('saved session engine is immutable and legacy sessions remain Codex', () =>
   assert.deepEqual(assertSessionSelection(session, session), session);
   assert.throws(() => assertSessionSelection(session, { engine: 'codex' }), error => error.code === 'SESSION_ENGINE_MISMATCH' && error.status === 409);
 });
+
+test('Claude requires model coordinates and rejects changing a saved engine',()=>{const selection={engine:'claude',providerId:'sapling-synthetic',modelId:'synthetic-claude'};assert.deepEqual(validateEngineSelection(selection),selection);assert.throws(()=>validateEngineSelection({engine:'claude'}));assert.throws(()=>assertSessionSelection(selection,{engine:'opencode',providerId:'sapling-synthetic',modelId:'synthetic-claude'}));});

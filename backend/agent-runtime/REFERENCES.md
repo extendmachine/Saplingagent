@@ -49,3 +49,14 @@ TASK-20261010-015: checked the current official App Server, authentication and p
 - Exact npm metadata https://registry.npmjs.org/@openai/codex/0.146.1 and https://registry.npmjs.org/opencode-ai/1.19.0 — native Windows optional dependencies; local OpenCode postinstall selects executable. Public, downloads/install required; no model request.
 
 TASK-20261012-003, checked2026-10-11: https://learn.chatgpt.com/docs/app-server (requiresOpenaiAuth and login account semantics; generated local0.146.1 schema confirms), https://learn.chatgpt.com/docs/config-file/config-advanced (custom provider base_url/env_key/Responses), https://opencode.ai/docs/providers/ and https://opencode.ai/docs/sdk/ (native provider options and MCP status; pinned1.19.0 actual catalog checked). Documents public; actual account/provider requests use the customer's own rights. No current v2 OpenCode assumption, CLI upgrade or paid inference.
+
+## Claude Agent SDK integration (2026-10-12, TASK-20261012-005–009)
+
+- https://code.claude.com/docs/en/agent-sdk/overview — official embedded Claude Code agent loop, native tools, MCP, sessions, branding and Commercial Terms.
+- https://code.claude.com/docs/en/agent-sdk/quickstart — API authentication; bundled native binaries; third-party claude.ai login requires prior approval. No subscription credential import is implemented.
+- https://code.claude.com/docs/en/agent-sdk/configuration — project-only settingSources, env and system prompt.
+- https://code.claude.com/docs/en/agent-sdk/streaming-output and https://code.claude.com/docs/en/agent-sdk/sessions — partial events, terminal results and explicit resume.
+- https://code.claude.com/docs/en/agent-sdk/mcp and https://code.claude.com/docs/en/agent-sdk/plugins — local MCP and `.agents` local plugin discovery.
+- https://registry.npmjs.org/@anthropic-ai/claude-agent-sdk/0.3.296 — exact SDK and platform optional dependency metadata. Installed official sdk.d.ts verifies Query, spawn, permissions, hooks and MCP control signatures.
+
+Public documentation and npm metadata need no login; real inference/model catalogs need the user's own API account and quota. No inference was sent to a real model for candidate validation. Local native/synthetic API tests establish this pinned version's behavior; Windows10 native acceptance remains pending.
