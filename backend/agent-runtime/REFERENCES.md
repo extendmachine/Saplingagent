@@ -2,6 +2,12 @@
 
 - Codex App Server: https://learn.chatgpt.com/docs/app-server, OpenAI; 2026-10-09. Thread, event, cancellation, model directory, Skills, MCP standard form confirmation. Public documents do not need to be logged in, and the actual model requires an account.
 - Codex native authentication: https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server, OpenAI; 2026-10-09. Existing local login integration; customer business/hosting distribution needs to be designed and logged in separately.
+- OpenCode server: https://opencode.ai/docs/server/ ; official loopback server, OpenAPI and Basic authentication; reviewed 2026-10-11.
+- OpenCode SDK: https://opencode.ai/docs/sdk/ ; official type-safe client, sessions and SSE events; reviewed 2026-10-11.
+- OpenCode providers and configuration: https://opencode.ai/docs/providers/ and https://opencode.ai/docs/config/ ; provider credentials, custom endpoints and isolated configuration; reviewed 2026-10-11.
+- OpenCode MCP: https://opencode.ai/docs/mcp-servers/ ; local MCP server configuration; reviewed 2026-10-11.
+- Anthropic client SDK guidance: https://platform.claude.com/docs/en/api/client-sdks ; API credentials are the supported application integration path; reviewed 2026-10-11.
+- Claude Desktop extensions: https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop ; Desktop connects to MCP servers and is not an inference API for this app; reviewed 2026-10-11.
 - MCP environment configuration: https://learn.chatgpt.com/docs/config-file/config-reference, OpenAI; 2026-10-09. mcp_servers.<id>.env explicitly passes the root directory, port and managed tags of the project, and the local CLI has been verified; it is not assumed that all the parent process environment is inherited.
 - The app-server generate-json-schema generated file of this machine CLI0.146.1 is only used as an actual protocol verification, and does not package the research cache. The current thread sandbox enumerates danger-full-access, and the directory is actually gpt-5.6-sol/terra/luna; verify with real request.
 - Assistant-ui official https://www.assistant-ui.com/docs, please refer to front REFERENCES and lock files for details of front-end dependencies.
