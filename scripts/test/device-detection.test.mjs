@@ -32,10 +32,12 @@ test('Windows config includes checksum-verified native x64 and ARM64 archives an
 });
 
 const powershell = process.env.SAPLING_TEST_PWSH || (process.platform === 'win32' ? 'powershell.exe' : null);
-test('actual PowerShell resolver prefers native OS over emulation, handles WOW64 fallback and rejects 32-bit', { skip: !powershell }, () => {
+test('actual PowerShell resolver prefers native OS over emulation, handles WOW64 fallback and rejects 32-bit', { skip: !powershell }, async () => {
+  const helper = await fs.readFile(path.join(root, 'scripts/windows/bootstrap.sh'), 'utf8');
+  const embedded = helper.split("<<'SAPLING_POWERSHELL'\n")[1].split('\nSAPLING_POWERSHELL')[0];
   const program = `
     $ErrorActionPreference='Stop'; $errors=$null; $tokens=$null
-    $ast=[Management.Automation.Language.Parser]::ParseFile($env:SAPLING_TEST_LAUNCHER,[ref]$tokens,[ref]$errors)
+    $ast=[Management.Automation.Language.Parser]::ParseInput($env:SAPLING_TEST_POWERSHELL,[ref]$tokens,[ref]$errors)
     if ($errors.Count) { throw 'PowerShell syntax error' }
     $definition=$ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Resolve-WindowsArchitecture'},$true)
     Invoke-Expression $definition[0].Extent.Text
@@ -45,6 +47,6 @@ test('actual PowerShell resolver prefers native OS over emulation, handles WOW64
     if (!$rejected) { throw '32-bit was accepted' }
     'Native architecture cases passed'
   `;
-  const result = spawnSync(powershell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', program], { encoding: 'utf8', env: { ...process.env, SAPLING_TEST_LAUNCHER: path.join(root, 'Saplingagent.ps1') }, timeout: 10000 });
+  const result = spawnSync(powershell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', program], { encoding: 'utf8', env: { ...process.env, SAPLING_TEST_POWERSHELL: embedded }, timeout: 10000 });
   assert.equal(result.status, 0, result.stderr); assert.match(result.stdout, /Native architecture cases passed/);
 });

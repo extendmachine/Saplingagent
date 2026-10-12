@@ -57,7 +57,7 @@ Native Codex/OpenCode/npm/curl output is not translated. Provider setup remains 
 
 ## Windows extension (TASK028)
 
-The Windows entry is Saplingagent.ps1. Both platform entries share scripts/launcher/cli.mjs; this directory retains Mac bootstrap/codex wrappers and a compatibility CLI import. config/macos.json remains the Mac version configuration. See ../windows/README.md and ../../docs/windows-install.html for native Windows x64 setup and honest pending validation. The source ZIP exporter is now cross-platform, with a separate package-windows.mjs target; no business API or Full Access change.
+The same Saplingagent.sh entry now routes Windows Git Bash to scripts/windows/bootstrap.sh. Both platform entries share scripts/launcher/cli.mjs; this directory retains Mac bootstrap/codex wrappers and a compatibility CLI import. config/macos.json remains the Mac version configuration. See ../windows/README.md and ../../docs/windows-install.html for native Windows x64 setup and honest pending validation. The source ZIP exporter is now cross-platform, with a separate package-windows.mjs target; no business API or Full Access change.
 
 ## Native architecture detection (TASK032)
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -uo pipefail
 SAPLING_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-SAPLING_BOOTSTRAP="$SAPLING_ROOT/scripts/macos/bootstrap.sh"
+SAPLING_BOOTSTRAP=''
 SAPLING_CHILD_PID=''
 SAPLING_LANG_CHOSEN=0
 SAPLING_LANG="${SAPLING_LANG:-en}"
@@ -25,11 +25,19 @@ usage() {
   say 'Run without arguments to choose a language and open the interactive menu.' '不带参数运行即可选择语言并进入交互菜单。'
 }
 
+select_bootstrap() {
+  case "$(uname -s)" in
+    Darwin) SAPLING_BOOTSTRAP="$SAPLING_ROOT/scripts/macos/bootstrap.sh" ;;
+    MINGW*|MSYS*|CYGWIN*) SAPLING_BOOTSTRAP="$SAPLING_ROOT/scripts/windows/bootstrap.sh" ;;
+    *) say 'Unsupported OS. Use macOS Terminal or Windows Git Bash; WSL/Linux installation is not supported.' '当前系统不支持安装。请使用 macOS 终端或 Windows Git Bash；暂不支持 WSL / Linux。' >&2; return 1 ;;
+  esac
+}
+
 # Explicit actions skip the menu and preserve bootstrap exit status.
 if [ "$#" -gt 0 ]; then
   case "$1" in
     -h|--help) usage; exit 0 ;;
-    install|login|opencode|start|doctor|logout) exec /bin/bash "$SAPLING_BOOTSTRAP" "$@" ;;
+    install|login|opencode|start|doctor|logout) select_bootstrap || exit 1; exec /bin/bash "$SAPLING_BOOTSTRAP" "$@" ;;
     *) usage >&2; exit 2 ;;
   esac
 fi
@@ -60,6 +68,7 @@ choose_language() {
   done
 }
 run_action() {
+  if ! select_bootstrap; then return 0; fi
   /bin/bash "$SAPLING_BOOTSTRAP" "$@" <&0 &
   SAPLING_CHILD_PID=$!
   wait "$SAPLING_CHILD_PID"
