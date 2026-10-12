@@ -10,7 +10,7 @@ const text = (value, field, max = 240) => {
 export function validateProfile(input, previous) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw failure('INVALID_CONFIG', 'Enter a configuration scheme.');
   const engine = input.engine, kind = input.kind || 'api';
-  if (!['codex','opencode'].includes(engine) || !['api','chatgpt'].includes(kind)) throw failure('INVALID_CONFIG','Select a supported engine and authentication method.');
+  if (!['codex','opencode','claude'].includes(engine) || !['api','chatgpt'].includes(kind)) throw failure('INVALID_CONFIG','Select a supported engine and authentication method.');
   const id = input.id || (kind === 'chatgpt' ? 'codex-account' : randomUUID());
   if (!/^[a-z0-9-]{1,80}$/.test(id) || (id === 'codex-account' && kind !== 'chatgpt')) throw failure('INVALID_CONFIG', 'Invalid scheme ID.');
   if (kind === 'chatgpt') {
@@ -18,7 +18,7 @@ export function validateProfile(input, previous) {
     return { id, label: text(input.label || 'ChatGPT account', 'scheme name',80), engine, kind };
   }
   const protocol = input.protocol;
-  if (!['chat','responses','anthropic'].includes(protocol) || (engine === 'codex' && protocol !== 'responses')) throw failure('INVALID_CONFIG', 'Codex requires Responses API; choose OpenCode for Chat Completions or Anthropic.');
+  if (!['chat','responses','anthropic'].includes(protocol) || (engine === 'codex' && protocol !== 'responses') || (engine === 'claude' && protocol !== 'anthropic')) throw failure('INVALID_CONFIG', 'Codex requires Responses API; Claude Agent requires Anthropic Messages; OpenCode supports all three protocols.');
   let url;
   try { url = new URL(text(input.baseUrl,'API Base URL',2000)); } catch { throw failure('INVALID_CONFIG','Enter a complete http:// or https:// API Base URL.'); }
   if (!['http:','https:'].includes(url.protocol) || url.username || url.password || url.hash || [...url.searchParams.keys()].some(key => /^(api[_-]?key|key|token|access_token)$/i.test(key))) throw failure('INVALID_CONFIG','Use an HTTP(S) API Base URL without embedded credentials or fragments.');
@@ -81,7 +81,7 @@ export class ConfigurationStore {
         const file = credentialPath(this.root,profile.id);
         if (!profile.noAuth && input.apiKey?.trim()) await atomicJSON(file,{apiKey:input.apiKey.trim()});
         if (!profile.noAuth) await readCredential(this.root,profile);
-        const entry = { id:`ai-${profile.id}`, category:'api-key',service:profile.engine === 'codex' ? 'agent-runtime/Codex' : 'agent-runtime/OpenCode',environment:'local',purpose:profile.label,credential_file:`../api-keys/ai-${profile.id}.json`,official_reference:'backend/ai-config/REFERENCES.md',status:profile.noAuth ? 'disabled' : 'configured',updated_at:new Date().toISOString() };
+        const entry = { id:`ai-${profile.id}`, category:'api-key',service:profile.engine === 'codex' ? 'agent-runtime/Codex' : profile.engine === 'claude' ? 'agent-runtime/Claude Agent' : 'agent-runtime/OpenCode',environment:'local',purpose:profile.label,credential_file:`../api-keys/ai-${profile.id}.json`,official_reference:'backend/ai-config/REFERENCES.md',status:profile.noAuth ? 'disabled' : 'configured',updated_at:new Date().toISOString() };
         const index=ledger.credentials.findIndex(e=>e.id===entry.id);if(index<0)ledger.credentials.push(entry);else ledger.credentials[index]={...ledger.credentials[index],...entry};
         // Turning off authentication retains the old private key as a disabled
         // reference rather than deleting credentials during scheme editing.
