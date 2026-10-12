@@ -10,7 +10,9 @@ Saplingagent is a minimal software seed package that you can modify yourself, di
 
 Saplingagent combines a React interface with the official**Codex App Server**, project MCP tools and reusable Skills. Application code, conversations, preferences, rules and runtime stay in the application folder. The current page includes streaming chat, Markdown with GFM tables, and Git version controls; further features are added through conversation.
 
-**macOS 13.5+ · Apple Silicon and Intel installers · Source available for noncommercial use**Commercial use requires separate written permission. See [LICENSE](LICENSE), [NOTICE](NOTICE) and the authentication limits below. Saplingagent is independent software and is not an official OpenAI product.
+**macOS 13.5+ · Windows 10/11 x64 · Source available for noncommercial use**
+
+Commercial use requires separate written permission. See [LICENSE](LICENSE), [NOTICE](NOTICE) and the authentication limits below. Saplingagent is independent software and is not an official OpenAI product.
 
 ## Folder ownership and conversation receipts
 
@@ -30,6 +32,26 @@ cd Saplingagent
 Or download and extract a ZIP from the chosen branch. A private repository requires access.
 
 Open Terminal in the application folder and run:
+
+On **Windows 10/11 x64**, extract the whole folder, open PowerShell in that folder and run:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1
+```
+
+Choose English or Chinese, then **Install / update → Configure AI → Start app**. `-Lang zh` opens Chinese directly. ExecutionPolicy Bypass applies only to that new PowerShell process; the installer does not change machine policy, registry or global PATH. It installs official SHA-256-checked Node24.21.0 and pinned Codex0.146.1 plus locked OpenCode1.19.0 inside this folder. No WSL, global Node or Codex desktop app is required. Use an updated Windows10 x64 system with PowerShell5.1; Windows11 x64 is also a target. ARM/32-bit Windows is not supported by this installer. See [Windows guide](docs/windows-install.html) / [中文 Windows 安装说明](docs/windows-install.zh.html).
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1 -Lang zh -Action install -Repair
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1 -Action login -DeviceAuth
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1 -Action opencode
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1 -Action start -NoOpen
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1 -Action doctor
+```
+
+Native Windows installation, login, model streaming, branch switching and restart require Windows acceptance. The current development host is macOS; cross-platform unit checks and PowerShell7 menu/parser checks do not certify Windows PowerShell5.1 or a real Windows10 model run. Model authentication, entitlement and billing are unchanged. Startup still requires the existing Codex login, even when OpenCode providers are configured. Git is optional for chat and required for version controls; source ZIPs have no Git history. Use an existing Git checkout for main/testcode/release switching.
+
+On **macOS**, use Terminal:
 
 ```bash
 bash Saplingagent.sh
@@ -157,7 +179,7 @@ Public settings live in [config/runtime.json](config/runtime.json).
 
 The UI/status shows the **actual selected model**. A catalog entry is not proof of account entitlement. Tool commands have a separate timeout, normally 60 seconds and explicitly configurable up to one hour.
 
-Full Access allows native/MCP file and shell operations wherever the current macOS user has permission, including frontend, backend, MCP, Skills and rules. It does not elevate to root or bypass macOS permissions. There is no Saplingagent directory allowlist, compulsory build/hash gate or automatic rollback. Recorded originals may support user-requested restoration; arbitrary commands and native writes are not guaranteed reversible.
+Full Access allows native/MCP file and shell operations wherever the current OS user has permission, including frontend, backend, MCP, Skills and rules. It does not elevate to root or bypass OS permissions. There is no Saplingagent directory allowlist, compulsory build/hash gate or automatic rollback. Recorded originals may support user-requested restoration; arbitrary commands and native writes are not guaranteed reversible.
 
 Frontend edits use Vite hot reload. Restart after backend, MCP, Skill-discovery or dependency changes so the running processes load the new code.
 
@@ -191,7 +213,8 @@ Stop services before moving the application. Move the whole folder. On the same 
 
 ```text
 Saplingagent/
-├── Saplingagent.sh          # One English / Chinese install, configure and start menu
+├── Saplingagent.sh          # macOS English / Chinese menu
+├── Saplingagent.ps1         # Windows x64 English / Chinese menu
 ├── front/                     # React chat and application features
 ├── backend/
 │   ├── agent-runtime/         # App Server client, turns, SSE, Git API
@@ -257,3 +280,19 @@ Installation and integration documentation checked on **2026-10-10**:
 - [Local documentation](docs/index.html), [macOS guide](docs/macos-install.html), [service interfaces](docs/api-interfaces.html)
 
 The user's project rules ship under `rules/`. Translating their prose does not relax approval, credential handling or task-coordination requirements. The complete [rules distribution guide](rules/DISTRIBUTION.md) applies only when explicitly asked to introduce/copy the rules into another project; normal installation requires no developer-specific rules source folder.
+
+## Windows operation and delivery
+
+The App Server is a project-owned stdio subprocess. Windows uses the installed native codex.exe and OpenCode executable rather than Unix wrappers or npm.cmd. Credentials remain in local-secrets/codex/ and local-secrets/opencode/; OpenCode cache/state also stay inside the folder. The UI remains English; launcher language changes do not alter conversation data. Full Access remains current-user access, without added code permission restrictions.
+
+Restart app/Restart backend work through the same persistent gateway. Windows owned child trees are stopped with taskkill /PID /T /F; this is abrupt termination, so finish work before restarting. Current drain gates refuse busy operations. No process-name/port kill, root elevation, auto-rollback or automatic prompt resend is added. Forced window/process termination or separately detached programs cannot guarantee cleanup; use the open launcher and Control+C normally. Manager/launcher/port edits require exiting and reopening the launcher.
+
+To produce a clean Windows source ZIP from a committed checkout:
+
+```text
+<project-node> scripts/package-windows.mjs HEAD .cache/releases
+```
+
+Use .runtime/node-v24.21.0-win-x64/node.exe on Windows or the project-local Mac Node. The packager runs on either platform, exports committed source, initializes recipient goal/task records, includes all rules and both platform launchers, and excludes credentials, real sessions/logs/dependencies and Git. A single .ps1 file is insufficient; distribute the complete folder. Native Windows checks after installation: `.runtime\node-v24.21.0-win-x64\node.exe --test scripts/test/windows.test.mjs`. Set SAPLING_WINDOWS_INSTALLED_TEST=1 only to add pinned-binary --version checks; no login or model request is sent by these tests.
+
+If a canceled install leaves .runtime/windows-node.lock or .runtime/windows-install.lock, first confirm that this application's installer has stopped. Remove only the stale lock, then retry Install / update. The installer never treats a partial install as complete. Proxy/firewall/execution-policy constraints imposed by the computer's administrator may require their assistance; this app does not bypass organizational policy.

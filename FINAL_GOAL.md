@@ -53,11 +53,11 @@ The user's current explicit instructions take priority within the project. This 
 
 - Frontend source belongs in front/, backend services in backend/, human guides in docs/, and project Skills in .agents/skills/. services/ is an index, not a duplicate source tree. Services communicate through documented interfaces.
 - Each application owns its files, context and business data. New projects receive their own goal/task records rather than inheriting the creator project's history or approval records.
-- Saplingagent maintainer development modifies code only within this project folder, including its contained worktrees. A distributed seed contains all project-owned code, rules, MCP/Skills, configuration, documentation and launcher helpers in one complete folder, with no required sibling checkout, fixed developer path or external source symlink. Dependencies are installed locally; declared remote model services and macOS system tools remain external requirements.
+- Saplingagent maintainer development modifies code only within this project folder, including its contained worktrees. A distributed seed contains all project-owned code, rules, MCP/Skills, configuration, documentation and launcher helpers in one complete folder, with no required sibling checkout, fixed developer path or external source symlink. Dependencies are installed locally; declared remote model services and operating-system tools remain external requirements.
 - Recommend customer application edits stay inside their own folder by default. A customer may explicitly request external code edits using current Full Access; this advice creates no code permission restriction, path allowlist, sandbox or new per-operation approval.
 - Every final conversational reply, including ordinary chat and read-only work, includes the existing eight-field completion-review receipt. Report actual modifications/checks and pending work without inventing task IDs, tests or success. Read-only conversations remain unregistered.
 - Carry rules, AI entry points, dependency declarations and startup instructions with the seed. Exclude private credentials, real logs and existing conversations from default source packages; data migration/export is explicit and separate.
-- Current installation support is macOS. Other operating systems, native apps and device hosts require separate implementation and validation. Model services and integrations remain declared runtime dependencies.
+- Installation entries cover macOS and native Windows 10/11 x64. Windows 10 Intel/AMD64 is the requested target; native Windows installation/login/restart acceptance remains pending until tested on that system. Other architectures/operating systems, native apps and device hosts require separate implementation and validation. Model services and integrations remain declared runtime dependencies.
 - Keep main, testcode and release as the named branches. main is the shared reviewed baseline; synchronize other branches only when requested. Preserve history and follow the existing exact-version review process.
 - Project-owned documentation and UI are English unless explicitly requested otherwise. Project-owned source uses PolyForm Noncommercial 1.0.0; commercial permission and third-party service rights remain separate.
 
@@ -65,11 +65,11 @@ The user's current explicit instructions take priority within the project. This 
 
 Do not preload a general business suite or require a canvas, domain workflow, device automation, ETT integration, cloud marketplace, hosted model service or multi-project platform in every seed. These can be separate extensions when requested.
 
-Cloud content upload/download, cross-platform installers, native distribution and commercial authentication are not made implementation tasks by this goal update. Plans and prototypes do not become completed or mandatory capabilities merely because a design document exists.
+Cloud content upload/download, additional operating-system installers, native app distribution and commercial authentication remain outside the current request. Plans and prototypes do not become completed or mandatory capabilities merely because a design document exists.
 
 ## Acceptance criteria
 
-1. A recipient can install and start the complete clean seed in a new writable folder using documented macOS entry points and their own model authentication, without the developer's fixed filesystem paths or private account.
+1. A recipient can install and start the complete clean seed in a new writable folder using documented macOS or Windows entry points and their own model authentication, without the developer's fixed filesystem paths or private account.
 2. The initial page provides usable conversation and necessary runtime/version controls, without mandatory unrelated business components.
 3. A representative user request can change the local interface or backend with a verifiable, reloadable result. The delivered project remains modifiable.
 4. Context, source and business data remain organized and identifiable. Restart/source switching preserve actual data/login state according to documented behavior, without silently resending a task.

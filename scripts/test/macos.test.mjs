@@ -12,7 +12,7 @@ async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   const parent = path.join(project, '.cache/macos-tests'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "\u6d4b\u8bd5 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['scripts/setup.mjs', 'scripts/macos/cli.mjs', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'Saplingagent.sh', 'config/macos.json', 'config/runtime.json']) {
+  for (const file of ['contracts/local-process.mjs', 'scripts/launcher/cli.mjs', 'scripts/setup.mjs', 'scripts/macos/cli.mjs', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'Saplingagent.sh', 'config/macos.json', 'config/runtime.json']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const settings = JSON.parse(await fs.readFile(path.join(root, 'config/macos.json'), 'utf8'));
