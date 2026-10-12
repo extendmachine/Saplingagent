@@ -12,74 +12,55 @@ Saplingagent combines a React interface with the official**Codex App Server**, p
 
 **macOS 13.5+ · Apple Silicon and Intel installers · Source available for noncommercial use**Commercial use requires separate written permission. See [LICENSE](LICENSE), [NOTICE](NOTICE) and the authentication limits below. Saplingagent is independent software and is not an official OpenAI product.
 
-## Install, log in, start
+## Install, configure, start
 
-### 1. Get the application
+Get the complete application folder:
 
 ```bash
 git clone --branch release https://github.com/extendmachine/Saplingagent.git
 cd Saplingagent
 ```
 
-You can also use**Code → Download ZIP**on the chosen branch and extract it into a writable folder. A private repository requires access. Git is required for cloning and the Git panel, but not for installing and running an extracted source package.
+Or download and extract a ZIP from the chosen branch. A private repository requires access.
 
-You do not need a preinstalled Node.js, npm, Codex desktop app, Homebrew or Xcode for the ZIP installation route. You need internet access to the official Node.js downloads, npm registry and OpenAI authentication/model services.
-
-### 2. Install
-
-Double-click**`1-Install.command`**, or run:
+**Double-click `Saplingagent.command`**, or run:
 
 ```bash
-bash 1-Install.command
+bash Saplingagent.command
 ```
 
-The installer downloads official Node **24.21.0**, verifies its official SHA-256 checksum, installs project-local Codex CLI **0.146.1**, and installs locked module dependencies. Versions are pinned in [config/macos.json](config/macos.json).
+Use the same menu for every step:
 
-Runtimes go into `.runtime/`, dependencies into each module's `node_modules/`, and npm cache into `.cache/npm/`. No `sudo` or global npm installation is required. Running the installer again checks the existing installation. Keep the entire folder: the four launchers depend on the accompanying code and configuration.
+| Menu choice | Action |
+| --- | --- |
+| 1. Install / update | Prepare project-local Node, Codex, OpenCode and locked dependencies. |
+| 2. Configure AI | Choose Codex account login or OpenCode provider/API-key setup. |
+| 3. Start app | Launch the local services and open the chat page. |
+| 4. Diagnostics | Check installation, saved login and runtime readiness. |
+| 0. Quit | Close the menu. |
 
-If Finder does not execute a downloaded launcher, use the `bash` command above. Follow macOS's normal first-open prompts; do not disable system security. Installation restores executable permissions for these launchers.
+Install first, configure your own AI access, then start. Menu actions return to the menu when finished; an error leaves the menu available for retry. Stop an existing application before updating dependencies. During startup keep the terminal open; Control+C stops the owned services and exits the launcher.
 
-### 3. Log in with your own account
+Installation supports macOS 13.5+ on Apple Silicon or Intel, downloads official Node **24.21.0**, checks its official SHA-256 checksum, and installs project-local Codex **0.146.1**, OpenCode and locked dependencies. No preinstalled Node, npm, Homebrew, Xcode or Codex desktop app is required. Internet access to official downloads, npm and your model provider is required. Versions are declared in [config/macos.json](config/macos.json) and dependency lockfiles.
 
-Double-click **`2-Login-Codex.command`**, or run:
+Runtimes stay in `.runtime/`, dependencies in their modules' `node_modules/`, and npm cache in `.cache/npm/`. No sudo or global npm installation is needed. Keep the entire application folder; the single user-facing launcher uses its internal scripts and configuration.
+
+**Configure AI → Codex** opens the official login flow for your own account and stores project credentials under `local-secrets/codex/`. It does not import global credentials. **Configure AI → OpenCode** opens the provider credential selector and uses project-isolated `local-secrets/opencode/`. This launcher still checks Codex login at startup; OpenCode is an additional engine chosen for new conversations. Custom API endpoints also need provider/model configuration; see the OpenCode section below.
+
+Startup opens **[http://127.0.0.1:5173/](http://127.0.0.1:5173/)** after local readiness checks. Send a message to verify an actual response. Installation and saved login do not prove model access or available quota.
+
+For automation or recovery, the same launcher accepts explicit actions:
 
 ```bash
-bash 2-Login-Codex.command
+bash Saplingagent.command install --repair
+bash Saplingagent.command login --device-auth
+bash Saplingagent.command opencode
+bash Saplingagent.command start --no-open
+bash Saplingagent.command doctor
+bash Saplingagent.command logout
 ```
 
-Official Codex opens the browser for your own ChatGPT/Codex login. Your account must have access to the chosen Codex model. Credentials are stored under `local-secrets/codex/`, which is this application's `CODEX_HOME`. The Mac installer does not copy global `~/.codex` credentials or change other projects' accounts.
-
-This default route does not require an OpenAI API key. Never share `auth.json`, access tokens or `local-secrets/`.
-
-If browser callback login is unavailable, try the official device flow, subject to account/organization eligibility:
-
-```bash
-bash 2-Login-Codex.command --device-auth
-```
-
-See [official Codex authentication](https://learn.chatgpt.com/docs/auth). A saved login does not prove that network access, quota or a model request will succeed.
-
-### 4. Start
-
-Double-click **`3-Start-Saplingagent.command`**, or run:
-
-```bash
-bash 3-Start-Saplingagent.command
-```
-
-The launcher starts the local services, connects to Codex App Server, waits for authentication/model/MCP readiness and opens **[http://127.0.0.1:5173/](http://127.0.0.1:5173/)**. Expect output similar to:
-
-```text
-Connected to Codex App Server: <actual model>; 15 MCP tools; 3 Skills.
-```
-
-Send a message to check a real response. Try “List this project's Skills without changing files,” then “Add a small to-do component.” Responses may use any language you request; the application interface and shipped documentation are English.
-
-Keep the startup terminal open. Press **Control+C**to stop its services. To start without opening a browser:
-
-```bash
-bash 3-Start-Saplingagent.command --no-open
-```
+Device login depends on account/organization eligibility. If Finder does not execute a downloaded launcher, use the bash command and normal macOS first-open prompts.
 
 ## Switch versions and restart
 
@@ -89,7 +70,7 @@ After switching, click **Restart app** to load that version's frontend, backend,
 
 The stable recovery page is [http://127.0.0.1:5173/__saplingagent/runtime](http://127.0.0.1:5173/__saplingagent/runtime), or your configured `frontPort`. It survives frontend/backend failure and works when an older version lacks the restart button. Repair the source/dependencies/login and retry there. Current UI recovers an unsent draft; older UIs may not. Conversations and login files remain in the application folder. No automatic resend or code rollback.
 
-On first upgrade to this launcher, stop the existing launch window with Control+C and run `3-Start-Saplingagent.command` again. The public gateway keeps port5173; Vite moves to internal port5174. Manager4314 controls Agent4310, workspace4311, builder4312 and optional PDF4313 when its source exists. If a branch adds dependencies, install them first. Manager/launcher source or port changes require a full launcher restart. Legacy direct service callers cannot be tracked by the gateway; finish their work before restarting old versions.
+On first upgrade to this launcher, stop the existing launch window with Control+C and run `Saplingagent.command start` again. The public gateway keeps port5173; Vite moves to internal port5174. Manager4314 controls Agent4310, workspace4311, builder4312 and optional PDF4313 when its source exists. If a branch adds dependencies, install them first. Manager/launcher source or port changes require a full launcher restart. Legacy direct service callers cannot be tracked by the gateway; finish their work before restarting old versions.
 
 ## Authentication and costs**The local App Server does not charge a separate server fee. Model usage requires your own authentication and available quota.**Saplingagent includes no developer account, shared API key or promise of free model access.
 
@@ -107,7 +88,7 @@ For current eligibility and costs, consult [Codex authentication](https://learn.
 Codex remains the default. To use Anthropic, OpenRouter, a custom OpenAI-compatible endpoint, or another provider supported by OpenCode, first install the current lockfiles and run:
 
 ```bash
-bash 5-Configure-OpenCode.command
+bash Saplingagent.command opencode
 ```
 
 Provider credentials are stored only under `local-secrets/opencode/`. Restart Saplingagent, choose **OpenCode** before the first message of a new conversation, then choose a connected provider and model. Each conversation stays bound to its original engine/model across refresh and restart; start a new conversation to switch. There is no automatic fallback between providers.
@@ -175,10 +156,10 @@ Frontend edits use Vite hot reload. Restart after backend, MCP, Skill-discovery 
 
 ## Troubleshooting
 
-Double-click **`4-Doctor.command`**, or run:
+Double-click **`Saplingagent.command doctor`**, or run:
 
 ```bash
-bash 4-Doctor.command
+bash Saplingagent.command doctor
 ```
 
 Doctor reports installation, versions, saved login and configured-port status without displaying credentials or issuing model prompts.
@@ -186,9 +167,9 @@ Doctor reports installation, versions, saved login and configured-port status wi
 | Symptom | Action |
 | --- | --- |
 | Launcher does not open | Run its `bash` command from the project folder; follow normal macOS first-open prompts |
-| Missing login | Run `2-Login-Codex.command` and finish your own login |
-| Expired login or account change | Run `bash scripts/macos/bootstrap.sh logout`, then log in again |
-| Download/dependency failure | Check Node.js/npm network access; run `bash 1-Install.command --repair` |
+| Missing login | Run `Saplingagent.command login` and finish your own login |
+| Expired login or account change | Run `bash Saplingagent.command logout`, then log in again |
+| Download/dependency failure | Check Node.js/npm network access; run `bash Saplingagent.command install --repair` |
 | Installation lock remains | Confirm this project's installer has exited; remove only its stale `.runtime/node-install.lock` or `.runtime/macos-install.lock`, then retry |
 | Port occupied | Stop your previous startup terminal or adjust `config/runtime.json`; the launcher does not kill another project's process |
 | Not ready within 120 seconds | Run Doctor and inspect the startup terminal and metadata in `logs/<service>/` |
@@ -203,8 +184,8 @@ Stop services before moving the application. Move the whole folder. On the same 
 
 ```text
 Saplingagent/
-├── 1-Install.command / 2-Login-Codex.command
-├── 3-Start-Saplingagent.command / 4-Doctor.command
+├── Saplingagent.command install / Saplingagent.command login
+├── Saplingagent.command start / Saplingagent.command doctor
 ├── front/                     # React chat and application features
 ├── backend/
 │   ├── agent-runtime/         # App Server client, turns, SSE, Git API

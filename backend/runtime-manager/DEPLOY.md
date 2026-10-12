@@ -1,6 +1,6 @@
 # Runtime deployment
 
-Launch via `3-Start-Saplingagent.command` after project installation/login, or project-local Node `scripts/dev.mjs` for development. First adoption requires stopping the previous launcher and starting the new one once. The manager itself has no install step. Keep the launch window open.
+Launch via `Saplingagent.command start` after project installation/login, or project-local Node `scripts/dev.mjs` for development. First adoption requires stopping the previous launcher and starting the new one once. The manager itself has no install step. Keep the launch window open.
 
 Configured loopback listeners: public gateway frontPort5173, internal Vite vitePort5174, control runtimeManagerPort4314, Agent4310, workspace4311, builder4312, optional PDF4313. Check free ports before starting; foreign owners are never killed. PDF is unnecessary on main and only launched when its selected source exists. New branch dependencies must be installed first. The gateway keeps the same browser origin during frontend/backend restart, streams SSE, and forwards Vite WebSocket upgrades.
 

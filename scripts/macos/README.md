@@ -4,7 +4,7 @@ TASK-20261009-015, project-level startup/distribution tool, does not add new bus
 
 - System: macOS 13.5+; Select arm64/x64 according to the current running architecture, and use the corresponding x64 runtime under Rosetta.
 - Fixed version: Node 24.21.0 / Codex CLI 0.146.1 of config/macos.json; Node is installed to .runtime/node-v<version>-darwin-<arch>, Codex to .runtime/codex, npm cache .cache/npm.
-- Root entry: 1-Install.command, 2-Login-Codex.command, 3-Start-Saplingagent.command, 4-Doctor.command; All paths are calculated from the script location, and the developer's absolute path is not saved.
+- User entry: Saplingagent.command. No arguments opens the Bash menu: Install / update, Configure AI (Codex or OpenCode), Start app, Diagnostics and Quit. Explicit install/login/opencode/start/doctor/logout actions and existing flags remain available from that same file. Paths are derived from the script location.
 - bootstrap.sh: Only download Node in install, HTTPS to get the official distribution package and SHA-256 table, check, decompress and perform version check and upgrade; fail to clean up your own stage/lock. When other operations lack Node, it is clearly required to install it first.
 - cli.mjs: project lock; upgrade after checking Codex staging and the real version, restore the 0755 execution bit of the controlled entrance and wrapper; all services npm ci successfully write .runtime/macos-install.json. Skip the download when it is complete and the version is the same, and explicitly--repair and reinstall. Staging failure retains the complete old installation mark, removes the old mark before the business npm ci, and some installation failures will not misreport that it has been completed; keep the source code, authentication and business data.
 - Authentication: macOS entrance setup(importExistingAuth:false), env SEED_IMPORT_EXISTING_AUTH=0; do not import global auth. Project directory 700, token/auth file 600; the real value is only in local-secrets. The new directory ledger contains schema_version/project/credentials. Runtime only registers file references, retains the existing ledger fields, and updates its own root directory after moving. The macOS sub-process removes the inherited OPENAI_API_KEY/CODEX_API_KEY/CODEX_ACCESS_TOKEN to avoid accidental reuse of API authentication of other items.
@@ -34,7 +34,7 @@ No need for independent ports, databases or new production dependencies. The ser
 
 ## Saplingagent name and model fee (TASK020)
 
-The startup entrance is `3-Start-Saplingagent.command`, and the delivery package is `Saplingagent-macOS-<submit the first 8 bits>`; the dev output uses the same brand mark as the cli start detection. Environment variables and authentication catalogs remain compatible.
+The startup entrance is `Saplingagent.command start`, and the delivery package is `Saplingagent-macOS-<submit the first 8 bits>`; the dev output uses the same brand mark as the cli start detection. Environment variables and authentication catalogs remain compatible.
 
 Local App Server open source components do not need to be purchased separately, and the model needs to be authenticated by yourself and available. This Mac entrance uses ChatGPT to log in and use it according to the account package qualification/model permission/quota; Codex also supports API key independent volume billing and does not use ChatGPT subscription quota. This entrance does not provide API key login option. At present, Free/Go only lists the desktop Luna gradually open, and does not promise that CLI/App Server of this project can be used for free. Start/diagnose without model charging detection.
 
@@ -42,3 +42,9 @@ Official public basis (2026-10-09 / TASK020; documents do not need to be logged 
 
 ## Persistent runtime control
 `scripts/dev.mjs` now supervises frontend and backends using backend/runtime-manager. Public frontPort is a persistent same-origin gateway; internal Vite uses vitePort (default5174). Restart app reloads selected source; Restart backend preserves frontend. Optional services are discovered from the selected checkout. Recovery route `/__saplingagent/runtime` stays available during failure; manager/launcher/port changes require the Mac launcher. See backend/runtime-manager/CONTRACT.md and DEPLOY.md.
+
+## Unified entry contract (TASK-20261011-023)
+
+Saplingagent.command is the only root .command file; the five numbered launchers are replaced. The Bash menu works before Node is installed and dispatches to the existing bootstrap/CLI, keeping installation, login, API storage and runtime ownership behavior. Every completed or failed action returns to the menu; invalid choices can be retried, EOF quits, and INT/TERM/HUP forward to the owned child then exit. Explicit actions exec the bootstrap and retain its exit status. OpenCode auth now uses the common signal-forwarding command runner. Internal helpers are not separate user entry points.
+
+Provider/API configuration is performed by the existing OpenCode auth selector. Custom endpoint/model configuration still follows the provider documentation. Startup still uses the existing Codex login/readiness prerequisite. This consolidation does not implement standalone OpenCode-only startup or a custom endpoint wizard. No real credentials or model requests are part of automated launcher tests.

@@ -34,7 +34,7 @@ SEED_NODE_BIN="$SEED_NODE_DIR/bin/node"
 
 if [ ! -x "$SEED_NODE_BIN" ] || [ "$("$SEED_NODE_BIN" --version)" != "v$SEED_NODE_VERSION" ]; then
   if [ "$1" != "install" ]; then
-    echo "Project-local Node is not installed or has a different version. Run 1-Install.command first." >&2
+    echo "Project-local Node is not installed or has a different version. Open Saplingagent.command and choose Install / update first." >&2
     exit 1
   fi
   mkdir -p "$SEED_PROJECT_DIR/.runtime"
