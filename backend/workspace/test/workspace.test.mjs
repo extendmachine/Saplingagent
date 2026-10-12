@@ -90,3 +90,9 @@ test('restart preparation requires authentication and gates new session writes u
   assert.equal((await request('/internal/runtime/release')).status,200);
   assert.equal((await request('/sessions')).status,201);
 });
+
+test('Claude native thread and model binding survive reload and cannot be switched in place',async t=>{
+ const root=await fixture(t),store=await createStore(root);const selected=await store.createSession({engine:'claude',providerId:'sapling-synthetic',modelId:'synthetic-claude'});
+ await store.patchSession(selected.id,{threadId:'claude-thread'});const restored=await (await createStore(root)).getSession(selected.id);assert.equal(restored.engine,'claude');assert.equal(restored.threadId,'claude-thread');
+ await assert.rejects(store.patchSession(selected.id,{engine:'opencode'}));await assert.rejects(store.patchSession(selected.id,{providerId:'other'}));await assert.rejects(store.createSession({engine:'claude'}));
+});

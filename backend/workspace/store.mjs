@@ -16,7 +16,7 @@ const validId = (id) => {
   return id;
 };
 const engine = (value) => {
-  if (!['codex', 'opencode'].includes(value)) fail('engine must be codex or opencode');
+  if (!['codex', 'opencode', 'claude'].includes(value)) fail('engine must be codex, opencode or claude');
   return value;
 };
 const providerId = (value) => value === null ? null : text(value, 'providerId', 160);
@@ -125,7 +125,7 @@ export async function createStore(applicationRoot) {
         const selectedEngine = input.engine === undefined ? 'codex' : engine(input.engine);
         const session = { id: randomUUID(), title: input.title === undefined ? 'New conversation' : text(input.title, 'title', 200), engine: selectedEngine, providerId: input.providerId === undefined ? null : providerId(input.providerId), modelId: input.modelId === undefined ? null : modelId(input.modelId), threadId: null, messages: [], running: false, activeRequestId: null, createdAt: now, updatedAt: now, revision: 1 };
         if (selectedEngine === 'codex' && (session.providerId !== null || session.modelId !== null)) fail('Codex sessions do not accept providerId or modelId');
-        if (selectedEngine === 'opencode' && (!session.providerId || !session.modelId)) fail('OpenCode sessions require providerId and modelId');
+        if (selectedEngine !== 'codex' && (!session.providerId || !session.modelId)) fail('API agent sessions require providerId and modelId');
         await atomicJson(root, `data/workspace/sessions/${session.id}.json`, session);
         return session;
       });
