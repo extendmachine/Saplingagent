@@ -1,6 +1,6 @@
 # Local boot and macOS source package delivery
 
-Saplingagent.command is the single macOS user entry. Its interactive menu provides installation/update, Codex or OpenCode configuration, startup and diagnostics. Internal helpers retain project-local runtime, credential and owned-service behavior. See docs/macos-install.html for the recipient steps; see scripts/macos/README.md for AI maintenance contracts and official sources.
+Saplingagent.sh is the single macOS user entry. Run it with bash in Terminal and select English or Chinese. Its interactive menu provides installation/update, Codex or OpenCode configuration, startup and diagnostics. Internal helpers retain project-local runtime, credential and owned-service behavior. See docs/macos-install.html for the recipient steps; see scripts/macos/README.md for AI maintenance contracts and official sources.
 
 At present, the unified entrance `node scripts/dev.mjs` has been realized, locate the application root directory from the script location, and run workspace4311, app-builder4312, agent4310 and single-page front-end 5173; do not rely on the developer's absolute path. Ctrl+C stops the service created this time. When the port is occupied, it clearly fails and does not kill other processes.
 

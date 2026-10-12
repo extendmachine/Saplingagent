@@ -12,7 +12,7 @@ async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   const parent = path.join(project, '.cache/macos-tests'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "\u6d4b\u8bd5 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['scripts/setup.mjs', 'scripts/macos/cli.mjs', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'Saplingagent.command', 'config/macos.json', 'config/runtime.json']) {
+  for (const file of ['scripts/setup.mjs', 'scripts/macos/cli.mjs', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'Saplingagent.sh', 'config/macos.json', 'config/runtime.json']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const settings = JSON.parse(await fs.readFile(path.join(root, 'config/macos.json'), 'utf8'));
@@ -36,8 +36,8 @@ function runCli(root, action, extraEnv = {}) {
   });
 }
 test('distribution filter excludes runtime/private files while retaining complete rules and Skills', () => {
-  for (const file of ['local-secrets/codex/auth.json', 'backend/a/local-secrets/key.txt', 'data/session.json', 'backend/agent-runtime/ai-tasks/runtime/run.md', 'front/node_modules/react/index.js', '.runtime/codex/package.json', '.worktrees/coordination/TODO.md', 'logs/front/x.log', 'backend/a/.env.local', 'backend/a/token.pem', 'front/dist/index.html', '1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', '4-Doctor.command', '5-Configure-OpenCode.command']) assert.equal(distributable(file), false, file);
-  for (const file of ['LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', 'rules/README.md', 'rules/clawtask-package-skill-v2.zip', '.agents/skills/seed-page-edit/SKILL.md', 'Saplingagent.command', 'front/App.tsx', 'scripts/macos/codex.sh']) assert.equal(distributable(file), true, file);
+  for (const file of ['local-secrets/codex/auth.json', 'backend/a/local-secrets/key.txt', 'data/session.json', 'backend/agent-runtime/ai-tasks/runtime/run.md', 'front/node_modules/react/index.js', '.runtime/codex/package.json', '.worktrees/coordination/TODO.md', 'logs/front/x.log', 'backend/a/.env.local', 'backend/a/token.pem', 'front/dist/index.html', '1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', 'Saplingagent.command', '4-Doctor.command', '5-Configure-OpenCode.command']) assert.equal(distributable(file), false, file);
+  for (const file of ['LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', 'rules/README.md', 'rules/clawtask-package-skill-v2.zip', '.agents/skills/seed-page-edit/SKILL.md', 'Saplingagent.sh', 'front/App.tsx', 'scripts/macos/codex.sh']) assert.equal(distributable(file), true, file);
 });
 test('missing login does not launch services or copy global authentication', async t => {
   const root = await fixture(t);
@@ -118,4 +118,27 @@ test('failed managed startup keeps the recovery gateway alive until the user sto
   const end=Date.now()+5000;while(!output.includes('Keep this window open')&&child.exitCode===null&&Date.now()<end)await new Promise(resolve=>setTimeout(resolve,30));
   assert.match(output,/Keep this window open/);assert.equal(child.exitCode,null);assert.equal((await fetch(`http://127.0.0.1:${port}/api/runtime/status`)).status,200);
   child.kill('SIGTERM');assert.equal(await exited,0);
+});
+
+test('Chinese bootstrap reports missing Node without downloading anything', async t => {
+  const root = await fixture(t);
+  const result = await new Promise((resolve, reject) => {
+    const child = spawn('/bin/bash', [path.join(root, 'scripts/macos/bootstrap.sh'), 'doctor'], { cwd: '/', env: { ...process.env, SAPLING_LANG: 'zh' }, stdio: ['ignore', 'pipe', 'pipe'] });
+    let output = ''; child.stdout.on('data', chunk => output += chunk); child.stderr.on('data', chunk => output += chunk);
+    child.once('error', reject); child.once('exit', code => resolve({ code, output }));
+  });
+  assert.equal(result.code, 1);
+  assert.match(result.output, /项目内 Node 未安装或版本不符/);
+  assert.match(result.output, /bash Saplingagent.sh/);
+  assert.equal(await fs.access(path.join(root, '.runtime/node-install.lock')).then(() => true, () => false), false);
+});
+test('Chinese login failures preserve error meaning and do not expose raw credential diagnostics', async t => {
+  for (const auth of ['missing', 'broken']) {
+    const root = await fixture(t, { auth });
+    const result = await runCli(root, ['start', '--no-open'], { SAPLING_LANG: 'zh' });
+    assert.equal(result.code, 1);
+    assert.match(result.output, auth === 'missing' ? /此项目尚未登录/ : /此错误不代表未登录/);
+    assert.doesNotMatch(result.output, /PRIVATE_FIXTURE_VALUE/);
+    assert.equal(await fs.access(path.join(root, 'UNEXPECTED_LAUNCH')).then(() => true, () => false), false);
+  }
 });

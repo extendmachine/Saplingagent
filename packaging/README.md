@@ -10,4 +10,4 @@ The recipient must install and log in independently. ZIP installation does not r
 
 Full application/data backups are a distinct user-requested workflow. No Clawtask business ZIP or remote deployment is produced by this macOS task; rule 17 governs any future Clawtask packaging request.
 
-The package requires exactly one root launcher, Saplingagent.command. Recipient instructions use its menu; the five retired numbered launchers are excluded. Internal scripts remain part of the complete seed.
+The package requires exactly one root launcher, Saplingagent.sh. Recipient instructions run it with bash in Terminal and select English or Chinese; the retired .command launchers are excluded. Internal scripts remain part of the complete seed.

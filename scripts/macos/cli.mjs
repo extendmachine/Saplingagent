@@ -6,6 +6,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { setup } from '../setup.mjs';
 
+const t = (en, zh) => process.env.SAPLING_LANG === 'zh' ? zh : en;
+
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const settings = JSON.parse(await fs.readFile(path.join(root, 'config/macos.json'), 'utf8'));
 const cli = path.join(root, '.runtime/codex/node_modules/.bin/codex');
@@ -27,13 +29,13 @@ function run(command, args, { cwd = root, capture = false, childEnv = env } = {}
     const onInterrupt = () => forward('SIGINT'), onTerminate = () => forward('SIGTERM');
     process.on('SIGINT', onInterrupt); process.on('SIGTERM', onTerminate); process.on('SIGHUP', onTerminate);
     const detach = () => { process.off('SIGINT', onInterrupt); process.off('SIGTERM', onTerminate); process.off('SIGHUP', onTerminate); };
-    child.once('error', () => { detach(); reject(new Error('Command could not start. Open Saplingagent.command and choose Install / update.')); });
+    child.once('error', () => { detach(); reject(new Error(t('Command could not start. Open Saplingagent.sh and choose Install / update.', "命令无法启动。请运行 bash Saplingagent.sh，选择安装 / 更新。"))); });
     child.once('exit', (code, signal) => { detach(); resolve({ code: code ?? 1, signal, interrupted, output, errorOutput }); });
   });
 }
 async function required(command, args, options) {
   const result = await run(command, args, options);
-  if (result.code !== 0) throw new Error(`Operation failed (exit code ${result.code}). Fix the error above and try again.`);
+  if (result.code !== 0) throw new Error(t(`Operation failed (exit code ${result.code}). Fix the error above and try again.`, `操作失败（退出码 ${result.code}）。请修复上方错误后重试。`));
   return result;
 }
 async function exists(file) { return fs.access(file).then(() => true, () => false); }
@@ -61,31 +63,31 @@ async function loggedIn() {
   const result = await run(cli, [...authArgs, 'login', 'status'], { capture: true });
   if (result.code === 0) return true;
   if (/not logged in/i.test(result.output + result.errorOutput)) return false;
-  throw new Error('Unable to read project login status. Check the Codex installation, architecture and local-secrets/codex/config.toml; this error does not mean the project is not logged in.');
+  throw new Error(t('Unable to read project login status. Check the Codex installation, architecture and local-secrets/codex/config.toml; this error does not mean the project is not logged in.', "无法读取项目登录状态。请检查 Codex 安装、架构和 local-secrets/codex/config.toml；此错误不代表未登录。"));
 }
 async function install(repair = false) {
   const lock = path.join(root, '.runtime/macos-install.lock');
   try { await fs.mkdir(lock); }
   catch (error) {
-    if (error.code === 'EEXIST') throw new Error('Another installation is in progress. Wait; if its window has closed, remove .runtime/macos-install.lock as documented and retry.');
+    if (error.code === 'EEXIST') throw new Error(t('Another installation is in progress. Wait; if its window has closed, remove .runtime/macos-install.lock as documented and retry.', "另一个安装正在进行。请等待；确认其窗口已关闭后，按文档清理 .runtime/macos-install.lock 再重试。"));
     throw error;
   }
   const stage = path.join(root, '.runtime', `codex-install-${randomUUID()}`);
   try {
-    for (const file of ['Saplingagent.command', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
+    for (const file of ['Saplingagent.sh', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
     if (!repair && await installed()) {
       await localSetup();
-      console.log('The project environment is installed and up to date. Log in or start; repair damaged dependencies with bash Saplingagent.command install --repair.');
+      console.log(t('The project environment is installed and up to date. Log in or start; repair damaged dependencies with bash Saplingagent.sh install --repair.', "项目环境已安装且为最新状态，可以配置接口或启动。修复依赖请运行 bash Saplingagent.sh --lang zh install --repair。"));
       return;
     }
     const packageFile = path.join(stage, 'package.json');
     await fs.mkdir(path.dirname(packageFile), { recursive: true });
     await fs.writeFile(packageFile, JSON.stringify({ name: 'saplingagent-local-codex', private: true, dependencies: { '@openai/codex': settings.codexVersion } }, null, 2) + '\n');
-    console.log(`Installing project-local Codex ${settings.codexVersion}…`);
+    console.log(t(`Installing project-local Codex ${settings.codexVersion}…`, `正在安装项目内 Codex ${settings.codexVersion}…`));
     await required('npm', ['install', '--include=optional', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: path.dirname(packageFile) });
     const stagedCli = path.join(stage, 'node_modules/.bin/codex');
     const version = await required(stagedCli, ['--version'], { capture: true });
-    if (version.output.trim() !== `codex-cli ${settings.codexVersion}`) throw new Error('Codex version does not match configuration. Reinstall.');
+    if (version.output.trim() !== `codex-cli ${settings.codexVersion}`) throw new Error(t('Codex version does not match configuration. Reinstall.', "Codex 版本与配置不符，请重新安装。"));
     const destination = path.join(root, '.runtime/codex');
     const previous = path.join(root, '.runtime', `codex-previous-${randomUUID()}`);
     const hasPrevious = await exists(destination);
@@ -97,49 +99,49 @@ async function install(repair = false) {
     // Once npm ci can replace business dependencies, the old marker is no longer valid.
     await fs.rm(stampFile, { force: true });
     for (const service of services) {
-      console.log(`Installing locked dependencies for ${service}…`);
+      console.log(t(`Installing locked dependencies for ${service}…`, `正在安装 ${service} 的锁定依赖…`));
       const installArgs = ['ci', '--include=optional', ...(service === 'backend/agent-runtime' ? [] : ['--ignore-scripts']), '--no-audit', '--no-fund'];
       await required('npm', installArgs, { cwd: path.join(root, service) });
     }
     await required(path.join(root, 'backend/agent-runtime/node_modules/.bin/opencode'), ['--version'], { capture: true });
     await localSetup();
     await fs.writeFile(stampFile, JSON.stringify({ schemaVersion: 1, nodeVersion: process.versions.node, codexVersion: settings.codexVersion, arch: process.arch, signature: await signature(), installedAt: new Date().toISOString() }, null, 2) + '\n');
-    console.log('Installation complete. Choose Configure AI to connect your account or API provider, then Start app.');
+    console.log(t('Installation complete. Choose Configure AI to connect your account or API provider, then Start app.', "安装完成。请选择配置 AI 接口，连接自己的账号或 API 服务商，然后启动应用。"));
   } finally { await fs.rm(stage, { recursive: true, force: true }); await fs.rm(lock, { recursive: true, force: true }); }
 }
 async function login(deviceAuth) {
-  if (!await installed()) throw new Error('Open Saplingagent.command and choose Install / update first.');
+  if (!await installed()) throw new Error(t('Open Saplingagent.sh and choose Install / update first.', "请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
   await localSetup();
-  if (await loggedIn()) { console.log('Project login credentials are saved. Choose Start app in Saplingagent.command; if requests fail authentication, log out of this project as documented and log in again.'); return; }
-  console.log('Official Codex will open your browser. Log in with your own ChatGPT/Codex account.');
+  if (await loggedIn()) { console.log(t('Project login credentials are saved. Choose Start app in Saplingagent.sh; if requests fail authentication, log out of this project as documented and log in again.', "项目登录凭据已保存，可以选择启动应用。如果请求认证失败，请按文档退出项目账号后重新登录。")); return; }
+  console.log(t('Official Codex will open your browser. Log in with your own ChatGPT/Codex account.', "官方 Codex 将打开浏览器，请使用自己的 ChatGPT / Codex 账号登录。"));
   await required(cli, [...authArgs, 'login', ...(deviceAuth ? ['--device-auth'] : [])]);
-  if (!await loggedIn()) throw new Error('Login is incomplete. Choose Configure AI > Codex in Saplingagent.command again.');
+  if (!await loggedIn()) throw new Error(t('Login is incomplete. Choose Configure AI > Codex in Saplingagent.sh again.', "登录未完成。请再次选择配置 AI 接口 > Codex。"));
   const auth = path.join(env.CODEX_HOME, 'auth.json');
   if (await exists(auth)) await fs.chmod(auth, 0o600);
-  console.log('Project login complete. Choose Start app in Saplingagent.command.');
+  console.log(t('Project login complete. Choose Start app in Saplingagent.sh.', "项目登录完成，请选择启动应用。"));
 }
 async function logout() {
-  if (!await exists(cli)) throw new Error('Open Saplingagent.command and choose Install / update first.');
+  if (!await exists(cli)) throw new Error(t('Open Saplingagent.sh and choose Install / update first.', "请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
   await required(cli, [...authArgs, 'logout'], { capture: true });
-  console.log('Logged out of the Codex account for this project; application files and sessions are retained. Choose Configure AI > Codex in Saplingagent.command to log in again.');
+  console.log(t('Logged out of the Codex account for this project; application files and sessions are retained. Choose Configure AI > Codex in Saplingagent.sh to log in again.', "已退出此项目的 Codex 账号，应用文件和会话保留。重新登录请选择配置 AI 接口 > Codex。"));
 }
 async function configureOpenCode() {
-  if (!await installed()) throw new Error('Open Saplingagent.command and choose Install / update first.');
+  if (!await installed()) throw new Error(t('Open Saplingagent.sh and choose Install / update first.', "请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
   const data = path.join(root, 'local-secrets/opencode/data');
   const config = path.join(root, 'local-secrets/opencode/config');
   await Promise.all([fs.mkdir(data, { recursive: true, mode: 0o700 }), fs.mkdir(config, { recursive: true, mode: 0o700 })]);
-  console.log('OpenCode will configure a provider for this Saplingagent folder. Provider credentials stay under local-secrets/opencode/.');
+  console.log(t('OpenCode will configure a provider for this Saplingagent folder. Provider credentials stay under local-secrets/opencode/.', "OpenCode 将为当前 Saplingagent 文件夹配置服务商，凭据保存在 local-secrets/opencode/。"));
   const commandEnv = { ...env, XDG_DATA_HOME: data, XDG_CONFIG_HOME: config, OPENCODE_DISABLE_AUTOUPDATE: 'true' };
   const command = path.join(root, 'backend/agent-runtime/node_modules/.bin/opencode');
   const result = await run(command, ['auth', 'login'], { childEnv: commandEnv });
-  if (result.interrupted) throw new Error('OpenCode provider setup was cancelled.');
-  if (result.code !== 0) throw new Error(`OpenCode provider setup failed (exit code ${result.code}).`);
-  console.log('OpenCode provider saved. Restart Saplingagent, start a new conversation, then choose OpenCode.');
+  if (result.interrupted) throw new Error(t('OpenCode provider setup was cancelled.', "OpenCode 服务商配置已取消。"));
+  if (result.code !== 0) throw new Error(t(`OpenCode provider setup failed (exit code ${result.code}).`, `OpenCode 服务商配置失败（退出码 ${result.code}）。`));
+  console.log(t('OpenCode provider saved. Restart Saplingagent, start a new conversation, then choose OpenCode.', "OpenCode 服务商已保存。请重启 Saplingagent，新建会话后选择 OpenCode。"));
 }
 async function start(noOpen) {
-  if (!await installed()) throw new Error('Installation is incomplete or dependency lockfiles have changed. Open Saplingagent.command and choose Install / update first.');
+  if (!await installed()) throw new Error(t('Installation is incomplete or dependency lockfiles have changed. Open Saplingagent.sh and choose Install / update first.', "安装未完成或依赖锁文件已变化。请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
   await localSetup();
-  if (!await loggedIn()) throw new Error('This project is not logged in. Choose Configure AI > Codex in Saplingagent.command first.');
+  if (!await loggedIn()) throw new Error(t('This project is not logged in. Choose Configure AI > Codex in Saplingagent.sh first.', "此项目尚未登录。请先选择配置 AI 接口 > Codex。"));
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   const child = spawn(process.execPath, [path.join(root, 'scripts/dev.mjs')], { cwd: root, env, stdio: ['inherit', 'pipe', 'pipe'] });
   let ended = false, interrupted = false, stopRequested = false, launched = false, startupOutput = '';
@@ -172,8 +174,8 @@ async function start(noOpen) {
           const front = await fetch(`http://127.0.0.1:${config.frontPort}/`, { signal: AbortSignal.timeout(1500) });
           if (front.ok) {
             ready = true;
-            console.log(`Connected to Codex App Server: ${status.model}; ${status.mcp.tools.length} MCP tools; ${status.skills.length} Skills.`);
-            console.log(`Web page: http://127.0.0.1:${config.frontPort}/\nKeep this window open; press Control+C to stop these services.`);
+            console.log(t(`Connected to Codex App Server: ${status.model}; ${status.mcp.tools.length} MCP tools; ${status.skills.length} Skills.`, `已连接 Codex App Server：${status.model}；${status.mcp.tools.length} 个 MCP 工具；${status.skills.length} 个 Skills。`));
+            console.log(t(`Web page: http://127.0.0.1:${config.frontPort}/\nKeep this window open; press Control+C to stop these services.`, `网页：http://127.0.0.1:${config.frontPort}/\n请保持终端窗口打开；按 Control+C 停止这些服务。`));
             if (!noOpen) await run('/usr/bin/open', [`http://127.0.0.1:${config.frontPort}/`], { capture: true });
             break;
           }
@@ -182,10 +184,10 @@ async function start(noOpen) {
       await delay(300);
     }
     if (!ready && !ended && !interrupted) {
-      console.error(`Model/authentication/MCP is not ready. Keep this window open, inspect local diagnostics and retry at http://127.0.0.1:${config.frontPort}/__saplingagent/runtime. Choose Diagnostics in Saplingagent.command to check installation/login.`);
+      console.error(t(`Model/authentication/MCP is not ready. Keep this window open, inspect local diagnostics and retry at http://127.0.0.1:${config.frontPort}/__saplingagent/runtime. Choose Diagnostics in Saplingagent.sh to check installation/login.`, `模型、认证或 MCP 尚未就绪。请保持终端窗口打开，检查诊断，并在 http://127.0.0.1:${config.frontPort}/__saplingagent/runtime 重试。选择服务诊断可检查安装和登录状态。`));
     }
     const result = await exit;
-    if (result.code !== 0 && !interrupted) throw new Error(`Services stopped (exit code ${result.code}). Check for port, installation or authentication errors.`);
+    if (result.code !== 0 && !interrupted) throw new Error(t(`Services stopped (exit code ${result.code}). Check for port, installation or authentication errors.`, `服务已停止（退出码 ${result.code}）。请检查端口、安装或认证错误。`));
   } finally {
     process.off('SIGINT', stop); process.off('SIGTERM', stop); process.off('SIGHUP', stop);
     if (!ended) { stopRequested = true; child.kill('SIGTERM'); }
@@ -193,31 +195,31 @@ async function start(noOpen) {
   }
 }
 async function doctor() {
-  console.log(`macOS ${process.arch}; Node ${process.versions.node}; folder: ${root}`);
+  console.log(t(`macOS ${process.arch}; Node ${process.versions.node}; folder: ${root}`, `macOS ${process.arch}；Node ${process.versions.node}；项目目录：${root}`));
   const local = await installed();
-  console.log(`Project dependencies:${local ? 'installed' : 'not installed or changed; choose Install / update in Saplingagent.command'}`);
+  console.log(t(`Project dependencies:${local ? 'installed' : 'not installed or changed; choose Install / update in Saplingagent.sh'}`, `项目依赖：${local ? '已安装' : '未安装或已变化；请选择安装 / 更新'}`));
   let authenticated = false;
   if (await exists(cli)) {
     const version = await run(cli, ['--version'], { capture: true });
     const versionLabel = version.output.trim().match(/^codex-cli (\d+\.\d+\.\d+(?:[-.a-z0-9]+)?)$/i)?.[1];
-    if (version.code !== 0 || !versionLabel) throw new Error('Codex executable check failed. Reinstall; login status was not checked.');
+    if (version.code !== 0 || !versionLabel) throw new Error(t('Codex executable check failed. Reinstall; login status was not checked.', "Codex 可执行文件检查失败。请重新安装；本次未检查登录状态。"));
     console.log(`Codex：${versionLabel}`);
     authenticated = await loggedIn();
-    console.log(`Project login:${authenticated ? 'saved (does not verify current network or quota)' : 'not logged in; choose Configure AI > Codex in Saplingagent.command'}`);
+    console.log(t(`Project login:${authenticated ? 'saved (does not verify current network or quota)' : 'not logged in; choose Configure AI > Codex in Saplingagent.sh'}`, `项目登录：${authenticated ? '已保存（未验证当前网络或额度）' : '尚未登录；请选择配置 AI 接口 > Codex'}`));
   }
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   let online = false;
   try {
     const status = await fetch(`http://127.0.0.1:${config.agentPort}/api/status`, { signal: AbortSignal.timeout(2000) }).then(r => r.json());
     online = status.ready === true;
-    console.log(`Runtime status on configured ports:${online ? 'ready' : 'process running but Agent not ready'}; model:${status.model || 'not selected'}; MCP:${status.mcp?.tools?.length || 0}; Skills:${status.skills?.length || 0}`);
-  } catch { console.log('Runtime status: not started. Install, log in, then choose Start app in Saplingagent.command.'); }
-  console.log('Diagnostics report status only, without printing credentials or making model requests.');
+    console.log(t(`Runtime status on configured ports:${online ? 'ready' : 'process running but Agent not ready'}; model:${status.model || 'not selected'}; MCP:${status.mcp?.tools?.length || 0}; Skills:${status.skills?.length || 0}`, `运行状态：${online ? '就绪' : '进程运行中，但 Agent 尚未就绪'}；模型：${status.model || '未选择'}；MCP：${status.mcp?.tools?.length || 0}；Skills：${status.skills?.length || 0}`));
+  } catch { console.log(t('Runtime status: not started. Install, log in, then choose Start app in Saplingagent.sh.', "运行状态：尚未启动。请安装、登录后选择启动应用。")); }
+  console.log(t('Diagnostics report status only, without printing credentials or making model requests.', "诊断只报告状态，不显示凭据，也不发送模型请求。"));
   if (!local || !authenticated) process.exitCode = 1;
 }
 
 try {
-  if (process.platform !== 'darwin') throw new Error('This entry point currently supports macOS only.');
+  if (process.platform !== 'darwin') throw new Error(t('This entry point currently supports macOS only.', "此入口目前仅支持 macOS。"));
   const [action, ...args] = process.argv.slice(2);
   if (action === 'install' && args.every(x => x === '--repair')) await install(args.includes('--repair'));
   else if (action === 'login' && args.every(x => x === '--device-auth')) await login(args.includes('--device-auth'));
@@ -225,5 +227,5 @@ try {
   else if (action === 'doctor' && !args.length) await doctor();
   else if (action === 'logout' && !args.length) await logout();
   else if (action === 'opencode' && !args.length) await configureOpenCode();
-  else throw new Error('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / opencode.');
+  else throw new Error(t('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / opencode.', "可用操作：install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / opencode。"));
 } catch (error) { console.error(error.message); process.exitCode = 1; }
