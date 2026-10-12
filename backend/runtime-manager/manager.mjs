@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
+import { terminateOwned } from '../../contracts/local-process.mjs';
 import { randomUUID } from 'node:crypto';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -73,16 +74,8 @@ export class RuntimeManager {
   async stopChild(name) {
     const child = this.children.get(name); if (!child) return;
     this.intentional.add(child);
-    // Stop only process groups created by this manager, never processes found by port.
-    const signal = name => { try { if (child.pid && process.platform !== 'win32') process.kill(-child.pid, name); else child.kill(name); } catch (e) { if (e.code !== 'ESRCH') throw e; } };
-    const groupAlive = () => { if (!child.pid) return false; try { process.kill(process.platform === 'win32' ? child.pid : -child.pid, 0); return true; } catch (e) { return e.code !== 'ESRCH'; } };
-    signal('SIGTERM');
-    const deadline = Date.now() + this.stopTimeout;
-    while (groupAlive() && Date.now() < deadline) await delay(30);
-    if (groupAlive()) signal('SIGKILL');
-    const killedDeadline = Date.now() + 1500;
-    while (groupAlive() && Date.now() < killedDeadline) await delay(30);
-    if (groupAlive()) throw failure('SERVICE_STOP_FAILED', `${name} did not stop. Close the launch window and check local processes.`, name);
+    try { await terminateOwned(child, { graceMs: this.stopTimeout }); }
+    catch { throw failure('SERVICE_STOP_FAILED', `${name} did not stop. Close the launch window and check local processes.`, name); }
     this.children.delete(name);
   }
   async stopBackends() { for (const name of [...this.children.keys()].reverse()) if (name !== 'front') await this.stopChild(name); }
@@ -93,7 +86,7 @@ export class RuntimeManager {
     const ports = ['frontPort','agentPort','workspacePort','builderPort','pdfEditorPort','runtimeManagerPort','vitePort','openCodePort'];
     config.vitePort ??= 5174; config.pdfEditorPort ??= 4313; config.runtimeManagerPort ??= 4314; config.openCodePort ??= 4315;
     if (ports.some(key => !Number.isInteger(config[key]) || config[key] < 1024 || config[key] > 65535) || new Set(ports.map(key => config[key])).size !== ports.length) throw failure('INVALID_CONFIG', 'Service ports must be distinct integers from 1024 to 65535.');
-    if (this.config && ports.some(key => config[key] !== this.config[key])) throw failure('LAUNCHER_RESTART_REQUIRED', 'Service ports changed. Restart with the Mac launcher.');
+    if (this.config && ports.some(key => config[key] !== this.config[key])) throw failure('LAUNCHER_RESTART_REQUIRED', 'Service ports changed. Restart with the launcher for your operating system.');
     return config;
   }
   async startBackends(config) {
