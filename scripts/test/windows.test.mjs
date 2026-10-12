@@ -5,13 +5,15 @@ import path from 'node:path';
 import { EventEmitter, once } from 'node:events';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { codexBinary, openCodeBinary, npmCommand, commandShell, windowsTreeCommand, terminateOwned } from '../../contracts/local-process.mjs';
+import { claudeBinary, codexBinary, openCodeBinary, npmCommand, commandShell, windowsTreeCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 test('Windows paths use native executables and npm JS, with no cmd shim or shell interpolation', () => {
   const folder = path.resolve("app's 中文 folder");
   assert.match(codexBinary(folder, 'win32', 'x64'), /codex-win32-x64.*x86_64-pc-windows-msvc.*codex\.exe$/);
   assert.match(openCodeBinary(folder, 'win32'), /opencode-ai.*bin.*opencode\.exe$/);
+  assert.match(claudeBinary(folder, 'win32', 'x64'), /claude-agent-sdk-win32-x64.*claude\.exe$/);
+  assert.match(claudeBinary(folder, 'win32', 'arm64'), /claude-agent-sdk-win32-arm64.*claude\.exe$/);
   const npm = npmCommand(path.join(folder, 'node.exe'), 'win32');
   assert.equal(npm.command, path.join(folder, 'node.exe'));
   assert.match(npm.args[0], /npm.*bin.*npm-cli\.js$/);
@@ -75,7 +77,7 @@ test('native Windows stops parent and grandchild, retains an unrelated process, 
   assert.equal(code, 0); assert.equal(text, 'hello');
 });
 test('native Windows installed Codex and OpenCode report pinned versions without login/model calls', { skip: process.platform !== 'win32' || process.env.SAPLING_WINDOWS_INSTALLED_TEST !== '1' }, async () => {
-  for (const [binary, expected] of [[codexBinary(root), 'codex-cli 0.146.1'], [openCodeBinary(root), '1.19.0']]) {
+  for (const [binary, expected] of [[codexBinary(root), 'codex-cli 0.146.1'], [openCodeBinary(root), '1.19.0'], [claudeBinary(root), '2.1.296 (Claude Code)']]) {
     const child = spawn(binary, ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] });
     let output = ''; child.stdout.on('data', chunk => output += chunk); const [code] = await once(child, 'close');
     assert.equal(code, 0); assert.equal(output.trim(), expected);

@@ -11,7 +11,7 @@ export function distributable(file) {
   if (/(^|\/)ai-tasks\/runtime(\/|$)/.test(file)) return false;
   if (/(^|\/)(?:selfdata\.json|\.DS_Store|\.env(?:\..*)?|auth\.json|service-token)$/.test(file)) return false;
   if (/\.(?:key|pem|p12|pfx|log)$/i.test(file)) return false;
-  return /^(?:front\/|backend\/|contracts\/|config\/|scripts\/|docs\/|rules\/|services\/|\.agents\/skills\/)/.test(file)
+  return /^(?:front\/|backend\/|contracts\/|config\/|scripts\/|docs\/|rules\/|services\/|\.agents\/(?:skills\/|\.claude-plugin\/plugin\.json$))/.test(file)
     || /^(?:LICENSE|NOTICE|THIRD_PARTY_NOTICES.md|CHANGELOG.md|AGENTS\.md|CLAUDE\.md|README\.md|FINAL_GOAL\.md|TODO\.md|AI_TASKS\.md|\.gitignore|\.gitattributes|Saplingagent\.sh)$/.test(file);
 }
 
@@ -38,7 +38,7 @@ export async function packageSource({ ref = 'HEAD', outputDir = path.join(root, 
   });
   const files = entries.filter(entry => distributable(entry.path));
   if (files.some(entry => entry.mode === '120000')) throw new Error('Distribution source contains symlinks. Review and replace them with explicit tracked files first.');
-  const required = ['LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'Saplingagent.sh', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'scripts/macos/cli.mjs', 'scripts/launcher/cli.mjs', 'contracts/local-process.mjs', 'contracts/ai-configuration.mjs', 'contracts/codex-rpc.mjs', 'backend/ai-config/server.mjs', 'backend/ai-config/store.mjs', 'backend/ai-config/auth.mjs', 'front/ai-config/main.tsx', 'front/ai-config/index.html', 'front/ai-config/styles.css', 'front/ai-config/vite.config.mjs', 'docs/ai-configuration.html', 'docs/macos-install.html', 'docs/macos-install.zh.html', 'rules/README.md', 'rules/18-saplingagent-folder-boundary.md', 'config/macos.json', 'front/package-lock.json', 'backend/mcp-runtime/package-lock.json', 'backend/agent-runtime/package-lock.json'];
+  const required = ['.agents/.claude-plugin/plugin.json', 'backend/agent-runtime/providers/claude.mjs', 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'Saplingagent.sh', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'scripts/macos/cli.mjs', 'scripts/launcher/cli.mjs', 'contracts/local-process.mjs', 'contracts/ai-configuration.mjs', 'contracts/codex-rpc.mjs', 'backend/ai-config/server.mjs', 'backend/ai-config/store.mjs', 'backend/ai-config/auth.mjs', 'front/ai-config/main.tsx', 'front/ai-config/index.html', 'front/ai-config/styles.css', 'front/ai-config/vite.config.mjs', 'docs/ai-configuration.html', 'docs/macos-install.html', 'docs/macos-install.zh.html', 'rules/README.md', 'rules/18-saplingagent-folder-boundary.md', 'config/macos.json', 'front/package-lock.json', 'backend/mcp-runtime/package-lock.json', 'backend/agent-runtime/package-lock.json'];
   if (platform === 'Windows') required.push('scripts/windows/bootstrap.sh', 'config/windows.json', 'docs/windows-install.html', 'docs/windows-install.zh.html');
   for (const file of required) if (!files.some(entry => entry.path === file)) throw new Error(`Delivery version is missing ${file}`);
   const ruleFiles = entries.filter(entry => entry.path.startsWith('rules/'));
