@@ -6,7 +6,7 @@
 
 **Let your apps grow like trees.**
 
-Start with a chat page, describe what you need, and let an AI adapt the application in your own folder.
+Saplingagent is a minimal software seed package that you can modify yourself, directly or through conversation with AI. Start with a chat page in your own project folder, then add the interfaces, features and services you need.
 
 Saplingagent combines a React interface with the official**Codex App Server**, project MCP tools and reusable Skills. Application code, conversations, preferences, rules and runtime stay in the application folder. The current page includes streaming chat, Markdown with GFM tables, and Git version controls; further features are added through conversation.
 
