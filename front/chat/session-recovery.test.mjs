@@ -65,6 +65,7 @@ async function harness({ savedId = null, route, list = () => json({ sessions: []
       const request = { url, ...options, input: options.body ? JSON.parse(options.body) : undefined };
       requests.push(request);
       if (url === '/api/status') return json({ ready: true, authenticated: true, model: 'fixture-model' });
+      if (url === '/api/engines') return json({ defaultEngine: 'codex', engines: [{ id: 'codex', label: 'Codex', ready: true, authenticated: true, model: 'fixture-model' }] });
       if (url === '/api/sessions') return list(request);
       const response = await route(request);
       if (!response) throw new Error(`Unhandled synthetic request: ${url}`);
