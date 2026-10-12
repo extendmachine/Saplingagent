@@ -5,17 +5,20 @@ Version 4; 2026-10-09; TASK-20261009-013. SSE fields continue to be compatible w
 |Interface|Input|Output and behavior|
 | --- | --- | --- |
 | GET /api/status |Nothing|ready/authenticated/model/skills/mcp; clearly shows that the service is unavailable or there is a login problem|
+| GET /api/engines |Nothing|Codex readiness plus connected OpenCode providers and tool-capable models; no credentials|
 | GET /api/git |Nothing|Current repository, branch/HEAD, short version number and status fingerprint, work area change, local branch/Worktree occupation and recent submission; panel and bottom version bar regular refresh|
 | POST /api/git/commit |Nothing|The upper right panel saves the current non-neglected changes as local submission; does not push remote, running conversation returns 409|
 | POST /api/git/switch | branch |Only switch existing local branches safely; successfully return to the latest Git status and reload the page. 409 keeps the current version and displays the reason.|
 | GET /api/sessions |Nothing|The id/title/updatedAt of sessions; used to confirm that the session has been saved, and the session navigation is not preset.|
 | GET /api/sessions/:id |sessionId saved by the browser|session.messages, running, activeRequestId; refresh and restore the same session|
-| POST /api/chat |Text, requestId, optional sessionId|SSE session/text_delta/status/tool/approval/snapshot/done/error; real streaming display|
+| POST /api/chat |Text, requestId, optional sessionId and new-session engine/provider/model|SSE session/text_delta/status/tool/approval/snapshot/done/error; real streaming display|
 | GET /api/events?sessionId=... |Current sessionId|Active session reconnect subscription, snapshot overwrites the next increment; read and save snapshots when the subscription is not possible|
 | POST /api/sessions/:id/cancel |Current sessionId|Ok; stop and wait for the final state of the service, do not abandon the output first.|
 | POST /api/approvals/:id | decision |Keep the existing front-end interaction event compatibility; the current full-authority tool operation does not need to be approved one by one.|
 
 Each data of SSE is JSON; text_delta contains itemId/delta. Snapshot contains a complete session, which can be used for power-like retry/disconnection recovery; done.status is completed/interrupted/failed. The client parses according to the UTF-8 and SSE line boundaries, and refreshes 50ms by combining increments; HTTP unsuccessful, error events and unexpected disconnections are clearly handled separately.
+
+The empty/new-conversation composer offers Codex or OpenCode selection. OpenCode then requires a connected provider and model. Once the first message creates the session, the selector is hidden and the saved session selection is authoritative across refresh/restart. Starting a new conversation makes selection available again. Browser storage still contains only the opaque active session ID and temporary unsent draft, never provider credentials.
 
 Send blank will not be executed; repeat sending is disabled at runtime, and stop is still available. Fail to reuse the original requestId and no more user messages will be added; if the service is still running, reconnect the current session. The single input box supports Enter sending, Shift+Enter lineback and Markdown text display.
 The browser localStorage only saves the opaque sessionId of seedagent.active-session.v1; messages are persisted locally by workspace. Old seedagent.layout-preview.v1 does not read, does not write, does not clear. The browser does not store credentials.
