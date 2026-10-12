@@ -13,7 +13,7 @@
 | POST /preferences | {key,value,evidence} | 201 {preference} |
 | DELETE /preferences/:id |Security ID| {ok:true} |
 
-session：id,title,engine:'codex'|'opencode',providerId:string|null,modelId:string|null,threadId:string|null,messages,createdAt,updatedAt,revision,running,activeRequestId:string|null,requests?. OpenCode requires providerId and modelId; selection fields cannot change after creation. Older stored records default to Codex.
+session：id,title,engine:'codex'|'opencode'|'claude',providerId:string|null,modelId:string|null,threadId:string|null,messages,createdAt,updatedAt,revision,running,activeRequestId:string|null,requests?. OpenCode and Claude Agent require providerId and modelId; selection fields cannot change after creation. Older stored records default to Codex.
 Messages: up to 10,000, {id,role:'user'|'assistant'|'system'|'tool',text,status?,requestId?}, ID is unique, the text is up to 500,000 characters, and the total JSON is up to 4MiB.
 Requests: up to 500, {id,status:'inProgress'|'completed'|'failed'|'interrupted',startedAt,completedAt?,error?}, ID is unique, time must be parsable, error up to 1000 characters. The account book is used for retrying, and the actual retry status is decided by the agent.
 Title up to 200 characters; threadId up to 300 characters. Preference {id,key,value,evidence,createdAt}; key up to 256 characters, value JSON up to 64KiB, evidence required non-blank, up to 8192 characters, up to 5000 items, total JSON up to 4MiB. Long-term preferences are not automatically inferred.
