@@ -69,11 +69,19 @@ choose_language() {
 }
 run_action() {
   if ! select_bootstrap; then return 0; fi
-  /bin/bash "$SAPLING_BOOTSTRAP" "$@" <&0 &
-  SAPLING_CHILD_PID=$!
-  wait "$SAPLING_CHILD_PID"
-  local result=$?
-  SAPLING_CHILD_PID=''
+  local result
+  if [ "$SAPLING_BOOTSTRAP" = "$SAPLING_ROOT/scripts/windows/bootstrap.sh" ]; then
+    # A native console bridge must own the foreground terminal. Backgrounding
+    # winpty can stop it with SIGTTOU before PowerShell or device detection runs.
+    /bin/bash "$SAPLING_BOOTSTRAP" "$@" <&0
+    result=$?
+  else
+    /bin/bash "$SAPLING_BOOTSTRAP" "$@" <&0 &
+    SAPLING_CHILD_PID=$!
+    wait "$SAPLING_CHILD_PID"
+    result=$?
+    SAPLING_CHILD_PID=''
+  fi
   if [ "${result}" -ne 0 ]; then
     printf '\n'
     say "Operation incomplete (exit ${result}). You can retry or choose Diagnostics." "操作未完成（退出码 ${result}）。可以重试或选择服务诊断。"
