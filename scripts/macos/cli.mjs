@@ -15,20 +15,20 @@ const authArgs = ['-c', 'cli_auth_credentials_store="file"'];
 const env = { ...process.env, SEED_ROOT: root, SEED_CODEX_BIN: path.join(root, 'scripts/macos/codex.sh'), SEED_IMPORT_EXISTING_AUTH: '0', CODEX_HOME: path.join(root, 'local-secrets/codex'), npm_config_cache: path.join(root, '.cache/npm') };
 for (const key of ['OPENAI_API_KEY', 'CODEX_API_KEY', 'CODEX_ACCESS_TOKEN']) delete env[key];
 
-function run(command, args, { cwd = root, capture = false } = {}) {
+function run(command, args, { cwd = root, capture = false, childEnv = env } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, env, stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit' });
-    let output = '', errorOutput = '';
+    const child = spawn(command, args, { cwd, env: childEnv, stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit' });
+    let output = '', errorOutput = '', interrupted = false;
     if (capture) {
       child.stdout.on('data', chunk => { output = (output + chunk).slice(-16000); });
       child.stderr.on('data', chunk => { errorOutput = (errorOutput + chunk).slice(-16000); });
     }
-    const forward = signal => { if (child.exitCode === null) child.kill(signal); };
+    const forward = signal => { if (child.exitCode === null) { interrupted = true; child.kill(signal); } };
     const onInterrupt = () => forward('SIGINT'), onTerminate = () => forward('SIGTERM');
     process.on('SIGINT', onInterrupt); process.on('SIGTERM', onTerminate); process.on('SIGHUP', onTerminate);
     const detach = () => { process.off('SIGINT', onInterrupt); process.off('SIGTERM', onTerminate); process.off('SIGHUP', onTerminate); };
-    child.once('error', () => { detach(); reject(new Error('Command could not start. Run 1-Install.command again.')); });
-    child.once('exit', (code, signal) => { detach(); resolve({ code: code ?? 1, signal, output, errorOutput }); });
+    child.once('error', () => { detach(); reject(new Error('Command could not start. Open Saplingagent.command and choose Install / update.')); });
+    child.once('exit', (code, signal) => { detach(); resolve({ code: code ?? 1, signal, interrupted, output, errorOutput }); });
   });
 }
 async function required(command, args, options) {
@@ -72,10 +72,10 @@ async function install(repair = false) {
   }
   const stage = path.join(root, '.runtime', `codex-install-${randomUUID()}`);
   try {
-    for (const file of ['1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', '4-Doctor.command', '5-Configure-OpenCode.command', 'scripts/macos/bootstrap.sh', 'scripts/macos/entry.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
+    for (const file of ['Saplingagent.command', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
     if (!repair && await installed()) {
       await localSetup();
-      console.log('The project environment is installed and up to date. Log in or start; repair damaged dependencies with bash "1-Install.command" --repair.');
+      console.log('The project environment is installed and up to date. Log in or start; repair damaged dependencies with bash Saplingagent.command install --repair.');
       return;
     }
     const packageFile = path.join(stage, 'package.json');
@@ -104,42 +104,42 @@ async function install(repair = false) {
     await required(path.join(root, 'backend/agent-runtime/node_modules/.bin/opencode'), ['--version'], { capture: true });
     await localSetup();
     await fs.writeFile(stampFile, JSON.stringify({ schemaVersion: 1, nodeVersion: process.versions.node, codexVersion: settings.codexVersion, arch: process.arch, signature: await signature(), installedAt: new Date().toISOString() }, null, 2) + '\n');
-    console.log('Installation complete. Double-click 2-Login-Codex.command to log in with your own account, then 3-Start-Saplingagent.command.');
+    console.log('Installation complete. Choose Configure AI to connect your account or API provider, then Start app.');
   } finally { await fs.rm(stage, { recursive: true, force: true }); await fs.rm(lock, { recursive: true, force: true }); }
 }
 async function login(deviceAuth) {
-  if (!await installed()) throw new Error('Double-click 1-Install.command first.');
+  if (!await installed()) throw new Error('Open Saplingagent.command and choose Install / update first.');
   await localSetup();
-  if (await loggedIn()) { console.log('Project login credentials are saved. Run 3-Start-Saplingagent.command; if requests fail authentication, log out of this project as documented and log in again.'); return; }
+  if (await loggedIn()) { console.log('Project login credentials are saved. Choose Start app in Saplingagent.command; if requests fail authentication, log out of this project as documented and log in again.'); return; }
   console.log('Official Codex will open your browser. Log in with your own ChatGPT/Codex account.');
   await required(cli, [...authArgs, 'login', ...(deviceAuth ? ['--device-auth'] : [])]);
-  if (!await loggedIn()) throw new Error('Login is incomplete. Run 2-Login-Codex.command again.');
+  if (!await loggedIn()) throw new Error('Login is incomplete. Choose Configure AI > Codex in Saplingagent.command again.');
   const auth = path.join(env.CODEX_HOME, 'auth.json');
   if (await exists(auth)) await fs.chmod(auth, 0o600);
-  console.log('Project login complete. Double-click 3-Start-Saplingagent.command.');
+  console.log('Project login complete. Choose Start app in Saplingagent.command.');
 }
 async function logout() {
-  if (!await exists(cli)) throw new Error('Run 1-Install.command first.');
+  if (!await exists(cli)) throw new Error('Open Saplingagent.command and choose Install / update first.');
   await required(cli, [...authArgs, 'logout'], { capture: true });
-  console.log('Logged out of the Codex account for this project; application files and sessions are retained. Run 2-Login-Codex.command to log in again.');
+  console.log('Logged out of the Codex account for this project; application files and sessions are retained. Choose Configure AI > Codex in Saplingagent.command to log in again.');
 }
 async function configureOpenCode() {
-  if (!await installed()) throw new Error('Double-click 1-Install.command first.');
+  if (!await installed()) throw new Error('Open Saplingagent.command and choose Install / update first.');
   const data = path.join(root, 'local-secrets/opencode/data');
   const config = path.join(root, 'local-secrets/opencode/config');
   await Promise.all([fs.mkdir(data, { recursive: true, mode: 0o700 }), fs.mkdir(config, { recursive: true, mode: 0o700 })]);
   console.log('OpenCode will configure a provider for this Saplingagent folder. Provider credentials stay under local-secrets/opencode/.');
   const commandEnv = { ...env, XDG_DATA_HOME: data, XDG_CONFIG_HOME: config, OPENCODE_DISABLE_AUTOUPDATE: 'true' };
   const command = path.join(root, 'backend/agent-runtime/node_modules/.bin/opencode');
-  const child = spawn(command, ['auth', 'login'], { cwd: root, env: commandEnv, stdio: 'inherit' });
-  const result = await new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', code => resolve(code ?? 1)); });
-  if (result !== 0) throw new Error(`OpenCode provider setup failed (exit code ${result}).`);
+  const result = await run(command, ['auth', 'login'], { childEnv: commandEnv });
+  if (result.interrupted) throw new Error('OpenCode provider setup was cancelled.');
+  if (result.code !== 0) throw new Error(`OpenCode provider setup failed (exit code ${result.code}).`);
   console.log('OpenCode provider saved. Restart Saplingagent, start a new conversation, then choose OpenCode.');
 }
 async function start(noOpen) {
-  if (!await installed()) throw new Error('Installation is incomplete or dependency lockfiles have changed. Run 1-Install.command first.');
+  if (!await installed()) throw new Error('Installation is incomplete or dependency lockfiles have changed. Open Saplingagent.command and choose Install / update first.');
   await localSetup();
-  if (!await loggedIn()) throw new Error('This project is not logged in. Run 2-Login-Codex.command first.');
+  if (!await loggedIn()) throw new Error('This project is not logged in. Choose Configure AI > Codex in Saplingagent.command first.');
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   const child = spawn(process.execPath, [path.join(root, 'scripts/dev.mjs')], { cwd: root, env, stdio: ['inherit', 'pipe', 'pipe'] });
   let ended = false, interrupted = false, stopRequested = false, launched = false, startupOutput = '';
@@ -182,7 +182,7 @@ async function start(noOpen) {
       await delay(300);
     }
     if (!ready && !ended && !interrupted) {
-      console.error(`Model/authentication/MCP is not ready. Keep this window open, inspect local diagnostics and retry at http://127.0.0.1:${config.frontPort}/__saplingagent/runtime. Run 4-Doctor.command to check installation/login.`);
+      console.error(`Model/authentication/MCP is not ready. Keep this window open, inspect local diagnostics and retry at http://127.0.0.1:${config.frontPort}/__saplingagent/runtime. Choose Diagnostics in Saplingagent.command to check installation/login.`);
     }
     const result = await exit;
     if (result.code !== 0 && !interrupted) throw new Error(`Services stopped (exit code ${result.code}). Check for port, installation or authentication errors.`);
@@ -195,7 +195,7 @@ async function start(noOpen) {
 async function doctor() {
   console.log(`macOS ${process.arch}; Node ${process.versions.node}; folder: ${root}`);
   const local = await installed();
-  console.log(`Project dependencies:${local ? 'installed' : 'not installed or changed; run 1-Install.command'}`);
+  console.log(`Project dependencies:${local ? 'installed' : 'not installed or changed; choose Install / update in Saplingagent.command'}`);
   let authenticated = false;
   if (await exists(cli)) {
     const version = await run(cli, ['--version'], { capture: true });
@@ -203,7 +203,7 @@ async function doctor() {
     if (version.code !== 0 || !versionLabel) throw new Error('Codex executable check failed. Reinstall; login status was not checked.');
     console.log(`Codex：${versionLabel}`);
     authenticated = await loggedIn();
-    console.log(`Project login:${authenticated ? 'saved (does not verify current network or quota)' : 'not logged in; run 2-Login-Codex.command'}`);
+    console.log(`Project login:${authenticated ? 'saved (does not verify current network or quota)' : 'not logged in; choose Configure AI > Codex in Saplingagent.command'}`);
   }
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   let online = false;
@@ -211,7 +211,7 @@ async function doctor() {
     const status = await fetch(`http://127.0.0.1:${config.agentPort}/api/status`, { signal: AbortSignal.timeout(2000) }).then(r => r.json());
     online = status.ready === true;
     console.log(`Runtime status on configured ports:${online ? 'ready' : 'process running but Agent not ready'}; model:${status.model || 'not selected'}; MCP:${status.mcp?.tools?.length || 0}; Skills:${status.skills?.length || 0}`);
-  } catch { console.log('Runtime status: not started. Install, log in, then run 3-Start-Saplingagent.command.'); }
+  } catch { console.log('Runtime status: not started. Install, log in, then choose Start app in Saplingagent.command.'); }
   console.log('Diagnostics report status only, without printing credentials or making model requests.');
   if (!local || !authenticated) process.exitCode = 1;
 }

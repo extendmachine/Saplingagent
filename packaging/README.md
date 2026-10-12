@@ -9,3 +9,5 @@ Run using the installed project Node: `node scripts/package-macos.mjs HEAD`, or 
 The recipient must install and log in independently. ZIP installation does not require Git; repackaging and version controls do. Commercial rights and third-party authentication requirements remain separate. This is a source package, not a signed/notarized native Mac app.
 
 Full application/data backups are a distinct user-requested workflow. No Clawtask business ZIP or remote deployment is produced by this macOS task; rule 17 governs any future Clawtask packaging request.
+
+The package requires exactly one root launcher, Saplingagent.command. Recipient instructions use its menu; the five retired numbered launchers are excluded. Internal scripts remain part of the complete seed.
