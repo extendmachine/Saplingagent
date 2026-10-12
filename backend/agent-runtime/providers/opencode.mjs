@@ -1,3 +1,4 @@
+import { openCodeBinary, terminateOwned } from '../../../contracts/local-process.mjs';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -38,7 +39,7 @@ export class OpenCodeProvider {
     const dataRoot = path.join(secretRoot, 'data');
     const configRoot = path.join(secretRoot, 'config');
     await Promise.all([fs.mkdir(dataRoot, { recursive: true, mode: 0o700 }), fs.mkdir(configRoot, { recursive: true, mode: 0o700 })]);
-    const binary = path.join(this.root, 'backend/agent-runtime/node_modules/.bin/opencode');
+    const binary = openCodeBinary(this.root);
     await fs.access(binary);
     const config = {
       autoupdate: false,
@@ -50,12 +51,15 @@ export class OpenCodeProvider {
       ...process.env,
       XDG_DATA_HOME: dataRoot,
       XDG_CONFIG_HOME: configRoot,
+      XDG_CACHE_HOME: path.join(this.root, '.cache/opencode'),
+      XDG_STATE_HOME: path.join(this.root, 'data/opencode-state'),
       OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
       OPENCODE_SERVER_USERNAME: 'saplingagent',
       OPENCODE_SERVER_PASSWORD: this.password,
       OPENCODE_DISABLE_AUTOUPDATE: 'true',
     };
-    this.process = spawn(binary, ['serve', '--hostname=127.0.0.1', `--port=${this.port}`], { cwd: this.root, env, stdio: ['ignore', 'ignore', 'ignore'], detached: true });
+    this.process = spawn(binary, ['serve', '--hostname=127.0.0.1', `--port=${this.port}`], { cwd: this.root, env, stdio: ['ignore', 'ignore', 'ignore'], detached: process.platform !== 'win32', windowsHide: true });
+    this.process.once('error', () => { this.ready = false; });
     this.process.once('exit', (code, signal) => {
       const expected = this.closing;
       this.ready = false;
@@ -178,11 +182,8 @@ export class OpenCodeProvider {
     this.closing = true;
     this.ready = false;
     this.events?.abort();
-    if (this.process?.pid) {
-      try { process.kill(-this.process.pid, 'SIGTERM'); } catch {}
-      await Promise.race([new Promise(resolve => this.process?.once('exit', resolve)), delay(1000)]);
-      if (this.process?.pid) { try { process.kill(-this.process.pid, 'SIGKILL'); } catch {} }
-    }
+    const child = this.process;
+    if (child?.pid) await terminateOwned(child, { graceMs: 1000 });
     await this.eventLoop?.catch(() => {});
   }
 }
