@@ -10,3 +10,14 @@ Checked 2026-10-11 / TASK-20261012-001, public documentation; accounts/keys requ
 - https://openrouter.ai/docs/api_reference/overview — OpenAI-compatible /api/v1/chat/completions and tool support; preset uses /api/v1 base, model IDs include provider prefixes.
 - https://platform.claude.com/docs/en/api/models/list — Anthropic /v1/models discovery and x-api-key/anthropic-version authentication.
 - https://docs.ollama.com/api/openai-compatibility — local /v1 compatible endpoints, models and tool support dependent on model. Ollama itself/model weights are not installed by Saplingagent.
+
+## Claude Agent SDK integration (2026-10-12, TASK-20261012-005–009)
+
+- https://code.claude.com/docs/en/agent-sdk/overview — official embedded Claude Code agent loop, native tools, MCP, sessions, branding and Commercial Terms.
+- https://code.claude.com/docs/en/agent-sdk/quickstart — API authentication; bundled native binaries; third-party claude.ai login requires prior approval. No subscription credential import is implemented.
+- https://code.claude.com/docs/en/agent-sdk/configuration — project-only settingSources, env and system prompt.
+- https://code.claude.com/docs/en/agent-sdk/streaming-output and https://code.claude.com/docs/en/agent-sdk/sessions — partial events, terminal results and explicit resume.
+- https://code.claude.com/docs/en/agent-sdk/mcp and https://code.claude.com/docs/en/agent-sdk/plugins — local MCP and `.agents` local plugin discovery.
+- https://registry.npmjs.org/@anthropic-ai/claude-agent-sdk/0.3.296 — exact SDK and platform optional dependency metadata. Installed official sdk.d.ts verifies Query, spawn, permissions, hooks and MCP control signatures.
+
+Public documentation and npm metadata need no login; real inference/model catalogs need the user's own API account and quota. No inference was sent to a real model for candidate validation. Local native/synthetic API tests establish this pinned version's behavior; Windows10 native acceptance remains pending.
