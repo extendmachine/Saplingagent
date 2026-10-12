@@ -40,3 +40,10 @@ App Server local open source components do not need to be purchased separately; 
 ## English release reference check (2026-10-10)
 
 TASK-20261010-015: checked the current official App Server, authentication and pricing documentation for README accuracy. Local account login/model discovery do not guarantee model entitlement or quota. Commercial/hosted App Server authentication is not permitted; this implementation has not registered commercial Sign in with ChatGPT. Sources: https://learn.chatgpt.com/docs/app-server, https://learn.chatgpt.com/docs/auth, https://learn.chatgpt.com/docs/pricing, https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server. Core protocol and permission IDs remain unchanged; language-only edits introduce no new inference API.
+
+## Windows implementation sources (checked 2026-10-11)
+
+- Node24.21 child_process: https://nodejs.org/download/release/v24.21.0/docs/api/child_process.html — Windows .cmd limitations, signal behavior and owned process lifecycle. Public; project Node24.21.0.
+- Microsoft taskkill: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/taskkill — /PID /T /F termination of an owned live process tree. Public; Windows10/11 x64; current-user OS rights.
+- OpenAI Windows: https://learn.chatgpt.com/docs/windows/windows-sandbox — native PowerShell, Windows11 recommendation and recent Windows10 best effort. Public; this project still pins Codex0.146.1 and retains Full Access. Real account required for inference; no sandbox migration is inferred from newer docs.
+- Exact npm metadata https://registry.npmjs.org/@openai/codex/0.146.1 and https://registry.npmjs.org/opencode-ai/1.19.0 — native Windows optional dependencies; local OpenCode postinstall selects executable. Public, downloads/install required; no model request.

@@ -226,7 +226,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     if (startup) return startup;
     lastStart = Date.now();
     startup = (async () => {
-      const args = ['-c', 'web_search="live"', ...permissionConfigArgs()];
+      const args = ['-c', 'cli_auth_credentials_store="file"', '-c', 'web_search="live"', ...permissionConfigArgs()];
       for (const feature of ['browser_use', 'browser_use_external', 'computer_use', 'plugins', 'remote_plugin', 'apps', 'multi_agent', 'skill_mcp_dependency_install']) args.push('-c', `features.${feature}=false`);
       args.push('-c', `mcp_servers.seedagent.command=${JSON.stringify(process.execPath)}`, '-c', `mcp_servers.seedagent.args=${JSON.stringify([path.join(root, 'backend/mcp-runtime/server.mjs')])}`, '-c', 'mcp_servers.seedagent.required=true', '-c', 'mcp_servers.seedagent.startup_timeout_sec=30');
       // Codex forwards only an allowlist to stdio MCP children, not its full environment.
