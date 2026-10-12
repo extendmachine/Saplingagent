@@ -21,7 +21,7 @@ say() {
   if [ "$SAPLING_LANG" = 'zh' ]; then printf '%s\n' "$2"; else printf '%s\n' "$1"; fi
 }
 usage() {
-  say 'Usage: bash Saplingagent.sh [--lang en|zh] [install [--repair] | login [--device-auth] | opencode | start [--no-open] | doctor | logout]' '用法：bash Saplingagent.sh [--lang en|zh] [install [--repair] | login [--device-auth] | opencode | start [--no-open] | doctor | logout]'
+  say 'Usage: bash Saplingagent.sh [--lang en|zh] [install [--repair] | login [--device-auth] | configure [--no-open] | opencode | start [--no-open] | doctor | logout]' '用法：bash Saplingagent.sh [--lang en|zh] [install [--repair] | login [--device-auth] | configure [--no-open] | opencode | start [--no-open] | doctor | logout]'
   say 'Run without arguments to choose a language and open the interactive menu.' '不带参数运行即可选择语言并进入交互菜单。'
 }
 
@@ -37,7 +37,7 @@ select_bootstrap() {
 if [ "$#" -gt 0 ]; then
   case "$1" in
     -h|--help) usage; exit 0 ;;
-    install|login|opencode|start|doctor|logout) select_bootstrap || exit 1; exec /bin/bash "$SAPLING_BOOTSTRAP" "$@" ;;
+    install|login|configure|opencode|start|doctor|logout) select_bootstrap || exit 1; exec /bin/bash "$SAPLING_BOOTSTRAP" "$@" ;;
     *) usage >&2; exit 2 ;;
   esac
 fi
@@ -88,23 +88,6 @@ run_action() {
   fi
   return 0
 }
-configure() {
-  while true; do
-    printf '\n'
-    say 'Configure AI' '配置 AI 接口'
-    say '  1. Codex - sign in with your own account' '  1. Codex — 登录自己的账号'
-    say '  2. OpenCode - configure a provider / API key' '  2. OpenCode — 配置服务商 / API 密钥'
-    say '  0. Back' '  0. 返回'
-    if [ "$SAPLING_LANG" = 'zh' ]; then printf '请选择 [0-2]: '; else printf 'Choose [0-2]: '; fi
-    if ! IFS= read -r choice; then return 1; fi
-    case "$choice" in
-      1) run_action login; return 0 ;;
-      2) run_action opencode; return 0 ;;
-      0) return 0 ;;
-      *) say 'Please enter 0, 1 or 2.' '请输入 0、1 或 2。' ;;
-    esac
-  done
-}
 
 if [ "$SAPLING_LANG_CHOSEN" -eq 0 ]; then choose_language || exit 0; fi
 while true; do
@@ -119,7 +102,7 @@ while true; do
   if ! IFS= read -r choice; then printf '\n'; exit 0; fi
   case "$choice" in
     1) run_action install ;;
-    2) configure || exit 0 ;;
+    2) run_action configure ;;
     3) run_action start ;;
     4) run_action doctor ;;
     9) choose_language || exit 0 ;;

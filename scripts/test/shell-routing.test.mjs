@@ -31,9 +31,9 @@ async function run({ root, env }, args, input = '') {
 const records = async root => (await fs.readFile(path.join(root, 'capture.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
 test('Windows Bash routes explicit actions with converted Unicode root and encoded program, preserving flags/exit', async t => {
   const f = await fixture(t);
-  for (const args of [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode']]) assert.equal((await run(f, ['--lang', 'zh', ...args])).code, 7);
+  for (const args of [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode'], ['configure','--no-open']]) assert.equal((await run(f, ['--lang', 'zh', ...args])).code, 7);
   const capture = await records(f.root);
-  assert.deepEqual(capture.map(x => [x.action, x.flag]), [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode', '']]);
+  assert.deepEqual(capture.map(x => [x.action, x.flag]), [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode', ''],['configure','--no-open']]);
   for (const row of capture) {
     assert.equal(row.root, "C:\\test\\中文 app's folder"); assert.equal(row.language, 'zh');
     assert.match(row.program, /检测到设备/); assert.match(row.program, /function Get-WindowsDevice/);
@@ -42,9 +42,9 @@ test('Windows Bash routes explicit actions with converted Unicode root and encod
 });
 test('the same Chinese menu returns after failed Windows install and supports configure/back and EOF', async t => {
   const f = await fixture(t);
-  const result = await run(f, ['--lang', 'zh'], '2\n0\n1\n4\n0\n');
+  const result = await run(f, ['--lang', 'zh'], '2\n1\n4\n0\n');
   assert.equal(result.code, 0); assert.match(result.output, /配置 AI 接口/); assert.match(result.output, /退出码 7/);
-  assert.deepEqual((await records(f.root)).map(x => x.action), ['install', 'doctor']);
+  assert.deepEqual((await records(f.root)).map(x => x.action), ['configure','install','doctor']);
 });
 test('Linux/WSL installation refuses without invoking Windows tools; help/menu quit remain available', async t => {
   const f = await fixture(t, 'Linux');

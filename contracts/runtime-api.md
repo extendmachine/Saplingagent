@@ -64,3 +64,7 @@ POST /api/git/checkout {sha} loads an existing historical commit into detached H
 Agent rejects mutations during active AI (GIT_AGENT_BUSY), concurrent Git mutation (GIT_SWITCH_BUSY), and starting a new chat during a Git mutation. Invalid/missing commit errors use GIT_INVALID_VERSION/GIT_VERSION_NOT_FOUND. Label I/O failure uses GIT_LABELS_INVALID/GIT_LABEL_BUSY or the existing internal error path.
 
 Saving versions excludes known private/runtime artifacts even if historical ignore rules are absent; GIT_PRIVATE_FILES (409) rejects already staged private paths. History is bounded to 500 commits per read; older versions can also be loaded by a full commit ID through the API.
+
+## Independent AI setup and default engine
+
+The demand-started backend/ai-config serves a separate compiled React entry at its assigned loopback port. Its HTTP token/origin transport and account/API endpoints are defined by backend/ai-config/CONTRACT.md; setup does not use chat gateway routes or change file permissions. Keys are project-private. `GET /api/engines` includes `defaultSelection:{engine,providerId,modelId}` from the saved scheme. `GET /api/status` adds `defaultEngine` and `codexReady`; aggregate `ready` follows the configured default, while selecting another engine uses that engine's catalog/readiness. Existing conversations keep their binding; defaults apply after runtime restart/new conversation.

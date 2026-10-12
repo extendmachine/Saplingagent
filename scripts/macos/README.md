@@ -62,3 +62,11 @@ The same Saplingagent.sh entry now routes Windows Git Bash to scripts/windows/bo
 ## Native architecture detection (TASK032)
 
 Bootstrap and codex.sh check hw.optional.arm64 before uname so Apple Silicon uses native arm64 even from Rosetta; Intel remains x64. Installation prints the detected macOS version/architecture. No manual CPU choice or global install. Windows automatically chooses native x64/ARM64 in its PowerShell entry.
+
+## Standalone AI setup (TASK-20261012-004; supersedes earlier selector/prerequisite descriptions)
+
+Menu Configure AI now opens an independent project-local React page through the shared launcher CLI and backend/ai-config. Installation must be complete; Node builds that UI with existing front dependencies, then an owned loopback service opens the browser. `configure --no-open` prints its URL instead. Finish setup returns to the Bash menu; tab close alone does not terminate the service. Windows configure runs directly through PowerShell, without winpty; native OAuth/device login uses an owned Codex App Server process.
+
+Account tab uses the official Codex browser/device-code flow. API tab saves named custom endpoint/protocol/model/key schemes. Key files stay in local-secrets/api-keys; profiles in local-secrets/ai-config; account credentials in local-secrets/codex. No global import, automatic prompt or running-service restart. Saved OpenCode/API schemes satisfy startup access without requiring ChatGPT login. Explicit login/opencode commands remain recovery fallbacks; their legacy storage is retained. Diagnostics checks the selected scheme or legacy Codex login, without proving quota/network. Restart and use a new conversation after changing providers.
+
+Self-checks cover Mac installation, actual setup page, private save, no-login OpenCode startup contracts and pinned native OpenCode catalog/MCP. Real OAuth, billable inference and native Windows10/browser/WinPS5.1 remain unverified. HTTP setup authentication does not change customer's Full Access file/command permissions. See ../../docs/ai-configuration.html and ../../backend/ai-config/CONTRACT.md.
