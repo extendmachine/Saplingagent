@@ -7,12 +7,15 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { setup } from '../setup.mjs';
 import { codexBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
-const t = (en, zh) => { const text = process.env.SAPLING_LANG === 'zh' ? zh : en; return process.platform === 'win32' ? text.replaceAll('bash Saplingagent.sh --lang zh install --repair', 'Saplingagent.ps1 -Lang zh -Action install -Repair').replaceAll('bash Saplingagent.sh install --repair', 'Saplingagent.ps1 -Action install -Repair').replaceAll('Saplingagent.sh', 'Saplingagent.ps1').replaceAll('bash ', '').replaceAll('--lang', '-Lang').replaceAll('.runtime/macos-install.lock', '.runtime/windows-install.lock') : text; };
+const t = (en, zh) => {
+  const text = process.env.SAPLING_LANG === 'zh' ? zh : en;
+  return process.platform === 'win32' ? text.replaceAll('.runtime/macos-install.lock', '.runtime/windows-install.lock') : text;
+};
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const windows = process.platform === 'win32';
 const platformName = windows ? 'windows' : 'macos';
-const launcher = windows ? 'Saplingagent.ps1' : 'Saplingagent.sh';
+const launcher = 'Saplingagent.sh';
 const settings = JSON.parse(await fs.readFile(path.join(root, `config/${platformName}.json`), 'utf8'));
 const cli = codexBinary(root);
 const npm = npmCommand();
@@ -237,4 +240,4 @@ try {
   else if (action === 'logout' && !args.length) await logout();
   else if (action === 'opencode' && !args.length) await configureOpenCode();
   else throw new Error(t('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / opencode.', "可用操作：install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / opencode。"));
-} catch (error) { console.error(windows ? error.message.replaceAll('Saplingagent.sh', launcher).replaceAll('bash ', '').replaceAll('--lang', '-Lang') : error.message); process.exitCode = 1; }
+} catch (error) { console.error(error.message); process.exitCode = 1; }

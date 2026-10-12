@@ -44,15 +44,14 @@ test('Windows termination reports unavailable taskkill without silently killing 
     const killer = new EventEmitter(); queueMicrotask(() => killer.emit('error', new Error('ENOENT'))); return killer;
   } }), /Cannot stop owned Windows process tree/);
 });
-test('PowerShell launcher preserves BOM, project-only runtime and temporary policy invocation', async () => {
-  const bytes = await fs.readFile(path.join(root, 'Saplingagent.ps1'));
-  assert.equal(bytes.subarray(0, 3).toString('hex'), 'efbbbf');
-  const source = bytes.toString('utf8');
-  assert.match(source, /#Requires -Version 5\.1/);
+test('single Bash entry embeds Windows bootstrap with local runtime, Unicode encoding and no standalone PS launcher', async () => {
+  await assert.rejects(fs.access(path.join(root, 'Saplingagent.ps1')));
+  const source = await fs.readFile(path.join(root, 'scripts/windows/bootstrap.sh'), 'utf8');
   assert.match(source, /Get-FileHash -LiteralPath \$archive -Algorithm SHA256/);
   assert.match(source, /FileMode\]::CreateNew/);
+  assert.match(source, /UTF-16LE/); assert.match(source, /-EncodedCommand/);
   assert.doesNotMatch(source, /Set-ExecutionPolicy|npm\s+.*--global|SetEnvironmentVariable\([^\n]*'(Machine|User)'/i);
-  assert.match(source, /\.runtime/); assert.match(source, /\$PSScriptRoot/);
+  assert.match(source, /\.runtime/); assert.match(source, /SAPLING_BOOTSTRAP_ROOT/);
 });
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));

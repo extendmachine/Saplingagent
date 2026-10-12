@@ -1,38 +1,34 @@
-﻿#Requires -Version 5.1
-[CmdletBinding()]
-param(
-    [ValidateSet('en', 'zh')][string]$Lang = 'en',
-    [ValidateSet('', 'install', 'login', 'opencode', 'start', 'doctor', 'logout', 'help')][string]$Action = '',
-    [switch]$Repair, [switch]$DeviceAuth, [switch]$NoOpen
-)
-
+#!/bin/bash
+set -euo pipefail
+SAPLING_WINDOWS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+say() { if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' "$2"; else printf '%s\n' "$1"; fi; }
+SAPLING_WINDOWS_ACTION="${1:-}"
+if [ "$#" -gt 0 ]; then shift; fi
+SAPLING_WINDOWS_FLAG="${1:-}"
+case "$SAPLING_WINDOWS_ACTION:$#:$SAPLING_WINDOWS_FLAG" in
+  install:0:|login:0:|opencode:0:|start:0:|doctor:0:|logout:0:|install:1:--repair|login:1:--device-auth|start:1:--no-open) ;;
+  *) say 'Invalid action/flag. Run bash Saplingagent.sh --help.' '操作或参数无效。请运行 bash Saplingagent.sh --help。' >&2; exit 2 ;;
+esac
+for SAPLING_WINDOWS_TOOL in cygpath powershell.exe iconv base64; do
+  if ! command -v "$SAPLING_WINDOWS_TOOL" >/dev/null 2>&1; then
+    say "Missing $SAPLING_WINDOWS_TOOL. Use Git Bash from https://gitforwindows.org/." "缺少 $SAPLING_WINDOWS_TOOL。请使用 https://gitforwindows.org/ 提供的 Git Bash。" >&2
+    exit 1
+  fi
+done
+export SAPLING_BOOTSTRAP_ROOT="$(cygpath -w "$SAPLING_WINDOWS_ROOT")"
+export SAPLING_BOOTSTRAP_ACTION="$SAPLING_WINDOWS_ACTION"
+export SAPLING_BOOTSTRAP_FLAG="$SAPLING_WINDOWS_FLAG"
+export SAPLING_PREVIOUS_ARG_CONV="${MSYS2_ARG_CONV_EXCL:-}"
+export SAPLING_PREVIOUS_ENV_CONV="${MSYS2_ENV_CONV_EXCL:-}"
+SAPLING_WINDOWS_PROGRAM="$(cat <<'SAPLING_POWERSHELL'
 $ErrorActionPreference = 'Stop'
-$SaplingRoot = $PSScriptRoot
-$SaplingLanguage = $Lang
-
+$SaplingRoot = $env:SAPLING_BOOTSTRAP_ROOT
+$SaplingLanguage = $env:SAPLING_LANG
+# Undo MSYS argument-conversion overrides before any application child starts.
+[Environment]::SetEnvironmentVariable('MSYS2_ARG_CONV_EXCL', $env:SAPLING_PREVIOUS_ARG_CONV, 'Process')
+[Environment]::SetEnvironmentVariable('MSYS2_ENV_CONV_EXCL', $env:SAPLING_PREVIOUS_ENV_CONV, 'Process')
 function Say([string]$English, [string]$Chinese) {
     if ($script:SaplingLanguage -eq 'zh') { Write-Host $Chinese } else { Write-Host $English }
-}
-function Read-Choice([string]$Prompt) {
-    if ([Console]::IsInputRedirected) {
-        $value = [Console]::ReadLine()
-        if ($null -eq $value) { return '0' }
-        Write-Host "${Prompt}: $value"
-        return $value
-    }
-    return (Read-Host $Prompt)
-}
-function Choose-Language {
-    while ($true) {
-        Write-Host "`nLanguage / 语言`n  1. English`n  2. 中文`n  0. Quit / 退出"
-        $choice = Read-Choice 'Choose / 请选择 [Enter=English]'
-        switch ($choice) {
-            '0' { return $false }
-            '2' { $script:SaplingLanguage = 'zh'; return $true }
-            { $_ -eq '1' -or $_ -eq '' } { $script:SaplingLanguage = 'en'; return $true }
-            default { Write-Host 'Please enter 0, 1 or 2 / 请输入 0、1 或 2。' }
-        }
-    }
 }
 function Resolve-WindowsArchitecture([string]$NativeArchitecture, [string]$WowArchitecture, [string]$ProcessArchitecture) {
     $detected = if ($NativeArchitecture) { $NativeArchitecture } elseif ($WowArchitecture) { $WowArchitecture } else { $ProcessArchitecture }
@@ -138,52 +134,21 @@ function Invoke-Sapling([string]$Command, [string[]]$Extra = @()) {
         foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $previous[$name], 'Process') }
     }
 }
-function Run-MenuAction([string]$Command) {
-    try {
-        $code = Invoke-Sapling $Command
-        if ($code -ne 0) { Say "Operation incomplete (exit $code). Retry or choose Diagnostics." "操作未完成（退出码 $code）。可以重试或选择服务诊断。" }
-    } catch { Write-Host $_.Exception.Message -ForegroundColor Red }
-}
 
-if ($Action -eq 'help') {
-    Write-Host 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1 [-Lang en|zh] [-Action install|login|opencode|start|doctor|logout] [-Repair|-DeviceAuth|-NoOpen]'
-    exit 0
-}
-if ($Action) {
-    if (($Repair -and $Action -ne 'install') -or ($DeviceAuth -and $Action -ne 'login') -or ($NoOpen -and $Action -ne 'start')) { Write-Error 'Flag does not match action.'; exit 2 }
+try {
     $extra = @()
-    if ($Repair) { $extra += '--repair' }
-    if ($DeviceAuth) { $extra += '--device-auth' }
-    if ($NoOpen) { $extra += '--no-open' }
-    try { $code = Invoke-Sapling $Action $extra; exit $code } catch { Write-Host $_.Exception.Message -ForegroundColor Red; exit 1 }
-}
-if ($Repair -or $DeviceAuth -or $NoOpen) { Write-Error 'Specify -Action with flags.'; exit 2 }
-if (!$PSBoundParameters.ContainsKey('Lang')) { if (!(Choose-Language)) { exit 0 } }
-while ($true) {
-    Write-Host "`nSaplingagent"
-    Say '  1. Install / update' '  1. 安装 / 更新'
-    Say '  2. Configure AI' '  2. 配置 AI 接口'
-    Say '  3. Start app' '  3. 启动应用'
-    Say '  4. Diagnostics' '  4. 服务诊断'
-    Say '  9. Change language' '  9. 切换语言'
-    Say '  0. Quit' '  0. 退出'
-    $choice = Read-Choice 'Choose / 请选择 [0-4, 9]'
-    switch ($choice) {
-        '0' { exit 0 }
-        '1' { Run-MenuAction 'install' }
-        '2' {
-            while ($true) {
-                Say "`nConfigure AI`n  1. Codex - sign in with your own account`n  2. OpenCode - provider / API key`n  0. Back" "`n配置 AI 接口`n  1. Codex — 登录自己的账号`n  2. OpenCode — 服务商 / API 密钥`n  0. 返回"
-                $provider = Read-Choice 'Choose / 请选择 [0-2]'
-                if ($provider -eq '0') { break }
-                if ($provider -eq '1') { Run-MenuAction 'login'; break }
-                if ($provider -eq '2') { Run-MenuAction 'opencode'; break }
-                Say 'Please enter 0, 1 or 2.' '请输入 0、1 或 2。'
-            }
-        }
-        '3' { Run-MenuAction 'start' }
-        '4' { Run-MenuAction 'doctor' }
-        '9' { if (!(Choose-Language)) { exit 0 } }
-        default { Say 'Please enter 0, 1, 2, 3, 4 or 9.' '请输入 0、1、2、3、4 或 9。' }
-    }
-}
+    if ($env:SAPLING_BOOTSTRAP_FLAG) { $extra += $env:SAPLING_BOOTSTRAP_FLAG }
+    $code = Invoke-Sapling $env:SAPLING_BOOTSTRAP_ACTION $extra
+    exit $code
+} catch { Write-Host $_.Exception.Message -ForegroundColor Red; exit 1 }
+SAPLING_POWERSHELL
+)"
+# EncodedCommand keeps Unicode paths/messages and avoids native argv reinterpretation.
+# The command is an argument, leaving stdin available for interactive provider auth.
+SAPLING_WINDOWS_ENCODED="$(printf '%s' "$SAPLING_WINDOWS_PROGRAM" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\r\n')"
+export MSYS2_ARG_CONV_EXCL='*'
+export MSYS2_ENV_CONV_EXCL='SAPLING_BOOTSTRAP_ROOT'
+if [ -t 0 ] && [ -t 1 ] && command -v winpty >/dev/null 2>&1; then
+  exec winpty powershell.exe -NoLogo -NoProfile -EncodedCommand "$SAPLING_WINDOWS_ENCODED"
+fi
+exec powershell.exe -NoLogo -NoProfile -EncodedCommand "$SAPLING_WINDOWS_ENCODED"

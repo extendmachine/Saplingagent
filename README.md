@@ -33,31 +33,16 @@ Or download and extract a ZIP from the chosen branch. A private repository requi
 
 Open Terminal in the application folder and run:
 
-On **Windows 10/11 x64 and ARM64**, extract the whole folder, open PowerShell in that folder and run:
+Use the same **Saplingagent.sh** entry on both platforms:
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1
-```
-
-Choose English or Chinese, then **Install / update → Configure AI → Start app**. `-Lang zh` opens Chinese directly. ExecutionPolicy Bypass applies only to that new PowerShell process; the installer does not change machine policy, registry or global PATH. It installs official SHA-256-checked Node24.21.0 and pinned Codex0.146.1 plus locked OpenCode1.19.0 inside this folder. No WSL, global Node or Codex desktop app is required. Use Windows10 version1809 or newer (fully updated recommended), x64/ARM64 with PowerShell5.1; Windows11 x64/ARM64 is also a target. 32-bit Windows is unsupported. The installer detects the native OS/CPU architecture automatically, including ARM64 when PowerShell is emulated; you do not choose x64 or ARM64 manually. See [Windows guide](docs/windows-install.html) / [中文 Windows 安装说明](docs/windows-install.zh.html).
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1 -Lang zh -Action install -Repair
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1 -Action login -DeviceAuth
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1 -Action opencode
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1 -Action start -NoOpen
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Saplingagent.ps1 -Action doctor
-```
-
-Native Windows installation, login, model streaming, branch switching and restart require Windows acceptance. The current development host is macOS; cross-platform unit checks and PowerShell7 menu/parser checks do not certify Windows PowerShell5.1 or a real Windows10 model run. Model authentication, entitlement and billing are unchanged. Startup still requires the existing Codex login, even when OpenCode providers are configured. Git is optional for chat and required for version controls; source ZIPs have no Git history. Use an existing Git checkout for main/testcode/release switching.
-
-On **macOS**, use Terminal:
+- **macOS:** open Terminal in the complete project folder.
+- **Windows10/11 x64 or ARM64:** install/use [Git for Windows](https://gitforwindows.org/), then open **Git Bash** in the complete project folder. Windows CMD/PowerShell do not run Bash scripts directly. Git Bash is required; WSL/Linux is not this native Windows installation path.
 
 ```bash
 bash Saplingagent.sh
 ```
 
-First choose **English** or **中文** (Enter defaults to English), then use the same menu for every step. For Chinese directly, run `bash Saplingagent.sh --lang zh`. See the [中文安装说明](docs/macos-install.zh.html). The `.sh` entry runs in Terminal; Finder double-click normally opens an editor.
+First choose **English** or **中文** (Enter defaults to English), then use the same menu for every step. For Chinese directly, run `bash Saplingagent.sh --lang zh`. See the [中文安装说明](docs/macos-install.zh.html). Run the `.sh` entry in macOS Terminal or Windows Git Bash; double-click is not the supported launch method.
 
 | Menu choice | Action |
 | --- | --- |
@@ -70,7 +55,7 @@ First choose **English** or **中文** (Enter defaults to English), then use the
 
 Install first, configure your own AI access, then start. Menu actions return to the menu when finished; an error leaves the menu available for retry. Stop an existing application before updating dependencies. During startup keep the terminal open; Control+C stops the owned services and exits the launcher.
 
-Installation supports macOS 13.5+ on Apple Silicon or Intel, downloads official Node **24.21.0**, checks its official SHA-256 checksum, and installs project-local Codex **0.146.1**, OpenCode and locked dependencies. No preinstalled Node, npm, Homebrew, Xcode or Codex desktop app is required. Internet access to official downloads, npm and your model provider is required. Versions are declared in [config/macos.json](config/macos.json) and dependency lockfiles.
+Installation supports macOS 13.5+ on Apple Silicon or Intel, downloads official Node **24.21.0**, checks its official SHA-256 checksum, and installs project-local Codex **0.146.1**, OpenCode and locked dependencies. No preinstalled Node, npm, Homebrew, Xcode or Codex desktop app is required; Windows requires Git Bash and its bundled shell utilities. Windows10 must be version1809+; ARM64 and x64 are detected automatically. Internet access to official downloads, npm and your model provider is required. Versions are declared in [config/macos.json](config/macos.json) and dependency lockfiles.
 
 Runtimes stay in `.runtime/`, dependencies in their modules' `node_modules/`, and npm cache in `.cache/npm/`. No sudo or global npm installation is needed. Keep the entire application folder; the single user-facing launcher uses its internal scripts and configuration.
 
@@ -214,7 +199,6 @@ Stop services before moving the application. Move the whole folder. On the same 
 ```text
 Saplingagent/
 ├── Saplingagent.sh          # macOS English / Chinese menu
-├── Saplingagent.ps1         # Windows x64/ARM64 English / Chinese menu
 ├── front/                     # React chat and application features
 ├── backend/
 │   ├── agent-runtime/         # App Server client, turns, SSE, Git API
@@ -283,20 +267,16 @@ The user's project rules ship under `rules/`. Translating their prose does not r
 
 ## Windows operation and delivery
 
-The App Server is a project-owned stdio subprocess. Windows uses the installed native codex.exe and OpenCode executable rather than Unix wrappers or npm.cmd. Credentials remain in local-secrets/codex/ and local-secrets/opencode/; OpenCode cache/state also stay inside the folder. The UI remains English; launcher language changes do not alter conversation data. Full Access remains current-user access, without added code permission restrictions.
+Run `bash Saplingagent.sh --lang zh` in Git Bash. The single English/Chinese menu provides Install / update, Configure AI (Codex/OpenCode), Start app and Diagnostics. Explicit actions/flags are identical to Mac: `install --repair`, `login --device-auth`, `opencode`, `start --no-open`, `doctor`, `logout`. See [Windows guide](docs/windows-install.html) / [中文 Windows 说明](docs/windows-install.zh.html).
 
-Restart app/Restart backend work through the same persistent gateway. Windows owned child trees are stopped with taskkill /PID /T /F; this is abrupt termination, so finish work before restarting. Current drain gates refuse busy operations. No process-name/port kill, root elevation, auto-rollback or automatic prompt resend is added. Forced window/process termination or separately detached programs cannot guarantee cleanup; use the open launcher and Control+C normally. Manager/launcher/port edits require exiting and reopening the launcher.
+Windows system detection/download/extraction uses its built-in PowerShell internally, embedded in scripts/windows/bootstrap.sh; there is no separate .ps1 file or user PowerShell command. UTF16 encoded command arguments preserve Unicode paths and leave stdin available for provider authentication. Git Bash's winpty is used when available for interactive console compatibility. Windows terminal shutdown/model interactions still require native-system testing. No WSL, global Node/Codex, registry/global PATH/permanent execution-policy modification is required.
 
-To produce a clean Windows source ZIP from a committed checkout:
+The App Server is a project-owned native stdio subprocess. Credentials remain in local-secrets/codex/ and local-secrets/opencode/; dependencies/cache/state stay in the folder. The UI remains English; menu language does not change conversation data. Full Access remains current-user access. Git is required to supply Bash on Windows; branch/version controls additionally require an actual Git repository, which source ZIPs do not contain.
 
-```text
-<project-node> scripts/package-windows.mjs HEAD .cache/releases
-```
+Restart app/Restart backend use the existing persistent gateway and owned live PID-tree shutdown. Finish work before restarting. Forced parent/window termination, power loss and separately detached programs cannot guarantee cleanup; active command side effects are not undone. Ports/manager/launcher changes require normal stop and reopening the same Bash entry. No process-name/port kill, root elevation, automatic rollback or prompt resend is added.
 
-Use .runtime/node-v24.21.0-win-<detected-architecture>/node.exe on Windows or the project-local Mac Node. The packager runs on either platform, exports committed source, initializes recipient goal/task records, includes all rules and both platform launchers, and excludes credentials, real sessions/logs/dependencies and Git. A single .ps1 file is insufficient; distribute the complete folder. Native Windows checks after installation: `.runtime\node-v24.21.0-win-x64\node.exe --test scripts/test/windows.test.mjs`. Set SAPLING_WINDOWS_INSTALLED_TEST=1 only to add pinned-binary --version checks; no login or model request is sent by these tests.
-
-If a canceled install leaves .runtime/windows-node.lock or .runtime/windows-install.lock, first confirm that this application's installer has stopped. Remove only the stale lock, then retry Install / update. The installer never treats a partial install as complete. Proxy/firewall/execution-policy constraints imposed by the computer's administrator may require their assistance; this app does not bypass organizational policy.
+To create a committed clean Windows source ZIP, use `<project-node> scripts/package-windows.mjs HEAD .cache/releases`. Both platform packages include the one executable Saplingagent.sh, all companion sources/helpers/rules, fresh recipient records and per-file/ZIP hashes, excluding credentials/data/logs/dependencies/Git. Copy the complete folder, not just one script. Remove stale installation locks only after confirming the installer has stopped.
 
 ## Automatic device selection
 
-Use the operating system's built-in launcher: Bash Saplingagent.sh on macOS, Windows PowerShell Saplingagent.ps1 on Windows. Each verifies its OS and automatically selects the architecture; no CPU menu or manual dependency download is required. macOS selects Intel x64 or Apple Silicon arm64 (also from a Rosetta terminal). Windows selects x64 or ARM64 using native OS architecture before emulated-terminal fallback. Installation prints the detected device, validates the matching official Node checksum, and installs the pinned CLI binaries for the selected Node architecture. Unsupported OS/32-bit CPU reports an error before downloads. Dependency installs remain in this folder; the device is detected again when moved to another computer, and Install / update must run there. Runtime folders can coexist, but service node_modules and credentials are not a portable preinstalled environment. Native Windows10/11 x64/ARM64 login/model/restart/hardware checks still require the corresponding system. This main publication was explicitly requested by the user; it is not a claim of native Windows human acceptance.
+The common Bash entry detects macOS or native Windows Bash environments and routes automatically. Mac chooses Intelx64 or AppleSiliconarm64 (including Rosetta). Windows verifies build17763+, selects native x64/ARM64 ahead of emulated-terminal architecture, checks official Node24.21.0 checksums and actual runtime architecture, then installs pinned Codex0.146.1/OpenCode1.19.0 native binaries. No manual CPU selection. Linux/WSL and32-bit devices fail before download. Re-run Install / update after moving the source folder to another device; installed dependencies are OS-specific. Native Windows login/model/MCP/restart and ARM hardware tests remain unverified on the current Mac host.

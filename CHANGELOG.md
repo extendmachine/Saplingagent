@@ -3,7 +3,7 @@
 ## Unreleased — Windows and automatic device installation (2026-10-11)
 
 - Detect native Windows x64/ARM64 and Mac Intel/Apple Silicon automatically, including emulated terminals and Rosetta.
-- Add one bilingual PowerShell5.1 entry with project-local checksum-verified Node and shared install/configuration.
+- Use one bilingual Saplingagent.sh entry on Mac and Windows Git Bash with project-local checksum-verified Node and shared install/configuration.
 - Use native Windows Codex/OpenCode binaries, npm JS and owned PID-tree shutdown for restart/cancellation.
 - Add English/Chinese Windows guides and clean Windows source ZIP packaging.
 - Keep Full Access unchanged. Native Windows10 installation/login/model/restart acceptance pending.
