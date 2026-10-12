@@ -29,3 +29,7 @@
 - Package committed source with complete rules/Skills/license notices and SHA-256 manifests; exclude private runtime content and initialize recipient task records.
 
 This candidate is pending exact-commit human acceptance and synchronization to main/testcode/release. No public GitHub release, commercial authentication registration, signed native application or cloud service is claimed.
+
+## Claude Agent SDK candidate — 2026-10-12
+
+Adds an independent Claude Agent SDK0.3.296 engine, project-local native binaries/state, API-key/custom Anthropic scheme configuration, engine/model chat selection and immutable resumable sessions. Streams, stops, errors and effective-progress monitoring reuse the current local Agent interfaces. Existing MCP/Skills and current-user Full Access are retained. The single Bash launcher installs and verifies the SDK. No claude.ai subscription login, automatic failover or real-provider quota guarantee is introduced. Candidate acceptance and main synchronization are recorded in the authoritative development index.

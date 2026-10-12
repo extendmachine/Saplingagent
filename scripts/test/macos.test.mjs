@@ -24,7 +24,7 @@ async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   const codex = path.join(root, '.runtime/codex/node_modules/.bin/codex');
   const fake = `#!/bin/sh\ncase "$*" in\n *--version*) echo 'codex-cli 0.146.1'; exit 0;;\n *status*) ${auth === 'missing' ? "echo 'Not logged in' >&2; exit 1" : auth === 'broken' ? "echo 'Config error PRIVATE_FIXTURE_VALUE' >&2; exit 1" : 'exit 0'};;\n *) exit 7;;\nesac\n`;
   await fs.mkdir(path.dirname(codex), { recursive: true }); await fs.writeFile(codex, fake, { mode: 0o755 });
-  for (const file of ['front/node_modules/vite/bin/vite.js', 'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json', 'backend/agent-runtime/node_modules/.bin/opencode']) { await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.writeFile(path.join(root, file), '{}'); }
+  for (const file of ['front/node_modules/vite/bin/vite.js', 'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json', 'backend/agent-runtime/node_modules/.bin/opencode', `backend/agent-runtime/node_modules/@anthropic-ai/claude-agent-sdk-darwin-${process.arch}/claude`]) { await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.writeFile(path.join(root, file), '{}'); }
   await fs.writeFile(path.join(root, '.runtime/macos-install.json'), JSON.stringify({ signature: hash.digest('hex'), arch: process.arch }));
   await fs.writeFile(path.join(root, 'scripts/dev.mjs'), badDev ? "console.error('Port occupied'); process.exit(1);" : "await import('node:fs/promises').then(f=>f.writeFile(new URL('../UNEXPECTED_LAUNCH',import.meta.url),'bad'));process.exit(7);");
   return root;
@@ -37,7 +37,7 @@ function runCli(root, action, extraEnv = {}) {
 }
 test('distribution filter excludes runtime/private files while retaining complete rules and Skills', () => {
   for (const file of ['local-secrets/codex/auth.json', 'backend/a/local-secrets/key.txt', 'data/session.json', 'backend/agent-runtime/ai-tasks/runtime/run.md', 'front/node_modules/react/index.js', '.runtime/codex/package.json', '.worktrees/coordination/TODO.md', 'logs/front/x.log', 'backend/a/.env.local', 'backend/a/token.pem', 'front/dist/index.html', '1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', 'Saplingagent.command', '4-Doctor.command', '5-Configure-OpenCode.command']) assert.equal(distributable(file), false, file);
-  for (const file of ['LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', 'rules/README.md', 'rules/clawtask-package-skill-v2.zip', '.agents/skills/seed-page-edit/SKILL.md', 'Saplingagent.sh', 'front/App.tsx', 'scripts/macos/codex.sh']) assert.equal(distributable(file), true, file);
+  for (const file of ['LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', 'rules/README.md', 'rules/clawtask-package-skill-v2.zip', '.agents/skills/seed-page-edit/SKILL.md', 'Saplingagent.sh', '.agents/.claude-plugin/plugin.json', 'backend/agent-runtime/providers/claude.mjs', 'front/App.tsx', 'scripts/macos/codex.sh']) assert.equal(distributable(file), true, file);
 });
 test('missing login does not launch services or copy global authentication', async t => {
   const root = await fixture(t);

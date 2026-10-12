@@ -4,9 +4,9 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
-import { readConnections,defaultSelection,codexConnection,openCodeConnections } from '../../contracts/ai-configuration.mjs';
+import { readConnections,defaultSelection,codexConnection,claudeConnections,openCodeConnections } from '../../contracts/ai-configuration.mjs';
 import { setup } from '../setup.mjs';
-import { codexBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
+import { codexBinary, claudeBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
 const t = (en, zh) => {
   const text = process.env.SAPLING_LANG === 'zh' ? zh : en;
@@ -60,7 +60,7 @@ async function installed() {
     return stamp.signature === await signature() && stamp.arch === process.arch && await exists(cli)
       && await exists(path.join(root, 'front/node_modules/vite/bin/vite.js'))
       && await exists(path.join(root, 'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json'))
-      && await exists(opencode);
+      && await exists(opencode) && await exists(claudeBinary(root));
   } catch { return false; }
 }
 async function localSetup() {
@@ -114,6 +114,7 @@ async function install(repair = false) {
       await required(npm.command, [...npm.args, ...installArgs], { cwd: path.join(root, service) });
     }
     await required(opencode, ['--version'], { capture: true });
+    await required(claudeBinary(root), ['--version'], { capture: true });
     await localSetup();
     await fs.writeFile(stampFile, JSON.stringify({ schemaVersion: 1, nodeVersion: process.versions.node, codexVersion: settings.codexVersion, arch: process.arch, signature: await signature(), installedAt: new Date().toISOString() }, null, 2) + '\n');
     console.log(t('Installation complete. Choose Configure AI to connect your account or API provider, then Start app.', "安装完成。请选择配置 AI 接口，连接自己的账号或 API 服务商，然后启动应用。"));
@@ -161,6 +162,7 @@ async function configuredAccess() {
   const profile = connections.profiles.find(p=>p.id===connections.activeId);
   if(profile?.kind === 'api'){
     if(selection.engine === 'codex')await codexConnection(root,connections);
+    else if(selection.engine === 'claude')await claudeConnections(root,connections);
     else await openCodeConnections(root,connections);
     return true;
   }
