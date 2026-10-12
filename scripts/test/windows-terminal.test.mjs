@@ -84,7 +84,7 @@ test('background console regression yields 150 before native startup', { skip: s
 test('Windows native interactive configuration still reads user input in the foreground', { skip: skipPty }, async t => {
   const f = await fixture(t);
   await fs.writeFile(path.join(f.root, 'scripts/windows/bootstrap.sh'), foregroundProbe + `printf 'PROVIDER_PROMPT\\n'\nIFS= read -r reply\n[ "$reply" = 'provider-choice' ] || exit 9\nprintf 'AUTH_INPUT_OK\\n'\n`);
-  const result = await terminal(f, 'AUTH_INPUT_OK', '2\n2\nprovider-choice\n');
+  const result = await terminal(f, 'AUTH_INPUT_OK', '2\nprovider-choice\n');
   assert.equal(result.code, 0, result.output); assert.match(result.output, /AUTH_INPUT_OK/); assert.doesNotMatch(result.output, /操作未完成/);
 });
 async function bootstrapFixture(t) {
@@ -92,7 +92,7 @@ async function bootstrapFixture(t) {
   await fs.copyFile(path.join(project, 'scripts/windows/bootstrap.sh'), path.join(f.root, 'scripts/windows/bootstrap.sh'));
   await fs.writeFile(path.join(f.root, 'bin/cygpath'), "#!/bin/bash\nprintf '%s' \"C:\\test\\中文 app's folder\"\n", { mode: 0o755 });
   await fs.writeFile(path.join(f.root, 'bin/winpty'), '#!/bin/bash\nprintf "BRIDGE_CALLED\\n"\nexec "$@"\n', { mode: 0o755 });
-  await fs.writeFile(path.join(f.root, 'bin/powershell.exe'), foregroundProbe + `if [ "$SAPLING_BOOTSTRAP_ACTION" = 'login' ]; then
+  await fs.writeFile(path.join(f.root, 'bin/powershell.exe'), foregroundProbe + `if [ "$SAPLING_BOOTSTRAP_ACTION" = 'start' ]; then
 printf 'PROVIDER_PROMPT\\n'
 IFS= read -r reply
 [ "$reply" = 'provider-choice' ] || exit 9
@@ -103,17 +103,17 @@ fi
 `, { mode: 0o755 });
   return f;
 }
-test('TTY install and diagnostics bypass winpty even when it is installed', { skip: skipPty }, async t => {
-  for (const choice of ['1\n', '4\n']) {
+test('TTY install, diagnostics and web configuration bypass winpty even when it is installed', { skip: skipPty }, async t => {
+  for (const choice of ['1\n', '4\n','2\n']) {
     const f = await bootstrapFixture(t);
     const result = await terminal(f, 'DIRECT_NATIVE_OK', choice);
     assert.equal(result.code, 0, result.output); assert.match(result.output, /DIRECT_NATIVE_OK/);
     assert.match(result.output, /正在启动 Windows/); assert.doesNotMatch(result.output, /BRIDGE_CALLED|操作未完成/);
   }
 });
-test('TTY Codex auth uses winpty in the foreground and retains provider input', { skip: skipPty }, async t => {
+test('TTY legacy native startup uses winpty in the foreground and retains provider input', { skip: skipPty }, async t => {
   const f = await bootstrapFixture(t);
-  const result = await terminal(f, 'AUTH_INPUT_OK', '2\n1\nprovider-choice\n');
+  const result = await terminal(f, 'AUTH_INPUT_OK', '3\nprovider-choice\n');
   assert.equal(result.code, 0, result.output); assert.match(result.output, /BRIDGE_CALLED/);
   assert.match(result.output, /AUTH_INPUT_OK/); assert.doesNotMatch(result.output, /操作未完成/);
 });

@@ -5,6 +5,7 @@ The actual source location follows the user's front/backend requirements, and th
 |Object|Table of contents|State|
 | --- | --- | --- |
 |Single-page chat| ../front/ |Realization and self-testing are completed, and the actual model/refresh/stop has been verified|
+| AI setup | ../backend/ai-config/ and ../front/ai-config/ |Demand-started independent local account/API wizard; no model prompt|
 | Agent | ../backend/agent-runtime/ |Official App Server and Real SSE/Full Access/Continuous Session|
 | Workspace | ../backend/workspace/ |Atomic Local Session/Preference/Account Book|
 | Builder | ../backend/app-builder/ |Complete file/command execution, optional candidate and user manual recovery|

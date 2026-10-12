@@ -12,7 +12,7 @@ async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   const parent = path.join(project, '.cache/macos-tests'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "\u6d4b\u8bd5 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['contracts/local-process.mjs', 'scripts/launcher/cli.mjs', 'scripts/setup.mjs', 'scripts/macos/cli.mjs', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'Saplingagent.sh', 'config/macos.json', 'config/runtime.json']) {
+  for (const file of ['contracts/ai-configuration.mjs', 'contracts/local-process.mjs', 'scripts/launcher/cli.mjs', 'scripts/setup.mjs', 'scripts/macos/cli.mjs', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'Saplingagent.sh', 'config/macos.json', 'config/runtime.json']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const settings = JSON.parse(await fs.readFile(path.join(root, 'config/macos.json'), 'utf8'));
@@ -42,7 +42,7 @@ test('distribution filter excludes runtime/private files while retaining complet
 test('missing login does not launch services or copy global authentication', async t => {
   const root = await fixture(t);
   const result = await runCli(root, ['start', '--no-open']);
-  assert.equal(result.code, 1); assert.match(result.output, /not logged in/);
+  assert.equal(result.code, 1); assert.match(result.output, /save an account or API scheme/);
   assert.equal(await fs.access(path.join(root, 'UNEXPECTED_LAUNCH')).then(() => true, () => false), false);
   assert.equal(await fs.access(path.join(root, 'local-secrets/codex/auth.json')).then(() => true, () => false), false);
   const ledger = JSON.parse(await fs.readFile(path.join(root, 'local-secrets/notes/project-secrets.json'), 'utf8'));
@@ -137,8 +137,19 @@ test('Chinese login failures preserve error meaning and do not expose raw creden
     const root = await fixture(t, { auth });
     const result = await runCli(root, ['start', '--no-open'], { SAPLING_LANG: 'zh' });
     assert.equal(result.code, 1);
-    assert.match(result.output, auth === 'missing' ? /此项目尚未登录/ : /此错误不代表未登录/);
+    assert.match(result.output, auth === 'missing' ? /在网页中保存账号或 API 方案/ : /此错误不代表未登录/);
     assert.doesNotMatch(result.output, /PRIVATE_FIXTURE_VALUE/);
     assert.equal(await fs.access(path.join(root, 'UNEXPECTED_LAUNCH')).then(() => true, () => false), false);
   }
+});
+
+test('web configuration builds and launches its independent page without Codex login or chat startup',async t=>{
+ const root=await fixture(t,{auth:'broken'});
+ await fs.mkdir(path.join(root,'front/ai-config'),{recursive:true});await fs.writeFile(path.join(root,'front/ai-config/vite.config.mjs'),'export default {}');
+ await fs.writeFile(path.join(root,'front/node_modules/vite/bin/vite.js'),"import fs from 'node:fs';fs.writeFileSync('build-args.json',JSON.stringify(process.argv.slice(2)));");
+ await fs.mkdir(path.join(root,'backend/ai-config'),{recursive:true});await fs.writeFile(path.join(root,'backend/ai-config/server.mjs'),"import fs from 'node:fs';fs.writeFileSync('configuration-start.json',JSON.stringify({args:process.argv.slice(2),root:process.env.SEED_ROOT,home:process.env.CODEX_HOME}));");
+ const result=await runCli(root,['configure','--no-open']);assert.equal(result.code,0,result.output);assert.match(result.output,/independent AI configuration/);
+ assert.deepEqual(JSON.parse(await fs.readFile(path.join(root,'build-args.json'),'utf8')),['build','--config',path.join(root,'front/ai-config/vite.config.mjs')]);
+ const started=JSON.parse(await fs.readFile(path.join(root,'configuration-start.json'),'utf8'));assert.deepEqual(started.args,['--no-open']);assert.equal(path.resolve(started.root),root);assert.equal(started.home,path.join(root,'local-secrets/codex'));
+ assert.equal(await fs.access(path.join(root,'UNEXPECTED_LAUNCH')).then(()=>true,()=>false),false);
 });

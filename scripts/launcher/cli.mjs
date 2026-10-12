@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
+import { readConnections,defaultSelection,codexConnection,openCodeConnections } from '../../contracts/ai-configuration.mjs';
 import { setup } from '../setup.mjs';
 import { codexBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
@@ -124,7 +125,7 @@ async function login(deviceAuth) {
   if (await loggedIn()) { console.log(t('Project login credentials are saved. Choose Start app in Saplingagent.sh; if requests fail authentication, log out of this project as documented and log in again.', "项目登录凭据已保存，可以选择启动应用。如果请求认证失败，请按文档退出项目账号后重新登录。")); return; }
   console.log(t('Official Codex will open your browser. Log in with your own ChatGPT/Codex account.', "官方 Codex 将打开浏览器，请使用自己的 ChatGPT / Codex 账号登录。"));
   await required(cli, [...authArgs, 'login', ...(deviceAuth ? ['--device-auth'] : [])]);
-  if (!await loggedIn()) throw new Error(t('Login is incomplete. Choose Configure AI > Codex in Saplingagent.sh again.', "登录未完成。请再次选择配置 AI 接口 > Codex。"));
+  if (!await loggedIn()) throw new Error(t('Login is incomplete. Choose Configure AI in Saplingagent.sh and open the ChatGPT account tab.', "登录未完成。请再次选择配置 AI 接口，并打开网页中的 ChatGPT 账号页签。"));
   const auth = path.join(env.CODEX_HOME, 'auth.json');
   if (await exists(auth)) await fs.chmod(auth, 0o600);
   console.log(t('Project login complete. Choose Start app in Saplingagent.sh.', "项目登录完成，请选择启动应用。"));
@@ -132,7 +133,7 @@ async function login(deviceAuth) {
 async function logout() {
   if (!await exists(cli)) throw new Error(t('Open Saplingagent.sh and choose Install / update first.', "请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
   await required(cli, [...authArgs, 'logout'], { capture: true });
-  console.log(t('Logged out of the Codex account for this project; application files and sessions are retained. Choose Configure AI > Codex in Saplingagent.sh to log in again.', "已退出此项目的 Codex 账号，应用文件和会话保留。重新登录请选择配置 AI 接口 > Codex。"));
+  console.log(t('Logged out of the Codex account for this project; application files and sessions are retained. Choose Configure AI in Saplingagent.sh to sign in again.', "已退出此项目的 Codex 账号，应用文件和会话保留。重新登录请选择配置 AI 接口。"));
 }
 async function configureOpenCode() {
   if (!await installed()) throw new Error(t('Open Saplingagent.sh and choose Install / update first.', "请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
@@ -147,10 +148,28 @@ async function configureOpenCode() {
   if (result.code !== 0) throw new Error(t(`OpenCode provider setup failed (exit code ${result.code}).`, `OpenCode 服务商配置失败（退出码 ${result.code}）。`));
   console.log(t('OpenCode provider saved. Restart Saplingagent, start a new conversation, then choose OpenCode.', "OpenCode 服务商已保存。请重启 Saplingagent，新建会话后选择 OpenCode。"));
 }
+async function configureAI(noOpen) {
+  if (!await installed()) throw new Error(t('Choose Install / update before opening AI setup.', '请先安装 / 更新，再打开 AI 配置网页。'));
+  await localSetup();
+  console.log(t('Preparing the independent AI configuration page…','正在准备独立的 AI 配置网页…'));
+  await required(process.execPath,[path.join(root,'front/node_modules/vite/bin/vite.js'),'build','--config',path.join(root,'front/ai-config/vite.config.mjs')]);
+  await required(process.execPath,[path.join(root,'backend/ai-config/server.mjs'),...(noOpen?['--no-open']:[])]);
+}
+async function configuredAccess() {
+  const connections = await readConnections(root);
+  const selection = defaultSelection(connections);
+  const profile = connections.profiles.find(p=>p.id===connections.activeId);
+  if(profile?.kind === 'api'){
+    if(selection.engine === 'codex')await codexConnection(root,connections);
+    else await openCodeConnections(root,connections);
+    return true;
+  }
+  return loggedIn();
+}
 async function start(noOpen) {
   if (!await installed()) throw new Error(t('Installation is incomplete or dependency lockfiles have changed. Open Saplingagent.sh and choose Install / update first.', "安装未完成或依赖锁文件已变化。请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
   await localSetup();
-  if (!await loggedIn()) throw new Error(t('This project is not logged in. Choose Configure AI > Codex in Saplingagent.sh first.', "此项目尚未登录。请先选择配置 AI 接口 > Codex。"));
+  if (!await configuredAccess()) throw new Error(t('Choose Configure AI in Saplingagent.sh and save an account or API scheme first.', '请先选择配置 AI 接口，在网页中保存账号或 API 方案。'));
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   const child = spawn(process.execPath, [path.join(root, 'scripts/dev.mjs')], { cwd: root, env, detached: false, stdio: ['inherit', 'pipe', 'pipe'] });
   let ended = false, interrupted = false, stopRequested = false, launched = false, startupOutput = '';
@@ -183,7 +202,7 @@ async function start(noOpen) {
           const front = await fetch(`http://127.0.0.1:${config.frontPort}/`, { signal: AbortSignal.timeout(1500) });
           if (front.ok) {
             ready = true;
-            console.log(t(`Connected to Codex App Server: ${status.model}; ${status.mcp.tools.length} MCP tools; ${status.skills.length} Skills.`, `已连接 Codex App Server：${status.model}；${status.mcp.tools.length} 个 MCP 工具；${status.skills.length} 个 Skills。`));
+            console.log(status.provider === 'OpenCode' ? t(`Connected to OpenCode: ${status.model}; project MCP connected.`, `已连接 OpenCode：${status.model}；项目 MCP 已连接。`) : t(`Connected to ${status.provider || 'Agent'}: ${status.model}; ${status.mcp.tools.length} MCP tools; ${status.skills.length} Skills.`, `已连接 ${status.provider || 'Agent'}：${status.model}；${status.mcp.tools.length} 个 MCP 工具；${status.skills.length} 个 Skills。`));
             console.log(t(`Web page: http://127.0.0.1:${config.frontPort}/\nKeep this window open; press Control+C to stop these services.`, `网页：http://127.0.0.1:${config.frontPort}/\n请保持终端窗口打开；按 Control+C 停止这些服务。`));
             if (!noOpen) {
               if (windows) await run('powershell.exe', ['-NoProfile', '-Command', `Start-Process 'http://127.0.0.1:${config.frontPort}/'`], { capture: true });
@@ -216,8 +235,8 @@ async function doctor() {
     const versionLabel = version.output.trim().match(/^codex-cli (\d+\.\d+\.\d+(?:[-.a-z0-9]+)?)$/i)?.[1];
     if (version.code !== 0 || !versionLabel) throw new Error(t('Codex executable check failed. Reinstall; login status was not checked.', "Codex 可执行文件检查失败。请重新安装；本次未检查登录状态。"));
     console.log(`Codex：${versionLabel}`);
-    authenticated = await loggedIn();
-    console.log(t(`Project login:${authenticated ? 'saved (does not verify current network or quota)' : 'not logged in; choose Configure AI > Codex in Saplingagent.sh'}`, `项目登录：${authenticated ? '已保存（未验证当前网络或额度）' : '尚未登录；请选择配置 AI 接口 > Codex'}`));
+    authenticated = await configuredAccess();
+    console.log(t(`Project AI access:${authenticated ? 'configured (does not verify current network or quota)' : 'not configured; choose Configure AI in Saplingagent.sh'}`, `项目 AI 接入：${authenticated ? '已配置（未验证当前网络或额度）' : '尚未配置；请选择配置 AI 接口'}`));
   }
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   let online = false;
@@ -238,6 +257,7 @@ try {
   else if (action === 'start' && args.every(x => x === '--no-open')) await start(args.includes('--no-open'));
   else if (action === 'doctor' && !args.length) await doctor();
   else if (action === 'logout' && !args.length) await logout();
+  else if (action === 'configure' && args.every(x=>x==='--no-open')) await configureAI(args.includes('--no-open'));
   else if (action === 'opencode' && !args.length) await configureOpenCode();
-  else throw new Error(t('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / opencode.', "可用操作：install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / opencode。"));
+  else throw new Error(t('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode.', "可用操作：install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode。"));
 } catch (error) { console.error(error.message); process.exitCode = 1; }

@@ -52,30 +52,30 @@ test('install, diagnostics and startup dispatch to the same bootstrap from anoth
   assert.equal((await execute(root, '1\n4\n3\n0\n')).code, 0);
   assert.equal(await actions(root), 'install\ndoctor\nstart\n');
 });
-test('configuration offers Codex and OpenCode and back creates no action', async t => {
+test('Configure AI opens the standalone setup action without an account submenu', async t => {
   const root = await fixture(t);
-  const result = await execute(root, '2\n0\n2\n1\n2\n2\n0\n');
-  assert.equal(result.code, 0);
-  assert.match(result.output, /OpenCode - configure a provider \/ API key/);
-  assert.equal(await actions(root), 'login\nopencode\n');
+  const result = await execute(root, '2\n0\n');
+  assert.equal(result.code,0);
+  assert.match(result.output,/Configure AI/);
+  assert.doesNotMatch(result.output,/Codex - sign in|OpenCode - configure/);
+  assert.equal(await actions(root),'configure\n');
 });
 test('invalid choices and failed actions leave the menu available for retry', async t => {
   const root = await fixture(t, { failure: true });
-  const result = await execute(root, 'invalid\n2\ninvalid\n0\n1\n0\n');
+  const result = await execute(root, 'invalid\n1\n0\n');
   assert.equal(result.code, 0, result.output);
   assert.match(result.output, /Please enter 0, 1/);
-  assert.match(result.output, /Please enter 0, 1 or 2/);
   assert.match(result.output, /Operation incomplete \(exit 7\)/);
   assert.equal(await actions(root), 'install\n');
 });
 test('explicit actions preserve flags and failure status without showing the menu', async t => {
   const root = await fixture(t, { failure: true });
-  for (const args of [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode'], ['logout']]) {
+  for (const args of [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode'], ['logout'], ['configure','--no-open']]) {
     const result = await execute(root, '', args);
     assert.equal(result.code, 7);
     assert.doesNotMatch(result.output, /Choose \[0-4, 9\]/);
   }
-  assert.equal(await actions(root), 'install --repair\nlogin --device-auth\nstart --no-open\nopencode\nlogout\n');
+  assert.equal(await actions(root), 'install --repair\nlogin --device-auth\nstart --no-open\nopencode\nlogout\nconfigure --no-open\n');
 });
 test('help and unknown actions never invoke bootstrap', async t => {
   const root = await fixture(t);
@@ -99,12 +99,12 @@ test('terminating the menu forwards the signal and waits for its active child', 
 
 test('first launch chooses English or Chinese without Node; default, invalid choice and EOF are safe', async t => {
   const root = await fixture(t);
-  const zh = await execute(root, 'invalid\n2\n2\n0\n0\n', [], null);
+  const zh = await execute(root, 'invalid\n2\n0\n', [], null);
   assert.equal(zh.code, 0, zh.output);
   assert.match(zh.output, /Language \/ 语言/);
   assert.match(zh.output, /请输入 0、1 或 2/);
   assert.match(zh.output, /安装 \/ 更新/);
-  assert.match(zh.output, /OpenCode — 配置服务商 \/ API 密钥/);
+  assert.match(zh.output, /配置 AI 接口/);
   const en = await execute(root, '\n0\n', [], null);
   assert.equal(en.code, 0);
   assert.match(en.output, /Install \/ update/);

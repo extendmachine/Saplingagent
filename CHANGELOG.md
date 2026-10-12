@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Independent AI configuration
+
+- Open a standalone bilingual local configuration page from the Bash launcher's Configure AI menu after installation.
+- Sign in through official Codex browser/device-code authentication or save named custom Codex/OpenCode endpoint/protocol/model/API-key schemes.
+- Keep keys private and retain blank-key edits; support optional model catalog discovery, scheme editing/default selection and Finish setup returning to the launcher.
+- Start the selected OpenCode or API scheme without requiring ChatGPT login; preserve conversation bindings and current-user Full Access.
+- Exact-version human review, real OAuth/provider inference and native Windows10 acceptance remain pending.
+
 ## Unreleased — Windows and automatic device installation (2026-10-11)
 
 - Detect native Windows x64/ARM64 and Mac Intel/Apple Silicon automatically, including emulated terminals and Rosetta.

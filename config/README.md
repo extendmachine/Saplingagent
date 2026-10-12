@@ -1,5 +1,7 @@
 # Application configuration
 
-The current runtime.json contains four local ports, preferred models, reasoning strength and timeouts per round. The model is subject to the actual directory of Codex official App Server. When the preference is missing, select the directory default; the actual gpt-5.6-sol/medium of the machine. All services only bind the loopback; the internal token is read by path, and there is no real key to enter the public configuration.
-Subsequent save application ID, basic version, enable function, model adapter reference, local service connection and MCP registration information.
-The path is relative to the root directory of the application; the copied application creates a new ID and does not inherit the old application status. The configuration only refers to local-secrets/ and does not contain the real key.
+`runtime.json` declares public local ports, preferred Codex model/reasoning and progress/timeout settings. Runtime uses the actual model catalog. Services bind loopback, and internal tokens are read from private files; never put credentials in public config or VITE_ variables.
+
+After installation, `bash Saplingagent.sh configure` opens an independent AI setup page. Saved schemes choose the startup engine/provider/model, including a custom API Base URL. Scheme metadata and private API-key references live in `local-secrets/ai-config/`; key files and Codex sign-in credentials are also project-local under local-secrets. Public runtime.json is not rewritten by the wizard. See docs/ai-configuration.html and contracts/ai-configuration.mjs.
+
+Restart after changing the default scheme and create a new conversation. No saved scheme preserves the legacy manual project Codex/OpenCode configuration. macos.json/windows.json pin local installers. Moving/copying the complete application keeps source together; clean source packaging initializes fresh recipient records and excludes credentials/runtime data.

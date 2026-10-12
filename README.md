@@ -8,7 +8,7 @@
 
 Saplingagent is a minimal software seed package that you can modify yourself, directly or through conversation with AI. Start with a chat page in your own project folder, then add the interfaces, features and services you need.
 
-Saplingagent combines a React interface with the official**Codex App Server**, project MCP tools and reusable Skills. Application code, conversations, preferences, rules and runtime stay in the application folder. The current page includes streaming chat, Markdown with GFM tables, and Git version controls; further features are added through conversation.
+Saplingagent combines a React interface with the official **Codex App Server** and optional OpenCode engine, project MCP tools and reusable Skills. Application code, conversations, preferences, rules and runtime stay in the application folder. The current page includes streaming chat, Markdown with GFM tables, and Git version controls; further features are added through conversation.
 
 **macOS 13.5+ · Windows 10/11 x64 and ARM64 · Source available for noncommercial use**
 
@@ -47,9 +47,9 @@ First choose **English** or **中文** (Enter defaults to English), then use the
 | Menu choice | Action |
 | --- | --- |
 | 1. Install / update | Prepare project-local Node, Codex, OpenCode and locked dependencies. |
-| 2. Configure AI | Choose Codex account login or OpenCode provider/API-key setup. |
+| 2. Configure AI | Open the standalone local account/API configuration page. |
 | 3. Start app | Launch the local services and open the chat page. |
-| 4. Diagnostics | Check installation, saved login and runtime readiness. |
+| 4. Diagnostics | Check installation, saved AI access and runtime readiness. |
 | 9. Change language | Switch English / Chinese. |
 | 0. Quit | Close the menu. |
 
@@ -59,7 +59,16 @@ Installation supports macOS 13.5+ on Apple Silicon or Intel, downloads official 
 
 Runtimes stay in `.runtime/`, dependencies in their modules' `node_modules/`, and npm cache in `.cache/npm/`. No sudo or global npm installation is needed. Keep the entire application folder; the single user-facing launcher uses its internal scripts and configuration.
 
-**Configure AI → Codex** opens the official login flow for your own account and stores project credentials under `local-secrets/codex/`. It does not import global credentials. **Configure AI → OpenCode** opens the provider credential selector and uses project-isolated `local-secrets/opencode/`. This launcher still checks Codex login at startup; OpenCode is an additional engine chosen for new conversations. Custom API endpoints also need provider/model configuration; see the OpenCode section below.
+**Configure AI** opens a separate local web page after installation, before the chat services are started. The page has English/Chinese controls:
+
+- **ChatGPT account:** open the official Codex sign-in page, or use a device code. On completion the account becomes the default scheme. Existing project-local ChatGPT credentials can be selected without signing in again.
+- **API / custom provider:** name a scheme, select Codex or OpenCode, choose the API protocol, enter the provider's **API Base URL**, API key and exact model ID, then **Save & use**. Use the API URL rather than a website homepage. Codex custom endpoints require Responses; OpenCode supports Chat Completions, Responses and Anthropic Messages. Presets help fill OpenAI, OpenRouter, Anthropic and local Ollama-compatible endpoints. Providers requiring other protocols, arbitrary headers or separate subscription OAuth need their own adapter.
+- **Fetch models** is optional and performs a catalog GET only. If discovery is unavailable, enter the model ID manually. Use a model with streaming/tool-calling support for application development; saving a scheme does not validate compatibility or quota.
+- Keep multiple schemes and select **Use** to change the default. **Finish setup** closes only this configuration service and returns to the script menu; then choose **Start app**. Closing the browser tab alone does not stop the service; Control+C stops the launcher if needed. If browser opening fails, use the loopback URL printed in the terminal.
+
+Scheme metadata stays in `local-secrets/ai-config/connections.json`, API keys in `local-secrets/api-keys/`, and Codex sign-in credentials in `local-secrets/codex/`. The credential ledger stores file references. The page never reads saved keys back into fields; leave a key blank when editing to retain it. No global credentials are imported. OpenCode's legacy native provider selector remains available as an explicit recovery command and stores its credentials in `local-secrets/opencode/`.
+
+Startup uses the saved default scheme. **An OpenCode-only or custom Codex API scheme does not require ChatGPT login.** Reconfigure while an app is running, then restart and start a new conversation to apply the choice. Existing conversations retain their engine/model; do not resume a Codex thread through a different provider. See [AI configuration guide](docs/ai-configuration.html) and [configuration service contract](backend/ai-config/CONTRACT.md).
 
 Startup opens **[http://127.0.0.1:5173/](http://127.0.0.1:5173/)** after local readiness checks. Send a message to verify an actual response. Installation and saved login do not prove model access or available quota.
 
@@ -67,6 +76,8 @@ For automation or recovery, the same launcher accepts explicit actions:
 
 ```bash
 bash Saplingagent.sh install --repair
+bash Saplingagent.sh configure
+bash Saplingagent.sh configure --no-open
 bash Saplingagent.sh login --device-auth
 bash Saplingagent.sh opencode
 bash Saplingagent.sh start --no-open
@@ -86,12 +97,14 @@ The stable recovery page is [http://127.0.0.1:5173/__saplingagent/runtime](http:
 
 On first upgrade to this launcher, stop the existing launch window with Control+C and run `bash Saplingagent.sh start` again. The public gateway keeps port5173; Vite moves to internal port5174. Manager4314 controls Agent4310, workspace4311, builder4312 and optional PDF4313 when its source exists. If a branch adds dependencies, install them first. Manager/launcher source or port changes require a full launcher restart. Legacy direct service callers cannot be tracked by the gateway; finish their work before restarting old versions.
 
-## Authentication and costs**The local App Server does not charge a separate server fee. Model usage requires your own authentication and available quota.**Saplingagent includes no developer account, shared API key or promise of free model access.
+## Authentication and costs
+
+**The local App Server does not charge a separate server fee. Model usage requires your own authentication and available quota.** Saplingagent includes no developer account, shared API key or promise of free model access.
 
 | Route | Authentication and billing |
 | --- | --- |
-| Default Mac login | Your own ChatGPT login through official Codex; access and limits depend on the account's plan, organization and model eligibility |
-| Codex API-key route | Your own OpenAI API key; API usage is billed separately from ChatGPT subscription usage. The Mac launchers currently guide users through ChatGPT login and do not provide a dedicated API-key setup flow |
+| ChatGPT account scheme | Your own ChatGPT login through official Codex; access and limits depend on the account's plan, organization and model eligibility |
+| API scheme (Codex / OpenCode) | Your own provider credential and API endpoint; usage follows the provider's billing and eligibility, separate from a ChatGPT subscription. Supported protocols are selected in the setup page |
 
 Installation, saved authentication and `model/list` discovery are separate from successful inference. Start/Doctor do not send a model prompt automatically. Sending a chat message initiates model usage. Reinstallation does not increase quota.
 
@@ -99,13 +112,7 @@ For current eligibility and costs, consult [Codex authentication](https://learn.
 
 ## Optional OpenCode providers
 
-Codex remains the default. To use Anthropic, OpenRouter, a custom OpenAI-compatible endpoint, or another provider supported by OpenCode, first install the current lockfiles and run:
-
-```bash
-bash Saplingagent.sh opencode
-```
-
-Provider credentials are stored only under `local-secrets/opencode/`. Restart Saplingagent, choose **OpenCode** before the first message of a new conversation, then choose a connected provider and model. Each conversation stays bound to its original engine/model across refresh and restart; start a new conversation to switch. There is no automatic fallback between providers.
+Codex is the initial default when no scheme is saved. Use **Configure AI → API / custom provider** for OpenCode with an Anthropic, OpenRouter or custom compatible endpoint; that saved scheme can be the startup default. For providers requiring the native selector instead, run `bash Saplingagent.sh opencode` as a terminal fallback. Its credentials stay under `local-secrets/opencode/`. Restart Saplingagent and choose a connected OpenCode provider/model before the first message of a new conversation. Each conversation stays bound to its original engine/model across refresh and restart; start a new conversation to switch. There is no automatic fallback between providers.
 
 Claude uses an Anthropic API credential through OpenCode. A Claude Desktop subscription or login is not imported and Claude Desktop is not automated as an inference backend. Desktop extensions let Claude call MCP servers; that is a different integration direction. See the official [OpenCode provider guide](https://opencode.ai/docs/providers/) and [Anthropic client SDK guidance](https://platform.claude.com/docs/en/api/client-sdks).
 
@@ -176,7 +183,7 @@ Choose Diagnostics in the menu, or run:
 bash Saplingagent.sh doctor
 ```
 
-Doctor reports installation, versions, saved login and configured-port status without displaying credentials or issuing model prompts.
+Doctor reports installation, versions, saved AI configuration and configured-port status without displaying credentials or issuing model prompts.
 
 | Symptom | Action |
 | --- | --- |
@@ -268,7 +275,7 @@ The user's project rules ship under `rules/`. Translating their prose does not r
 
 ## Windows operation and delivery
 
-Run `bash Saplingagent.sh --lang zh` in Git Bash. The single English/Chinese menu provides Install / update, Configure AI (Codex/OpenCode), Start app and Diagnostics. Explicit actions/flags are identical to Mac: `install --repair`, `login --device-auth`, `opencode`, `start --no-open`, `doctor`, `logout`. See [Windows guide](docs/windows-install.html) / [中文 Windows 说明](docs/windows-install.zh.html).
+Run `bash Saplingagent.sh --lang zh` in Git Bash. The single English/Chinese menu provides Install / update, Configure AI (independent account/API web page), Start app and Diagnostics. Explicit actions/flags are identical to Mac: `install --repair`, `configure --no-open`, `login --device-auth`, `opencode`, `start --no-open`, `doctor`, `logout`. See [Windows guide](docs/windows-install.html) / [中文 Windows 说明](docs/windows-install.zh.html).
 
 Windows system detection/download/extraction uses its built-in PowerShell internally, embedded in scripts/windows/bootstrap.sh; there is no separate .ps1 file or user PowerShell command. UTF16 encoded command arguments preserve Unicode paths and leave stdin available for provider authentication. Windows menu actions run in the foreground. Installation/diagnostics use PowerShell directly; Git Bash's winpty is used when available for native login/OpenCode/start console compatibility. Windows terminal shutdown/model interactions still require native-system testing. No WSL, global Node/Codex, registry/global PATH/permanent execution-policy modification is required.
 
