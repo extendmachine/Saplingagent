@@ -1,3 +1,4 @@
+import { readConnections,defaultSelection,codexConnection,codexCredentialStatus } from '../../contracts/ai-configuration.mjs';
 import { createDrainGate } from '../../contracts/runtime-drain.mjs';
 import http from 'node:http';
 import fs from 'node:fs/promises';
@@ -28,7 +29,7 @@ async function readBody(req) {
 }
 const validId = id => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(id);
 
-export async function createAgentServer({ root = process.env.SEED_ROOT || defaultRoot, AppServerClass = AppServer, progressClock } = {}) {
+export async function createAgentServer({ root = process.env.SEED_ROOT || defaultRoot, AppServerClass = AppServer, OpenCodeProviderClass = OpenCodeProvider, progressClock } = {}) {
   root = await fs.realpath(root);
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   const timing = turnTiming(config);
@@ -53,6 +54,10 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     return value;
   }
   let rpc, startup, openCodeStartup, shutdown, closing = false, gitSwitching = false, pendingChats = 0, lastStart = 0;
+  const connections = await readConnections(root);
+  const selectedConnection = connections.profiles.find(p => p.id === connections.activeId);
+  const configuredSelection = defaultSelection(connections);
+  const canStartOptionalCodex = configuredSelection.engine === 'opencode' && (await codexCredentialStatus(root)).saved;
   let status = { ready: false, authenticated: false, provider: 'Codex App Server', model: '', skills: [], mcp: { ready: false, tools: [] }, permissions };
   let openCodeStatus = { id: 'opencode', label: 'OpenCode', ready: false, authenticated: false, providers: [], error: null };
   const active = new Map(), threads = new Map(), resumed = new Set(), subscribers = new Map(), approvals = new Map(), requestSessions = new Map(), dirtySessions = new Map();
@@ -185,7 +190,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     status.ready = status.authenticated && status.mcp.ready;
   }
   const sharedMcpEnv = { SEED_AGENT_MANAGED: '1', SEED_AGENT_PORT: String(process.env.SEED_AGENT_PORT || config.agentPort), SEEDAGENT_PROJECT_ROOT: root, SEEDAGENT_WORKSPACE_PORT: String(process.env.SEED_WORKSPACE_PORT || config.workspacePort), SEEDAGENT_BUILDER_PORT: String(process.env.SEED_BUILDER_PORT || config.builderPort) };
-  const openCode = new OpenCodeProvider({
+  const openCode = new OpenCodeProviderClass({
     root,
     port: Number(process.env.SEED_OPENCODE_PORT || config.openCodePort || 4315),
     mcpEnv: sharedMcpEnv,
@@ -221,34 +226,49 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     }).finally(() => { openCodeStartup = null; });
     return openCodeStartup;
   }
-  async function start() {
+  async function startCodex() {
     if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
     if (startup) return startup;
     lastStart = Date.now();
     startup = (async () => {
+      const connection = await codexConnection(root, connections);
       const args = ['-c', 'cli_auth_credentials_store="file"', '-c', 'web_search="live"', ...permissionConfigArgs()];
       for (const feature of ['browser_use', 'browser_use_external', 'computer_use', 'plugins', 'remote_plugin', 'apps', 'multi_agent', 'skill_mcp_dependency_install']) args.push('-c', `features.${feature}=false`);
       args.push('-c', `mcp_servers.seedagent.command=${JSON.stringify(process.execPath)}`, '-c', `mcp_servers.seedagent.args=${JSON.stringify([path.join(root, 'backend/mcp-runtime/server.mjs')])}`, '-c', 'mcp_servers.seedagent.required=true', '-c', 'mcp_servers.seedagent.startup_timeout_sec=30');
       // Codex forwards only an allowlist to stdio MCP children, not its full environment.
       for (const [name, value] of Object.entries(sharedMcpEnv)) args.push('-c', `mcp_servers.seedagent.env.${name}=${JSON.stringify(value)}`);
-      rpc = new AppServerClass({ cwd: root, env: { ...process.env, CODEX_HOME: path.join(root, 'local-secrets/codex'), SEED_ROOT: root, SEED_AGENT_MANAGED: '1', SEED_AGENT_PORT: String(process.env.SEED_AGENT_PORT || config.agentPort), SEEDAGENT_PROJECT_ROOT: root, SEEDAGENT_WORKSPACE_PORT: String(process.env.SEED_WORKSPACE_PORT || config.workspacePort), SEEDAGENT_BUILDER_PORT: String(process.env.SEED_BUILDER_PORT || config.builderPort) }, args });
+      args.push(...connection.args);
+      if(connection.profile?.kind === 'api')args.push('-c','web_search="disabled"');
+      rpc = new AppServerClass({ cwd: root, env: { ...process.env, ...connection.env, CODEX_HOME: path.join(root, 'local-secrets/codex'), SEED_ROOT: root, SEED_AGENT_MANAGED: '1', SEED_AGENT_PORT: String(process.env.SEED_AGENT_PORT || config.agentPort), SEEDAGENT_PROJECT_ROOT: root, SEEDAGENT_WORKSPACE_PORT: String(process.env.SEED_WORKSPACE_PORT || config.workspacePort), SEEDAGENT_BUILDER_PORT: String(process.env.SEED_BUILDER_PORT || config.builderPort) }, args });
       rpc.on('notification', message => notification(message).catch(error => log('notification_error', { code: error.code || 'INTERNAL' }).catch(() => {})));
       rpc.on('request', serverRequest);
-      rpc.on('disconnect', error => { status.ready = false; status.error = safeError(error); resumed.clear(); if (!closing) for (const run of active.values()) if (run.session) finish(run, 'failed', error).catch(() => {}); });
+      rpc.on('disconnect', error => { status.ready = false; status.error = safeError(error); resumed.clear(); if (!closing) for (const run of active.values()) if (run.session && run.session.engine !== 'opencode') finish(run, 'failed', error).catch(() => {}); });
       await rpc.call('initialize', { clientInfo: { name: 'seedagent', title: 'Saplingagent', version: '0.1.0' }, capabilities: { experimentalApi: true } });
       rpc.send({ method: 'initialized', params: {} });
-      const account = await rpc.call('account/read', { refreshToken: false }); status.authenticated = !!account.account;
+      const account = await rpc.call('account/read', { refreshToken: false }); status.authenticated = !!account.account || account.requiresOpenaiAuth === false;
       const models = await rpc.call('model/list', { limit: 50, includeHidden: false });
-      const selected = models.data.find(m => m.model === config.preferredModel) || models.data.find(m => m.isDefault) || models.data[0];
-      if (!selected) throw new Error('No available model');
-      status.model = selected.model;
-      if (!selected.supportedReasoningEfforts.some(e => e.reasoningEffort === effort)) effort = selected.defaultReasoningEffort;
+      const requestedModel = connection.profile?.kind === 'api' ? connection.profile.model : config.preferredModel;
+      const selected = models.data.find(m => m.model === requestedModel) || models.data.find(m => m.isDefault) || models.data[0];
+      if (!selected && connection.profile?.kind !== 'api') throw new Error('No available model');
+      status.model = connection.profile?.kind === 'api' ? connection.profile.model : selected.model;
+      if(connection.profile?.kind === 'api' && !models.data.some(m=>m.model===status.model))effort=null;
+      else if (!selected.supportedReasoningEfforts.some(e => e.reasoningEffort === effort)) effort = selected.defaultReasoningEffort;
       const initialThread = await rpc.call('thread/start', { cwd: root, model: status.model, ...threadPermissions, developerInstructions: instructions, ephemeral: true });
       if (initialThread.sandbox?.type !== 'dangerFullAccess' || initialThread.approvalPolicy !== 'never') throw new Error('Codex did not enable the requested Full Access permissions. Check runtime configuration');
       await catalog();
       if (!status.authenticated) status.error = 'This project is not logged in. Run codex login using the project CODEX_HOME first.';
       else if (!status.mcp.ready) status.error = 'Saplingagent MCP tools are not ready';
       else delete status.error;
+      await log('agent_ready', { model: status.model, authenticated: status.authenticated, tools: status.mcp.tools.length, sandbox: initialThread.sandbox.type, approvalPolicy: initialThread.approvalPolicy });
+    })().catch(error => { status.ready = false; status.error = safeError(error); if (rpc && !rpc.closed) rpc.close(); throw error; }).finally(() => { startup = null; });
+    return startup;
+  }
+  function runtimeStatus() {
+    if(configuredSelection.engine !== 'opencode')return {...status,ready:status.ready&&!startup&&!drain.prepared};
+    const ready = openCodeStatus.ready && openCodeStatus.authenticated && openCodeStatus.mcp?.ready && openCodeStatus.providers.some(p=>p.id===configuredSelection.providerId&&p.models.some(m=>m.id===configuredSelection.modelId)) && !openCodeStartup && !drain.prepared;
+    return {ready:Boolean(ready),authenticated:openCodeStatus.authenticated,provider:'OpenCode',model:selectedConnection?.model||'',skills:[],mcp:openCodeStatus.mcp||{ready:false,tools:[]},permissions,error:openCodeStatus.error||undefined};
+  }
+  async function recoverSavedRuns() {
       // A stopped process cannot leave a saved session permanently running.
       for (const summary of (await ws('/sessions')).sessions) {
         const { session } = await ws(`/sessions/${summary.id}`);
@@ -258,9 +278,14 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           await ws(`/sessions/${session.id}`, 'PATCH', { running: false, activeRequestId: null, requests: session.requests, messages: session.messages });
         }
       }
-      await log('agent_ready', { model: status.model, authenticated: status.authenticated, tools: status.mcp.tools.length, sandbox: initialThread.sandbox.type, approvalPolicy: initialThread.approvalPolicy });
-    })().catch(error => { status.ready = false; status.error = safeError(error); if (rpc && !rpc.closed) rpc.close(); throw error; }).finally(() => { startup = null; });
-    return startup;
+  }
+  async function start() {
+    lastStart=Date.now();
+    if(configuredSelection.engine==='opencode'){
+      await startOpenCode();
+      if(!openCodeStatus.ready||!openCodeStatus.authenticated||!openCodeStatus.mcp?.ready||!openCodeStatus.providers.some(p=>p.id===configuredSelection.providerId&&p.models.some(m=>m.id===configuredSelection.modelId)))throw new ApiError('AGENT_NOT_READY',openCodeStatus.error||'OpenCode provider or MCP is not ready. Check AI configuration.',503);
+      await recoverSavedRuns();
+    }else{await startCodex();await recoverSavedRuns();}
   }
   async function interrupt(run) {
     run.cancelRequested = true;
@@ -293,7 +318,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     try {
       if (!currentRun(run)) return;
       if (closing || run.cancelRequested) { await finishStopped(); return; }
-      if (!rpc || rpc.closed) await start();
+      if (!rpc || rpc.closed) await startCodex();
       if (!currentRun(run)) return;
       if (closing || run.cancelRequested) { await finishStopped(); return; }
       if (!status.ready) throw new Error(status.error || 'Agent is not ready');
@@ -401,12 +426,13 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         if (run.finished || run.cancelRequested) throw new ApiError('TASK_ENDED', 'This task has stopped; runtime record not confirmed. The tool returns execution results', 409);
         return send(res, 200, { taskId: `RUN-${run.requestId}` });
       }
-      if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ready: true, service: 'agent-runtime', agentReady: status.ready && !startup });
-      if (req.method === 'GET' && url.pathname === '/api/status') { if ((!rpc || rpc.closed) && !startup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...status, ready: status.ready && !startup && !drain.prepared, restarting: drain.prepared, activeRuns: active.size + pendingChats }); }
+      if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ready: true, service: 'agent-runtime', agentReady: runtimeStatus().ready });
+      if (req.method === 'GET' && url.pathname === '/api/status') { if (!runtimeStatus().ready && !startup && !openCodeStartup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...runtimeStatus(), codexReady: status.ready && !startup && !drain.prepared, defaultEngine: configuredSelection.engine, restarting: drain.prepared, activeRuns: active.size + pendingChats }); }
       if (req.method === 'GET' && url.pathname === '/api/engines') {
         if (!openCode.ready && !openCodeStartup) await startOpenCode();
+        if(canStartOptionalCodex && !rpc && !startup)startCodex().catch(()=>{});
         const codex = { id: 'codex', label: 'Codex', ready: status.ready && !startup, authenticated: status.authenticated, model: status.model, error: status.error || null };
-        return send(res, 200, { defaultEngine: 'codex', engines: [codex, openCodeStatus] });
+        return send(res, 200, { defaultEngine: configuredSelection.engine, defaultSelection: configuredSelection, engines: [codex, openCodeStatus] });
       }
       if (req.method === 'GET' && url.pathname === '/api/git') return send(res, 200, { git: await readGitVersion(root, { limit: url.searchParams.has('limit') ? Number(url.searchParams.get('limit')) : 25 }) });
       if (req.method === 'POST' && ['/api/git/commit', '/api/git/switch', '/api/git/checkout', '/api/git/label'].includes(url.pathname)) {

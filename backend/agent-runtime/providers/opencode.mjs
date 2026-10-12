@@ -1,3 +1,4 @@
+import { readConnections,openCodeConnections } from '../../../contracts/ai-configuration.mjs';
 import { openCodeBinary, terminateOwned } from '../../../contracts/local-process.mjs';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
@@ -28,6 +29,7 @@ export class OpenCodeProvider {
   }
 
   async start() {
+    if (this.ready) return this.catalog();
     if (this.starting) return this.starting;
     this.starting = this.#start().finally(() => { this.starting = null; });
     return this.starting;
@@ -42,6 +44,7 @@ export class OpenCodeProvider {
     const binary = openCodeBinary(this.root);
     await fs.access(binary);
     const config = {
+      provider: await openCodeConnections(this.root,await readConnections(this.root)),
       autoupdate: false,
       share: 'disabled',
       permission: { '*': 'allow', external_directory: 'allow', doom_loop: 'allow' },
@@ -87,8 +90,10 @@ export class OpenCodeProvider {
     if (!this.ready) await this.start();
     const result = await sdkData(this.client.provider.list(), 'Unable to list OpenCode providers');
     const connected = new Set(result.connected || []);
+    const mcpStatus = await sdkData(this.client.mcp.status(), 'Unable to read OpenCode MCP status');
     return {
       id: 'opencode', label: 'OpenCode', ready: this.ready, authenticated: connected.size > 0,
+      mcp: { ready: mcpStatus?.seedagent?.status === 'connected', tools: [] },
       providers: (result.all || []).filter(provider => connected.has(provider.id)).map(provider => ({
         id: provider.id,
         label: provider.name,
