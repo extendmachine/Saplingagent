@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Saplingagent | macOS 中文安装说明</title>
+<style>
+body{margin:0;background:#f5f6f3;color:#26302a;font:16px/1.8 system-ui,sans-serif}main{max-width:900px;margin:auto;padding:36px 24px 70px}h1{font-size:34px;line-height:1.3}section{background:white;border:1px solid #dde3dc;border-radius:14px;padding:20px 24px;margin:20px 0}nav{display:flex;flex-wrap:wrap;gap:16px}a{color:#3c6844}pre{background:#edf1eb;padding:16px;overflow:auto;line-height:1.55}code{font-size:14px}table{border-collapse:collapse;width:100%}th,td{padding:10px;border-bottom:1px solid #dde3dc;text-align:left;vertical-align:top}@media(max-width:650px){main{padding:24px 14px}section{padding:16px}table{display:block;overflow:auto}}
+</style></head>
+<body><main>
+<nav><a href="index.html">项目概览（英文）</a><a href="macos-install.html" lang="en">English install guide</a><a href="runtime.html">运行说明（英文）</a></nav>
+<h1>Saplingagent macOS 安装与接口配置</h1>
+<p>使用一个 <code>Saplingagent.sh</code> 脚本完成安装、配置接口、启动和诊断。中文和英文共用同一个脚本，完整应用文件夹必须一起保留。</p>
+<section><h2>运行要求</h2>
+<p>macOS 13.5 或更新版本，Apple Silicon 或 Intel，可写的本地文件夹，以及可连接 Node.js、npm、OpenAI 和所选模型服务商的网络。压缩包安装不要求全局 Node、Homebrew、Xcode 或 Codex 桌面应用；版本管理和重新打包需要 Git。自动化检查在 Apple Silicon 上执行，Intel 的真实安装仍需相应设备验证。</p>
+<p>模型调用使用你自己的账号或 API，实际模型权限、额度和费用由对应服务商决定。安装或登录成功不等于模型调用一定可用。</p></section>
+<section><h2>如何运行 .sh 脚本</h2>
+<p>解压完整应用，在“终端”中进入应用文件夹。输入 <code>cd </code>，把应用文件夹拖入终端，按回车；然后运行：</p>
+<pre>bash Saplingagent.sh</pre>
+<p>先选择 <strong>1. English</strong> 或 <strong>2. 中文</strong>；直接回车使用英文。也可直接打开中文菜单：</p>
+<pre>bash Saplingagent.sh --lang zh</pre>
+<p>Mac 可以运行 .sh。Finder 双击通常会用编辑器打开脚本，请按上述方式在终端运行。使用 <code>bash</code> 不需要额外执行 chmod。文件有可执行权限时，也可以运行 <code>./Saplingagent.sh</code>。此脚本使用 Bash 语法，请不要改用 <code>sh Saplingagent.sh</code>。</p>
+<table><thead><tr><th>菜单</th><th>用途</th></tr></thead><tbody>
+<tr><td>1. 安装 / 更新</td><td>准备项目内 Node、Codex、OpenCode 和锁定的依赖。更新前先停止当前应用。</td></tr>
+<tr><td>2. 配置 AI 接口</td><td>选择 Codex 账号登录，或 OpenCode 服务商 / API 密钥配置。</td></tr>
+<tr><td>3. 启动应用</td><td>启动前后端，检查就绪状态后打开聊天网页。</td></tr>
+<tr><td>4. 服务诊断</td><td>检查安装、已保存的登录和运行状态，不发送模型提示词。</td></tr>
+<tr><td>9. 切换语言</td><td>在中文和英文之间切换。</td></tr>
+<tr><td>0. 退出</td><td>退出脚本。</td></tr>
+</tbody></table>
+<p>操作完成或失败后返回菜单。按 Control+C 停止本次启动的服务并退出脚本。启动后请保持终端窗口打开。官方 Codex、OpenCode、npm 和下载工具的输出可能仍是英文；此中文版本翻译的是 Saplingagent 的菜单及安装提示，网页保持现有语言。</p></section>
+<section><h2>配置账号与 API</h2>
+<p><strong>Codex：</strong>选择“配置 AI 接口 → Codex”，官方工具将打开浏览器，使用自己的 ChatGPT / Codex 账号登录。项目凭据保存在 <code>local-secrets/codex/</code>，不导入开发者账号。目前此 Mac 入口没有独立的 Codex API-key 登录向导。</p>
+<p><strong>OpenCode：</strong>选择“配置 AI 接口 → OpenCode”，按官方工具提示选择服务商并配置密钥或登录。凭据和配置位于 <code>local-secrets/opencode/</code>。自定义 API 地址及模型需要按现有 <a href="https://opencode.ai/docs/providers/">OpenCode 服务商文档</a>配置；这个菜单不提供新的自定义地址向导。</p>
+<p>当前启动仍要求 Codex 登录。使用 OpenCode 时，在新会话的第一条消息之前选择引擎、服务商和模型；已有会话不会自动切换引擎。配置后按需要重启服务，发送真实消息确认流式响应、停止和 MCP 操作。</p>
+<p>正常安装、登录和启动已接入 Codex App Server；无需在 Codex 桌面应用中手动添加 MCP。项目使用 <code>codex app-server --listen stdio://</code> 和本地 MCP / Skills，模型由你的账号提供。</p></section>
+<section><h2>常用命令</h2>
+<pre>bash Saplingagent.sh --lang zh install
+bash Saplingagent.sh --lang zh login
+bash Saplingagent.sh --lang zh opencode
+bash Saplingagent.sh --lang zh start
+bash Saplingagent.sh --lang zh doctor
+bash Saplingagent.sh --lang zh install --repair
+bash Saplingagent.sh --lang zh login --device-auth
+bash Saplingagent.sh --lang zh start --no-open
+bash Saplingagent.sh --lang zh logout</pre>
+<p>修复安装保留代码、凭据和业务数据；退出登录保留应用文件和聊天会话。设备登录能否使用由账号条件决定。首次启动后的网页通常为 <code>http://127.0.0.1:5173/</code>，端口可在 <code>config/runtime.json</code> 配置。</p></section>
+<section><h2>问题处理与分发</h2>
+<p>提示 Node 未安装或依赖变化时，先选择“安装 / 更新”。认证失败请查看实际账号错误；重新安装不能增加模型额度。端口被占用时停止自己的旧启动终端或修改配置，脚本不会按端口强行终止其他项目。服务未就绪时使用“服务诊断”及运行恢复页 <code>/__saplingagent/runtime</code>。</p>
+<p>安装锁存在时先等待，确认安装进程已结束后再按英文安装说明清理当前项目内的旧锁。移动应用前停止服务并移动整个文件夹；架构或锁文件变化后重新安装。</p>
+<p>项目权限沿用当前系统用户的 Full Access，不自动提升为 root。源码采用 PolyForm Noncommercial 1.0.0，商用需要项目方另行许可；第三方认证权益需要独立确认。本安装包不是签名的原生 Mac 应用。分发请使用干净源码包，排除自己的凭据、聊天数据、日志和已安装运行环境。</p></section>
+</main></body></html>

@@ -23,13 +23,13 @@ cd Saplingagent
 
 Or download and extract a ZIP from the chosen branch. A private repository requires access.
 
-**Double-click `Saplingagent.command`**, or run:
+Open Terminal in the application folder and run:
 
 ```bash
-bash Saplingagent.command
+bash Saplingagent.sh
 ```
 
-Use the same menu for every step:
+First choose **English** or **中文** (Enter defaults to English), then use the same menu for every step. For Chinese directly, run `bash Saplingagent.sh --lang zh`. See the [中文安装说明](docs/macos-install.zh.html). The `.sh` entry runs in Terminal; Finder double-click normally opens an editor.
 
 | Menu choice | Action |
 | --- | --- |
@@ -37,6 +37,7 @@ Use the same menu for every step:
 | 2. Configure AI | Choose Codex account login or OpenCode provider/API-key setup. |
 | 3. Start app | Launch the local services and open the chat page. |
 | 4. Diagnostics | Check installation, saved login and runtime readiness. |
+| 9. Change language | Switch English / Chinese. |
 | 0. Quit | Close the menu. |
 
 Install first, configure your own AI access, then start. Menu actions return to the menu when finished; an error leaves the menu available for retry. Stop an existing application before updating dependencies. During startup keep the terminal open; Control+C stops the owned services and exits the launcher.
@@ -52,15 +53,15 @@ Startup opens **[http://127.0.0.1:5173/](http://127.0.0.1:5173/)** after local r
 For automation or recovery, the same launcher accepts explicit actions:
 
 ```bash
-bash Saplingagent.command install --repair
-bash Saplingagent.command login --device-auth
-bash Saplingagent.command opencode
-bash Saplingagent.command start --no-open
-bash Saplingagent.command doctor
-bash Saplingagent.command logout
+bash Saplingagent.sh install --repair
+bash Saplingagent.sh login --device-auth
+bash Saplingagent.sh opencode
+bash Saplingagent.sh start --no-open
+bash Saplingagent.sh doctor
+bash Saplingagent.sh logout
 ```
 
-Device login depends on account/organization eligibility. If Finder does not execute a downloaded launcher, use the bash command and normal macOS first-open prompts.
+Device login depends on account/organization eligibility. Use `bash Saplingagent.sh` from Terminal; no executable-bit change is required for this command. `./Saplingagent.sh` also works when the executable bit is retained. Use Bash rather than `sh`: the script uses Bash syntax.
 
 ## Switch versions and restart
 
@@ -70,7 +71,7 @@ After switching, click **Restart app** to load that version's frontend, backend,
 
 The stable recovery page is [http://127.0.0.1:5173/__saplingagent/runtime](http://127.0.0.1:5173/__saplingagent/runtime), or your configured `frontPort`. It survives frontend/backend failure and works when an older version lacks the restart button. Repair the source/dependencies/login and retry there. Current UI recovers an unsent draft; older UIs may not. Conversations and login files remain in the application folder. No automatic resend or code rollback.
 
-On first upgrade to this launcher, stop the existing launch window with Control+C and run `Saplingagent.command start` again. The public gateway keeps port5173; Vite moves to internal port5174. Manager4314 controls Agent4310, workspace4311, builder4312 and optional PDF4313 when its source exists. If a branch adds dependencies, install them first. Manager/launcher source or port changes require a full launcher restart. Legacy direct service callers cannot be tracked by the gateway; finish their work before restarting old versions.
+On first upgrade to this launcher, stop the existing launch window with Control+C and run `bash Saplingagent.sh start` again. The public gateway keeps port5173; Vite moves to internal port5174. Manager4314 controls Agent4310, workspace4311, builder4312 and optional PDF4313 when its source exists. If a branch adds dependencies, install them first. Manager/launcher source or port changes require a full launcher restart. Legacy direct service callers cannot be tracked by the gateway; finish their work before restarting old versions.
 
 ## Authentication and costs**The local App Server does not charge a separate server fee. Model usage requires your own authentication and available quota.**Saplingagent includes no developer account, shared API key or promise of free model access.
 
@@ -88,7 +89,7 @@ For current eligibility and costs, consult [Codex authentication](https://learn.
 Codex remains the default. To use Anthropic, OpenRouter, a custom OpenAI-compatible endpoint, or another provider supported by OpenCode, first install the current lockfiles and run:
 
 ```bash
-bash Saplingagent.command opencode
+bash Saplingagent.sh opencode
 ```
 
 Provider credentials are stored only under `local-secrets/opencode/`. Restart Saplingagent, choose **OpenCode** before the first message of a new conversation, then choose a connected provider and model. Each conversation stays bound to its original engine/model across refresh and restart; start a new conversation to switch. There is no automatic fallback between providers.
@@ -156,20 +157,20 @@ Frontend edits use Vite hot reload. Restart after backend, MCP, Skill-discovery 
 
 ## Troubleshooting
 
-Double-click **`Saplingagent.command doctor`**, or run:
+Choose Diagnostics in the menu, or run:
 
 ```bash
-bash Saplingagent.command doctor
+bash Saplingagent.sh doctor
 ```
 
 Doctor reports installation, versions, saved login and configured-port status without displaying credentials or issuing model prompts.
 
 | Symptom | Action |
 | --- | --- |
-| Launcher does not open | Run its `bash` command from the project folder; follow normal macOS first-open prompts |
-| Missing login | Run `Saplingagent.command login` and finish your own login |
-| Expired login or account change | Run `bash Saplingagent.command logout`, then log in again |
-| Download/dependency failure | Check Node.js/npm network access; run `bash Saplingagent.command install --repair` |
+| Finder opens the script in an editor | Open Terminal and run `bash Saplingagent.sh` from the project folder |
+| Missing login | Run `bash Saplingagent.sh login` and finish your own login |
+| Expired login or account change | Run `bash Saplingagent.sh logout`, then log in again |
+| Download/dependency failure | Check Node.js/npm network access; run `bash Saplingagent.sh install --repair` |
 | Installation lock remains | Confirm this project's installer has exited; remove only its stale `.runtime/node-install.lock` or `.runtime/macos-install.lock`, then retry |
 | Port occupied | Stop your previous startup terminal or adjust `config/runtime.json`; the launcher does not kill another project's process |
 | Not ready within 120 seconds | Run Doctor and inspect the startup terminal and metadata in `logs/<service>/` |
@@ -184,8 +185,7 @@ Stop services before moving the application. Move the whole folder. On the same 
 
 ```text
 Saplingagent/
-├── Saplingagent.command install / Saplingagent.command login
-├── Saplingagent.command start / Saplingagent.command doctor
+├── Saplingagent.sh          # One English / Chinese install, configure and start menu
 ├── front/                     # React chat and application features
 ├── backend/
 │   ├── agent-runtime/         # App Server client, turns, SSE, Git API
