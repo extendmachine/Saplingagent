@@ -19,7 +19,9 @@ export function useSeedRuntime() {
   const [retryable, setRetryable] = useState(false);
   const [approvalBusy, setApprovalBusy] = useState(false);
   const [engines, setEngines] = useState<EngineOption[]>([]);
-  const [selection, setSelection] = useState<EngineSelection>({ engine: 'codex', providerId: null, modelId: null });
+  const [selection, setSelectionState] = useState<EngineSelection>({ engine: 'codex', providerId: null, modelId: null });
+  const selectionChosen = useRef(false);
+  const setSelection = useCallback((value: EngineSelection) => { selectionChosen.current=true; setSelectionState(value); }, []);
   const session = useRef<string | null>(readSessionId());
   const running = useRef(false);
   const restarting = useRef(false);
@@ -104,8 +106,11 @@ export function useSeedRuntime() {
   const refreshEngines = useCallback(async (signal?: AbortSignal) => {
     try {
       const response = await checkedFetch('/api/engines', { signal });
-      const value = await response.json() as { engines?: EngineOption[] };
-      if (!signal?.aborted && Array.isArray(value.engines)) setEngines(value.engines);
+      const value = await response.json() as { engines?: EngineOption[]; defaultSelection?: EngineSelection };
+      if (!signal?.aborted && Array.isArray(value.engines)) {
+        setEngines(value.engines);
+        if(!session.current && !running.current && !selectionChosen.current && value.defaultSelection)setSelectionState(value.defaultSelection);
+      }
     } catch (failure) {
       if (!signal?.aborted && !isAborted(failure)) setEngines(current => current.length ? current : [{ id: 'codex', label: 'Codex', ready: false, authenticated: false, error: errorText(failure) }]);
     }
@@ -374,6 +379,8 @@ export function useSeedRuntime() {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
     session.current = null;
+    selectionChosen.current = false;
+    void refreshEngines();
     lastRequest.current = null;
     rememberSession(null);
     setMessages([]);
@@ -382,7 +389,7 @@ export function useSeedRuntime() {
     setError('');
     setRetryable(false);
     setActivity('');
-  }, []);
+  }, [refreshEngines]);
 
   const retry = useCallback(async () => {
     if (lastRequest.current) await runRequest({ ...lastRequest.current }, true);
@@ -400,7 +407,7 @@ export function useSeedRuntime() {
   }, []);
 
   const selectedEngine = engines.find(engine => engine.id === selection.engine);
-  const engineReady = selection.engine === 'codex' ? Boolean(status?.ready) : Boolean(selectedEngine?.ready && selectedEngine.authenticated && selection.providerId && selection.modelId);
+  const engineReady = selection.engine === 'codex' ? Boolean(status?.codexReady ?? status?.ready) : Boolean(selectedEngine?.ready && selectedEngine.authenticated && selection.providerId && selection.modelId);
   const engineError = selection.engine === 'opencode' && !selectedEngine?.authenticated ? 'Connect an OpenCode provider before starting this conversation' : selectedEngine?.error || '';
   return { messages, status, engines, selection, setSelection, engineReady, engineError, canSelectEngine: !session.current && !isRunning, isLoading, isRunning, activity, tools, approvals, approvalBusy, error, retryable, onNew, onCancel, startNew, retry, respondApproval, refreshStatus, refreshEngines };
 }

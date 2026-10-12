@@ -45,3 +45,7 @@ The starting page remains chat with Git controls/footer. The earlier uncommitted
 
 ## Version switch and restart
 After choosing a branch or historical version in Versions, click **Restart app** to reload frontend, backend, Codex App Server and MCP. The adjacent options provide **Restart backend** and **Runtime recovery**. Busy AI/file work refuses restart. The current frontend stores only a temporary unsent composer draft in sessionStorage for reload, restores the same session and removes that recovery copy; persisted messages stay in workspace. Older versions may not implement this draft support. The fixed recovery page `/__saplingagent/runtime` remains available through the gateway. First adoption and manager/port changes require stopping the old launch window and starting the Mac launcher.
+
+## Independent AI configuration entry
+
+After installation run `bash Saplingagent.sh configure` from the root. The launcher builds front/ai-config/vite.config.mjs with existing locked frontend dependencies to .cache/ai-config-ui, then the separate configuration service serves it before chat starts. No main Vite proxy or current Agent dependency. English/Chinese controls follow the launcher. Finish setup stops only setup and returns to the launcher; restart an already-running chat and create a new conversation to apply saved engine/provider changes. API keys never enter browser storage or public build variables. Real account sign-in and native Windows browser acceptance remain pending.

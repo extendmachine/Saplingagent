@@ -18,7 +18,7 @@ const sse = (id, messages) => new Response([
 ].map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream', 'X-Session-Id': id } });
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
 
-async function harness({ savedId = null, route, list = () => json({ sessions: [] }) }) {
+async function harness({ savedId = null, route, engineCatalog = null, runtimeStatus = null, list = () => json({ sessions: [] }) }) {
   const storage = new Map(savedId ? [[KEY, savedId]] : []);
   const requests = [], slots = [], effects = [], timers = new Map();
   let cursor = 0, nextTimer = 0, rendered, scheduled = false, unmounted = false;
@@ -64,8 +64,8 @@ async function harness({ savedId = null, route, list = () => json({ sessions: []
     fetch: async (url, options = {}) => {
       const request = { url, ...options, input: options.body ? JSON.parse(options.body) : undefined };
       requests.push(request);
-      if (url === '/api/status') return json({ ready: true, authenticated: true, model: 'fixture-model' });
-      if (url === '/api/engines') return json({ defaultEngine: 'codex', engines: [{ id: 'codex', label: 'Codex', ready: true, authenticated: true, model: 'fixture-model' }] });
+      if (url === '/api/status') return json(runtimeStatus || { ready: true, authenticated: true, model: 'fixture-model' });
+      if (url === '/api/engines') return engineCatalog ? typeof engineCatalog === 'function' ? engineCatalog() : json(engineCatalog) : json({ defaultEngine: 'codex', engines: [{ id: 'codex', label: 'Codex', ready: true, authenticated: true, model: 'fixture-model' }] });
       if (url === '/api/sessions') return list(request);
       const response = await route(request);
       if (!response) throw new Error(`Unhandled synthetic request: ${url}`);
@@ -333,4 +333,18 @@ test('backend restart blocks sends and restores the saved session without POST o
   assert.equal(h.current.messages[0].text, 'existing conversation');
   assert.equal(h.storage.get(KEY), 'restart-saved');
   assert.equal(h.requests.filter(r => r.url === '/api/chat').length, 0);
+});
+
+
+test('new chat uses saved default scheme while manual selection and restored legacy conversations remain pinned', async t => {
+ const selection = {engine:'opencode',providerId:'sapling-fixture',modelId:'synthetic-coder'};
+ const catalog = {defaultSelection:selection,engines:[{id:'opencode',ready:true,authenticated:true,providers:[{id:selection.providerId,models:[{id:selection.modelId}]}]}]};
+ const h = await harness({engineCatalog:catalog,route:()=>undefined});t.after(()=>h.close());
+ assert.deepEqual({...h.current.selection},selection);assert.equal(h.current.engineReady,true);
+ h.current.setSelection({engine:'codex',providerId:null,modelId:null});await h.settle();await h.current.refreshEngines();await h.settle();assert.equal(h.current.selection.engine,'codex');
+ const saved=await harness({savedId:'legacy',engineCatalog:catalog,route:r=>r.url==='/api/sessions/legacy'?json({session:session('legacy')}):undefined});t.after(()=>saved.close());
+ assert.equal(saved.current.selection.engine,'codex');saved.current.startNew();await saved.settle();assert.deepEqual({...saved.current.selection},selection);
+});
+test('aggregate OpenCode readiness cannot enable sending on an unavailable Codex engine',async t=>{
+ const h=await harness({runtimeStatus:{ready:true,authenticated:true,codexReady:false,defaultEngine:'opencode'},route:()=>undefined});t.after(()=>h.close());assert.equal(h.current.selection.engine,'codex');assert.equal(h.current.engineReady,false);
 });
