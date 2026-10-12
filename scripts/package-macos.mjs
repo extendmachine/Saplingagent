@@ -12,7 +12,7 @@ export function distributable(file) {
   if (/(^|\/)(?:selfdata\.json|\.DS_Store|\.env(?:\..*)?|auth\.json|service-token)$/.test(file)) return false;
   if (/\.(?:key|pem|p12|pfx|log)$/i.test(file)) return false;
   return /^(?:front\/|backend\/|contracts\/|config\/|scripts\/|docs\/|rules\/|services\/|\.agents\/skills\/)/.test(file)
-    || /^(?:LICENSE|NOTICE|THIRD_PARTY_NOTICES.md|CHANGELOG.md|AGENTS\.md|CLAUDE\.md|README\.md|FINAL_GOAL\.md|TODO\.md|AI_TASKS\.md|\.gitignore|[1-4]-.+\.command)$/.test(file);
+    || /^(?:LICENSE|NOTICE|THIRD_PARTY_NOTICES.md|CHANGELOG.md|AGENTS\.md|CLAUDE\.md|README\.md|FINAL_GOAL\.md|TODO\.md|AI_TASKS\.md|\.gitignore|[1-5]-.+\.command)$/.test(file);
 }
 
 function initialProjectRecords(commit) {
@@ -34,7 +34,7 @@ export async function packageMac({ ref = 'HEAD', outputDir = path.join(root, '.c
   });
   const files = entries.filter(entry => distributable(entry.path));
   if (files.some(entry => entry.mode === '120000')) throw new Error('Distribution source contains symlinks. Review and replace them with explicit tracked files first.');
-  const required = ['LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', '1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', '4-Doctor.command', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'scripts/macos/cli.mjs', 'docs/macos-install.html', 'rules/README.md', 'config/macos.json', 'front/package-lock.json', 'backend/mcp-runtime/package-lock.json'];
+  const required = ['LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', '1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', '4-Doctor.command', '5-Configure-OpenCode.command', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'scripts/macos/cli.mjs', 'docs/macos-install.html', 'rules/README.md', 'config/macos.json', 'front/package-lock.json', 'backend/mcp-runtime/package-lock.json', 'backend/agent-runtime/package-lock.json'];
   for (const file of required) if (!files.some(entry => entry.path === file)) throw new Error(`Delivery version is missing ${file}`);
   const ruleFiles = entries.filter(entry => entry.path.startsWith('rules/'));
   if (ruleFiles.some(entry => !files.some(file => file.path === entry.path))) throw new Error('Incomplete rules; distribution refused.');

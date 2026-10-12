@@ -3,8 +3,8 @@ set -euo pipefail
 
 SEED_PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 case "${1:-}" in
-  install|login|start|doctor|logout) ;;
-  *) echo "Available actions: install / login / start / doctor / logout." >&2; exit 1 ;;
+  install|login|start|doctor|logout|opencode) ;;
+  *) echo "Available actions: install / login / start / doctor / logout / opencode." >&2; exit 1 ;;
 esac
 if [ "$(/usr/bin/uname -s)" != "Darwin" ]; then
   echo "This installer currently supports macOS only." >&2
