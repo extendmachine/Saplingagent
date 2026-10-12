@@ -62,3 +62,8 @@ async function terminate(child, { platform = process.platform, graceMs = 750, ki
   }
   if (processGroupAlive(child, platform)) throw new Error('Owned process tree did not stop');
 }
+
+export function claudeBinary(root, platform = process.platform, arch = process.arch) {
+  if (!['darwin','win32','linux'].includes(platform) || !['x64','arm64'].includes(arch)) throw new Error('Unsupported Claude Agent platform');
+  return path.join(root, 'backend/agent-runtime/node_modules/@anthropic-ai', `claude-agent-sdk-${platform}-${arch}`, platform === 'win32' ? 'claude.exe' : 'claude');
+}

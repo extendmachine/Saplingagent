@@ -6,9 +6,9 @@ export const credentialPath = (root, id) => {
   return path.join(root, 'local-secrets/api-keys', `ai-${id}.json`);
 };
 function validProfile(profile) {
-  if (!profile || !/^[a-z0-9-]{1,80}$/.test(profile.id) || !['codex','opencode'].includes(profile.engine) || !['api','chatgpt'].includes(profile.kind) || typeof profile.label !== 'string' || !profile.label.trim() || profile.label.length > 80 || /[\x00-\x1f\x7f]/.test(profile.label)) return false;
+  if (!profile || !/^[a-z0-9-]{1,80}$/.test(profile.id) || !['codex','opencode','claude'].includes(profile.engine) || !['api','chatgpt'].includes(profile.kind) || typeof profile.label !== 'string' || !profile.label.trim() || profile.label.length > 80 || /[\x00-\x1f\x7f]/.test(profile.label)) return false;
   if (profile.kind === 'chatgpt') return profile.engine === 'codex';
-  if (!['chat','responses','anthropic'].includes(profile.protocol) || (profile.engine === 'codex' && profile.protocol !== 'responses') || typeof profile.noAuth !== 'boolean' || typeof profile.model !== 'string' || !profile.model.trim() || profile.model.length > 240 || /[\x00-\x1f\x7f]/.test(profile.model)) return false;
+  if (!['chat','responses','anthropic'].includes(profile.protocol) || (profile.engine === 'codex' && profile.protocol !== 'responses') || (profile.engine === 'claude' && profile.protocol !== 'anthropic') || typeof profile.noAuth !== 'boolean' || typeof profile.model !== 'string' || !profile.model.trim() || profile.model.length > 240 || /[\x00-\x1f\x7f]/.test(profile.model)) return false;
   try {
     const url = new URL(profile.baseUrl);
     if (typeof profile.baseUrl !== 'string' || profile.baseUrl.length > 2000 || !['http:','https:'].includes(url.protocol) || url.username || url.password || url.hash || [...url.searchParams.keys()].some(key=>/^(api[_-]?key|key|token|access_token)$/i.test(key)) || /\/(chat\/completions|responses|messages|models)\/?$/.test(url.pathname)) return false;
@@ -24,7 +24,7 @@ export async function readConnections(root) {
 }
 export function defaultSelection(connections) {
   const profile = connections.profiles.find(p => p.id === connections.activeId);
-  return profile?.engine === 'opencode' ? { engine: 'opencode', providerId: `sapling-${profile.id}`, modelId: profile.model } : { engine: 'codex', providerId: null, modelId: null };
+  return profile && profile.engine !== 'codex' ? { engine: profile.engine, providerId: `sapling-${profile.id}`, modelId: profile.model } : { engine: 'codex', providerId: null, modelId: null };
 }
 export async function readCredential(root, profile) {
   if (profile.kind !== 'api' || profile.noAuth) return null;
@@ -58,4 +58,11 @@ export async function codexCredentialStatus(root) {
     const chatgpt = Boolean(auth.tokens?.access_token && auth.tokens?.refresh_token);
     return { saved:chatgpt || Boolean(auth.OPENAI_API_KEY),chatgpt,type:chatgpt?'chatgpt':auth.OPENAI_API_KEY?'apiKey':null };
   } catch(error) { if(error.code==='ENOENT')return {saved:false,chatgpt:false,type:null};throw new Error('Local Codex credentials cannot be read; preserve and repair the file.'); }
+}
+
+export async function claudeConnections(root, connections) {
+  return Promise.all(connections.profiles.filter(p => p.engine === 'claude').map(async profile => ({
+    ...profile, providerId: `sapling-${profile.id}`, apiKey: await readCredential(root, profile),
+    sdkBaseUrl: profile.baseUrl.replace(/\/v1\/?$/, ''),
+  })));
 }

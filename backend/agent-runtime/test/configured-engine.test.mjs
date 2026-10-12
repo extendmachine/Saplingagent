@@ -41,3 +41,11 @@ test('pinned native OpenCode reads a saved custom scheme and connects its local 
  assert.ok(saved,'saved custom provider should be discoverable');assert.ok(saved.models.some(m=>m.id===profile.model));assert.equal(catalog.authenticated,true);assert.equal(catalog.mcp.ready,true);assert.equal(probe.requests,0);
  const pid=provider.process.pid;await provider.start();assert.equal(provider.process.pid,pid,'catalog refresh must not spawn a second process');
 });
+
+class FakeClaude extends FakeOpenCode { async catalog(){const data=await fs.readFile(path.join(this.root,'local-secrets/ai-config/connections.json'),'utf8').then(JSON.parse);return {id:'claude',label:'Claude Agent',ready:true,authenticated:true,mcp:{ready:true,tools:[{name:'synthetic'}]},skills:[{name:'saplingagent:synthetic'}],providers:data.profiles.filter(p=>p.engine==='claude').map(p=>({id:`sapling-${p.id}`,models:[{id:p.model}]}))};}}
+test('saved Claude default starts and exposes its selection without Codex login',async t=>{
+ const root=await fixture(t);const saved=await new ConfigurationStore(root).save({...profile,engine:'claude',protocol:'anthropic'});
+ const server=await agentFixture(t,root,{ClaudeProviderClass:FakeClaude,OpenCodeProviderClass:FakeOpenCode,AppServerClass:class{constructor(){throw Error('Codex must not start');}}});await server.startAgent();
+ const url=`http://127.0.0.1:${server.address().port}`;const status=await fetch(url+'/api/status').then(r=>r.json());assert.equal(status.ready,true);assert.equal(status.defaultEngine,'claude');assert.equal(status.codexReady,false);assert.equal(status.skills[0].name,'saplingagent:synthetic');
+ const catalog=await fetch(url+'/api/engines').then(r=>r.json());assert.deepEqual(catalog.defaultSelection,{engine:'claude',providerId:`sapling-${saved.activeId}`,modelId:profile.model});assert.equal(catalog.engines.find(e=>e.id==='claude').ready,true);assert.doesNotMatch(JSON.stringify(catalog),/synthetic-only-key/);
+});
