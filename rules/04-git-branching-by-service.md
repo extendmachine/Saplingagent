@@ -10,6 +10,14 @@ When multiple AIs or multiple dialogues work in parallel, `rules/14-multi-ai-tas
 
 The commit, test version and main synchronization process of this file are applicable to the modification tasks of the Git project. Read-only tasks and non-Git document tasks are delivered according to Rule 09, and no fictitious branches or commits are created for the process.
 
+## Saplingagent owner-authorized maintainer exception (2026-10-12)
+
+The owner of extendmachine/Saplingagent explicitly instructed AI to synchronize future work directly to main without another confirmation. For authorized changes in this maintainer repository, complete appropriate self-checks, document/sensitive-file review and source traceability, then merge and push main without asking the owner to approve the commit again. This applies to the current Git storage candidate and subsequent authorized tasks until the owner changes the instruction.
+
+This explicit owner instruction supersedes this rule's mandatory per-version human test/merge confirmation for this maintainer main workflow. Use independent service/project commits and preserve source history. Record actual self-checks, source SHA, task ID and the standing owner authorization; record human acceptance as not performed when no human test result was supplied. Do not mark Validated-By:user merely because the owner waived confirmation. Resolve ordinary conflicts within authorized scope and rerun affected checks; ask only when a genuine unresolved scope or data conflict requires owner input.
+
+Other branches are synchronized only when requested. This authorization does not grant customer repositories permission to publish to the author repository, nor authorize unrelated releases, deployments or destructive actions. Recipient projects follow their own user's instructions. Historical acceptance records remain unchanged. The generic confirmation workflow below remains the default outside this explicitly authorized maintainer case.
+
 ## Branch type and naming
 
 1. `main`: the latest, most complete and manually confirmed stable code of the project.
