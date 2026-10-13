@@ -1,6 +1,6 @@
 # AI Project Control Specification and Rule Index
 
-Specification version: `2026-10-11.1`
+Specification version: `2026-10-12.1`
 
 This document is the only source of project public control specifications and rule indexes. Codex, Claude Code and other AI enter this file from the root directory entrance file, and then read the relevant details according to the current task.
 
@@ -165,3 +165,8 @@ Version 2026-10-10.1 translates specification 2026-09-29.1 and its controlled at
 ## Saplingagent boundary clarification (2026-10-11)
 
 Version2026-10-11.1 adds rule18 and requires the existing eight-field completion-review receipt for every conversational turn, including read-only work. Saplingagent maintainer development and complete-folder delivery stay inside the project; customer-requested external code edits remain technically possible with current Full Access. Rules recommend local scope by default. No sandbox or permission gate is added; existing human/Git/publication requirements are retained.
+
+
+## Saplingagent maintainer main workflow (2026-10-12)
+
+Version2026-10-12.1 records the Saplingagent owner's explicit instruction to synchronize authorized, self-checked work directly to main without requesting another confirmation. Rule04 defines this maintainer-only exception; rule09 distinguishes self-check results from human acceptance. Other branches still require a request to synchronize. This owner's authorization does not transfer to customer repositories or unrelated publication actions. Folder boundaries, receipts, source traceability and sensitive-file checks remain applicable.
