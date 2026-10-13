@@ -208,3 +208,10 @@ test('local reset ignores invalid delivery metadata instead of importing any ups
   await configure(root,{mode:'local'});await emptyMain(root);
   assert.equal(await fs.readFile(path.join(root,'delivery.json'),'utf8'),'{invalid');
 });
+
+test('following release narrows future fetches and never imports author main/testcode/tags', async t => {
+  const source=await folder(t);await repo(source,'release');await git(source,'branch','main');await git(source,'branch','testcode');await git(source,'tag','unrelated-tag');
+  const root=await folder(t);await fs.writeFile(path.join(root,'delivery.json'),JSON.stringify({sourceCommit:await git(source,'rev-parse','HEAD')}));await git(root,'init','-b','release');await git(root,'config',`url.${source}.insteadOf`,AUTHOR_REMOTE);
+  await configure(root,{mode:'upstream'});assert.equal(await git(root,'config','--get-all','remote.upstream.fetch'),'+refs/heads/release:refs/remotes/upstream/release');assert.equal(await git(root,'config','remote.upstream.tagOpt'),'--no-tags');
+  await git(root,'fetch','upstream');const refs=(await git(root,'for-each-ref','--format=%(refname)','refs/remotes/')).split('\n');assert.deepEqual(refs.filter(ref=>ref!=='refs/remotes/upstream/HEAD'),['refs/remotes/upstream/release']);if(refs.includes('refs/remotes/upstream/HEAD'))assert.equal(await git(root,'symbolic-ref','refs/remotes/upstream/HEAD'),'refs/remotes/upstream/release');assert.equal(await git(root,'tag'),'');assert.equal(await git(root,'branch','--format=%(refname:short)'),'release');
+});
