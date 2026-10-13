@@ -14,10 +14,19 @@ export class GitVersionError extends Error {
   }
 }
 
+async function assertRepositoryRoot(root) {
+  const repository = (await git(root, ['rev-parse', '--show-toplevel'])).trim();
+  if (await fs.realpath(repository) !== await fs.realpath(root)) {
+    throw new GitVersionError('GIT_NOT_REPOSITORY', 'This application folder has no Git repository. Choose Git / storage setup in Saplingagent.sh; the parent repository is not this application', 404);
+  }
+}
+
 async function git(root, args) {
   try {
+    const env = { ...process.env };
+    for (const key of Object.keys(env)) if (key.startsWith('GIT_')) delete env[key];
     const { stdout } = await execFileAsync('git', ['-C', root, ...args], {
-      encoding: 'utf8',
+      env, encoding: 'utf8',
       maxBuffer: 4 * 1024 * 1024,
       timeout: 10_000,
     });
@@ -97,6 +106,7 @@ async function readLabels(root) {
 }
 
 async function validateCommit(root, sha) {
+  await assertRepositoryRoot(root);
   if (typeof sha !== 'string' || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sha)) throw new GitVersionError('GIT_INVALID_VERSION', 'Select a full commit ID');
   try {
     if ((await git(root, ['cat-file', '-t', sha])).trim() !== 'commit') throw new Error('Not a commit');
@@ -105,6 +115,7 @@ async function validateCommit(root, sha) {
 }
 
 export async function readGitVersion(root, { limit = 25 } = {}) {
+  await assertRepositoryRoot(root);
   if (!Number.isInteger(limit) || limit < 1 || limit > 500) throw new GitVersionError('GIT_INVALID_LIMIT', 'History limit must be an integer from 1 to 500');
   const [repositoryRoot, head, branchName, statusRaw, branchRaw, worktreeRaw, commitRaw] = await Promise.all([
     git(root, ['rev-parse', '--show-toplevel']),

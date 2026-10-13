@@ -57,3 +57,6 @@ Native Windows10/11 x64 uses the shared contracts/local-process.mjs OS contract.
 TASK-20261012-003 loads the standalone setup service's public file contract for saved scheme/provider credentials. Codex Responses and OpenCode Chat/Responses/Anthropic native configurations remain local; OpenCode-only startup is supported without a Codex login. Selected default readiness and codexReady are independent; MCP status is checked through the pinned OpenCode SDK. No new dependency or permission change. Account/configuration HTTP and credential mutation belong to backend/ai-config, not this runtime. Shared transport is contracts/codex-rpc.mjs, with compatibility re-export rpc.mjs. Source checks include test/configured-engine.test.mjs; native OpenCode catalog/MCP tests use synthetic local files and no model prompt.
 
 Claude Agent engine support: see CONTRACT.md and DEPLOY.md for the shared API profile/session binding and local runtime behavior. No changes to the minimal single-chat product scope.
+
+
+TASK-20261012-011: Git version controls operate on the application's own repository root and return GIT_NOT_REPOSITORY/404 for an uninitialized child folder instead of using parent Git state. Source ZIP installation initializes customer history through the launcher; UI shows the real branch. No new HTTP fields/dependency, tool restriction or automatic Git publication.

@@ -172,3 +172,13 @@ test('saving historical source excludes credentials/runtime files even without o
   await assert.rejects(() => commitGitVersion(root), { code: 'GIT_PRIVATE_FILES' });
   assert.equal((await run(root, 'rev-parse', 'HEAD')).stdout.trim(), saved.head.sha);
 });
+
+
+test('application without its own repo cannot read or mutate the parent repo', async t => {
+  const parent = await repository(); t.after(() => fs.rm(parent, { recursive: true, force: true }));
+  const root = path.join(parent, 'customer'); await fs.mkdir(root);
+  const sha = (await run(parent, 'rev-parse', 'HEAD')).stdout.trim();
+  for (const action of [() => readGitVersion(root), () => nameGitVersion(root, sha, 'wrong'), () => checkoutGitVersion(root, sha), () => commitGitVersion(root), () => switchGitBranch(root, 'release')]) await assert.rejects(action(), { code: 'GIT_NOT_REPOSITORY' });
+  assert.equal((await run(parent, 'rev-parse', 'HEAD')).stdout.trim(), sha);
+  assert.equal((await run(parent, 'branch', '--show-current')).stdout.trim(), 'main');
+});

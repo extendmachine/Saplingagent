@@ -64,3 +64,8 @@ No new tool permissions. Custom OpenCode configs are merged through native provi
 ## Claude Agent engine (TASK-20261012-005–009)
 
 Engine ID `claude` uses the project-local official Claude Agent SDK, with API-only Anthropic Messages profiles. Each conversation binds `engine`, `providerId` (`sapling-<profile-id>`) and `modelId`; existing bindings are immutable. Configuration accepts custom HTTP(S) API base URLs ending in `/v1`; SDK transport removes this trailing API version before its own `/v1/messages` route. Keys remain in local-secrets, never public responses. The default takes effect after restart. Local initialization checks MCP and Skills without a model prompt; authentication means a saved key, not proven quota. Streaming, completion, interruption and failure use existing chat events. Missing native sessions are reported, never silently replaced. Full Access and the completion-review receipt remain unchanged. No claude.ai subscription login is offered.
+
+
+## Application Git root (TASK-20261012-011)
+
+Git version operations require rev-parse --show-toplevel to resolve to this application's own root (including its legitimate linked worktree). An uninitialized child application returns GIT_NOT_REPOSITORY /404 instead of reading/staging/checking out its parent repository. Git routing environment variables cannot redirect these application-version operations. Choose Git / storage setup in the launcher to initialize a ZIP's own release history. All success fields and methods remain unchanged. This is version-context correctness, not a filesystem/MCP permission boundary; current-user Full Access and explicit external-code work remain available.
