@@ -60,3 +60,6 @@ TASK-20261012-003, checked2026-10-11: https://learn.chatgpt.com/docs/app-server 
 - https://registry.npmjs.org/@anthropic-ai/claude-agent-sdk/0.3.296 — exact SDK and platform optional dependency metadata. Installed official sdk.d.ts verifies Query, spawn, permissions, hooks and MCP control signatures.
 
 Public documentation and npm metadata need no login; real inference/model catalogs need the user's own API account and quota. No inference was sent to a real model for candidate validation. Local native/synthetic API tests establish this pinned version's behavior; Windows10 native acceptance remains pending.
+
+
+Git project-root correctness (TASK-20261012-011), checked 2026-10-12: https://git-scm.com/docs/git-init (official Git, no read login) describes project-local metadata. Application version operations resolve their actual root; no new model/authentication source or API dependency.
