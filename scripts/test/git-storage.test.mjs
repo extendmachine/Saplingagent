@@ -42,12 +42,16 @@ test('a source manifest/custom branch is respected, and subsequent install prese
   const result = await configure(root, { prompt: () => { throw new Error('Unexpected prompt'); } });
   assert.equal(result.preserved, true); assert.equal(await git(root, 'branch', '--show-current'), '');
 });
-test('first-install choice is required; EOF/cancel never silently enables upstream', async t => {
-  const root = await folder(t); const prompts = [];
-  await configure(root, { prompt: (label, fallback) => { prompts.push(label); return fallback; } });
+test('first-install menu has only choices 1–3 and defaults to local without enabling upstream', async t => {
+  const root = await folder(t); const prompts = [], menu = [];
+  await configure(root, { output: line => menu.push(line), prompt: (label, fallback) => { prompts.push(label); assert.equal(fallback, '1'); return fallback; } });
   assert.equal(prompts.length, 1); assert.equal(await git(root, 'remote'), '');
-  const other = await folder(t); await assert.rejects(configure(other, { prompt: () => '0' }), /cancelled|invalid/i);
-  await assert.rejects(fs.access(path.join(other, '.git')));
+  assert.match(menu[0], /1\. Local only/); assert.match(menu[0], /2\. My own repository/); assert.match(menu[0], /3\. Follow/);
+  assert.doesNotMatch(menu[0], /[04]\. |Cancel|Keep existing/);
+  for (const choice of ['0', '4']) {
+    const other = await folder(t); await assert.rejects(configure(other, { prompt: () => choice }), /invalid/i);
+    await assert.rejects(fs.access(path.join(other, '.git')));
+  }
 });
 test('own remote belongs to customer; no network/publication and author origin is not retained', async t => {
   const root = await folder(t); await configure(root, { mode: 'own', remoteUrl: 'https://example.invalid/customer/app.git' });
@@ -60,12 +64,13 @@ test('changing a configured choice is explicit and keeps history', async t => {
   await configure(root, { force: true, mode: 'own', remoteUrl: 'git@example.invalid:customer/app.git' });
   assert.equal(await git(root, 'rev-parse', 'HEAD'), sha); assert.equal(await git(root, 'remote'), 'origin');
 });
-test('existing custom repository/branch is retained on explicit keep-existing choice', async t => {
+test('default local choice retains existing custom branch, history and pending source', async t => {
   const root = await folder(t); await repo(root, 'customer'); await git(root, 'remote', 'add', 'origin', 'https://example.invalid/own.git');
   await fs.writeFile(path.join(root, 'App.tsx'), 'user edit'); const before = await git(root, 'rev-parse', 'HEAD');
   await configure(root, { prompt: (_label, fallback) => fallback });
   assert.equal(await git(root, 'branch', '--show-current'), 'customer'); assert.equal(await git(root, 'rev-parse', 'HEAD'), before);
   assert.equal(await fs.readFile(path.join(root, 'App.tsx'), 'utf8'), 'user edit');
+  assert.equal(await git(root, 'remote'), '');
 });
 test('invalid branch and credential-bearing remote fail before creating repository', async t => {
   for (const options of [{ mode: 'local', branch: '--oops' }, { mode: 'own', remoteUrl: 'https://user:secret@example.invalid/a.git' }, { mode: 'own', remoteUrl: AUTHOR_REMOTE }]) {
@@ -76,13 +81,13 @@ test('invalid branch and credential-bearing remote fail before creating reposito
 test('dirty customer source is not switched/reset to release', async t => {
   const root = await folder(t); await repo(root); await git(root, 'remote', 'add', 'origin', AUTHOR_REMOTE); await git(root, 'branch', 'release');
   await fs.writeFile(path.join(root, 'App.tsx'), 'pending user edit');
-  await assert.rejects(configure(root, { mode: 'local' }), /pending changes/);
+  await assert.rejects(configure(root, { mode: 'local', branch: 'release' }), /pending changes/);
   assert.equal(await git(root, 'branch', '--show-current'), 'main'); assert.equal(await git(root, 'remote', 'get-url', 'origin'), AUTHOR_REMOTE);
 });
-test('cloned author repo chooses local release and removes only author remote, preserving main history', async t => {
+test('local choice preserves author clone current branch and history while removing remotes', async t => {
   const root = await folder(t); await repo(root); await git(root, 'branch', 'release'); await git(root, 'remote', 'add', 'origin', AUTHOR_REMOTE);
   const sha = await git(root, 'rev-parse', 'main'); await configure(root, { mode: 'local' });
-  assert.equal(await git(root, 'branch', '--show-current'), 'release'); assert.equal(await git(root, 'rev-parse', 'main'), sha); assert.equal(await git(root, 'remote'), '');
+  assert.equal(await git(root, 'branch', '--show-current'), 'main'); assert.equal(await git(root, 'rev-parse', 'main'), sha); assert.equal(await git(root, 'remote'), '');
 });
 test('nested app never uses or stages its parent repository', async t => {
   const parent = await folder(t); await repo(parent); const root = path.join(parent, 'child'); await fs.mkdir(root); await fs.writeFile(path.join(root, 'app.txt'), 'child');
@@ -116,13 +121,45 @@ test('interrupted initial fetch can be retried without claiming an unborn repo r
   await assert.rejects(git(root, 'config', '--get', 'saplingagent.storageMode'));
   await configure(root, { mode: 'local' }); assert.ok(await git(root, 'rev-parse', '--verify', 'HEAD')); assert.equal(await git(root, 'remote'), '');
 });
-test('unknown custom remote is not removed by local/own setup', async t => {
-  const root = await folder(t); await repo(root); await git(root, 'remote', 'add', 'origin', 'https://example.invalid/existing.git');
-  await assert.rejects(configure(root, { mode: 'local' }), /custom remotes/);
-  await assert.rejects(configure(root, { mode: 'own', remoteUrl: 'https://example.invalid/other.git' }), /origin already/);
-  assert.equal(await git(root, 'remote', 'get-url', 'origin'), 'https://example.invalid/existing.git');
+test('local choice removes every custom remote and tracking link without changing source or history', async t => {
+  const root = await folder(t); await repo(root, 'customer');
+  for (const name of ['origin', 'upstream', 'mirror']) await git(root, 'remote', 'add', name, `https://example.invalid/${name}.git`);
+  await git(root, 'config', 'branch.customer.remote', 'mirror'); await git(root, 'config', 'branch.customer.merge', 'refs/heads/customer');
+  await fs.writeFile(path.join(root, 'App.tsx'), 'staged edit'); await git(root, 'add', 'App.tsx');
+  await fs.writeFile(path.join(root, 'extra.txt'), 'untracked edit');
+  const sha = await git(root, 'rev-parse', 'HEAD'), status = await git(root, 'status', '--porcelain'), staged = await git(root, 'diff', '--cached');
+  await configure(root, { prompt: () => '1' });
+  assert.equal(await git(root, 'remote'), ''); assert.equal(await git(root, 'branch', '--show-current'), 'customer');
+  assert.equal(await git(root, 'rev-parse', 'HEAD'), sha); assert.equal(await git(root, 'status', '--porcelain'), status);
+  assert.equal(await git(root, 'diff', '--cached'), staged); await assert.rejects(git(root, 'config', '--get', 'branch.customer.remote'));
 });
-
+test('own choice updates an existing custom origin to the explicitly selected URL', async t => {
+  const root = await folder(t); await repo(root); await git(root, 'remote', 'add', 'origin', 'https://example.invalid/old.git');
+  await git(root, 'remote', 'add', 'mirror', 'https://example.invalid/mirror.git');
+  await git(root, 'config', '--add', 'remote.origin.url', 'https://example.invalid/extra-fetch.git');
+  await git(root, 'config', 'remote.origin.pushurl', 'https://example.invalid/old-push.git');
+  const sha = await git(root, 'rev-parse', 'HEAD');
+  const answers = ['2', 'https://example.invalid/new.git'];
+  await configure(root, { prompt: () => answers.shift() });
+  assert.equal(await git(root, 'remote', 'get-url', '--all', 'origin'), 'https://example.invalid/new.git');
+  assert.equal(await git(root, 'remote', 'get-url', '--push', '--all', 'origin'), 'https://example.invalid/new.git');
+  assert.equal(await git(root, 'remote', 'get-url', 'mirror'), 'https://example.invalid/mirror.git');
+  assert.equal(await git(root, 'rev-parse', 'HEAD'), sha); assert.equal(await git(root, 'branch', '--show-current'), 'main');
+});
+test('explicit local setup preserves detached version and dirty files while removing all remotes', async t => {
+  const root = await folder(t); await repo(root); await git(root, 'switch', '--detach', 'HEAD');
+  await git(root, 'remote', 'add', 'origin', AUTHOR_REMOTE); await fs.writeFile(path.join(root, 'App.tsx'), 'pending');
+  const sha = await git(root, 'rev-parse', 'HEAD'); await configure(root, { force: true, mode: 'local' });
+  assert.equal(await git(root, 'branch', '--show-current'), ''); assert.equal(await git(root, 'rev-parse', 'HEAD'), sha);
+  assert.equal(await git(root, 'remote'), ''); assert.equal(await fs.readFile(path.join(root, 'App.tsx'), 'utf8'), 'pending');
+});
+test('repeat installation preserves saved legacy existing mode without a removed menu choice', async t => {
+  const root = await folder(t); await repo(root, 'customer'); await git(root, 'remote', 'add', 'origin', 'https://example.invalid/old.git');
+  await git(root, 'config', 'saplingagent.storageMode', 'existing');
+  const result = await configure(root, { prompt: () => { throw new Error('Unexpected prompt'); } });
+  assert.equal(result.mode, 'existing'); assert.equal(result.preserved, true);
+  assert.equal(await git(root, 'remote', 'get-url', 'origin'), 'https://example.invalid/old.git');
+});
 
 test('own mode replaces author remote and tracking with the customer origin only', async t => {
   const root = await folder(t); await repo(root, 'release');
@@ -160,7 +197,7 @@ test('edited raw ZIP does not silently claim newest upstream as its source ances
 });
 
 
-test('explicit own-to-local reconfiguration removes only its previously managed origin', async t => {
+test('explicit own-to-local reconfiguration removes all remotes and keeps its existing history', async t => {
   const root = await folder(t); await configure(root, { mode: 'own', remoteUrl: 'https://example.invalid/customer.git' });
   const sha = await git(root, 'rev-parse', 'HEAD');
   await configure(root, { force: true, mode: 'local' });
