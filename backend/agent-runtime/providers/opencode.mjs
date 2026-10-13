@@ -24,7 +24,6 @@ export class OpenCodeProvider {
     this.onDisconnect = onDisconnect;
     this.password = randomUUID();
     this.runs = new Map();
-    this.parts = new Map();
     this.ready = false;
   }
 
@@ -82,7 +81,8 @@ export class OpenCodeProvider {
     }
     if (!this.ready) { await this.close(); throw new Error(`OpenCode service did not become ready${lastError ? `: ${errorText(lastError)}` : ''}`); }
     this.events = new AbortController();
-    this.eventLoop = this.#eventLoop(this.events.signal);
+    const subscription = await this.client.event.subscribe({ signal: this.events.signal });
+    this.eventLoop = this.#eventLoop(this.events.signal, subscription);
     return this.catalog();
   }
 
@@ -103,7 +103,11 @@ export class OpenCodeProvider {
     };
   }
 
-  async execute(run, text) {
+  async execute(run, text, { context = '' } = {}) {
+    if (run.cancelRequested || run.finished) {
+      if (!run.finished) this.onEvent(run, { type: 'done', status: 'interrupted' });
+      return;
+    }
     if (!this.ready) await this.start();
     let id = run.session.threadId;
     if (!id) {
@@ -114,16 +118,28 @@ export class OpenCodeProvider {
     } else {
       await sdkData(this.client.session.get({ path: { id } }), 'The saved OpenCode session is unavailable');
     }
-    this.runs.set(id, run);
-    await sdkData(this.client.session.promptAsync({
-      path: { id },
-      body: {
-        model: { providerID: run.session.providerId, modelID: run.session.modelId },
-        system: this.instructions,
-        parts: [{ type: 'text', text }],
-      },
-    }), 'OpenCode did not accept the prompt');
-    if (run.cancelRequested) await this.interrupt(run);
+    if (run.finished || run.cancelRequested) {
+      if (!run.finished) this.onEvent(run, { type: 'done', status: 'interrupted' });
+      return;
+    }
+    const messageID = `msg_${Date.now().toString(16)}${randomUUID().replaceAll('-', '')}`;
+    const state = { run, messageID, started: false, responded: false, messages: new Map(), pending: new Map(), parts: new Map() };
+    this.runs.set(id, state);
+    try {
+      await sdkData(this.client.session.promptAsync({
+        path: { id },
+        body: {
+          messageID,
+          model: { providerID: run.session.providerId, modelID: run.session.modelId },
+          system: [this.instructions, context].filter(Boolean).join('\n\n'),
+          parts: [{ type: 'text', text }],
+        },
+      }), 'OpenCode did not accept the prompt');
+      if (run.cancelRequested) await this.interrupt(run);
+    } catch (error) {
+      if (this.runs.get(id) === state) this.runs.delete(id);
+      throw error;
+    }
   }
 
   async interrupt(run) {
@@ -132,15 +148,17 @@ export class OpenCodeProvider {
     await sdkData(this.client.session.abort({ path: { id: run.session.threadId } }), 'Unable to stop OpenCode');
   }
 
-  async #eventLoop(signal) {
+  async #eventLoop(signal, subscription) {
     let failures = 0;
     while (!signal.aborted && this.ready) {
       try {
-        await this.#events(signal);
+        await this.#events(signal, subscription);
+        subscription = undefined;
         if (signal.aborted) return;
         failures += 1;
       } catch (error) {
         if (signal.aborted) return;
+        subscription = undefined;
         failures += 1;
         if (failures >= 3) {
           this.ready = false;
@@ -152,41 +170,94 @@ export class OpenCodeProvider {
     }
   }
 
-  async #events(signal) {
-    const stream = await this.client.event.subscribe({ signal });
+  async #events(signal, subscription) {
+    const stream = subscription || await this.client.event.subscribe({ signal });
     for await (const event of stream.stream) {
       if (signal.aborted) return;
-      const payload = event?.payload || event;
-      const properties = payload?.properties || {};
-      const sessionId = properties.sessionID || properties.part?.sessionID || properties.info?.sessionID;
-      const run = sessionId && this.runs.get(sessionId);
-      if (!run || run.finished) continue;
-      if (payload.type === 'message.part.updated') {
-        const part = properties.part;
-        if (part?.type === 'text' && !part.synthetic && !part.ignored) {
-          const key = `${part.sessionID}:${part.id}`;
-          const previous = this.parts.get(key) || '';
-          const delta = typeof properties.delta === 'string' ? properties.delta : part.text.startsWith(previous) ? part.text.slice(previous.length) : '';
-          this.parts.set(key, part.text);
-          if (delta) this.onEvent(run, { type: 'text', id: part.messageID || part.id, delta, text: part.text });
-        } else if (part?.type === 'tool') {
-          this.onEvent(run, { type: 'tool', id: part.callID || part.id, name: part.tool, status: part.state?.status || 'inProgress', input: part.state?.input || {} });
-        } else if (part?.type === 'reasoning') this.onEvent(run, { type: 'status', label: 'Thinking…' });
-      } else if (payload.type === 'session.error') {
-        this.onEvent(run, { type: 'error', error: new Error(errorText(properties.error)) });
-      } else if (payload.type === 'session.idle') {
-        this.runs.delete(sessionId);
-        this.onEvent(run, { type: 'done', status: run.cancelRequested ? 'interrupted' : 'completed' });
-      } else if (payload.type === 'session.status' && properties.status?.type === 'retry') {
-        this.onEvent(run, { type: 'status', label: 'Retrying model connection…' });
-      }
+      await this.handleEvent(event);
     }
+  }
+
+  // Native adapter boundary: SSE includes user echoes and earlier turns, not just replies.
+  async handleEvent(event) {
+    const payload = event?.payload || event;
+    const properties = payload?.properties || {};
+    const sessionId = properties.sessionID || properties.part?.sessionID || properties.info?.sessionID;
+    const state = sessionId && this.runs.get(sessionId);
+    if (!state || state.run.finished) { if (state) this.runs.delete(sessionId); return; }
+    const { run } = state;
+    const terminal = result => { this.runs.delete(sessionId); this.onEvent(run, result); };
+    if (payload.type === 'message.updated') {
+      const info = properties.info;
+      if (!info?.id) return;
+      const belongs = info.role === 'assistant' && info.parentID === state.messageID && !info.summary;
+      state.messages.set(info.id, belongs);
+      if (info.id === state.messageID || belongs) state.started = true;
+      if (belongs && info.error) {
+        terminal(run.cancelRequested ? { type: 'done', status: 'interrupted' } : { type: 'error', error: new Error(errorText(info.error)) });
+        return;
+      }
+      const pending = state.pending.get(info.id);
+      state.pending.delete(info.id);
+      if (belongs && pending) for (const part of pending.values()) this.#part(state, part);
+    } else if (payload.type === 'message.part.updated') {
+      const part = properties.part;
+      if (!part?.messageID || part.messageID === state.messageID || run.cancelRequested) return;
+      if (!state.messages.has(part.messageID)) {
+        // A cumulative snapshot suffices when metadata arrives after text updates.
+        let pending = state.pending.get(part.messageID);
+        if (!pending) { pending = new Map(); state.pending.set(part.messageID, pending); }
+        const previous = pending.get(part.id);
+        if (part.type !== 'text' || !previous || !previous.text?.startsWith(part.text)) pending.set(part.id, part);
+      } else if (state.messages.get(part.messageID)) this.#part(state, part);
+    } else if (payload.type === 'session.error') {
+      if (properties.messageID && properties.messageID !== state.messageID && !state.messages.get(properties.messageID)) return;
+      terminal(run.cancelRequested ? { type: 'done', status: 'interrupted' } : { type: 'error', error: new Error(errorText(properties.error)) });
+    } else if (payload.type === 'session.idle') {
+      // A reconnect may miss message.updated. Resolve uncertain parts from native storage.
+      for (const messageID of state.pending.keys()) {
+        if (!this.client?.session.message) break;
+        try {
+          const message = await sdkData(this.client.session.message({ path: { id: sessionId, messageID }, signal: AbortSignal.timeout(3000) }), 'Unable to read OpenCode message metadata');
+          if (this.runs.get(sessionId) !== state || run.finished) return;
+          if (message?.info?.sessionID === sessionId && message.info.id === messageID) {
+            await this.handleEvent({ type: 'message.updated', properties: { info: message.info } });
+          }
+        } catch { /* Unknown roles are never rendered; an empty response fails below. */ }
+      }
+      if (this.runs.get(sessionId) !== state || run.finished) return;
+      if (!state.started && !state.pending.size) return; // Earlier idle, before prompt acceptance.
+      if (!run.cancelRequested && !state.responded) {
+        terminal({ type: 'error', error: new Error('OpenCode finished without an assistant response. Check the selected model and API settings, then retry.') });
+      } else terminal({ type: 'done', status: run.cancelRequested ? 'interrupted' : 'completed' });
+    } else if (payload.type === 'session.status' && properties.status?.type === 'retry') {
+      if (!run.cancelRequested) this.onEvent(run, { type: 'status', label: 'Retrying model connection…' });
+    }
+  }
+
+  #part(state, part) {
+    const { run } = state;
+    if (run.finished || run.cancelRequested || part.synthetic || part.ignored) return;
+    if (part.type === 'text' && typeof part.text === 'string') {
+      const previous = state.parts.get(part.id) || '';
+      if (!part.text.startsWith(previous)) return; // Never rewind on duplicate/older snapshots.
+      const delta = part.text.slice(previous.length);
+      state.parts.set(part.id, part.text);
+      if (delta) {
+        state.responded = true;
+        this.onEvent(run, { type: 'text', id: part.messageID, delta, text: part.text });
+      }
+    } else if (part.type === 'tool') {
+      state.responded = true;
+      this.onEvent(run, { type: 'tool', id: part.callID || part.id, name: part.tool, status: part.state?.status || 'inProgress', input: part.state?.input || {} });
+    } else if (part.type === 'reasoning') this.onEvent(run, { type: 'status', label: 'Thinking…' });
   }
 
   async close() {
     this.closing = true;
     this.ready = false;
     this.events?.abort();
+    this.runs.clear();
     const child = this.process;
     if (child?.pid) await terminateOwned(child, { graceMs: 1000 });
     await this.eventLoop?.catch(() => {});
