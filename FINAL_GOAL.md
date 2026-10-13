@@ -77,3 +77,8 @@ Cloud content upload/download, additional operating-system installers, native ap
 6. Rules, dependencies, installation and modification instructions agree with the complete-folder delivery boundary and the every-turn completion-review receipt; Full Access remains unchanged. Unsupported platforms/dependencies and unverified adaptation are clearly identified.
 
 These criteria define the desired product. Actual implementation, automated checks, human acceptance and branch synchronization are recorded separately in the authoritative TODO.md and AI_TASKS.md.
+
+
+## Customer Git ownership and release defaults (2026-10-12)
+
+Customer source downloads/packaging default to release unless explicitly configured; maintainer main remains the shared reviewed development baseline. First installation asks for local-only Git history, the customer's existing remote repository, or following the author's upstream/release. Keep existing is available for an existing repository. The choice is local and retained across reinstall/repair; explicit user-selected branches/versions remain valid. Installation configures/fetches only as chosen and never automatically pulls, pushes, creates a repository on a hosting service or submits a PR. Source updates remain deliberate merges with customer changes preserved. Actual UI branch names come from this application's own Git repository, never a parent folder or cosmetic relabeling. Git configuration is not an Agent permission restriction.

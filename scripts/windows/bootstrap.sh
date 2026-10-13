@@ -6,7 +6,7 @@ SAPLING_WINDOWS_ACTION="${1:-}"
 if [ "$#" -gt 0 ]; then shift; fi
 SAPLING_WINDOWS_FLAG="${1:-}"
 case "$SAPLING_WINDOWS_ACTION:$#:$SAPLING_WINDOWS_FLAG" in
-  install:0:|login:0:|configure:0:|opencode:0:|start:0:|doctor:0:|logout:0:|install:1:--repair|login:1:--device-auth|start:1:--no-open|configure:1:--no-open) ;;
+  install:0:|login:0:|configure:0:|opencode:0:|start:0:|doctor:0:|logout:0:|git:0:|install:1:--repair|login:1:--device-auth|start:1:--no-open|configure:1:--no-open) ;;
   *) say 'Invalid action/flag. Run bash Saplingagent.sh --help.' '操作或参数无效。请运行 bash Saplingagent.sh --help。' >&2; exit 2 ;;
 esac
 for SAPLING_WINDOWS_TOOL in cygpath powershell.exe iconv base64; do
@@ -149,10 +149,10 @@ SAPLING_POWERSHELL
 SAPLING_WINDOWS_ENCODED="$(printf '%s' "$SAPLING_WINDOWS_PROGRAM" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\r\n')"
 export MSYS2_ARG_CONV_EXCL='*'
 export MSYS2_ENV_CONV_EXCL='SAPLING_BOOTSTRAP_ROOT'
-# Install/diagnostics do not need a terminal bridge. Keep winpty only for
-# native interactive authentication or app startup, with a foreground parent.
+# Git/storage setup and first install need a foreground native console,
+# just like authentication/startup. Diagnostics still runs directly.
 case "$SAPLING_WINDOWS_ACTION" in
-  login|opencode|start)
+  install|git|login|opencode|start)
     if [ -t 0 ] && [ -t 1 ] && command -v winpty >/dev/null 2>&1; then
       say "Starting Windows $SAPLING_WINDOWS_ACTION (PowerShell / winpty)..." "正在启动 Windows ${SAPLING_WINDOWS_ACTION}（PowerShell / winpty）…"
       exec winpty powershell.exe -NoLogo -NoProfile -EncodedCommand "$SAPLING_WINDOWS_ENCODED"

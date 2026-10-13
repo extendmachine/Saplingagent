@@ -29,7 +29,7 @@ git clone --branch release https://github.com/extendmachine/Saplingagent.git
 cd Saplingagent
 ```
 
-Or download and extract a ZIP from the chosen branch. A private repository requires access.
+Or [download release source](https://github.com/extendmachine/Saplingagent/archive/refs/heads/release.zip) and extract it. Customer downloads use `release`; choose another branch explicitly if needed. A private repository requires access.
 
 Open Terminal in the application folder and run:
 
@@ -46,16 +46,17 @@ First choose **English** or **中文** (Enter defaults to English), then use the
 
 | Menu choice | Action |
 | --- | --- |
-| 1. Install / update | Prepare project-local Node, Codex, OpenCode and locked dependencies. |
+| 1. Install / update | Choose Git storage on first installation, then prepare project-local Node, Codex, OpenCode, Claude Agent and locked dependencies. |
 | 2. Configure AI | Open the standalone local account/API configuration page. |
 | 3. Start app | Launch the local services and open the chat page. |
 | 4. Diagnostics | Check installation, saved AI access and runtime readiness. |
+| 5. Git / storage setup | Review or change repository ownership without reinstalling dependencies. |
 | 9. Change language | Switch English / Chinese. |
 | 0. Quit | Close the menu. |
 
 Install first, configure your own AI access, then start. Menu actions return to the menu when finished; an error leaves the menu available for retry. Stop an existing application before updating dependencies. During startup keep the terminal open; Control+C stops the owned services and exits the launcher.
 
-Installation supports macOS 13.5+ on Apple Silicon or Intel, downloads official Node **24.21.0**, checks its official SHA-256 checksum, and installs project-local Codex **0.146.1**, OpenCode, Claude Agent SDK **0.3.296** and locked dependencies. No preinstalled Node, npm, Homebrew, Xcode or Codex desktop app is required; Windows requires Git Bash and its bundled shell utilities. Windows10 must be version1809+; ARM64 and x64 are detected automatically. Internet access to official downloads, npm and your model provider is required. Versions are declared in [config/macos.json](config/macos.json) and dependency lockfiles.
+Installation supports macOS 13.5+ on Apple Silicon or Intel, downloads official Node **24.21.0**, checks its official SHA-256 checksum, and installs project-local Codex **0.146.1**, OpenCode, Claude Agent SDK **0.3.296** and locked dependencies. No preinstalled Node, npm, Homebrew or Codex desktop app is required. Git is required for local version history; on Mac, install Apple Command Line Tools with `xcode-select --install` if Git is missing (full Xcode is unnecessary); Windows requires Git Bash and its bundled shell utilities. Windows10 must be version1809+; ARM64 and x64 are detected automatically. Internet access to official downloads, npm and your model provider is required. Versions are declared in [config/macos.json](config/macos.json) and dependency lockfiles.
 
 Runtimes stay in `.runtime/`, dependencies in their modules' `node_modules/`, and npm cache in `.cache/npm/`. No sudo or global npm installation is needed. Keep the entire application folder; the single user-facing launcher uses its internal scripts and configuration.
 
@@ -82,14 +83,43 @@ bash Saplingagent.sh login --device-auth
 bash Saplingagent.sh opencode
 bash Saplingagent.sh start --no-open
 bash Saplingagent.sh doctor
+bash Saplingagent.sh git
 bash Saplingagent.sh logout
 ```
 
 Device login depends on account/organization eligibility. Use `bash Saplingagent.sh` from Terminal; no executable-bit change is required for this command. `./Saplingagent.sh` also works when the executable bit is retained. Use Bash rather than `sh`: the script uses Bash syntax.
 
+## Choose where your application lives
+
+On first **Install / update**, choose one storage mode:
+
+| Choice | Local history | Remote behavior |
+| --- | --- | --- |
+| Local only (default for a ZIP) | New Git repository on `release` | No remote and no upload |
+| My own repository | Local commits; fresh folder starts on `release` | Add your existing repository URL as `origin`; nothing is pushed during installation |
+| Follow Saplingagent release | Track the author's `upstream/release` | Fetch upstream history; no automatic pull, push or PR |
+| Keep existing (default for an existing repository) | Keep your current branch/version and history | Retain your existing configuration |
+
+Local only means local Git snapshots, not a cloud repository. For your own remote, create an empty repository in your preferred hosting service first, then paste its credential-free HTTPS/SSH URL. Installation does not create a GitHub repository, sign in to a Git host or publish changes. A nonempty remote may have unrelated history: inspect and reconcile it before your first manual push. Keep passwords/tokens out of URLs.
+
+Use **5. Git / storage setup** or `bash Saplingagent.sh git` to reconfigure. Installation remembers its choice in `.git/config` (`saplingagent.storageMode`); repeat/repair installations preserve your current branch, including a deliberately selected historical version. A linked development worktree keeps its shared configuration. Existing custom remotes are never silently overwritten or removed. An explicit switch from a previously configured own mode to local-only removes its managed origin and keeps local history. Save pending changes before configuring another branch.
+
+For unattended first installation, set `SAPLING_GIT_MODE=local`, `own` or `upstream`; `own` also needs `SAPLING_GIT_REMOTE`. `SAPLING_GIT_BRANCH` explicitly overrides the initial branch. To change a saved choice, use the Git setup action. Your environment and Git global configuration remain unchanged.
+
+Follow mode imports the package's actual source ancestor and saves the delivered folder as a local initialization commit. This keeps recipient records and any existing files. Raw GitHub ZIPs must match a commit in fetched release history; an edited/unidentifiable ZIP can use local/own mode or a fresh Git clone. Follow mode is opt-in and requires network/repository access. Failed initialization can be retried; it is not marked configured until complete.
+
+Updating dependencies is separate from updating source. To inspect upstream changes:
+
+```bash
+git fetch upstream
+git log --oneline HEAD..upstream/release
+```
+
+When ready, save local changes and explicitly merge the reviewed upstream source (`git merge upstream/release`), resolve conflicts and inspect goal/task records, then run Install / update and restart. Do not reset customer data or replace source files over a working application. `git pull` defaults to fast-forward only in follow mode and stops on diverged history; a deliberate merge may be needed. If you add follow mode to an independent local repository, histories can be unrelated: reconcile them deliberately (`git merge --allow-unrelated-histories upstream/release`) after saving and inspecting both sides; setup does not rewrite that history. The chat's Save version stays local in every mode. Pushes or pull requests require your explicit action/authorization; the installer and version panel never submit them. Full Access remains enabled. See [Git storage guide](docs/git-versions.html) and [Git remote documentation](https://git-scm.com/docs/git-remote).
+
 ## Switch versions and restart
 
-Use the top-right Versions control to select `main`, `testcode`, `release` or a historical commit. Pending source changes are saved locally first. Version names remain editable and do not rewrite commit hashes.
+New customer folders start on `release` unless explicitly configured. The top-right Versions control shows the actual checked-out branch and can select available local branches or historical commits. Maintainer checkouts can also use `main` and `testcode`; fresh local/customer repositories need not contain those branches. Pending source changes are saved locally first. Version names remain editable and do not rewrite commit hashes.
 
 After switching, click **Restart app** to load that version's frontend, backend, Codex App Server and MCP. The options menu also offers **Restart backend** (keeps the current frontend process) and **Runtime recovery**. Wait for running AI/file work to finish or stop it yourself; restart refuses busy work.
 
@@ -189,6 +219,7 @@ Choose Diagnostics in the menu, or run:
 
 ```bash
 bash Saplingagent.sh doctor
+bash Saplingagent.sh git
 ```
 
 Doctor reports installation, versions, saved AI configuration and configured-port status without displaying credentials or issuing model prompts.
@@ -200,7 +231,7 @@ Doctor reports installation, versions, saved AI configuration and configured-por
 | Expired login or account change | Run `bash Saplingagent.sh logout`, then log in again |
 | Download/dependency failure | Check Node.js/npm network access; run `bash Saplingagent.sh install --repair` |
 | Installation lock remains | Confirm this project's installer has exited; remove only its stale `.runtime/node-install.lock` or `.runtime/macos-install.lock`, then retry |
-| Windows operation exits 150 before device detection | Update the complete source folder; menu actions now retain foreground terminal ownership and install bypasses winpty. Retry `bash Saplingagent.sh --lang zh install` in Git Bash and retain preceding error text if it still fails; the exit number alone is not a diagnosis |
+| Windows operation exits 150 before device detection | Update the complete source folder; menu actions now retain foreground terminal ownership and interactive install/Git setup use a foreground native console bridge when available. Retry `bash Saplingagent.sh --lang zh install` in Git Bash and retain preceding error text if it still fails; the exit number alone is not a diagnosis |
 | Port occupied | Stop your previous startup terminal or adjust `config/runtime.json`; the launcher does not kill another project's process |
 | Not ready within 120 seconds | Run Doctor and inspect the startup terminal and metadata in `logs/<service>/` |
 | Local service connection failed | Keep the startup terminal running and restart the full application; check Agent port `4310` and the frontend proxy |
@@ -232,7 +263,7 @@ Saplingagent/
 └── AGENTS.md / FINAL_GOAL.md / TODO.md / AI_TASKS.md
 ```
 
-Git controls can save tracked/nonignored changes into a local commit and switch local branches, automatically committing pending changes first. These actions do not publish to GitHub. A ZIP without `.git/` can run chat but has no Git repository; initialize Git explicitly if version controls are desired.
+Git controls can save tracked/nonignored changes into a local commit and switch local branches, automatically committing pending changes first. These actions do not publish to GitHub. A ZIP contains no `.git/`; the first installation creates local source history after your Git / storage selection. A child folder never borrows its parent repository for the version panel.
 
 AI development starts with [AGENTS.md](AGENTS.md) and [rules/README.md](rules/README.md). Services maintain `SERVICE.md`, `CONTRACT.md`, `DEPLOY.md` and `REFERENCES.md`. Technical paths and protocol identifiers retain compatibility; existing user conversations are never translated by this release.
 
@@ -254,12 +285,12 @@ To prepare a clean source ZIP from a committed revision, use the installed proje
 SEED_NODE_VERSION="$(/usr/bin/plutil -extract nodeVersion raw -o - config/macos.json)"
 SEED_ARCH="$(/usr/bin/uname -m)"
 if [ "$SEED_ARCH" = "x86_64" ]; then SEED_ARCH=x64; fi
-".runtime/node-v${SEED_NODE_VERSION}-darwin-${SEED_ARCH}/bin/node" scripts/package-macos.mjs HEAD
+".runtime/node-v${SEED_NODE_VERSION}-darwin-${SEED_ARCH}/bin/node" scripts/package-macos.mjs release
 ```
 
 The package and `.sha256` file are written to `.cache/releases/`. It contains committed source, complete rules/Skills, license notices, pinned lockfiles and a per-file SHA-256 manifest in `delivery.json`. Recipient task/goal files are initialized without inheriting developer approvals. It excludes credentials, conversations, logs, snapshots, dependency directories and installed runtimes.
 
-**Do not distribute a ZIP of your running project folder.**Use this packager. GitHub Download ZIP is a source snapshot; the customer packager additionally initializes recipient task records. Repackaging requires Git; installing an extracted package does not.
+**Do not distribute a ZIP of your running project folder.**Use this packager. GitHub Download ZIP is a source snapshot; the customer packager additionally initializes recipient task records. Version setup and repackaging require Git. Packaging defaults to the committed `release` ref; it never silently falls back to `main` or `HEAD`. An explicit ref is allowed for a reviewed candidate/custom distribution; delivery.json records the actual ref, commit and initial branch.
 
 Release checklist and known validation limits: [docs/release-checklist.html](docs/release-checklist.html). Public repository visibility and a published GitHub release are separate actions from preparing this candidate.
 
@@ -285,13 +316,13 @@ The user's project rules ship under `rules/`. Translating their prose does not r
 
 Run `bash Saplingagent.sh --lang zh` in Git Bash. The single English/Chinese menu provides Install / update, Configure AI (independent account/API web page), Start app and Diagnostics. Explicit actions/flags are identical to Mac: `install --repair`, `configure --no-open`, `login --device-auth`, `opencode`, `start --no-open`, `doctor`, `logout`. See [Windows guide](docs/windows-install.html) / [中文 Windows 说明](docs/windows-install.zh.html).
 
-Windows system detection/download/extraction uses its built-in PowerShell internally, embedded in scripts/windows/bootstrap.sh; there is no separate .ps1 file or user PowerShell command. UTF16 encoded command arguments preserve Unicode paths and leave stdin available for provider authentication. Windows menu actions run in the foreground. Installation/diagnostics use PowerShell directly; Git Bash's winpty is used when available for native login/OpenCode/start console compatibility. Windows terminal shutdown/model interactions still require native-system testing. No WSL, global Node/Codex, registry/global PATH/permanent execution-policy modification is required.
+Windows system detection/download/extraction uses its built-in PowerShell internally, embedded in scripts/windows/bootstrap.sh; there is no separate .ps1 file or user PowerShell command. UTF16 encoded command arguments preserve Unicode paths and leave stdin available for provider authentication. Windows menu actions run in the foreground. Diagnostics/web configuration use PowerShell directly; Git Bash's winpty is used when available for interactive install/Git setup/login/OpenCode/start console compatibility. Windows terminal shutdown/model interactions still require native-system testing. No WSL, global Node/Codex, registry/global PATH/permanent execution-policy modification is required.
 
-The App Server is a project-owned native stdio subprocess. Credentials and agent state remain in local-secrets/codex/, local-secrets/opencode/, local-secrets/claude/ and shared local-secrets/api-keys/; dependencies/cache/state stay in the folder. The UI remains English; menu language does not change conversation data. Full Access remains current-user access. Git is required to supply Bash on Windows; branch/version controls additionally require an actual Git repository, which source ZIPs do not contain.
+The App Server is a project-owned native stdio subprocess. Credentials and agent state remain in local-secrets/codex/, local-secrets/opencode/, local-secrets/claude/ and shared local-secrets/api-keys/; dependencies/cache/state stay in the folder. The UI remains English; menu language does not change conversation data. Full Access remains current-user access. Git is required to supply Bash on Windows; branch/version controls additionally require an actual Git repository, initialized after the installer storage choice for source ZIPs.
 
 Restart app/Restart backend use the existing persistent gateway and owned live PID-tree shutdown. Finish work before restarting. Forced parent/window termination, power loss and separately detached programs cannot guarantee cleanup; active command side effects are not undone. Ports/manager/launcher changes require normal stop and reopening the same Bash entry. No process-name/port kill, root elevation, automatic rollback or prompt resend is added.
 
-To create a committed clean Windows source ZIP, use `<project-node> scripts/package-windows.mjs HEAD .cache/releases`. Both platform packages include the one executable Saplingagent.sh, all companion sources/helpers/rules, fresh recipient records and per-file/ZIP hashes, excluding credentials/data/logs/dependencies/Git. Copy the complete folder, not just one script. Remove stale installation locks only after confirming the installer has stopped.
+To create a committed clean Windows source ZIP, use `<project-node> scripts/package-windows.mjs release .cache/releases`. Both platform packages include the one executable Saplingagent.sh, all companion sources/helpers/rules, fresh recipient records and per-file/ZIP hashes, excluding credentials/data/logs/dependencies/Git. Copy the complete folder, not just one script. Remove stale installation locks only after confirming the installer has stopped.
 
 ## Automatic device selection
 

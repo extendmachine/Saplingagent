@@ -31,9 +31,9 @@ async function run({ root, env }, args, input = '') {
 const records = async root => (await fs.readFile(path.join(root, 'capture.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
 test('Windows Bash routes explicit actions with converted Unicode root and encoded program, preserving flags/exit', async t => {
   const f = await fixture(t);
-  for (const args of [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode'], ['configure','--no-open']]) assert.equal((await run(f, ['--lang', 'zh', ...args])).code, 7);
+  for (const args of [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode'], ['configure','--no-open'], ['git']]) assert.equal((await run(f, ['--lang', 'zh', ...args])).code, 7);
   const capture = await records(f.root);
-  assert.deepEqual(capture.map(x => [x.action, x.flag]), [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode', ''],['configure','--no-open']]);
+  assert.deepEqual(capture.map(x => [x.action, x.flag]), [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode', ''],['configure','--no-open'], ['git','']]);
   for (const row of capture) {
     assert.equal(row.root, "C:\\test\\中文 app's folder"); assert.equal(row.language, 'zh');
     assert.match(row.program, /检测到设备/); assert.match(row.program, /function Get-WindowsDevice/);

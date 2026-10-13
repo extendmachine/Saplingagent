@@ -37,7 +37,7 @@ try:
             except OSError: chunk=b''
             output+=chunk
             text=output.decode(errors='replace')
-            if not started and '[0-4, 9]' in text:
+            if not started and '[0-5, 9]' in text:
                 started=True;os.write(fd,sys.argv[3].encode())
             if not finished and sys.argv[2] in text:
                 finished=True;os.write(fd,b'0\n')
@@ -103,8 +103,8 @@ fi
 `, { mode: 0o755 });
   return f;
 }
-test('TTY install, diagnostics and web configuration bypass winpty even when it is installed', { skip: skipPty }, async t => {
-  for (const choice of ['1\n', '4\n','2\n']) {
+test('TTY diagnostics and web configuration bypass winpty even when it is installed', { skip: skipPty }, async t => {
+  for (const choice of ['4\n','2\n']) {
     const f = await bootstrapFixture(t);
     const result = await terminal(f, 'DIRECT_NATIVE_OK', choice);
     assert.equal(result.code, 0, result.output); assert.match(result.output, /DIRECT_NATIVE_OK/);
@@ -116,4 +116,15 @@ test('TTY legacy native startup uses winpty in the foreground and retains provid
   const result = await terminal(f, 'AUTH_INPUT_OK', '3\nprovider-choice\n');
   assert.equal(result.code, 0, result.output); assert.match(result.output, /BRIDGE_CALLED/);
   assert.match(result.output, /AUTH_INPUT_OK/); assert.doesNotMatch(result.output, /操作未完成/);
+});
+
+
+test('TTY install and Git setup use a foreground bridge for first-install prompts', { skip: skipPty }, async t => {
+  for (const choice of ['1\n', '5\n']) {
+    const f = await bootstrapFixture(t);
+    const result = await terminal(f, 'DIRECT_NATIVE_OK', choice);
+    assert.equal(result.code, 0, result.output);
+    assert.match(result.output, /BRIDGE_CALLED/);
+    assert.doesNotMatch(result.output, /操作未完成/);
+  }
 });
