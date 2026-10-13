@@ -2,6 +2,12 @@
 
 - Codex App Server: https://learn.chatgpt.com/docs/app-server, OpenAI; 2026-10-09. Thread, event, cancellation, model directory, Skills, MCP standard form confirmation. Public documents do not need to be logged in, and the actual model requires an account.
 - Codex native authentication: https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server, OpenAI; 2026-10-09. Existing local login integration; customer business/hosting distribution needs to be designed and logged in separately.
+- OpenCode server: https://opencode.ai/docs/server/ ; official loopback server, OpenAPI and Basic authentication; reviewed 2026-10-11.
+- OpenCode SDK: https://opencode.ai/docs/sdk/ ; official type-safe client, sessions and SSE events; reviewed 2026-10-11.
+- OpenCode providers and configuration: https://opencode.ai/docs/providers/ and https://opencode.ai/docs/config/ ; provider credentials, custom endpoints and isolated configuration; reviewed 2026-10-11.
+- OpenCode MCP: https://opencode.ai/docs/mcp-servers/ ; local MCP server configuration; reviewed 2026-10-11.
+- Anthropic client SDK guidance: https://platform.claude.com/docs/en/api/client-sdks ; API credentials are the supported application integration path; reviewed 2026-10-11.
+- Claude Desktop extensions: https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop ; Desktop connects to MCP servers and is not an inference API for this app; reviewed 2026-10-11.
 - MCP environment configuration: https://learn.chatgpt.com/docs/config-file/config-reference, OpenAI; 2026-10-09. mcp_servers.<id>.env explicitly passes the root directory, port and managed tags of the project, and the local CLI has been verified; it is not assumed that all the parent process environment is inherited.
 - The app-server generate-json-schema generated file of this machine CLI0.146.1 is only used as an actual protocol verification, and does not package the research cache. The current thread sandbox enumerates danger-full-access, and the directory is actually gpt-5.6-sol/terra/luna; verify with real request.
 - Assistant-ui official https://www.assistant-ui.com/docs, please refer to front REFERENCES and lock files for details of front-end dependencies.
@@ -34,3 +40,26 @@ App Server local open source components do not need to be purchased separately; 
 ## English release reference check (2026-10-10)
 
 TASK-20261010-015: checked the current official App Server, authentication and pricing documentation for README accuracy. Local account login/model discovery do not guarantee model entitlement or quota. Commercial/hosted App Server authentication is not permitted; this implementation has not registered commercial Sign in with ChatGPT. Sources: https://learn.chatgpt.com/docs/app-server, https://learn.chatgpt.com/docs/auth, https://learn.chatgpt.com/docs/pricing, https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server. Core protocol and permission IDs remain unchanged; language-only edits introduce no new inference API.
+
+## Windows implementation sources (checked 2026-10-11)
+
+- Node24.21 child_process: https://nodejs.org/download/release/v24.21.0/docs/api/child_process.html — Windows .cmd limitations, signal behavior and owned process lifecycle. Public; project Node24.21.0.
+- Microsoft taskkill: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/taskkill — /PID /T /F termination of an owned live process tree. Public; Windows10/11 x64; current-user OS rights.
+- OpenAI Windows: https://learn.chatgpt.com/docs/windows/windows-sandbox — native PowerShell, Windows11 recommendation and recent Windows10 best effort. Public; this project still pins Codex0.146.1 and retains Full Access. Real account required for inference; no sandbox migration is inferred from newer docs.
+- Exact npm metadata https://registry.npmjs.org/@openai/codex/0.146.1 and https://registry.npmjs.org/opencode-ai/1.19.0 — native Windows optional dependencies; local OpenCode postinstall selects executable. Public, downloads/install required; no model request.
+
+TASK-20261012-003, checked2026-10-11: https://learn.chatgpt.com/docs/app-server (requiresOpenaiAuth and login account semantics; generated local0.146.1 schema confirms), https://learn.chatgpt.com/docs/config-file/config-advanced (custom provider base_url/env_key/Responses), https://opencode.ai/docs/providers/ and https://opencode.ai/docs/sdk/ (native provider options and MCP status; pinned1.19.0 actual catalog checked). Documents public; actual account/provider requests use the customer's own rights. No current v2 OpenCode assumption, CLI upgrade or paid inference.
+
+## Claude Agent SDK integration (2026-10-12, TASK-20261012-005–009)
+
+- https://code.claude.com/docs/en/agent-sdk/overview — official embedded Claude Code agent loop, native tools, MCP, sessions, branding and Commercial Terms.
+- https://code.claude.com/docs/en/agent-sdk/quickstart — API authentication; bundled native binaries; third-party claude.ai login requires prior approval. No subscription credential import is implemented.
+- https://code.claude.com/docs/en/agent-sdk/configuration — project-only settingSources, env and system prompt.
+- https://code.claude.com/docs/en/agent-sdk/streaming-output and https://code.claude.com/docs/en/agent-sdk/sessions — partial events, terminal results and explicit resume.
+- https://code.claude.com/docs/en/agent-sdk/mcp and https://code.claude.com/docs/en/agent-sdk/plugins — local MCP and `.agents` local plugin discovery.
+- https://registry.npmjs.org/@anthropic-ai/claude-agent-sdk/0.3.296 — exact SDK and platform optional dependency metadata. Installed official sdk.d.ts verifies Query, spawn, permissions, hooks and MCP control signatures.
+
+Public documentation and npm metadata need no login; real inference/model catalogs need the user's own API account and quota. No inference was sent to a real model for candidate validation. Local native/synthetic API tests establish this pinned version's behavior; Windows10 native acceptance remains pending.
+
+
+Git project-root correctness (TASK-20261012-011), checked 2026-10-12: https://git-scm.com/docs/git-init (official Git, no read login) describes project-local metadata. Application version operations resolve their actual root; no new model/authentication source or API dependency.

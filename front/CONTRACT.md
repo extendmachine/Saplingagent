@@ -5,17 +5,20 @@ Version 4; 2026-10-09; TASK-20261009-013. SSE fields continue to be compatible w
 |Interface|Input|Output and behavior|
 | --- | --- | --- |
 | GET /api/status |Nothing|ready/authenticated/model/skills/mcp; clearly shows that the service is unavailable or there is a login problem|
+| GET /api/engines |Nothing|Codex readiness plus connected OpenCode and configured Claude Agent providers/models; no credentials|
 | GET /api/git |Nothing|Current repository, branch/HEAD, short version number and status fingerprint, work area change, local branch/Worktree occupation and recent submission; panel and bottom version bar regular refresh|
 | POST /api/git/commit |Nothing|The upper right panel saves the current non-neglected changes as local submission; does not push remote, running conversation returns 409|
 | POST /api/git/switch | branch |Only switch existing local branches safely; successfully return to the latest Git status and reload the page. 409 keeps the current version and displays the reason.|
 | GET /api/sessions |Nothing|The id/title/updatedAt of sessions; used to confirm that the session has been saved, and the session navigation is not preset.|
 | GET /api/sessions/:id |sessionId saved by the browser|session.messages, running, activeRequestId; refresh and restore the same session|
-| POST /api/chat |Text, requestId, optional sessionId|SSE session/text_delta/status/tool/approval/snapshot/done/error; real streaming display|
+| POST /api/chat |Text, requestId, optional sessionId and new-session engine/provider/model|SSE session/text_delta/status/tool/approval/snapshot/done/error; real streaming display|
 | GET /api/events?sessionId=... |Current sessionId|Active session reconnect subscription, snapshot overwrites the next increment; read and save snapshots when the subscription is not possible|
 | POST /api/sessions/:id/cancel |Current sessionId|Ok; stop and wait for the final state of the service, do not abandon the output first.|
 | POST /api/approvals/:id | decision |Keep the existing front-end interaction event compatibility; the current full-authority tool operation does not need to be approved one by one.|
 
 Each data of SSE is JSON; text_delta contains itemId/delta. Snapshot contains a complete session, which can be used for power-like retry/disconnection recovery; done.status is completed/interrupted/failed. The client parses according to the UTF-8 and SSE line boundaries, and refreshes 50ms by combining increments; HTTP unsuccessful, error events and unexpected disconnections are clearly handled separately.
+
+The empty/new-conversation composer offers Codex, OpenCode or Claude Agent selection. OpenCode and Claude Agent require an available provider and model. Once the first message creates the session, the selector is hidden and the saved session selection is authoritative across refresh/restart. Starting a new conversation makes selection available again. Browser storage still contains only the opaque active session ID and temporary unsent draft, never provider credentials.
 
 Send blank will not be executed; repeat sending is disabled at runtime, and stop is still available. Fail to reuse the original requestId and no more user messages will be added; if the service is still running, reconnect the current session. The single input box supports Enter sending, Shift+Enter lineback and Markdown text display.
 The browser localStorage only saves the opaque sessionId of seedagent.active-session.v1; messages are persisted locally by workspace. Old seedagent.layout-preview.v1 does not read, does not write, does not clear. The browser does not store credentials.
@@ -44,3 +47,13 @@ Saving versions excludes known private/runtime artifacts even if historical igno
 
 ## Restart app
 The version control is followed by Restart app (frontend and backends) and Restart backend. These use the runtime-manager contract and same-origin endpoints; polling survives Vite restart through the persistent gateway. Selected persisted conversations are reloaded after backend generation changes without sending model requests. Current frontend temporarily saves an unsent composer draft in sessionStorage before switching/restarting, restores only the same selected session, then removes the recovery copy. Legacy UIs may lack this support. Switching and restarting are two explicit steps.
+
+## Standalone AI setup and saved default (TASK-20261012-002)
+
+front/ai-config is an independent React/Vite entry served by backend/ai-config after installer choice Configure AI. Its protected local JSON interfaces, profile fields, login/model/close behavior are defined in backend/ai-config/CONTRACT.md. The standalone page follows launcher language or user toggle; no credentials in browser storage or response, no default chat controls added.
+
+Chat uses GET /api/engines.defaultSelection for a fresh/new conversation only. An explicitly chosen engine and restored session are preserved during polling; new conversation reloads the configured default. GET /api/status.codexReady, when present, gates Codex selection independently from aggregate OpenCode default readiness. Older servers without these optional fields keep prior behavior. No automatic prompt/session conversion. Reconfiguration requires a runtime restart to load provider changes.
+
+## Claude Agent engine (TASK-20261012-005–009)
+
+Engine ID `claude` uses the project-local official Claude Agent SDK, with API-only Anthropic Messages profiles. Each conversation binds `engine`, `providerId` (`sapling-<profile-id>`) and `modelId`; existing bindings are immutable. Configuration accepts custom HTTP(S) API base URLs ending in `/v1`; SDK transport removes this trailing API version before its own `/v1/messages` route. Keys remain in local-secrets, never public responses. The default takes effect after restart. Local initialization checks MCP and Skills without a model prompt; authentication means a saved key, not proven quota. Streaming, completion, interruption and failure use existing chat events. Missing native sessions are reported, never silently replaced. Full Access and the completion-review receipt remain unchanged. No claude.ai subscription login is offered.

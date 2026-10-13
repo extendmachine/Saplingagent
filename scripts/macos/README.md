@@ -4,7 +4,7 @@ TASK-20261009-015, project-level startup/distribution tool, does not add new bus
 
 - System: macOS 13.5+; Select arm64/x64 according to the current running architecture, and use the corresponding x64 runtime under Rosetta.
 - Fixed version: Node 24.21.0 / Codex CLI 0.146.1 of config/macos.json; Node is installed to .runtime/node-v<version>-darwin-<arch>, Codex to .runtime/codex, npm cache .cache/npm.
-- Root entry: 1-Install.command, 2-Login-Codex.command, 3-Start-Saplingagent.command, 4-Doctor.command; All paths are calculated from the script location, and the developer's absolute path is not saved.
+- User entry: Saplingagent.sh. Run with bash; no arguments first selects English or Chinese, then opens the Bash menu: Install / update, Configure AI (Codex or OpenCode), Start app, Diagnostics, Change language and Quit. Explicit install/login/opencode/start/doctor/logout actions and existing flags remain available from that same file. Paths are derived from the script location.
 - bootstrap.sh: Only download Node in install, HTTPS to get the official distribution package and SHA-256 table, check, decompress and perform version check and upgrade; fail to clean up your own stage/lock. When other operations lack Node, it is clearly required to install it first.
 - cli.mjs: project lock; upgrade after checking Codex staging and the real version, restore the 0755 execution bit of the controlled entrance and wrapper; all services npm ci successfully write .runtime/macos-install.json. Skip the download when it is complete and the version is the same, and explicitly--repair and reinstall. Staging failure retains the complete old installation mark, removes the old mark before the business npm ci, and some installation failures will not misreport that it has been completed; keep the source code, authentication and business data.
 - Authentication: macOS entrance setup(importExistingAuth:false), env SEED_IMPORT_EXISTING_AUTH=0; do not import global auth. Project directory 700, token/auth file 600; the real value is only in local-secrets. The new directory ledger contains schema_version/project/credentials. Runtime only registers file references, retains the existing ledger fields, and updates its own root directory after moving. The macOS sub-process removes the inherited OPENAI_API_KEY/CODEX_API_KEY/CODEX_ACCESS_TOKEN to avoid accidental reuse of API authentication of other items.
@@ -19,7 +19,7 @@ The original node scripts/dev.mjs and other development entrances are retained; 
 
 ## Packing contract
 
-`node scripts/package-macos.mjs [ref=HEAD] [outputDir=.cache/releases]` macOS only, when there is Git, take the file according to the parsable explicit submission, and do not include the work tree without submitting changes. The white list includes business source code, public contract/config/scripts/docs, entrance and status files, complete rules and project Skills; exclude secret/data/log/snapshots/cache/worktrees/dependencies/runtime task data, etc. Reject candidate source file symlink and incomplete rules. Git archive checks blob file by file; the recipient FINAL_GOAL/TODO/AI_TASKS is re-initialized, AGENTS only adjusts the legal project supplement, manifest annotation initializedForRecipient, does not inherit the developer task and approval; zip retains the execution bit, delivery.json column sourceCommit, running version and file-by-file SHA256, and ZIP SHA256 is provided next to it. Decompression/installation does not depend on Git; subsequent repackaging requires the user's own local repository and submission. This package is a macOS source code delivery, not a Clawtask business import package; the rules attachment is distributed as it is according to the public specification, and its packaging capability is not implemented.
+`node scripts/package-macos.mjs [ref=release] [outputDir=.cache/releases]` runs on macOS or Windows when there is Git, take the file according to the parsable explicit submission, and do not include the work tree without submitting changes. The white list includes business source code, public contract/config/scripts/docs, entrance and status files, complete rules and project Skills; exclude secret/data/log/snapshots/cache/worktrees/dependencies/runtime task data, etc. Reject candidate source file symlink and incomplete rules. Git blob export verifies source file by file; the recipient FINAL_GOAL/TODO/AI_TASKS is re-initialized, AGENTS only adjusts the legal project supplement, manifest annotation initializedForRecipient, does not inherit the developer task and approval; zip retains the execution bit, delivery.json column sourceCommit, running version and file-by-file SHA256, and ZIP SHA256 is provided next to it. Decompression needs no Git; first-install version setup requires Git; subsequent repackaging requires the user's own local repository and submission. This package is a macOS source code delivery, not a Clawtask business import package; the rules attachment is distributed as it is according to the public specification, and its packaging capability is not implemented.
 
 ## Official source (check 2026-10-09)
 
@@ -34,7 +34,7 @@ No need for independent ports, databases or new production dependencies. The ser
 
 ## Saplingagent name and model fee (TASK020)
 
-The startup entrance is `3-Start-Saplingagent.command`, and the delivery package is `Saplingagent-macOS-<submit the first 8 bits>`; the dev output uses the same brand mark as the cli start detection. Environment variables and authentication catalogs remain compatible.
+The startup entrance is `Saplingagent.sh start`, and the delivery package is `Saplingagent-macOS-<submit the first 8 bits>`; the dev output uses the same brand mark as the cli start detection. Environment variables and authentication catalogs remain compatible.
 
 Local App Server open source components do not need to be purchased separately, and the model needs to be authenticated by yourself and available. This Mac entrance uses ChatGPT to log in and use it according to the account package qualification/model permission/quota; Codex also supports API key independent volume billing and does not use ChatGPT subscription quota. This entrance does not provide API key login option. At present, Free/Go only lists the desktop Luna gradually open, and does not promise that CLI/App Server of this project can be used for free. Start/diagnose without model charging detection.
 
@@ -42,3 +42,36 @@ Official public basis (2026-10-09 / TASK020; documents do not need to be logged 
 
 ## Persistent runtime control
 `scripts/dev.mjs` now supervises frontend and backends using backend/runtime-manager. Public frontPort is a persistent same-origin gateway; internal Vite uses vitePort (default5174). Restart app reloads selected source; Restart backend preserves frontend. Optional services are discovered from the selected checkout. Recovery route `/__saplingagent/runtime` stays available during failure; manager/launcher/port changes require the Mac launcher. See backend/runtime-manager/CONTRACT.md and DEPLOY.md.
+
+## Unified entry contract (TASK-20261011-023)
+
+Saplingagent.sh is the macOS root user launcher; the five numbered launchers are replaced. The Bash menu works before Node is installed and dispatches to the existing bootstrap/CLI, keeping installation, login, API storage and runtime ownership behavior. Every completed or failed action returns to the menu; invalid choices can be retried, EOF quits, and INT/TERM/HUP forward to the owned child then exit. Explicit actions exec the bootstrap and retain its exit status. OpenCode auth now uses the common signal-forwarding command runner. Internal helpers are not separate user entry points.
+
+Provider/API configuration is performed by the existing OpenCode auth selector. Custom endpoint/model configuration still follows the provider documentation. Startup still uses the existing Codex login/readiness prerequisite. This consolidation does not implement standalone OpenCode-only startup or a custom endpoint wizard. No real credentials or model requests are part of automated launcher tests.
+
+## Bilingual .sh entry (TASK-20261011-024)
+
+The macOS root entry is Saplingagent.sh (Bash 3.2 compatible, executable in the source package). Run bash Saplingagent.sh in Terminal; Finder is not a launch mechanism for this extension. The complete seed folder is required, not just this file. Initial language choice is English/Chinese; Enter uses English, 0/EOF quits. Main choice9 changes language. --lang en|zh skips the initial language choice and applies to explicit actions too. Invalid/missing language exits2 without running helpers. SAPLING_LANG passes the selected language to project-owned bootstrap/CLI prompts; it is not persisted or used to change account, model, sessions or application UI.
+
+Native Codex/OpenCode/npm/curl output is not translated. Provider setup remains the official OpenCode flow. Credentials, startup prerequisites and cancellation behavior are unchanged. docs/macos-install.zh.html is the requested Chinese human guide; English documentation remains available. Scope excludes real login/inference and main integration until exact-version confirmation.
+
+## Windows extension (TASK028)
+
+The same Saplingagent.sh entry now routes Windows Git Bash to scripts/windows/bootstrap.sh. Both platform entries share scripts/launcher/cli.mjs; this directory retains Mac bootstrap/codex wrappers and a compatibility CLI import. config/macos.json remains the Mac version configuration. See ../windows/README.md and ../../docs/windows-install.html for native Windows x64 setup and honest pending validation. The source ZIP exporter is now cross-platform, with a separate package-windows.mjs target; no business API or Full Access change.
+
+## Native architecture detection (TASK032)
+
+Bootstrap and codex.sh check hw.optional.arm64 before uname so Apple Silicon uses native arm64 even from Rosetta; Intel remains x64. Installation prints the detected macOS version/architecture. No manual CPU choice or global install. Windows automatically chooses native x64/ARM64 in its PowerShell entry.
+
+## Standalone AI setup (TASK-20261012-004; supersedes earlier selector/prerequisite descriptions)
+
+Menu Configure AI now opens an independent project-local React page through the shared launcher CLI and backend/ai-config. Installation must be complete; Node builds that UI with existing front dependencies, then an owned loopback service opens the browser. `configure --no-open` prints its URL instead. Finish setup returns to the Bash menu; tab close alone does not terminate the service. Windows configure runs directly through PowerShell, without winpty; native OAuth/device login uses an owned Codex App Server process.
+
+Account tab uses the official Codex browser/device-code flow. API tab saves named custom endpoint/protocol/model/key schemes. Key files stay in local-secrets/api-keys; profiles in local-secrets/ai-config; account credentials in local-secrets/codex. No global import, automatic prompt or running-service restart. Saved OpenCode/API schemes satisfy startup access without requiring ChatGPT login. Explicit login/opencode commands remain recovery fallbacks; their legacy storage is retained. Diagnostics checks the selected scheme or legacy Codex login, without proving quota/network. Restart and use a new conversation after changing providers.
+
+Self-checks cover Mac installation, actual setup page, private save, no-login OpenCode startup contracts and pinned native OpenCode catalog/MCP. Real OAuth, billable inference and native Windows10/browser/WinPS5.1 remain unverified. HTTP setup authentication does not change customer's Full Access file/command permissions. See ../../docs/ai-configuration.html and ../../backend/ai-config/CONTRACT.md.
+
+
+## Git storage and release delivery
+
+First install uses the shared Git storage helper and asks local-only history, an existing customer remote, follow author release, or keep existing for a repository. Menu5 / `bash Saplingagent.sh git` reconfigures; SAPLING_GIT_MODE/REMOTE/BRANCH support unattended first setup. Saved choices and deliberate branch/version selections survive reinstall. On Mac, Git may require Apple Command Line Tools; Windows Git Bash supplies Git. Interactive Windows install/git now use foreground winpty when available. No global Git settings or hosted repository/PR/push is created. Follow mode fetches and anchors a recipient snapshot to verified source history; source updates require an explicit merge. Default source ZIP ref is release (no HEAD fallback); schema2 delivery records source ref/commit/initial branch. Source delivery still excludes .git, credentials, runtime and developer approvals.

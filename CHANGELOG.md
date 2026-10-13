@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased — Independent AI configuration
+
+- Open a standalone bilingual local configuration page from the Bash launcher's Configure AI menu after installation.
+- Sign in through official Codex browser/device-code authentication or save named custom Codex/OpenCode endpoint/protocol/model/API-key schemes.
+- Keep keys private and retain blank-key edits; support optional model catalog discovery, scheme editing/default selection and Finish setup returning to the launcher.
+- Start the selected OpenCode or API scheme without requiring ChatGPT login; preserve conversation bindings and current-user Full Access.
+- Exact-version human review, real OAuth/provider inference and native Windows10 acceptance remain pending.
+
+## Unreleased — Windows and automatic device installation (2026-10-11)
+
+- Detect native Windows x64/ARM64 and Mac Intel/Apple Silicon automatically, including emulated terminals and Rosetta.
+- Use one bilingual Saplingagent.sh entry on Mac and Windows Git Bash with project-local checksum-verified Node and shared install/configuration.
+- Use native Windows Codex/OpenCode binaries, npm JS and owned PID-tree shutdown for restart/cancellation.
+- Add English/Chinese Windows guides and clean Windows source ZIP packaging.
+- Keep Full Access unchanged. Native Windows10 installation/login/model/restart acceptance pending.
+
 ## 0.1.0 — release candidate
 
 - Start with a local React chat page and build application features through conversation.
@@ -13,3 +29,7 @@
 - Package committed source with complete rules/Skills/license notices and SHA-256 manifests; exclude private runtime content and initialize recipient task records.
 
 This candidate is pending exact-commit human acceptance and synchronization to main/testcode/release. No public GitHub release, commercial authentication registration, signed native application or cloud service is claimed.
+
+## Claude Agent SDK candidate — 2026-10-12
+
+Adds an independent Claude Agent SDK0.3.296 engine, project-local native binaries/state, API-key/custom Anthropic scheme configuration, engine/model chat selection and immutable resumable sessions. Streams, stops, errors and effective-progress monitoring reuse the current local Agent interfaces. Existing MCP/Skills and current-user Full Access are retained. The single Bash launcher installs and verifies the SDK. No claude.ai subscription login, automatic failover or real-provider quota guarantee is introduced. Candidate acceptance and main synchronization are recorded in the authoritative development index.

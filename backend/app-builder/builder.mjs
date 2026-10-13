@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
+import { commandShell, terminateOwned } from '../../contracts/local-process.mjs';
 import { spawn } from 'node:child_process';
 
 export class BuilderError extends Error {
@@ -238,17 +239,19 @@ export async function createBuilder(applicationRoot) {
       const cwd = targetPath(root, input.cwd === undefined ? '.' : input.cwd);
       const timeoutMs = integer(input.timeoutMs, 60000, 1, 3600000, 'timeoutMs');
       if (signal?.aborted) return { exitCode: null, stdout: '', stderr: '', timedOut: false, cancelled: true, stdoutTruncated: false, stderrTruncated: false };
-      const shell = process.env.SHELL || (process.platform === 'win32' ? process.env.ComSpec || 'cmd.exe' : '/bin/sh');
+      const shell = commandShell(input.command);
       return new Promise((resolve, reject) => {
-        const args = process.platform === 'win32' ? ['/d', '/s', '/c', input.command] : ['-lc', input.command];
-        const child = spawn(shell, args, { cwd, env: process.env, shell: false, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
+        const child = spawn(shell.command, shell.args, { cwd, env: process.env, shell: false, windowsVerbatimArguments: shell.windowsVerbatimArguments, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
         const streams = { stdout: [], stderr: [] }; const sizes = { stdout: 0, stderr: 0 }; const truncated = { stdout: false, stderr: false };
         for (const name of ['stdout', 'stderr']) child[name].on('data', (chunk) => { const room = OUTPUT_LIMIT - sizes[name]; if (chunk.length > room) truncated[name] = true; if (room > 0) { const value = chunk.subarray(0, room); streams[name].push(value); sizes[name] += value.length; } });
         let timedOut = false; let cancelled = false; let settled = false;
         const terminate = (timeout = false) => {
           if (settled || timedOut || cancelled) return;
           if (timeout) timedOut = true; else cancelled = true;
-          try { if (process.platform !== 'win32') process.kill(-child.pid, 'SIGKILL'); else child.kill('SIGKILL'); } catch {}
+          void terminateOwned(child, { graceMs: 0 }).catch(error => {
+            if (settled) return; settled = true; cleanup();
+            child.stdout.destroy(); child.stderr.destroy(); reject(error);
+          });
         };
         const cancel = () => terminate(false); activeCommands.add(cancel);
         signal?.addEventListener('abort', cancel, { once: true });

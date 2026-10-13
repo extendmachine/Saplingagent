@@ -15,6 +15,18 @@ const validId = (id) => {
   if (typeof id !== 'string' || !/^[a-zA-Z0-9_-]{1,160}$/.test(id)) fail('Invalid identifier');
   return id;
 };
+const engine = (value) => {
+  if (!['codex', 'opencode', 'claude'].includes(value)) fail('engine must be codex, opencode or claude');
+  return value;
+};
+const providerId = (value) => value === null ? null : text(value, 'providerId', 160);
+const modelId = (value) => value === null ? null : text(value, 'modelId', 240);
+const normalizeSession = (session) => ({
+  ...session,
+  engine: session.engine === undefined ? 'codex' : engine(session.engine),
+  providerId: session.providerId === undefined ? null : providerId(session.providerId),
+  modelId: session.modelId === undefined ? null : modelId(session.modelId),
+});
 export async function safePath(root, relative, directory = false) {
   const pieces = relative.split('/');
   let current = root;
@@ -89,7 +101,7 @@ export async function createStore(applicationRoot) {
     const session = await readJson(root, `data/workspace/sessions/${validId(id)}.json`, null);
     if (!session) throw new WorkspaceError('NOT_FOUND', 'Session does not exist', 404);
     if (typeof session !== 'object' || Array.isArray(session) || session.id !== id || typeof session.title !== 'string' || !Array.isArray(session.messages) || !Number.isInteger(session.revision) || session.revision < 1 || typeof session.createdAt !== 'string' || typeof session.updatedAt !== 'string') throw new WorkspaceError('CORRUPT_STORAGE', 'Stored session schema requires recovery', 500);
-    return session;
+    return normalizeSession(session);
   };
   return {
     async listSessions() {
@@ -101,7 +113,7 @@ export async function createStore(applicationRoot) {
         if (!entry.name.endsWith('.json')) continue;
         if (entry.isSymbolicLink() || !entry.isFile()) throw new WorkspaceError('UNSAFE_STORAGE', 'Session storage contains an unsupported file', 409);
         const session = await get(entry.name.slice(0, -5));
-        sessions.push({ id: session.id, title: session.title, updatedAt: session.updatedAt });
+        sessions.push({ id: session.id, title: session.title, updatedAt: session.updatedAt, engine: session.engine, providerId: session.providerId, modelId: session.modelId });
       }
       return sessions.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     },
@@ -110,7 +122,10 @@ export async function createStore(applicationRoot) {
       return serialize(async () => {
         if (!input || typeof input !== 'object' || Array.isArray(input)) fail('Invalid session input');
         const now = new Date().toISOString();
-        const session = { id: randomUUID(), title: input.title === undefined ? 'New conversation' : text(input.title, 'title', 200), threadId: null, messages: [], running: false, activeRequestId: null, createdAt: now, updatedAt: now, revision: 1 };
+        const selectedEngine = input.engine === undefined ? 'codex' : engine(input.engine);
+        const session = { id: randomUUID(), title: input.title === undefined ? 'New conversation' : text(input.title, 'title', 200), engine: selectedEngine, providerId: input.providerId === undefined ? null : providerId(input.providerId), modelId: input.modelId === undefined ? null : modelId(input.modelId), threadId: null, messages: [], running: false, activeRequestId: null, createdAt: now, updatedAt: now, revision: 1 };
+        if (selectedEngine === 'codex' && (session.providerId !== null || session.modelId !== null)) fail('Codex sessions do not accept providerId or modelId');
+        if (selectedEngine !== 'codex' && (!session.providerId || !session.modelId)) fail('API agent sessions require providerId and modelId');
         await atomicJson(root, `data/workspace/sessions/${session.id}.json`, session);
         return session;
       });
@@ -121,6 +136,9 @@ export async function createStore(applicationRoot) {
         const session = await get(id);
         if (input.expectedRevision !== undefined && input.expectedRevision !== session.revision) throw new WorkspaceError('CONFLICT', 'Session revision has changed', 409);
         if (input.threadId !== undefined) session.threadId = input.threadId === null ? null : text(input.threadId, 'threadId', 300);
+        if (input.engine !== undefined && engine(input.engine) !== session.engine) fail('A session engine cannot be changed');
+        if (input.providerId !== undefined && providerId(input.providerId) !== session.providerId) fail('A session provider cannot be changed');
+        if (input.modelId !== undefined && modelId(input.modelId) !== session.modelId) fail('A session model cannot be changed');
         if (input.title !== undefined) session.title = text(input.title, 'title', 200);
         if (input.messages !== undefined) session.messages = messages(input.messages);
         if (input.running !== undefined) {

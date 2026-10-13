@@ -25,6 +25,22 @@ test('sessions persist safely across reload, revisions reject stale writers', as
   assert.equal((await store.getSession(session.id)).title, 'B');
   assert.equal((await fs.stat(path.join(root, 'data/workspace/sessions', `${session.id}.json`))).mode & 0o777, 0o600);
 });
+
+test('sessions pin provider selection while legacy records normalize to Codex', async (t) => {
+  const root = await fixture(t); const store = await createStore(root);
+  const selected = await store.createSession({ engine: 'opencode', providerId: 'anthropic', modelId: 'claude-sonnet-4-6' });
+  assert.equal(selected.engine, 'opencode');
+  assert.equal((await store.listSessions())[0].modelId, 'claude-sonnet-4-6');
+  await assert.rejects(store.patchSession(selected.id, { modelId: 'another-model' }), error => error.code === 'INVALID_INPUT');
+  await assert.rejects(store.createSession({ engine: 'opencode', providerId: 'anthropic' }), error => error.code === 'INVALID_INPUT');
+  const legacy = await store.createSession();
+  const file = path.join(root, 'data/workspace/sessions', `${legacy.id}.json`);
+  const raw = JSON.parse(await fs.readFile(file, 'utf8'));
+  delete raw.engine; delete raw.providerId; delete raw.modelId;
+  await fs.writeFile(file, JSON.stringify(raw));
+  const { engine, providerId, modelId } = await store.getSession(legacy.id);
+  assert.deepEqual({ engine, providerId, modelId }, { engine: 'codex', providerId: null, modelId: null });
+});
 test('invalid IDs/messages and symlink storage never read or modify outside data', async (t) => {
   const root = await fixture(t); const store = await createStore(root); const session = await store.createSession();
   await assert.rejects(store.getSession('../../outside'), { code: 'INVALID_INPUT' });
@@ -73,4 +89,10 @@ test('restart preparation requires authentication and gates new session writes u
   assert.equal((await request('/sessions')).status,503);
   assert.equal((await request('/internal/runtime/release')).status,200);
   assert.equal((await request('/sessions')).status,201);
+});
+
+test('Claude native thread and model binding survive reload and cannot be switched in place',async t=>{
+ const root=await fixture(t),store=await createStore(root);const selected=await store.createSession({engine:'claude',providerId:'sapling-synthetic',modelId:'synthetic-claude'});
+ await store.patchSession(selected.id,{threadId:'claude-thread'});const restored=await (await createStore(root)).getSession(selected.id);assert.equal(restored.engine,'claude');assert.equal(restored.threadId,'claude-thread');
+ await assert.rejects(store.patchSession(selected.id,{engine:'opencode'}));await assert.rejects(store.patchSession(selected.id,{providerId:'other'}));await assert.rejects(store.createSession({engine:'claude'}));
 });

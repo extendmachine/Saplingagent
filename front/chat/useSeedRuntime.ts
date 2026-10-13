@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppendMessage } from '@assistant-ui/react';
-import { checkedFetch, cleanMessages, getSession, isMissingSession, readSessionId, rememberSession, type Approval, type Message, type Request, type RuntimeStatus, type Session } from './runtime-api';
+import { checkedFetch, cleanMessages, getSession, isMissingSession, readSessionId, rememberSession, type Approval, type EngineOption, type EngineSelection, type Message, type Request, type RuntimeStatus, type Session } from './runtime-api';
 import { consumeEvents, type ServerEvent } from './sse';
 
 type ToolActivity = { id: string; name: string; status: string };
@@ -18,6 +18,10 @@ export function useSeedRuntime() {
   const [error, setError] = useState('');
   const [retryable, setRetryable] = useState(false);
   const [approvalBusy, setApprovalBusy] = useState(false);
+  const [engines, setEngines] = useState<EngineOption[]>([]);
+  const [selection, setSelectionState] = useState<EngineSelection>({ engine: 'codex', providerId: null, modelId: null });
+  const selectionChosen = useRef(false);
+  const setSelection = useCallback((value: EngineSelection) => { selectionChosen.current=true; setSelectionState(value); }, []);
   const session = useRef<string | null>(readSessionId());
   const running = useRef(false);
   const restarting = useRef(false);
@@ -76,9 +80,10 @@ export function useSeedRuntime() {
     rememberSession(saved.id);
     setMessages(cleanMessages(saved.messages));
     setApprovals(Array.isArray(saved.pendingApprovals) ? saved.pendingApprovals : []);
+    setSelection({ engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null });
     if (!lastRequest.current) {
       const user = [...saved.messages].reverse().find(message => message.role === 'user');
-      if (user) lastRequest.current = { sessionId: saved.id, text: user.text, requestId: user.requestId || user.id };
+      if (user) lastRequest.current = { sessionId: saved.id, text: user.text, requestId: user.requestId || user.id, engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null };
     }
     if (!saved.running && saved.messages.at(-1)?.status === 'failed') {
       setError(current => current || 'The previous run failed. Retry or send a new request.');
@@ -95,6 +100,19 @@ export function useSeedRuntime() {
     } catch (failure) {
       if (signal?.aborted || isAborted(failure)) return;
       setStatus({ ready: false, authenticated: false, error: errorText(failure) });
+    }
+  }, []);
+
+  const refreshEngines = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const response = await checkedFetch('/api/engines', { signal });
+      const value = await response.json() as { engines?: EngineOption[]; defaultSelection?: EngineSelection };
+      if (!signal?.aborted && Array.isArray(value.engines)) {
+        setEngines(value.engines);
+        if(!session.current && !running.current && !selectionChosen.current && value.defaultSelection)setSelectionState(value.defaultSelection);
+      }
+    } catch (failure) {
+      if (!signal?.aborted && !isAborted(failure)) setEngines(current => current.length ? current : [{ id: 'codex', label: 'Codex', ready: false, authenticated: false, error: errorText(failure) }]);
     }
   }, []);
 
@@ -221,6 +239,7 @@ export function useSeedRuntime() {
     let statusTimer: ReturnType<typeof setInterval> | undefined;
     void (async () => {
       await refreshStatus(bootstrap.signal);
+      void refreshEngines(bootstrap.signal);
       if (!currentTarget(bootstrap.signal, expectedEpoch, id)) return;
       statusTimer = setInterval(() => { void refreshStatus(bootstrap.signal); }, 10000);
       try {
@@ -260,7 +279,7 @@ export function useSeedRuntime() {
       if (timer.current) clearTimeout(timer.current);
       pending.current.clear();
     };
-  }, [currentTarget, detachMissingSession, recover, refreshStatus, setRunning, snapshot]);
+  }, [currentTarget, detachMissingSession, recover, refreshEngines, refreshStatus, setRunning, snapshot]);
 
   useEffect(() => {
     let signature = '', controller: AbortController | null = null;
@@ -338,8 +357,8 @@ export function useSeedRuntime() {
   const onNew = useCallback(async (message: AppendMessage) => {
     const text = message.content.filter(part => part.type === 'text').map(part => part.type === 'text' ? part.text : '').join('\n').trim();
     if (!text || running.current || restarting.current) return;
-    await runRequest({ requestId: crypto.randomUUID(), text, ...(session.current ? { sessionId: session.current } : {}) });
-  }, [runRequest]);
+    await runRequest({ requestId: crypto.randomUUID(), text, ...selection, ...(session.current ? { sessionId: session.current } : {}) });
+  }, [runRequest, selection]);
 
   const onCancel = useCallback(async () => {
     if (!session.current) {
@@ -360,6 +379,8 @@ export function useSeedRuntime() {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
     session.current = null;
+    selectionChosen.current = false;
+    void refreshEngines();
     lastRequest.current = null;
     rememberSession(null);
     setMessages([]);
@@ -368,7 +389,7 @@ export function useSeedRuntime() {
     setError('');
     setRetryable(false);
     setActivity('');
-  }, []);
+  }, [refreshEngines]);
 
   const retry = useCallback(async () => {
     if (lastRequest.current) await runRequest({ ...lastRequest.current }, true);
@@ -385,5 +406,8 @@ export function useSeedRuntime() {
     finally { setApprovalBusy(false); }
   }, []);
 
-  return { messages, status, isLoading, isRunning, activity, tools, approvals, approvalBusy, error, retryable, onNew, onCancel, startNew, retry, respondApproval, refreshStatus };
+  const selectedEngine = engines.find(engine => engine.id === selection.engine);
+  const engineReady = selection.engine === 'codex' ? Boolean(status?.codexReady ?? status?.ready) : Boolean(selectedEngine?.ready && selectedEngine.authenticated && selection.providerId && selection.modelId);
+  const engineError = selection.engine !== 'codex' && !selectedEngine?.authenticated ? 'Configure this agent provider in AI setup before starting this conversation' : selectedEngine?.error || '';
+  return { messages, status, engines, selection, setSelection, engineReady, engineError, canSelectEngine: !session.current && !isRunning, isLoading, isRunning, activity, tools, approvals, approvalBusy, error, retryable, onNew, onCancel, startNew, retry, respondApproval, refreshStatus, refreshEngines };
 }

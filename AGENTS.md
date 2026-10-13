@@ -4,7 +4,7 @@
 
 Before development, modification, commits, tests, deployment or documentation work, read `rules/README.md` in full and follow its task routing.
 
-Before the first substantive modification, provide the rules-reading receipt defined there. Before finishing or committing, provide its completion-review receipt. Receipts report results; they do not request approval. Read-only tasks, minimum registration and missing-file initialization follow `rules/README.md`.
+Before the first substantive modification, provide the rules-reading receipt defined there. Before every final conversational reply, including ordinary chat and read-only review, and before committing, provide its eight-field completion-review receipt. Receipts report results; they do not request approval. Read-only tasks stay unregistered; minimum registration and missing-file initialization follow `rules/README.md`.
 
 Also read:
 
@@ -25,3 +25,5 @@ Maintain only concise project guidance here. Do not remove the import, required 
 - Runtime task registration is nonblocking and records actual modifications, without copying conversation text. Runtime records do not establish human acceptance, Git approval or publication completion. Earlier protected-directory policies in historical TASK005–009 were superseded by TASK010–013.
 - Keep only `main`, `testcode` and `release` as named branches. Since 2026-10-10, main is the shared baseline and the other two may be explicitly synchronized to the same reviewed code; preserve older history. Local `.worktrees/coordination/` is detached and remains the authoritative development index when present. Do not create a competing index. Sequential candidate work can remain detached to honor the three-branch constraint, with independent service commits and exact-version human approval.
 - Repository/install documentation and UI are English. Preserve protocol IDs, actual filesystem paths and existing user conversation data. Project-owned source uses PolyForm Noncommercial 1.0.0; separate commercial permission does not grant third-party authentication rights.
+
+- Customer Git storage: installer asks local history, own existing remote, upstream release or keep existing. Read local git config saplingagent.storageMode when relevant. Save version stays local; storage setup does not authorize hosted repository creation, pushes or PRs. Follow the customer's explicit publication instructions. Release is the distribution default, not a cosmetic rename of maintainer main.

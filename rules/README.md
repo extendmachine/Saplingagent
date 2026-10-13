@@ -1,6 +1,6 @@
 # AI Project Control Specification and Rule Index
 
-Specification version: `2026-10-10.1`
+Specification version: `2026-10-11.1`
 
 This document is the only source of project public control specifications and rule indexes. Codex, Claude Code and other AI enter this file from the root directory entrance file, and then read the relevant details according to the current task.
 
@@ -17,7 +17,7 @@ The default requirements in the global AI entrance are used to supplement the ma
 
 ## Task type and authorization
 
-1. Read-only review, explanation, analysis and program discussion: read relevant documents and output the results, do not write task registration, TODO or other documents for process requirements. When the user clearly requests to review first and then modify, he must wait until the modification is approved before entering the modification process.
+1. Read-only review, explanation, analysis and program discussion: read relevant documents and output the results with the completion-review receipt, do not write task registration, TODO or other documents for process requirements. When the user clearly requests to review first and then modify, he must wait until the modification is approved before entering the modification process.
 2. Modification task: complete the necessary analysis, implementation, document synchronization and appropriate self-examination within the goals authorized by the user, and do not repeatedly request approval for ordinary implementation details.
 3. Specification distribution: Only when the user requests to introduce or copy the specification, perform the whole package overwriting according to the root directory `README.md`; only reading the file or requesting to review the project does not constitute copying, restructuring or deployment authorization.
 4. The receipt is AI's notification of the reading and review results, not the approval process waiting for the user's reply. Clear approval requirements such as main synchronization, interface manual confirmation, environment migration and external release are still implemented in accordance with relevant rules.
@@ -86,6 +86,8 @@ Implementation requirements:
 - `16-project-template-bootstrap.md`: Read when the whole package is migrated, new projects are initialized, or the specification directory is directly used as the project base.
 - `17-clawtask-project-packaging.md`: Users Require "Please Package The Project As Clawtask Available", Generate Clawtask To Import ZIP, Adapt Or Modify The Clawtask Deployment Scheme; Read The Latest Content Of `/Users/xty/Desktop/projctworks/5.clawtask/tools/skills/clawtask-package/assets/demo/` Specified By The Rule Before Each Relevant Modification, And Check The Difference Between Skill, Contract And The ZIP Snapshot Of This Project. By default, the conversation v2.0 group chat project package is generated, and the packaging is not regarded as online authorization.
 
+- `18-saplingagent-folder-boundary.md`: Read for Saplingagent maintainer scope, complete-folder source delivery, customer-requested external code work, and the completion-review receipt required in every conversation. This is rules guidance, not a technical permission restriction.
+
 ## Principles of public execution
 
 1. First judge which microservice the task belongs to, and then modify the corresponding service directory.
@@ -136,11 +138,11 @@ Project-specific supplements of `AGENTS.md` shall not cover this document, the u
 4. Re-read the rules related to submission, manual verification and current tasks.
 5. Recheck the execution AI, task status, modification scope, branch and Worktree in the authoritative task index; indicate "read-only, unregistered" for read-only tasks.
 6. Check whether there are any new modifications or changes in the scope of tasks of other AI.
-7. In the final reply, give a "receipt of the end of the review"; if the review is not completed, the task shall not be declared complete.
+7. In every final reply, including ordinary chat, clarification, research and read-only tasks, give the completion-review receipt below; if the review is not completed, the task shall not be declared complete.
 
 ## Completion-review receipt
 
-AI must review in the following format before completing the task or preparing for submission:
+AI must review in the following eight-field format before completing each conversational turn or preparing for submission. Translate the labels into the user's language. Read-only turns are unregistered and report no modifications; a receipt does not require creating files, executing unnecessary tests or making a Git commit. Report only actual readings/checks and mark unavailable/inapplicable fields honestly:
 
 ```text
 Completion-review receipt
@@ -159,3 +161,7 @@ If the standard version is different from the starting version at the end, the A
 ## English edition (2026-10-10)
 
 Version 2026-10-10.1 translates specification 2026-09-29.1 and its controlled attachment into English. Approval requirements, rule routing, credential handling, service separation and task ownership retain the same meaning. The attachment checksum/language revision is recorded in rule 17. User-authored current instructions remain highest priority within the project. Literal paths to the user-provided source folder retain their real filesystem names.
+
+## Saplingagent boundary clarification (2026-10-11)
+
+Version2026-10-11.1 adds rule18 and requires the existing eight-field completion-review receipt for every conversational turn, including read-only work. Saplingagent maintainer development and complete-folder delivery stay inside the project; customer-requested external code edits remain technically possible with current Full Access. Rules recommend local scope by default. No sandbox or permission gate is added; existing human/Git/publication requirements are retained.

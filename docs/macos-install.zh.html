@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Saplingagent | macOS 中文安装说明</title>
+<style>
+body{margin:0;background:#f5f6f3;color:#26302a;font:16px/1.8 system-ui,sans-serif}main{max-width:900px;margin:auto;padding:36px 24px 70px}h1{font-size:34px;line-height:1.3}section{background:white;border:1px solid #dde3dc;border-radius:14px;padding:20px 24px;margin:20px 0}nav{display:flex;flex-wrap:wrap;gap:16px}a{color:#3c6844}pre{background:#edf1eb;padding:16px;overflow:auto;line-height:1.55}code{font-size:14px}table{border-collapse:collapse;width:100%}th,td{padding:10px;border-bottom:1px solid #dde3dc;text-align:left;vertical-align:top}@media(max-width:650px){main{padding:24px 14px}section{padding:16px}table{display:block;overflow:auto}}
+</style></head>
+<body><main>
+<nav><a href="index.html">项目概览（英文）</a><a href="macos-install.html" lang="en">English install guide</a><a href="runtime.html">运行说明（英文）</a></nav>
+<h1>Saplingagent macOS 安装与接口配置</h1>
+<p>使用一个 <code>Saplingagent.sh</code> 脚本完成安装、配置接口、启动和诊断。中文和英文共用同一个脚本，完整应用文件夹必须一起保留。</p>
+<section><h2>运行要求</h2>
+<p>macOS 13.5 或更新版本，Apple Silicon 或 Intel，可写的本地文件夹，以及可连接 Node.js、npm、OpenAI 和所选模型服务商的网络。压缩包安装不要求全局 Node、Homebrew、Xcode 或 Codex 桌面应用；版本管理和重新打包需要 Git。自动化检查在 Apple Silicon 上执行，Intel 的真实安装仍需相应设备验证。</p>
+<p>模型调用使用你自己的账号或 API，实际模型权限、额度和费用由对应服务商决定。安装或登录成功不等于模型调用一定可用。</p></section>
+<section><h2>如何运行 .sh 脚本</h2>
+<p>解压完整应用，在“终端”中进入应用文件夹。输入 <code>cd </code>，把应用文件夹拖入终端，按回车；然后运行：</p>
+<pre>bash Saplingagent.sh</pre>
+<p>先选择 <strong>1. English</strong> 或 <strong>2. 中文</strong>；直接回车使用英文。也可直接打开中文菜单：</p>
+<pre>bash Saplingagent.sh --lang zh</pre>
+<p>Mac 可以运行 .sh。Finder 双击通常会用编辑器打开脚本，请按上述方式在终端运行。使用 <code>bash</code> 不需要额外执行 chmod。文件有可执行权限时，也可以运行 <code>./Saplingagent.sh</code>。此脚本使用 Bash 语法，请不要改用 <code>sh Saplingagent.sh</code>。</p>
+<table><thead><tr><th>菜单</th><th>用途</th></tr></thead><tbody>
+<tr><td>1. 安装 / 更新</td><td>准备项目内 Node、Codex、OpenCode 和锁定的依赖。更新前先停止当前应用。</td></tr>
+<tr><td>2. 配置 AI 接口</td><td>选择 Codex 账号登录，或 OpenCode 服务商 / API 密钥配置。</td></tr>
+<tr><td>3. 启动应用</td><td>启动前后端，检查就绪状态后打开聊天网页。</td></tr>
+<tr><td>4. 服务诊断</td><td>检查安装、已保存的登录和运行状态，不发送模型提示词。</td></tr>
+<tr><td>9. 切换语言</td><td>在中文和英文之间切换。</td></tr>
+<tr><td>0. 退出</td><td>退出脚本。</td></tr>
+</tbody></table>
+<p>操作完成或失败后返回菜单。按 Control+C 停止本次启动的服务并退出脚本。启动后请保持终端窗口打开。官方 Codex、OpenCode、npm 和下载工具的输出可能仍是英文；此中文版本翻译的是 Saplingagent 的菜单及安装提示，网页保持现有语言。</p></section>
+<section><h2>配置账号与 API</h2>
+<p><strong>Codex：</strong>选择“配置 AI 接口 → Codex”，官方工具将打开浏览器，使用自己的 ChatGPT / Codex 账号登录。项目凭据保存在 <code>local-secrets/codex/</code>，不导入开发者账号。目前此 Mac 入口没有独立的 Codex API-key 登录向导。</p>
+<p><strong>OpenCode：</strong>选择“配置 AI 接口 → OpenCode”，按官方工具提示选择服务商并配置密钥或登录。凭据和配置位于 <code>local-secrets/opencode/</code>。自定义 API 地址及模型需要按现有 <a href="https://opencode.ai/docs/providers/">OpenCode 服务商文档</a>配置；这个菜单不提供新的自定义地址向导。</p>
+<p>启动使用网页中保存的默认账号或 API 方案。选择 OpenCode 时无需另行登录 Codex；已有对话保留原有引擎。</p>
+<p>正常安装、登录和启动已接入 Codex App Server；无需在 Codex 桌面应用中手动添加 MCP。项目使用 <code>codex app-server --listen stdio://</code> 和本地 MCP / Skills，模型由你的账号提供。</p></section>
+<section><h2>常用命令</h2>
+<pre>bash Saplingagent.sh --lang zh install
+bash Saplingagent.sh --lang zh login
+bash Saplingagent.sh --lang zh opencode
+bash Saplingagent.sh --lang zh start
+bash Saplingagent.sh --lang zh doctor
+bash Saplingagent.sh --lang zh install --repair
+bash Saplingagent.sh --lang zh login --device-auth
+bash Saplingagent.sh --lang zh start --no-open
+bash Saplingagent.sh --lang zh logout</pre>
+<p>修复安装保留代码、凭据和业务数据；退出登录保留应用文件和聊天会话。设备登录能否使用由账号条件决定。首次启动后的网页通常为 <code>http://127.0.0.1:5173/</code>，端口可在 <code>config/runtime.json</code> 配置。</p></section>
+<section><h2>问题处理与分发</h2>
+<p>提示 Node 未安装或依赖变化时，先选择“安装 / 更新”。认证失败请查看实际账号错误；重新安装不能增加模型额度。端口被占用时停止自己的旧启动终端或修改配置，脚本不会按端口强行终止其他项目。服务未就绪时使用“服务诊断”及运行恢复页 <code>/__saplingagent/runtime</code>。</p>
+<p>安装锁存在时先等待，确认安装进程已结束后再按英文安装说明清理当前项目内的旧锁。移动应用前停止服务并移动整个文件夹；架构或锁文件变化后重新安装。</p>
+<p>项目权限沿用当前系统用户的 Full Access，不自动提升为 root。源码采用 PolyForm Noncommercial 1.0.0，商用需要项目方另行许可；第三方认证权益需要独立确认。本安装包不是签名的原生 Mac 应用。分发请使用干净源码包，排除自己的凭据、聊天数据、日志和已安装运行环境。</p></section>
+<section><h2>文件夹边界与对话回执</h2><p>分发时，全部项目自有代码、rules、MCP、Skills、配置、文档和脚本都在完整应用文件夹中。开发 Saplingagent 不修改文件夹外的代码，也不依赖开发者的其他项目；模型服务和安装时下载的依赖仍是声明的外部要求。</p><p>客户 Agent 保留当前系统用户的 Full Access。rules 默认建议在本文件夹内修改，客户明确要求时可以修改外部代码，不增加路径白名单或权限拦截。每次最终回复，包括只读对话，都要求给出同样的八项完成复核回执；只读对话不因此创建任务记录。实际模型是否遵循格式仍需真实对话验证。</p></section><section><h2>独立的 AI 配置网页</h2><p>安装后选择「配置 AI 接口」，脚本会打开当前项目专用的本地配置网页。ChatGPT 账号页签提供官方浏览器登录或设备码；API 页签支持命名方案、自选服务商 API Base URL、API 协议、密钥和准确模型 ID。Codex 自定义接口采用 Responses，OpenCode 可用 Chat Completions、Responses 或 Anthropic Messages。多个方案可以保存并切换默认值。</p><p>编辑已有方案时密钥留空会保留；读取模型列表是可选操作，不会发送对话。点击「完成配置」关闭配置服务并返回菜单，然后启动应用。网页关闭按钮本身不会停止服务。已运行的应用需要重启，并新建对话使用新的默认方案。默认 OpenCode 或自定义 Codex API 无需先登录 ChatGPT。密钥保存在项目内 local-secrets/api-keys，方案在 local-secrets/ai-config，不导入全局账号。</p><pre>bash Saplingagent.sh --lang zh configure
+bash Saplingagent.sh --lang zh configure --no-open</pre><p>自动打开失败时使用终端打印的本地网址。详细说明见 <a href="ai-configuration.html">AI configuration guide（英文）</a>。真实账号登录、额度、模型工具调用和 Windows 真机流程需实际验收。</p></section><section><h2>Claude Agent SDK</h2><p>安装 / 更新会在项目内安装官方 SDK 及原生程序。选择配置 AI → API / 自定义服务商 → Anthropic · Messages，填写自己的 API 密钥、准确模型 ID 和基础网址（https://api.anthropic.com/v1 或兼容接口）。保存并使用，完成配置后启动应用。Claude 方案不需要 Codex 登录或全局 Claude 安装；不提供 claude.ai 订阅账号登录。已有对话保留原来的引擎与模型。<a href="ai-configuration.html">配置与认证限制</a>。</p></section><section><h2>首次安装选择 Git 存放方式</h2><p>客户默认下载 release 分支。安装时选择：仅本地（有本地 Git 历史，无远端）、自己的仓库（输入已创建的仓库地址，作为 origin）、跟随作者 release（upstream）。已有仓库可选择保留现有配置，不切换当前分支 / 历史版本。新目录默认建立真实 release 分支，可自行配置。</p><p>先停止应用，再选择菜单 5「Git / 存放配置」，或运行 <code>bash Saplingagent.sh --lang zh git</code> 修改选择。配置保存在本地 .git/config，重装 / 修复保留当前选择。安装不会自动 pull、push、创建远端仓库或提交 PR，不覆盖自有远端和未提交修改。源码安装包不带 .git，用户选择后初始化；Mac 缺少 Git 时需安装 Apple 命令行工具（<code>xcode-select --install</code>），Windows 的 Git Bash 提供 Git。</p><p>跟随模式只获取上游历史，保留分发目录并基于实际源码提交建立本地快照。没有清单的 ZIP 必须与上游某个提交一致；无法识别或已修改的 ZIP 可选本地 / 自有仓库，或使用 Git 克隆。之后先执行 <code>git fetch upstream</code> 查看变更，再自行合并 <code>git merge upstream/release</code>，解决冲突、复核本地目标和任务记录后重启。安装 / 更新只处理依赖。分叉历史上的 pull 会停止，不会强制覆盖。</p><p>自动安装可设置 SAPLING_GIT_MODE=local、own 或 upstream；own 需要 SAPLING_GIT_REMOTE，可用 SAPLING_GIT_BRANCH 自选初始分支。网址不应包含密码或 token。Full Access 不变。</p></section></main></body></html>
