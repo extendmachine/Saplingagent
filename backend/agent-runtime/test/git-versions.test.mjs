@@ -182,3 +182,25 @@ test('application without its own repo cannot read or mutate the parent repo', a
   assert.equal((await run(parent, 'rev-parse', 'HEAD')).stdout.trim(), sha);
   assert.equal((await run(parent, 'branch', '--show-current')).stdout.trim(), 'main');
 });
+
+
+test('empty main reads without writing history, switches to itself, and first explicit save creates safe source history', async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'saplingagent-empty-git-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  await run(root, 'init', '-b', 'main'); await run(root, 'config', 'user.name', 'Fixture'); await run(root, 'config', 'user.email', 'fixture@example.invalid');
+  const clean = await readGitVersion(root);
+  assert.equal(clean.unborn, true); assert.equal(clean.head, null); assert.equal(clean.branch, 'main'); assert.equal(clean.detached, false);
+  assert.equal(clean.version, 'uncommitted'); assert.equal(clean.clean, true); assert.deepEqual(clean.recentCommits, []);
+  assert.deepEqual(clean.branches.map(branch => [branch.name, branch.current]), [['main', true]]);
+  assert.equal((await commitGitVersion(root)).savedCommit, null); assert.equal((await switchGitBranch(root, 'main')).head, null);
+  await assert.rejects(run(root, 'rev-parse', '--verify', 'HEAD'));
+  await assert.rejects(checkoutGitVersion(root, 'a'.repeat(40)), { code: 'GIT_VERSION_NOT_FOUND' });
+  await fs.writeFile(path.join(root, 'note.txt'), 'first source');
+  await fs.mkdir(path.join(root, 'local-secrets')); await fs.writeFile(path.join(root, 'local-secrets/key.txt'), 'SYNTHETIC_PRIVATE');
+  const pending = await readGitVersion(root); assert.notEqual(pending.fingerprint, clean.fingerprint);
+  assert.equal((await readGitVersion(root)).fingerprint, pending.fingerprint); assert.equal(pending.head, null);
+  const saved = await commitGitVersion(root);
+  assert.equal(saved.unborn, false); assert.ok(saved.head.sha); assert.equal(saved.branch, 'main'); assert.equal(saved.recentCommits.length, 1);
+  assert.equal((await run(root, 'ls-tree', '-r', '--name-only', 'HEAD')).stdout.trim(), 'note.txt');
+  assert.equal((await run(root, 'remote')).stdout.trim(), '');
+});
