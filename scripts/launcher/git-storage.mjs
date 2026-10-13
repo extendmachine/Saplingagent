@@ -57,6 +57,7 @@ async function defaults(root) {
   const previous = await fs.readFile(file, 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; });
   if (previous.includes('# Saplingagent local source snapshots')) return;
   const ignores = ['local-secrets/', '.secrets/', 'secrets/', '.runtime/', '.cache/', '.worktrees/', 'logs/', 'data/', 'snapshots/', 'node_modules/', '.venv/', 'docker-images/', 'dist/', 'build/', 'selfdata.json', '.env', '.env.*', '*.key', '*.pem', '*.p12', '*.pfx', '*.log', 'CLAUDE.local.md', 'settings.local.json', '**/ai-tasks/runtime/'];
+  await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, previous + '\n# Saplingagent local source snapshots\n' + ignores.join('\n') + '\n');
 }
 async function initialCommit(root, parent) {
@@ -86,9 +87,6 @@ export async function configureGitStorage(root, { force = false, mode, remoteUrl
   }
   const existing = Boolean(marker);
   const hasHead = existing && Boolean(await git(root, ['rev-parse', '--verify', 'HEAD'], { optional: true }));
-  let delivery;
-  try { delivery = JSON.parse(await fs.readFile(path.join(root, 'delivery.json'), 'utf8')); }
-  catch (error) { if (error.code !== 'ENOENT') throw new Error(t('delivery.json is invalid. Repair it before retrying Git setup.', 'delivery.json 无效，请修复后重试 Git 配置。')); }
   if (existing) {
     const top = await fs.realpath(await git(root, ['rev-parse', '--show-toplevel']));
     if (top !== await fs.realpath(root)) throw new Error(t('Git belongs to another folder; configuration was not changed.', 'Git 属于其他目录，未修改配置。'));
@@ -104,12 +102,26 @@ export async function configureGitStorage(root, { force = false, mode, remoteUrl
   remoteUrl ??= process.env.SAPLING_GIT_REMOTE;
   branch ??= process.env.SAPLING_GIT_BRANCH;
   if (!mode) {
-    output(t('\nGit / storage — choose where your application changes belong:\n  1. Local only (create/keep local Git history; remove all remotes)\n  2. My own repository (connect your existing repository URL)\n  3. Follow Saplingagent release (author upstream; no automatic push/PR)', '\nGit / 存放 — 选择应用修改存放位置：\n  1. 仅本地（创建 / 保留本地 Git 仓库，移除全部远端链接）\n  2. 自己的远端仓库（连接已创建的仓库地址）\n  3. 跟随 Saplingagent release（作者上游；不自动推送或发 PR）'));
-    const choice = prompt(t('Choose [Enter=1]: ', '请选择 [回车=1]：'), '1');
+    output(t('\nGit / storage — choose where your application changes belong:\n  1. Local only (ERASE all Git history/config; start empty main, no remotes)\n  2. My own repository (connect your existing repository URL)\n  3. Follow Saplingagent release (author upstream; no automatic push/PR)', '\nGit / 存放 — 选择应用修改存放位置：\n  1. 仅本地（清除全部 Git 历史和配置，重建空 main，无远端）\n  2. 自己的远端仓库（连接已创建的仓库地址）\n  3. 跟随 Saplingagent release（作者上游；不自动推送或发 PR）'));
+    const choice = prompt(t('Choose [1-3] (local clears Git history): ', '请选择 [1-3]（仅本地会清除 Git 历史）：'), '');
     mode = { '1': 'local', '2': 'own', '3': 'upstream' }[choice];
     if (!mode) throw new Error(t('Invalid selection. Choose 1, 2 or 3; nothing was changed.', '选项无效。请选择 1、2 或 3；未进行修改。'));
   }
   if (!modes.includes(mode) || (mode === 'existing' && !hasHead)) throw new Error(t('Invalid Git storage mode.', 'Git 存放模式无效。'));
+  if (mode === 'local') {
+    output(t('Local management clears ALL previous Git commits, branches, tags, version names and remote configuration in this folder. Application files, data and credentials remain. The new repository has only an empty main branch and no cloud links; no initial commit is created.', '本地管理将清除本文件夹内全部 Git 提交历史、分支、标签、版本名称和远端配置。应用文件、数据和凭据保留。重建后只有空 main 分支，不连接云端，也不创建初始提交。'));
+    if (existing) await fs.rm(path.join(root, '.git'), { recursive: true });
+    await git(root, ['init', '--template=', '-b', 'main']);
+    await identity(root);
+    await defaults(root);
+    await git(root, ['config', '--local', 'saplingagent.initialBranch', 'main']);
+    await git(root, ['config', '--local', 'saplingagent.storageMode', 'local']);
+    output(t('Local Git ready: main; 0 commits; no remotes. Use Save version when you want your first local commit.', '本地 Git 已就绪：main；0 条提交；无远端。需要第一条本地记录时，点击 Save version。'));
+    return { mode: 'local', branch: 'main', unborn: true, preserved: false };
+  }
+  let delivery;
+  try { delivery = JSON.parse(await fs.readFile(path.join(root, 'delivery.json'), 'utf8')); }
+  catch (error) { if (error.code !== 'ENOENT') throw new Error(t('delivery.json is invalid. Repair it before retrying Git setup.', 'delivery.json 无效，请修复后重试 Git 配置。')); }
   if (mode === 'existing') {
     if (branch && branch !== currentBranch) throw new Error(t('Keep existing retains the current version. Choose another mode to configure a branch.', '保留现有模式保留当前版本。请选择其他模式配置分支。'));
     await git(root, ['config', '--local', 'saplingagent.storageMode', mode]);
@@ -120,7 +132,7 @@ export async function configureGitStorage(root, { force = false, mode, remoteUrl
     validateRemote(remoteUrl);
     if (isAuthor(remoteUrl)) throw new Error(t('This is the author repository. Choose Follow release, or enter your own repository URL.', '这是作者仓库，请选择跟随 release，或输入自己的仓库地址。'));
   }
-  // Local/own storage changes remote configuration, not an existing selected version.
+  // Own storage changes remote configuration, not an existing selected version.
   // An empty current branch represents detached HEAD and must remain detached.
   const keepVersion = hasHead && mode !== 'upstream' && !branch;
   const target = keepVersion ? currentBranch : branch || (hasHead && !isAuthor(origin) ? currentBranch : delivery?.git?.initialBranch || 'release') || 'release';
@@ -186,10 +198,6 @@ export async function configureGitStorage(root, { force = false, mode, remoteUrl
       await git(root, ['config', '--local', '--unset-all', 'remote.origin.pushurl'], { optional: true });
     } else await remote(root, 'origin', remoteUrl);
     await git(root, ['config', '--local', 'saplingagent.ownRemote', remoteUrl]);
-  }
-  if (mode === 'local') {
-    for (const name of (await git(root, ['remote'])).split('\n').filter(Boolean)) await git(root, ['remote', 'remove', name]);
-    await git(root, ['config', '--local', '--unset-all', 'saplingagent.ownRemote'], { optional: true });
   }
   if (mode === 'upstream') {
     await git(root, ['config', '--local', `branch.${target}.remote`, 'upstream']);
