@@ -95,14 +95,13 @@ On first **Install / update**, choose one storage mode:
 
 | Choice | Local history | Remote behavior |
 | --- | --- | --- |
-| Local only (default for a ZIP) | New Git repository on `release` | No remote and no upload |
-| My own repository | Local commits; fresh folder starts on `release` | Add your existing repository URL as `origin`; nothing is pushed during installation |
-| Follow Saplingagent release | Track the author's `upstream/release` | Fetch upstream history; no automatic pull, push or PR |
-| Keep existing (default for an existing repository) | Keep your current branch/version and history | Retain your existing configuration |
+| 1. Local only (default) | Create a repository on `release` if absent; retain existing history and selected version | Remove **all** remote links; no upload |
+| 2. My own repository | Local commits; fresh folder starts on `release`; existing selected version is retained | Add or update `origin` to your repository URL; nothing is pushed during installation |
+| 3. Follow Saplingagent release | Track the author's `upstream/release` | Fetch upstream history; no automatic pull, push or PR |
 
 Local only means local Git snapshots, not a cloud repository. For your own remote, create an empty repository in your preferred hosting service first, then paste its credential-free HTTPS/SSH URL. Installation does not create a GitHub repository, sign in to a Git host or publish changes. A nonempty remote may have unrelated history: inspect and reconcile it before your first manual push. Keep passwords/tokens out of URLs.
 
-Use **5. Git / storage setup** or `bash Saplingagent.sh git` to reconfigure. Installation remembers its choice in `.git/config` (`saplingagent.storageMode`); repeat/repair installations preserve your current branch, including a deliberately selected historical version. A linked development worktree keeps its shared configuration. Existing custom remotes are never silently overwritten or removed. An explicit switch from a previously configured own mode to local-only removes its managed origin and keeps local history. Save pending changes before configuring another branch.
+Use **5. Git / storage setup** or `bash Saplingagent.sh git` to reconfigure. Installation remembers its choice in `.git/config` (`saplingagent.storageMode`); repeat/repair installations preserve your current branch, including a deliberately selected historical version. A linked development worktree keeps its shared configuration. Choosing **1** removes every remote, including custom origin/upstream/mirror links, while preserving local files, commits, staged changes and the selected branch/version. Choosing **2** explicitly adds or updates origin to the supplied URL; unrelated non-author remotes remain. The storage submenu contains only 1, 2 and 3 (Enter selects 1); the main launcher still has Diagnostics and Quit. Older saved keep-existing choices remain valid on reinstall. Save pending changes before configuring another branch.
 
 For unattended first installation, set `SAPLING_GIT_MODE=local`, `own` or `upstream`; `own` also needs `SAPLING_GIT_REMOTE`. `SAPLING_GIT_BRANCH` explicitly overrides the initial branch. To change a saved choice, use the Git setup action. Your environment and Git global configuration remain unchanged.
 
