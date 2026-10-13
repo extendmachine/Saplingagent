@@ -51,3 +51,10 @@ Rollback: preserve local-secrets and data, select the previous reviewed Git vers
 
 
 For an extracted customer ZIP, first install asks for Git storage and starts real release history unless explicitly configured. An app placed beneath another repository will not use that parent for version operations. Use launcher menu5/git to initialize its own repository. Returning to older Agent source can restore the older parent-discovery behavior; retain customer Git/data and never remove .git as a runtime repair. Full Access remains unchanged.
+
+
+## OpenCode displays internal instructions (TASK-20261012-017)
+
+An older adapter forwarded user-message parts as assistant replies, exposing the appended runtime instructions (for example Current permissions: full-access). Update the complete source to a version containing TASK017, then Restart backend/Restart app, or stop the launch terminal and run bash Saplingagent.sh start. Install / update repairs dependencies; it does not download new source. Keep data/ and local-secrets/; do not reset Git storage or credentials for this bug. Main receives the maintainer fix; release must be explicitly synchronized before release downloads contain it.
+
+New turns attribute replies to the submitted message and send runtime instructions as system context. Previously saved incorrect bubbles are preserved, so a new conversation gives a clean view. Old native OpenCode user history may also contain the former context. If a new conversation shows a real API/quota/model error, check its configured endpoint, protocol, exact model and provider rights; readiness/catalog discovery alone does not prove inference. No automatic resend, history cleanup or model fallback is introduced.

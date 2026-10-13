@@ -63,3 +63,10 @@ Public documentation and npm metadata need no login; real inference/model catalo
 
 
 Git project-root correctness (TASK-20261012-011), checked 2026-10-12: https://git-scm.com/docs/git-init (official Git, no read login) describes project-local metadata. Application version operations resolve their actual root; no new model/authentication source or API dependency.
+
+
+## OpenCode message attribution (TASK-20261012-017, checked 2026-10-12)
+
+- https://opencode.ai/docs/sdk/ — official SDK session prompts, message metadata, SSE subscription and generated OpenAPI types. Public documentation; real provider inference requires the customer's credentials/quota.
+- https://opencode.ai/docs/server/ — official headless native server, prompt_async and message retrieval. Public; native server remains project-local.
+- Installed @opencode-ai/sdk1.19.0 dist/gen/types.gen.d.ts verifies message.updated.info.role, assistant parentID, message.part.updated, explicit prompt messageID/system/parts and session.message. Local native1.19.0 synthetic Chat Completions, MCP, resume and error regression verify pinned behavior without a real model or key. No v2/latest SDK upgrade is assumed; Windows native acceptance remains pending.

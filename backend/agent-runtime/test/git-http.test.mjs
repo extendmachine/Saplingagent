@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createAgentServer } from '../server.mjs';
 const exec = promisify(execFile);
-async function fixture(t) {
+async function fixture(t, { unborn = false } = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'saplingagent-git-http-'));
   const git = (...args) => exec('git', ['-C', root, ...args]);
   await git('init', '-b', 'main'); await git('config', 'user.name', 'Test'); await git('config', 'user.email', 'test@example.invalid');
@@ -16,10 +16,14 @@ async function fixture(t) {
   await fs.writeFile(path.join(root, 'config/runtime.json'), JSON.stringify({ agentPort: 4310, frontPort: 5173, workspacePort: 4311 }));
   await fs.writeFile(path.join(root, 'local-secrets/runtime/service-token'), 'SYNTHETIC_TEST_TOKEN');
   await fs.writeFile(path.join(root, '.gitignore'), 'local-secrets/\nlogs/\n');
-  await fs.writeFile(path.join(root, 'note.txt'), 'original'); await git('add', '--all'); await git('commit', '-m', 'Initial');
-  const initial = (await git('rev-parse', 'HEAD')).stdout.trim();
-  await git('branch', 'release');
-  await fs.writeFile(path.join(root, 'note.txt'), 'new'); await git('add', 'note.txt'); await git('commit', '-m', 'Second');
+  await fs.writeFile(path.join(root, 'note.txt'), 'original');
+  let initial;
+  if (!unborn) {
+    await git('add', '--all'); await git('commit', '-m', 'Initial');
+    initial = (await git('rev-parse', 'HEAD')).stdout.trim();
+    await git('branch', 'release');
+    await fs.writeFile(path.join(root, 'note.txt'), 'new'); await git('add', 'note.txt'); await git('commit', '-m', 'Second');
+  }
   const server = await createAgentServer({ root });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(async () => { await server.shutdown(); await fs.rm(root, { recursive: true, force: true }); });
@@ -71,4 +75,18 @@ test('runtime prepare requires internal token even for browser origins and refus
   assert.equal((await f.request('/internal/runtime/prepare',{})).status,200);
   assert.equal((await f.request('/api/git/label',{sha:f.initial,name:'blocked'})).status,503);
   assert.equal((await f.request('/internal/runtime/release',{})).status,200);
+});
+
+
+test('Git HTTP returns empty main without inference/history and first explicit save creates one source version', async t => {
+  const f=await fixture(t,{unborn:true});
+  for (let i=0;i<2;i++) {
+    const response=await f.request('/api/git'); assert.equal(response.status,200);
+    const {git}=await response.json(); assert.equal(git.head,null); assert.equal(git.unborn,true); assert.equal(git.branch,'main');
+    assert.deepEqual(git.recentCommits,[]); assert.deepEqual(git.branches.map(b=>b.name),['main']);
+  }
+  await assert.rejects(f.git('rev-parse','--verify','HEAD'));
+  const save=await f.request('/api/git/commit',{}); assert.equal(save.status,200);
+  const {git}=await save.json(); assert.equal(git.unborn,false); assert.equal(git.recentCommits.length,1); assert.ok(git.head.sha);
+  assert.equal((await f.git('remote')).stdout.trim(),'');
 });

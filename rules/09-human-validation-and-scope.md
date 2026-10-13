@@ -4,6 +4,10 @@
 
 The modified testing and confirmation of microservices are completed by AI and manual cooperation. AI does not specifically create a test entrance to avoid the test data interfering with the project itself. AI must write the verification situation, the reason for non-verification and subsequent human confirmation matters into `TODO.md`.
 
+## Saplingagent maintainer workflow
+
+For the owner-authorized direct-main workflow in rule04 (2026-10-12), per-version human testing and merge confirmation are optional rather than a synchronization prerequisite. Complete available self-checks, report unverified matters and synchronize authorized work to main directly. Self-checks do not establish human acceptance; record the owner authorization and actual verification separately. This exception applies only to the maintainer repository, not inherited customer permission. Other requirements and historical human test records remain intact.
+
 ## Manual collaborative verification
 
 1. After the modification is completed, AI should explain which microservices are involved this time.
