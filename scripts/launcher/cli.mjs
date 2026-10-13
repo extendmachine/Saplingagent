@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { readConnections,defaultSelection,codexConnection,claudeConnections,openCodeConnections } from '../../contracts/ai-configuration.mjs';
+import { configureGitStorage } from './git-storage.mjs';
 import { setup } from '../setup.mjs';
 import { codexBinary, claudeBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
@@ -84,6 +85,7 @@ async function install(repair = false) {
   }
   const stage = path.join(root, '.runtime', `codex-install-${randomUUID()}`);
   try {
+    await configureGitStorage(root);
     if (!windows) for (const file of ['Saplingagent.sh', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
     if (!repair && await installed()) {
       await localSetup();
@@ -257,9 +259,10 @@ try {
   if (action === 'install' && args.every(x => x === '--repair')) await install(args.includes('--repair'));
   else if (action === 'login' && args.every(x => x === '--device-auth')) await login(args.includes('--device-auth'));
   else if (action === 'start' && args.every(x => x === '--no-open')) await start(args.includes('--no-open'));
+  else if (action === 'git' && !args.length) await configureGitStorage(root, { force: true });
   else if (action === 'doctor' && !args.length) await doctor();
   else if (action === 'logout' && !args.length) await logout();
   else if (action === 'configure' && args.every(x=>x==='--no-open')) await configureAI(args.includes('--no-open'));
   else if (action === 'opencode' && !args.length) await configureOpenCode();
-  else throw new Error(t('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode.', "可用操作：install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode。"));
+  else throw new Error(t('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode / git.', "可用操作：install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode / git。"));
 } catch (error) { console.error(error.message); process.exitCode = 1; }

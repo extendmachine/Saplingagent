@@ -116,7 +116,7 @@ test('Chinese failed operation returns to the menu and language switching propag
   const result = await execute(root, 'invalid\n1\n9\n1\n4\n0\n', [], 'zh');
   assert.equal(result.code, 0, result.output);
   assert.match(result.output, /操作未完成（退出码 7）/);
-  assert.match(result.output, /请输入 0、1、2、3、4 或 9/);
+  assert.match(result.output, /请输入 0、1、2、3、4、5 或 9/);
   assert.match(result.output, /Operation incomplete \(exit 7\)/);
   assert.equal(await actions(root), 'install\ndoctor\n');
   assert.equal(await fs.readFile(path.join(root, 'languages.txt'), 'utf8'), 'zh\nen\n');
@@ -135,4 +135,15 @@ test('explicit Chinese actions retain flags and status; malformed language never
   assert.equal(result.code, 7);
   assert.equal(await actions(root), 'install --repair\n');
   assert.equal(await fs.readFile(path.join(root, 'languages.txt'), 'utf8'), 'zh\n');
+});
+
+
+test('Git storage setup is reachable in both languages from the same launcher', async t => {
+  const root = await fixture(t);
+  for (const language of ['en', 'zh']) {
+    const result = await execute(root, '5\n0\n', [], language);
+    assert.equal(result.code, 0);
+    assert.match(result.output, language === 'en' ? /Git \/ storage setup/ : /Git \/ 存放配置/);
+  }
+  assert.equal(await actions(root), 'git\ngit\n');
 });

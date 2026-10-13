@@ -7,8 +7,8 @@ say() {
 
 SEED_PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 case "${1:-}" in
-  install|login|configure|start|doctor|logout|opencode) ;;
-  *) say "Available actions: install / login / start / doctor / logout / configure / opencode." "可用操作：install / login / start / doctor / logout / configure / opencode。" >&2; exit 1 ;;
+  install|login|configure|start|doctor|logout|opencode|git) ;;
+  *) say "Available actions: install / login / start / doctor / logout / configure / opencode / git." "可用操作：install / login / start / doctor / logout / configure / opencode / git。" >&2; exit 1 ;;
 esac
 if [ "$(/usr/bin/uname -s)" != "Darwin" ]; then
   say "This installer currently supports macOS only." "此安装程序目前仅支持 macOS。" >&2

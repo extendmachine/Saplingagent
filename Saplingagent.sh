@@ -21,7 +21,7 @@ say() {
   if [ "$SAPLING_LANG" = 'zh' ]; then printf '%s\n' "$2"; else printf '%s\n' "$1"; fi
 }
 usage() {
-  say 'Usage: bash Saplingagent.sh [--lang en|zh] [install [--repair] | login [--device-auth] | configure [--no-open] | opencode | start [--no-open] | doctor | logout]' '用法：bash Saplingagent.sh [--lang en|zh] [install [--repair] | login [--device-auth] | configure [--no-open] | opencode | start [--no-open] | doctor | logout]'
+  say 'Usage: bash Saplingagent.sh [--lang en|zh] [install [--repair] | login [--device-auth] | configure [--no-open] | opencode | start [--no-open] | doctor | logout | git]' '用法：bash Saplingagent.sh [--lang en|zh] [install [--repair] | login [--device-auth] | configure [--no-open] | opencode | start [--no-open] | doctor | logout | git]'
   say 'Run without arguments to choose a language and open the interactive menu.' '不带参数运行即可选择语言并进入交互菜单。'
 }
 
@@ -37,7 +37,7 @@ select_bootstrap() {
 if [ "$#" -gt 0 ]; then
   case "$1" in
     -h|--help) usage; exit 0 ;;
-    install|login|configure|opencode|start|doctor|logout) select_bootstrap || exit 1; exec /bin/bash "$SAPLING_BOOTSTRAP" "$@" ;;
+    install|login|configure|opencode|start|doctor|logout|git) select_bootstrap || exit 1; exec /bin/bash "$SAPLING_BOOTSTRAP" "$@" ;;
     *) usage >&2; exit 2 ;;
   esac
 fi
@@ -96,17 +96,19 @@ while true; do
   say '  2. Configure AI' '  2. 配置 AI 接口'
   say '  3. Start app' '  3. 启动应用'
   say '  4. Diagnostics' '  4. 服务诊断'
+  say '  5. Git / storage setup' '  5. Git / 存放配置'
   say '  9. Change language' '  9. 切换语言'
   say '  0. Quit' '  0. 退出'
-  if [ "$SAPLING_LANG" = 'zh' ]; then printf '请选择 [0-4, 9]: '; else printf 'Choose [0-4, 9]: '; fi
+  if [ "$SAPLING_LANG" = 'zh' ]; then printf '请选择 [0-5, 9]: '; else printf 'Choose [0-5, 9]: '; fi
   if ! IFS= read -r choice; then printf '\n'; exit 0; fi
   case "$choice" in
     1) run_action install ;;
     2) run_action configure ;;
     3) run_action start ;;
     4) run_action doctor ;;
+    5) run_action git ;;
     9) choose_language || exit 0 ;;
     0) exit 0 ;;
-    *) say 'Please enter 0, 1, 2, 3, 4 or 9.' '请输入 0、1、2、3、4 或 9。' ;;
+    *) say 'Please enter 0, 1, 2, 3, 4, 5 or 9.' '请输入 0、1、2、3、4、5 或 9。' ;;
   esac
 done
