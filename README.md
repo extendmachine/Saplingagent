@@ -22,10 +22,28 @@ Customer Full Access stays enabled. Rules recommend keeping normal application c
 
 ## Install, configure, start
 
-Get the complete application folder:
+For a new installation, run one command in **macOS Terminal** or **Windows Git Bash** (install [Git for Windows](https://gitforwindows.org/) first):
 
 ```bash
-git clone --branch release https://github.com/extendmachine/Saplingagent.git
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/Saplingagent/release/install.sh | bash'
+```
+
+The independent `install.sh` resolves the current **release** commit, downloads that exact source snapshot into `./Saplingagent`, runs the existing installer, then opens the configuration/start menu. It does not clone all repository branches or require Node before downloading. Git storage remains your choice: local-only, your own repository, or following release. Configure your own AI access and choose Start app after installation.
+
+The target folder must be new; existing applications are preserved. Add `--dir` and `--lang` for a different destination/language:
+
+```bash
+bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/Saplingagent/release/install.sh | bash -s -- --dir "./My Saplingagent" --lang zh'
+```
+
+Use `--download-only` to fetch source without installing or opening a menu; then run `bash Saplingagent.sh` inside the downloaded folder. First Install initializes recipient goal/task records; edits made before installation are preserved with a warning. The script needs HTTPS access to GitHub API/archive endpoints and standard curl/tar/SHA256 tools (macOS and Git Bash supply them). API/rate-limit/download failures are reported; retry in a new folder if a completed source folder already exists. All dependencies and configuration install locally. This command is for fresh installation, not automatic source updates.
+
+Only release is downloaded. Follow mode stores a single selected-branch fetch mapping and skips tags, so normal subsequent fetches do not bring author main/testcode into the local branch list. Local mode's empty main is your own independent history. An explicitly configured branch remains supported; existing local branches are preserved. The public repository remains manually accessible; this is a default delivery workflow, not a permission restriction.
+
+Alternatively get the complete application folder manually:
+
+```bash
+git clone --single-branch --branch release --no-tags https://github.com/extendmachine/Saplingagent.git
 cd Saplingagent
 ```
 

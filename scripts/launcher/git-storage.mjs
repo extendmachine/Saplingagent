@@ -155,6 +155,9 @@ export async function configureGitStorage(root, { force = false, mode, remoteUrl
   }
   if (mode === 'upstream') {
     await remote(root, 'upstream', AUTHOR_REMOTE);
+    // Follow only the selected release branch on future ordinary fetches as well.
+    await git(root, ['config', '--local', '--replace-all', 'remote.upstream.fetch', `+refs/heads/${target}:refs/remotes/upstream/${target}`]);
+    await git(root, ['config', '--local', 'remote.upstream.tagOpt', '--no-tags']);
     await git(root, ['fetch', '--no-tags', 'upstream', `refs/heads/${target}:refs/remotes/upstream/${target}`]);
   }
   if (!hasHead) {

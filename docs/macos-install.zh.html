@@ -8,7 +8,7 @@ body{margin:0;background:#f5f6f3;color:#26302a;font:16px/1.8 system-ui,sans-seri
 </style></head>
 <body><main>
 <nav><a href="index.html">项目概览（英文）</a><a href="macos-install.html" lang="en">English install guide</a><a href="runtime.html">运行说明（英文）</a></nav>
-<h1>Saplingagent macOS 安装与接口配置</h1>
+<h1>Saplingagent macOS 安装与接口配置</h1><section><h2>一行命令安装 release</h2><p>在 macOS 终端或 Windows Git Bash 的目标上级目录运行下方命令。Windows 先安装 Git for Windows。引导脚本只下载 release 的固定提交到新建 Saplingagent 文件夹，再自动安装并打开现有菜单；随后配置自己的 AI 接口并启动。</p><pre>bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/Saplingagent/release/install.sh | bash -s -- --lang zh'</pre><p>可传 --dir 指定新文件夹，--download-only 仅下载。已有目标目录不会覆盖。首次安装初始化客户目标和任务记录，安装前已有修改会保留。跟随模式后续普通 fetch 也只拉选中的 release、不拉标签，不自动带入作者 main/testcode。仅本地模式的 main 是客户自己的独立历史。公开仓库仍可主动访问；AI 全部权限不变。</p><p>这是首次安装方案，不是现有源码更新器。安装后可在应用目录执行 bash Saplingagent.sh。<a href="../README.md">完整说明</a></p></section>
 <p>使用一个 <code>Saplingagent.sh</code> 脚本完成安装、配置接口、启动和诊断。中文和英文共用同一个脚本，完整应用文件夹必须一起保留。</p>
 <section><h2>运行要求</h2>
 <p>macOS 13.5 或更新版本，Apple Silicon 或 Intel，可写的本地文件夹，以及可连接 Node.js、npm、OpenAI 和所选模型服务商的网络。压缩包安装不要求全局 Node、Homebrew、Xcode 或 Codex 桌面应用；版本管理和重新打包需要 Git。自动化检查在 Apple Silicon 上执行，Intel 的真实安装仍需相应设备验证。</p>
