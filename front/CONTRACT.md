@@ -57,3 +57,8 @@ Chat uses GET /api/engines.defaultSelection for a fresh/new conversation only. A
 ## Claude Agent engine (TASK-20261012-005–009)
 
 Engine ID `claude` uses the project-local official Claude Agent SDK, with API-only Anthropic Messages profiles. Each conversation binds `engine`, `providerId` (`sapling-<profile-id>`) and `modelId`; existing bindings are immutable. Configuration accepts custom HTTP(S) API base URLs ending in `/v1`; SDK transport removes this trailing API version before its own `/v1/messages` route. Keys remain in local-secrets, never public responses. The default takes effect after restart. Local initialization checks MCP and Skills without a model prompt; authentication means a saved key, not proven quota. Streaming, completion, interruption and failure use existing chat events. Missing native sessions are reported, never silently replaced. Full Access and the completion-review receipt remain unchanged. No claude.ai subscription login is offered.
+
+
+## Empty local repository (TASK-20261012-016)
+
+GET /api/git may return unborn:true and head:null before the first commit, with a single current symbolic main branch and empty recentCommits. Display main and No commits yet without an error; disable naming the current version until head exists. Save version remains an explicit user action for pending eligible source. Reading/refreshing the panel creates no history and contacts no remote. Existing committed-head responses remain compatible. Reset warnings and metadata deletion belong to the launcher; no reset button or destructive HTTP endpoint is added.

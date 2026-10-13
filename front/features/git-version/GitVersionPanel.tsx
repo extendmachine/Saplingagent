@@ -4,7 +4,7 @@ import { AlertTriangle, Check, ChevronDown, GitBranch, GitCommitHorizontal, Load
 type CommitInfo = { sha: string; shortSha: string; subject: string; committedAt: string; displayName?: string };
 type GitBranchInfo = { name: string; shortSha: string; subject: string; current: boolean; occupied: boolean };
 type GitState = {
-  repository: string; branch: string | null; detached: boolean; head: CommitInfo; version: string; fingerprint: string;
+  repository: string; branch: string | null; detached: boolean; head: CommitInfo | null; unborn?: boolean; version: string; fingerprint: string;
   clean: boolean; changeCount: number; changes: Array<{ code: string; file: string }>; changesTruncated: boolean;
   branches: GitBranchInfo[]; recentCommits: CommitInfo[]; historyTruncated?: boolean;
   autoCommit?: CommitInfo | null; savedCommit?: CommitInfo | null;
@@ -40,6 +40,7 @@ export function GitVersionPanel() {
       const next = await requestGit(`/api/git?limit=${limit}`);
       if (!alive.current || epoch.current !== request) return;
       setGit(next); setError('');
+      if (!next.head) { setTarget(null); setName(''); setMessage(''); }
     } catch (nextError) {
       if (alive.current && epoch.current === request) setError(nextError instanceof Error ? nextError.message : 'Unable to read versions');
     } finally {
@@ -56,9 +57,9 @@ export function GitVersionPanel() {
     return () => { alive.current = false; ++epoch.current; window.clearInterval(timer); document.removeEventListener('visibilitychange', visible); };
   }, [refresh]);
 
-  const selectedCommit = target?.kind === 'commit' ? (git?.recentCommits.find(commit => commit.sha === target.id) || (git?.head.sha === target.id ? git.head : undefined)) : undefined;
+  const selectedCommit = target?.kind === 'commit' ? (git?.recentCommits.find(commit => commit.sha === target.id) || (git?.head?.sha === target.id ? git.head : undefined)) : undefined;
   const selectedBranch = target?.kind === 'branch' ? git?.branches.find(branch => branch.name === target.id) : undefined;
-  const canSwitch = Boolean(selectedCommit ? selectedCommit.sha !== git?.head.sha : selectedBranch && !selectedBranch.current && !selectedBranch.occupied);
+  const canSwitch = Boolean(selectedCommit ? selectedCommit.sha !== git?.head?.sha : selectedBranch && !selectedBranch.current && !selectedBranch.occupied);
 
   const choose = (commit: CommitInfo) => { setTarget({ kind: 'commit', id: commit.sha }); setName(commit.displayName || ''); setMessage(''); };
   const mutate = async (operation: 'commit' | 'switch' | 'checkout' | 'label', input?: object) => {
@@ -71,7 +72,7 @@ export function GitVersionPanel() {
       if (!alive.current) return;
       setGit({ ...next, ...expanded });
       if (operation === 'label') { setMessage(name.trim() ? 'Version name saved' : 'Version name cleared'); }
-      else if (operation === 'commit') { choose(next.head); setMessage(next.savedCommit ? `Saved version ${next.savedCommit.shortSha}` : 'Current version saved'); }
+      else if (operation === 'commit') { if (next.head) choose(next.head); setMessage(next.savedCommit ? `Saved version ${next.savedCommit.shortSha}` : 'Current version saved'); }
       else { setMessage('Version loaded. Reloading page…'); window.setTimeout(() => window.location.reload(), 700); }
     } catch (nextError) {
       if (alive.current) setError(nextError instanceof Error ? nextError.message : 'Version operation failed');
@@ -82,7 +83,7 @@ export function GitVersionPanel() {
     window.dispatchEvent(new Event('saplingagent:before-restart'));
     void mutate(target.kind === 'branch' ? 'switch' : 'checkout', target.kind === 'branch' ? { branch: target.id } : { sha: target.id });
   };
-  const label = git ? `${git.branch || 'Version'} · ${git.head.displayName || git.head.shortSha}` : 'Versions';
+  const label = git ? (git.head ? `${git.branch || 'Version'} · ${git.head.displayName || git.head.shortSha}` : git.branch || 'Versions') : 'Versions';
 
   return <aside className={`git-version-anchor${open ? ' is-open' : ''}`} aria-label="Git version management">
     <button className="git-version-trigger" type="button" onClick={() => setOpen(value => !value)} aria-expanded={open}>
@@ -104,17 +105,18 @@ export function GitVersionPanel() {
       {loading && !git ? <div className="git-loading"><LoaderCircle className="spinning" size={18} /> Loading versions…</div> : null}
       {git ? <>
         <div className="git-current-card">
-          <div className="git-current-line"><GitCommitHorizontal size={15} /><strong>{git.head.displayName || git.branch || 'Historical version'}</strong><code>{git.head.shortSha}</code></div>
-          <p title={git.head.subject}>{git.head.subject}</p>
-          <div className={`git-worktree-state ${git.clean ? 'is-clean' : 'is-dirty'}`}>{git.clean ? <><Check size={13} /> Current page committed</> : <><AlertTriangle size={13} /> {git.changeCount} changes, saved before switching</>}</div>
-          <button className="git-edit-current" type="button" onClick={() => choose(git.head)} disabled={Boolean(busy)}>Name current version</button>
+          <div className="git-current-line"><GitCommitHorizontal size={15} /><strong>{git.head?.displayName || git.branch || 'Historical version'}</strong><code>{git.head?.shortSha}</code></div>
+          <p title={git.head?.subject}>{git.head?.subject || 'No commits yet. Use Save version to create your first local version.'}</p>
+          <div className={`git-worktree-state ${git.clean ? 'is-clean' : 'is-dirty'}`}>{git.clean ? <><Check size={13} /> {git.head ? 'Current page committed' : 'No local commits'}</> : <><AlertTriangle size={13} /> {git.changeCount} changes, saved before switching</>}</div>
+          <button className="git-edit-current" type="button" onClick={() => { if (git.head) choose(git.head); }} disabled={!git.head || Boolean(busy)}>Name current version</button>
         </div>
         {!git.clean ? <details className="git-changes"><summary>View changed files</summary><ul>{git.changes.map(change => <li key={`${change.code}:${change.file}`}><code>{change.code}</code><span>{change.file}</span></li>)}</ul>{git.changesTruncated ? <p>Showing the first 100 changes</p> : null}</details> : null}
         <div className="git-section-title"><span>Committed versions</span><small>{git.recentCommits.length}</small></div>
         <div className="git-commit-list" aria-label="Committed versions">
+          {!git.head ? <p className="git-empty-history">No commits yet</p> : null}
           {git.recentCommits.map(commit => <button className={`git-branch-row${selectedCommit?.sha === commit.sha ? ' is-selected' : ''}`} type="button" key={commit.sha} disabled={Boolean(busy)} aria-pressed={selectedCommit?.sha === commit.sha} onClick={() => choose(commit)}>
             <span className="git-branch-main"><span title={commit.displayName || commit.subject}>{commit.displayName || commit.subject}</span><small>{new Date(commit.committedAt).toLocaleString('en-US')} {commit.displayName ? `· ${commit.subject}` : ''}</small></span>
-            <span className="git-branch-meta">{commit.sha === git.head.sha ? 'Current · ' : ''}{commit.shortSha}</span>
+            <span className="git-branch-meta">{commit.sha === git.head?.sha ? 'Current · ' : ''}{commit.shortSha}</span>
           </button>)}
         </div>
         {git.historyTruncated && limit < 500 ? <button className="git-load-more" type="button" disabled={Boolean(busy) || loading} onClick={() => setLimit(value => Math.min(500, value + 25))}>Load older versions</button> : null}
