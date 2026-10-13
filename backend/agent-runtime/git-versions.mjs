@@ -21,7 +21,7 @@ async function assertRepositoryRoot(root) {
   }
 }
 
-async function git(root, args) {
+async function git(root, args, { allowUnborn = false } = {}) {
   try {
     const env = { ...process.env };
     for (const key of Object.keys(env)) if (key.startsWith('GIT_')) delete env[key];
@@ -32,6 +32,7 @@ async function git(root, args) {
     });
     return stdout;
   } catch (error) {
+    if (allowUnborn && error.code === 1) return '';
     const detail = String(error?.stderr || error?.message || '').trim();
     if (/not a git repository/i.test(detail)) throw new GitVersionError('GIT_NOT_REPOSITORY', 'The current folder is not a Git repository', 404);
     throw new GitVersionError('GIT_COMMAND_FAILED', detail || 'Git operation failed', 500);
@@ -117,14 +118,16 @@ async function validateCommit(root, sha) {
 export async function readGitVersion(root, { limit = 25 } = {}) {
   await assertRepositoryRoot(root);
   if (!Number.isInteger(limit) || limit < 1 || limit > 500) throw new GitVersionError('GIT_INVALID_LIMIT', 'History limit must be an integer from 1 to 500');
+  const headSha = (await git(root, ['rev-parse', '--verify', '--quiet', 'HEAD'], { allowUnborn: true })).trim();
+  const unborn = !headSha;
   const [repositoryRoot, head, branchName, statusRaw, branchRaw, worktreeRaw, commitRaw] = await Promise.all([
     git(root, ['rev-parse', '--show-toplevel']),
-    git(root, ['show', '-s', '--format=%h%x00%H%x00%aI%x00%s', 'HEAD']),
+    unborn ? '' : git(root, ['show', '-s', '--format=%h%x00%H%x00%aI%x00%s', 'HEAD']),
     git(root, ['branch', '--show-current']),
     git(root, ['status', '--porcelain=v1', '-z', '--untracked-files=all']),
     git(root, ['for-each-ref', '--format=%(refname:short)%00%(objectname:short)%00%(upstream:short)%00%(committerdate:iso-strict)%00%(subject)', 'refs/heads']),
     git(root, ['worktree', 'list', '--porcelain']),
-    git(root, ['log', '--all', 'HEAD', '-n', String(limit + 1), '--format=%h%x00%H%x00%aI%x00%s']),
+    unborn ? '' : git(root, ['log', '--all', 'HEAD', '-n', String(limit + 1), '--format=%h%x00%H%x00%aI%x00%s']),
   ]);
   const [shortSha, sha, committedAt, subject] = head.trimEnd().split('\0');
   const currentRoot = path.resolve(repositoryRoot.trim());
@@ -141,8 +144,9 @@ export async function readGitVersion(root, { limit = 25 } = {}) {
     occupied: occupied.has(branch.name),
     ...(occupied.has(branch.name) ? { occupiedBy: occupied.get(branch.name) } : {}),
   }));
+  if (unborn && branchName.trim() && !branches.some(branch => branch.current)) branches.unshift({ name: branchName.trim(), shortSha: '', upstream: '', committedAt: '', subject: '', current: true, occupied: false });
   const changes = parseStatus(statusRaw);
-  const fingerprint = await createVersionFingerprint(currentRoot, sha, statusRaw, changes);
+  const fingerprint = await createVersionFingerprint(currentRoot, sha || `unborn:${branchName.trim()}`, statusRaw, changes);
   const labels = await readLabels(root);
   const commits = parseRecords(commitRaw, ['shortSha', 'sha', 'committedAt', 'subject']);
   const withLabel = commit => ({ ...commit, ...(labels[commit.sha] ? { displayName: labels[commit.sha] } : {}) });
@@ -150,8 +154,9 @@ export async function readGitVersion(root, { limit = 25 } = {}) {
     repository: path.basename(currentRoot),
     branch: branchName.trim() || null,
     detached: !branchName.trim(),
-    head: withLabel({ shortSha, sha, committedAt, subject }),
-    version: changes.length === 0 ? shortSha : `${shortSha}+${fingerprint.slice(0, 6)}`,
+    unborn,
+    head: unborn ? null : withLabel({ shortSha, sha, committedAt, subject }),
+    version: changes.length === 0 ? (shortSha || 'uncommitted') : `${shortSha || 'uncommitted'}+${fingerprint.slice(0, 6)}`,
     fingerprint,
     clean: changes.length === 0,
     changes: changes.slice(0, 100),
@@ -212,9 +217,9 @@ async function savePending(root, state, subject) {
 export async function checkoutGitVersion(root, sha) {
   await validateCommit(root, sha);
   const state = await readGitVersion(root);
-  if (state.head.sha === sha) return state;
+  if (state.head?.sha === sha) return state;
   const autoCommit = await savePending(root, state, `chore: save ${state.branch || 'detached version'} before loading ${sha.slice(0, 8)}`);
-  await retainHead(root);
+  if (state.head) await retainHead(root);
   await git(root, ['switch', '--detach', sha]);
   return { ...(await readGitVersion(root)), autoCommit };
 }

@@ -60,3 +60,8 @@ Claude Agent engine support: see CONTRACT.md and DEPLOY.md for the shared API pr
 
 
 TASK-20261012-011: Git version controls operate on the application's own repository root and return GIT_NOT_REPOSITORY/404 for an uninitialized child folder instead of using parent Git state. Source ZIP installation initializes customer history through the launcher; UI shows the real branch. No new HTTP fields/dependency, tool restriction or automatic Git publication.
+
+
+## Empty local Git state (TASK-20261012-015)
+
+Version reads support an unborn main without creating a commit. API head is null and recentCommits empty; a current symbolic main row is supplied for the version panel. First explicit Save version creates the first eligible source commit. Launcher local reset clears Git metadata only; API read/save never resets Git or contacts remotes. See CONTRACT.md for the compatible unborn field and nullable head.
