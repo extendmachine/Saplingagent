@@ -391,7 +391,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       broadcast(run.session.id, { type: 'status', label: 'Thinking…' });
       run.startAttempted = true;
       run.save = () => save(run);
-      await openCode.execute(run, text + runtimeContext(preferences, run, `OpenCode (${run.session.providerId}/${run.session.modelId})`));
+      await openCode.execute(run, text, { context: runtimeContext(preferences, run, `OpenCode (${run.session.providerId}/${run.session.modelId})`) });
     } catch (error) {
       if (!currentRun(run)) return;
       await finish(run, run.cancelRequested ? 'interrupted' : 'failed', run.cancelRequested ? undefined : error);

@@ -65,3 +65,8 @@ TASK-20261012-011: Git version controls operate on the application's own reposit
 ## Empty local Git state (TASK-20261012-015)
 
 Version reads support an unborn main without creating a commit. API head is null and recentCommits empty; a current symbolic main row is supplied for the version panel. First explicit Save version creates the first eligible source commit. Launcher local reset clears Git metadata only; API read/save never resets Git or contacts remotes. See CONTRACT.md for the compatible unborn field and nullable head.
+
+
+## OpenCode reply routing (TASK-20261012-017)
+
+OpenCode SSE carries user and assistant message parts. The adapter binds each native prompt messageID to assistant role/parentID metadata before forwarding text/tools/reasoning. It subscribes before allowing prompt submission, buffers early parts, recovers missing metadata from native message storage at idle, and deduplicates cumulative text per part. Prompt rejection and native message/session failures release run state and do not report successful conversation. Runtime context is sent in system, separate from raw user parts. Existing frontend/SSE, Full Access, local storage and engine bindings remain unchanged. Native pinned1.19.0 synthetic Chat Completions/MCP/resume/error checks are in test/opencode-messages.test.mjs; HTTP persistence coverage is in test/opencode-chat-http.test.mjs. Real customer-provider and Windows acceptance remain separate.
