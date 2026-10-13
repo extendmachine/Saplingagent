@@ -236,6 +236,7 @@ Doctor reports installation, versions, saved AI configuration and configured-por
 | Local service connection failed | Keep the startup terminal running and restart the full application; check Agent port `4310` and the frontend proxy |
 | Session does not exist | The UI retains unsent/retry input and starts a new session; do not delete `data/` to resolve it |
 | No recent progress | Check whether a tool or user decision is pending; continue waiting or stop manually. The reminder does not impose a default turn deadline |
+| OpenCode shows `Current permissions: full-access` or internal instructions as a reply | Update source to a version containing the OpenCode message-attribution fix (TASK-20261012-017), then restart the backend/app and create a new conversation. Preserve `data/` and `local-secrets/`; older saved bubbles are not deleted. Install / update repairs dependencies, not source; check the actual source branch/version because release may lag main |
 | Quota/model authorization error | Check the actual account error and official usage limits; reinstalling cannot grant model access |
 
 Stop services before moving the application. Move the whole folder. On the same architecture, launchers resolve the new location; reinstall after changing architecture or lockfiles.
