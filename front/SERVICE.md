@@ -47,3 +47,8 @@ After choosing a branch or historical version in Versions, click **Restart app**
 TASK-20261012-002 adds the separate front/ai-config React entry and project-local .cache/ai-config-ui build using existing dependencies. It runs through backend/ai-config without the main chat. Frontend default-engine selection accepts the new optional Agent catalog/status fields only for fresh conversations, preserving saved/manual selections and legacy protocol compatibility. See ai-config/README.md and backend setup contract. No credential browser persistence or new main-page component.
 
 Claude Agent engine support: see CONTRACT.md and DEPLOY.md for the shared API profile/session binding and local runtime behavior. No changes to the minimal single-chat product scope.
+
+
+## Empty local main (TASK-20261012-016)
+
+The version panel accepts nullable head and unborn status, shows only the current main supplied by the Agent, and displays No commits yet with an empty committed list. Current-version naming stays disabled until a commit exists. Save version is explicit; polling does not populate history. The footer still uses a valid version string/fingerprint before the first commit.
