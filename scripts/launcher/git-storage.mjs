@@ -209,6 +209,6 @@ export async function configureGitStorage(root, { force = false, mode, remoteUrl
   }
   await git(root, ['config', '--local', 'saplingagent.initialBranch', target]);
   await git(root, ['config', '--local', 'saplingagent.storageMode', mode]);
-  output(t(`Git storage configured: ${mode}; branch/version: ${target || 'detached HEAD'}. Changes stay local until you explicitly publish them. Install / update manages dependencies, not Git source updates.`, `Git 存放已配置：${mode}；分支 / 版本：${target || 'detached HEAD'}。修改保存在本地，只有主动发布才会上传。安装 / 更新管理依赖，不自动更新 Git 源码。`));
+  output(t(`Git storage configured: ${mode}; branch/version: ${target || 'detached HEAD'}. Changes stay local until you explicitly publish them. Install / update checks upstream source only in follow mode; local/own code is retained.`, `Git 存放已配置：${mode}；分支 / 版本：${target || 'detached HEAD'}。修改保存在本地，只有主动发布才会上传。安装 / 更新仅在跟随上游模式检查源码；本地／自有仓库代码保留。`));
   return { mode, branch: target, preserved: false };
 }

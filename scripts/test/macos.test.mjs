@@ -6,13 +6,15 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { distributable } from '../package-macos.mjs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 const project = fileURLToPath(new URL('../../', import.meta.url));
 async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   const parent = path.join(project, '.cache/macos-tests'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "\u6d4b\u8bd5 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['contracts/ai-configuration.mjs', 'contracts/local-process.mjs', 'scripts/launcher/cli.mjs', 'scripts/launcher/git-storage.mjs', 'scripts/launcher/recipient-records.mjs', 'scripts/setup.mjs', 'scripts/macos/cli.mjs', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'Saplingagent.sh', 'config/macos.json', 'config/runtime.json']) {
+  for (const file of ['contracts/ai-configuration.mjs', 'contracts/local-process.mjs', 'scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'scripts/launcher/recipient-records.mjs', 'scripts/setup.mjs', 'scripts/macos/cli.mjs', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'Saplingagent.sh', 'config/macos.json', 'config/runtime.json']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const settings = JSON.parse(await fs.readFile(path.join(root, 'config/macos.json'), 'utf8'));
@@ -156,4 +158,45 @@ test('web configuration builds and launches its independent page without Codex l
  const defaultHome=await runCli(root,['configure','--no-open'],{CODEX_HOME:''});assert.equal(defaultHome.code,0,defaultHome.output);
  assert.equal(JSON.parse(await fs.readFile(path.join(root,'configuration-start.json'),'utf8')).home,undefined);
  assert.equal(await fs.access(path.join(root,'UNEXPECTED_LAUNCH')).then(()=>true,()=>false),false);
+});
+
+async function menuPty(root,{storageChoice=false}={}) {
+ const python=`import os,pty,select,time,sys,signal,json
+pid,fd=pty.fork()
+if pid==0:
+ os.chdir(sys.argv[1]);os.execv('/bin/bash',['/bin/bash','Saplingagent.sh','--lang','zh'])
+text=b'';end=time.time()+15;menu=False;storage=False;quit=False;status=None
+try:
+ while time.time()<end:
+  if select.select([fd],[],[],0.1)[0]:
+   try:text+=os.read(fd,65536)
+   except OSError:break
+   decoded=text.decode('utf8',errors='replace')
+   if '请选择 [0-5, 9]' in decoded and not menu:os.write(fd,b'1\\n');menu=True
+   if sys.argv[2]=='yes' and '请选择 [1-3]' in decoded and not storage:os.write(fd,b'1\\n');storage=True
+   if '安装 / 更新执行完成' in decoded and not quit:os.write(fd,b'0\\n');quit=True
+  done,value=os.waitpid(pid,os.WNOHANG)
+  if done:status=value;break
+ if status is None:
+  done,value=os.waitpid(pid,os.WNOHANG)
+  if done:status=value
+  else:os.killpg(pid,signal.SIGKILL);_,status=os.waitpid(pid,0)
+ print(json.dumps({'code':os.waitstatus_to_exitcode(status),'menu':menu,'storage':storage,'quit':quit,'text':text.decode('utf8',errors='replace')}))
+finally:os.close(fd)
+`;
+ const {stdout}=await promisify(execFile)('python3',['-c',python,root,storageChoice?'yes':'no'],{timeout:20000,env:{...process.env,SAPLING_GIT_MODE:'',SAPLING_SOURCE_UPDATE_DONE:''}});return JSON.parse(stdout);
+}
+async function nativeNode(root) {
+ const settings=JSON.parse(await fs.readFile(path.join(root,'config/macos.json'))),folder=path.join(root,'.runtime',`node-v${settings.nodeVersion}-darwin-${process.arch}`,'bin');await fs.mkdir(folder,{recursive:true});await fs.symlink(process.execPath,path.join(folder,'node'));
+}
+test('actual macOS terminal menu1 reports progress and first Git prompt receives foreground input',{skip:process.platform!=='darwin',timeout:25000},async t=>{
+ const root=await fixture(t);await nativeNode(root);const result=await menuPty(root,{storageChoice:true});assert.equal(result.code,0,result.text);assert.equal(result.storage,true);assert.equal(result.quit,true);assert.match(result.text,/正在启动安装 \/ 更新/);assert.match(result.text,/依赖检查完成/);assert.match(result.text,/只检查本地依赖/);
+});
+test('actual macOS terminal menu1 updates source and reloads fresh launcher without reinstalling unchanged dependencies',{skip:process.platform!=='darwin',timeout:25000},async t=>{
+ const source=await fixture(t),app=source+'-recipient';t.after(()=>fs.rm(app,{recursive:true,force:true}));const exec=promisify(execFile),git=async(root,...args)=>(await exec('git',['-C',root,...args],{env:{...process.env,GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:path.join(root,'absent-global')},encoding:'utf8'})).stdout.trim();
+ await fs.copyFile(path.join(project,'.gitignore'),path.join(source,'.gitignore'));await fs.writeFile(path.join(source,'config/runtime.json'),'{}');await fs.writeFile(path.join(source,'feature.txt'),'old-source');await git(source,'init','-b','release');await git(source,'config','user.name','Test');await git(source,'config','user.email','test@localhost');await git(source,'add','.');await git(source,'commit','-m','old source');
+ await git(path.dirname(source),'clone','--single-branch','--branch','release',source,app);await git(app,'remote','rename','origin','upstream');await git(app,'config','user.name','Test');await git(app,'config','user.email','test@localhost');await git(app,'config','saplingagent.storageMode','upstream');
+ for(const folder of ['.runtime','front/node_modules','backend/mcp-runtime/node_modules','backend/agent-runtime/node_modules'])await fs.cp(path.join(source,folder),path.join(app,folder),{recursive:true});await nativeNode(app);
+ await fs.writeFile(path.join(source,'feature.txt'),'new-source');const cli=path.join(source,'scripts/launcher/cli.mjs');await fs.writeFile(cli,"console.log('UPDATED_LAUNCHER_LOADED');\n"+await fs.readFile(cli,'utf8'));await git(source,'commit','-am','new release');const latest=await git(source,'rev-parse','HEAD');
+ const result=await menuPty(app);assert.equal(result.code,0,result.text);assert.equal(result.quit,true);assert.match(result.text,/源码已更新/);assert.match(result.text,/UPDATED_LAUNCHER_LOADED/);assert.match(result.text,/依赖检查完成/);assert.equal(await fs.readFile(path.join(app,'feature.txt'),'utf8'),'new-source');assert.equal(await git(app,'rev-parse','HEAD'),latest);assert.equal(await fs.access(path.join(app,'.runtime/macos-install.lock')).then(()=>true,()=>false),false);
 });
