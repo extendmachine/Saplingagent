@@ -38,7 +38,7 @@ bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/
 
 Use `--download-only` to fetch source without installing or opening a menu; then run `bash Saplingagent.sh` inside the downloaded folder. First Install initializes recipient goal/task records; edits made before installation are preserved with a warning. The script needs HTTPS access to GitHub API/archive endpoints and standard curl/tar/SHA256 tools (macOS and Git Bash supply them). API/rate-limit/download failures are reported; retry in a new folder if a completed source folder already exists. All dependencies and configuration install locally. This command is for fresh installation, not automatic source updates.
 
-Only release is downloaded. Follow mode stores a single selected-branch fetch mapping and skips tags, so normal subsequent fetches do not bring author main/testcode into the local branch list. Local mode's empty main is your own independent history. An explicitly configured branch remains supported; existing local branches are preserved. The public repository remains manually accessible; this is a default delivery workflow, not a permission restriction.
+Only release is downloaded. Follow mode stores a single selected-branch fetch mapping and skips tags, so normal subsequent fetches do not bring author main/adobe-replica into the local branch list. Local mode's empty main is your own independent history. An explicitly configured branch remains supported; existing local branches are preserved. The public repository remains manually accessible; this is a default delivery workflow, not a permission restriction.
 
 Alternatively get the complete application folder manually:
 
@@ -136,7 +136,7 @@ Stop the running app and save local changes, then select Install / update. In fo
 
 ## Switch versions and restart
 
-Local management starts empty `main`; own/follow modes start on `release` unless explicitly configured. The top-right Versions control shows the actual checked-out branch and can select available local branches or historical commits. Maintainer checkouts can also use `main` and `testcode`; local-only repositories start with just `main` and no committed versions. Pending source changes are saved locally first. Version names remain editable and do not rewrite commit hashes.
+Local management starts empty `main`; own/follow modes start on `release` unless explicitly configured. The top-right Versions control shows the actual checked-out branch and can select available local branches or historical commits. Maintainer checkouts can also use `main` and `adobe-replica`; local-only repositories start with just `main` and no committed versions. Pending source changes are saved locally first. Version names remain editable and do not rewrite commit hashes.
 
 After switching, click **Restart app** to load that version's frontend, backend, Codex App Server and MCP. The options menu also offers **Restart backend** (keeps the current frontend process) and **Runtime recovery**. Wait for running AI/file work to finish or stop it yourself; restart refuses busy work.
 
@@ -146,7 +146,7 @@ On first upgrade to this launcher, stop the existing launch window with Control+
 
 ## What menu 1 updates
 
-Selecting **1. Install / update** prints progress immediately and reports source separately from dependencies. **Follow release** checks the tracked upstream branch, fetches without tags or author main/testcode refs, and merges compatible saved local commits. It does not reset or force a checkout. After a source change the launcher runs again with updated runtime settings before dependency checks. An already-current installation reports that fact clearly.
+Selecting **1. Install / update** prints progress immediately and reports source separately from dependencies. **Follow release** checks the tracked upstream branch, fetches without tags or author main/adobe-replica refs, and merges compatible saved local commits. It does not reset or force a checkout. After a source change the launcher runs again with updated runtime settings before dependency checks. An already-current installation reports that fact clearly.
 
 **Local only / own repository** are independent applications. Once either choice is saved, subsequent menus hide **1. Install / update**, and **5. Git / storage setup** offers only local Git or your own repository. The menu rereads this folder’s `.git/config` after each action; viewing it never changes history or remotes. Configure AI, Start app, Diagnostics, Git setup, language selection and Quit remain available. First installation and follow mode keep all three storage choices.
 
@@ -310,7 +310,7 @@ Only three named branches are maintained:
 | Branch | Role |
 | --- | --- |
 | `main` | Shared development baseline and code review |
-| `testcode` | Local/user experimentation based on the same reviewed baseline |
+| `adobe-replica` | Adobe replication experiments |
 | `release` | Customer-facing source distribution |
 
 This English candidate is intended for all three branches after exact-version human approval. Previous branch histories remain reachable. New changes are not silently propagated or presented as an approved release.
