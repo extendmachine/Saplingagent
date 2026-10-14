@@ -197,11 +197,12 @@ async function start(noOpen) {
   if (!await configuredAccess()) throw new Error(t('Choose Configure AI in Saplingagent.sh and save an account or API scheme first.', '请先选择配置 AI 接口，在网页中保存账号或 API 方案。'));
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   const child = spawn(process.execPath, [path.join(root, 'scripts/dev.mjs')], { cwd: root, env, detached: false, stdio: ['inherit', 'pipe', 'pipe'] });
-  let ended = false, interrupted = false, stopRequested = false, launched = false, startupOutput = '';
+  let ended = false, interrupted = false, stopRequested = false, launched = false, startupOutput = '', frontPort = config.frontPort;
   child.stdout.on('data', chunk => {
     process.stdout.write(chunk);
     startupOutput = (startupOutput + chunk).slice(-2048);
-    if (startupOutput.includes(`Saplingagent: http://127.0.0.1:${config.frontPort}/`)) launched = true;
+    const announced = startupOutput.match(/(?:^|\n)Saplingagent: http:\/\/127\.0\.0\.1:(\d+)\//);
+    if (announced && Number(announced[1]) >= 1024 && Number(announced[1]) <= 65535) { frontPort = Number(announced[1]); launched = true; }
   });
   child.stderr.on('data', chunk => process.stderr.write(chunk));
   const exit = new Promise(resolve => {
@@ -216,22 +217,22 @@ async function start(noOpen) {
     while (!ended && !interrupted && Date.now() < deadline) {
       if (!launched) { await delay(100); continue; }
       try {
-        const lifecycleResponse = await fetch(`http://127.0.0.1:${config.frontPort}/api/runtime/status`, { signal: AbortSignal.timeout(1500) });
+        const lifecycleResponse = await fetch(`http://127.0.0.1:${frontPort}/api/runtime/status`, { signal: AbortSignal.timeout(1500) });
         if (!lifecycleResponse.ok) { await delay(300); continue; }
         const lifecycle = await lifecycleResponse.json();
         if (lifecycle.phase === 'failed' && !lifecycle.busy) break;
         if (lifecycle.phase !== 'ready' || lifecycle.busy) { await delay(300); continue; }
-        const response = await fetch(`http://127.0.0.1:${config.agentPort}/api/status`, { signal: AbortSignal.timeout(1500) });
+        const response = await fetch(`http://127.0.0.1:${frontPort}/api/status`, { signal: AbortSignal.timeout(1500) });
         const status = await response.json();
         if (status.ready && status.authenticated && status.mcp?.ready) {
-          const front = await fetch(`http://127.0.0.1:${config.frontPort}/`, { signal: AbortSignal.timeout(1500) });
+          const front = await fetch(`http://127.0.0.1:${frontPort}/`, { signal: AbortSignal.timeout(1500) });
           if (front.ok) {
             ready = true;
             console.log(status.provider === 'OpenCode' ? t(`Connected to OpenCode: ${status.model}; project MCP connected.`, `已连接 OpenCode：${status.model}；项目 MCP 已连接。`) : t(`Connected to ${status.provider || 'Agent'}: ${status.model}; ${status.mcp.tools.length} MCP tools; ${status.skills.length} Skills.`, `已连接 ${status.provider || 'Agent'}：${status.model}；${status.mcp.tools.length} 个 MCP 工具；${status.skills.length} 个 Skills。`));
-            console.log(t(`Web page: http://127.0.0.1:${config.frontPort}/\nKeep this window open; press Control+C to stop these services.`, `网页：http://127.0.0.1:${config.frontPort}/\n请保持终端窗口打开；按 Control+C 停止这些服务。`));
+            console.log(t(`Web page: http://127.0.0.1:${frontPort}/\nKeep this window open; press Control+C to stop these services.`, `网页：http://127.0.0.1:${frontPort}/\n请保持终端窗口打开；按 Control+C 停止这些服务。`));
             if (!noOpen) {
-              if (windows) await run('powershell.exe', ['-NoProfile', '-Command', `Start-Process 'http://127.0.0.1:${config.frontPort}/'`], { capture: true });
-              else await run('/usr/bin/open', [`http://127.0.0.1:${config.frontPort}/`], { capture: true });
+              if (windows) await run('powershell.exe', ['-NoProfile', '-Command', `Start-Process 'http://127.0.0.1:${frontPort}/'`], { capture: true });
+              else await run('/usr/bin/open', [`http://127.0.0.1:${frontPort}/`], { capture: true });
             }
             break;
           }
@@ -240,7 +241,7 @@ async function start(noOpen) {
       await delay(300);
     }
     if (!ready && !ended && !interrupted) {
-      console.error(t(`Model/authentication/MCP is not ready. Keep this window open, inspect local diagnostics and retry at http://127.0.0.1:${config.frontPort}/__saplingagent/runtime. Choose Diagnostics in Saplingagent.sh to check installation/login.`, `模型、认证或 MCP 尚未就绪。请保持终端窗口打开，检查诊断，并在 http://127.0.0.1:${config.frontPort}/__saplingagent/runtime 重试。选择服务诊断可检查安装和登录状态。`));
+      console.error(t(`Model/authentication/MCP is not ready. Keep this window open, inspect local diagnostics and retry at http://127.0.0.1:${frontPort}/__saplingagent/runtime. Choose Diagnostics in Saplingagent.sh to check installation/login.`, `模型、认证或 MCP 尚未就绪。请保持终端窗口打开，检查诊断，并在 http://127.0.0.1:${frontPort}/__saplingagent/runtime 重试。选择服务诊断可检查安装和登录状态。`));
     }
     const result = await exit;
     if (result.code !== 0 && !interrupted) throw new Error(t(`Services stopped (exit code ${result.code}). Check for port, installation or authentication errors.`, `服务已停止（退出码 ${result.code}）。请检查端口、安装或认证错误。`));
@@ -266,7 +267,17 @@ async function doctor() {
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   let online = false;
   try {
-    const status = await fetch(`http://127.0.0.1:${config.agentPort}/api/status`, { signal: AbortSignal.timeout(2000) }).then(r => r.json());
+    let address;
+    try { address = JSON.parse(await fs.readFile(path.join(root, '.runtime/runtime-address.json'), 'utf8')); } catch {}
+    let port = config.agentPort;
+    if (address) {
+      if (!Number.isInteger(address.ports?.frontPort) || address.ports.frontPort < 1024 || address.ports.frontPort > 65535 || typeof address.instanceId !== 'string') throw new Error('Invalid runtime discovery');
+      port = address.ports.frontPort;
+      const state = await fetch(`http://127.0.0.1:${port}/api/runtime/status`, { signal: AbortSignal.timeout(2000) }).then(r => r.json());
+      if (state.instanceId !== address.instanceId) throw new Error('Stale runtime discovery');
+      console.log(t(`Runtime address: http://127.0.0.1:${port}/`, `运行地址：http://127.0.0.1:${port}/`));
+    }
+    const status = await fetch(`http://127.0.0.1:${port}/api/status`, { signal: AbortSignal.timeout(2000) }).then(r => r.json());
     online = status.ready === true;
     console.log(t(`Runtime status on configured ports:${online ? 'ready' : 'process running but Agent not ready'}; model:${status.model || 'not selected'}; MCP:${status.mcp?.tools?.length || 0}; Skills:${status.skills?.length || 0}`, `运行状态：${online ? '就绪' : '进程运行中，但 Agent 尚未就绪'}；模型：${status.model || '未选择'}；MCP：${status.mcp?.tools?.length || 0}；Skills：${status.skills?.length || 0}`));
   } catch { console.log(t('Runtime status: not started. Install, log in, then choose Start app in Saplingagent.sh.', "运行状态：尚未启动。请安装、登录后选择启动应用。")); }

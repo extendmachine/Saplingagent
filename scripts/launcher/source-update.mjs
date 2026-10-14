@@ -16,7 +16,9 @@ async function git(root,args,{optional=false}={}) {
 }
 export async function runtimePortsBusy(root) {
   const config=JSON.parse(await fs.readFile(path.join(root,'config/runtime.json'),'utf8'));
-  const ports=[...new Set(Object.entries(config).filter(([key,value])=>key.endsWith('Port')&&Number.isInteger(value)&&value>0&&value<65536).map(([,port])=>port))];
+  let activePorts = {};
+  try { activePorts = JSON.parse(await fs.readFile(path.join(root, '.runtime/runtime-address.json'), 'utf8')).ports || {}; } catch {}
+  const ports=[...new Set([...Object.entries(config), ...Object.entries(activePorts)].filter(([key,value])=>key.endsWith('Port')&&Number.isInteger(value)&&value>0&&value<65536).map(([,port])=>port))];
   return (await Promise.all(ports.map(port=>new Promise(resolve=>{
     const socket=net.createConnection({host:'127.0.0.1',port});
     const done=value=>{socket.destroy();resolve(value);};

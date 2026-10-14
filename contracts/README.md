@@ -14,3 +14,5 @@ local-process.mjs is shared, stateless OS plumbing, not another service's privat
 ## AI configuration and Codex transport (TASK-20261012-001)
 
 `ai-configuration.mjs` reads schema-v1 project-private account/API schemes, derives the default engine/model and maps private keys to Codex environment or native OpenCode provider configuration. It validates metadata and never writes public credentials. `codex-rpc.mjs` is shared newline-delimited JSON-RPC stdio transport, including owned-process cleanup; agent-runtime/rpc.mjs remains a compatibility export. Setup and Agent communicate through these public contracts, not private service imports. See backend/ai-config/CONTRACT.md.
+
+TASK-20261014-002/003/004: runtime status adds actual ports; the runtime-manager CONTRACT defines .runtime/runtime-address.json discovery and effective SEED_*_PORT values including SEED_FRONT_PORT. Starting values remain in config/runtime.json; unified launch selects available ascending ports without source changes.

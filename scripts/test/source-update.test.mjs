@@ -54,6 +54,13 @@ test('running app and a concurrent edit pause updates without silently changing 
 test('port check detects a live configured listener and ignores closed ports without inference',async t=>{
  const f=await fixture(t);const server=net.createServer(socket=>socket.end());await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>server.close(r)));await fs.mkdir(path.join(f.app,'config'));await fs.writeFile(path.join(f.app,'config/runtime.json'),JSON.stringify({frontPort:server.address().port}));assert.equal(await runtimePortsBusy(f.app),true);await fs.writeFile(path.join(f.app,'config/runtime.json'),'{}');assert.equal(await runtimePortsBusy(f.app),false);
 });
+test('port check also discovers a listener allocated outside configured starting ports', async t => {
+ const f=await fixture(t);const server=net.createServer(socket=>socket.end());await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>server.close(r)));
+ await fs.mkdir(path.join(f.app,'config'));await fs.writeFile(path.join(f.app,'config/runtime.json'),'{}');
+ await fs.mkdir(path.join(f.app,'.runtime'));await fs.writeFile(path.join(f.app,'.runtime/runtime-address.json'),JSON.stringify({ports:{frontPort:server.address().port}}));
+ assert.equal(await runtimePortsBusy(f.app),true);
+ await fs.writeFile(path.join(f.app,'.runtime/runtime-address.json'),'broken');assert.equal(await runtimePortsBusy(f.app),false);
+});
 test('a new upstream path never overwrites an ignored customer file',async t=>{
  const f=await fixture(t);await fs.writeFile(path.join(f.app,'.git/info/exclude'),'customer-ignored.txt\n');await fs.writeFile(path.join(f.app,'customer-ignored.txt'),'customer private contents');await fs.writeFile(path.join(f.source,'customer-ignored.txt'),'new source');await git(f.source,'add','.');await git(f.source,'commit','-m','new file');await assert.rejects(f.update(),/could not finish/);assert.equal(await fs.readFile(path.join(f.app,'customer-ignored.txt'),'utf8'),'customer private contents');assert.equal(await git(f.app,'rev-parse','HEAD'),f.before);
 });
