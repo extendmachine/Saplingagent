@@ -69,6 +69,7 @@ choose_language() {
 }
 run_action() {
   if ! select_bootstrap; then return 0; fi
+  if [ "${1:-}" = install ]; then say 'Starting install / update. Please wait for the result below…' '正在启动安装 / 更新，请查看下方执行结果…'; fi
   local result
   if [ "$SAPLING_BOOTSTRAP" = "$SAPLING_ROOT/scripts/windows/bootstrap.sh" ]; then
     # A native console bridge must own the foreground terminal. Backgrounding
@@ -85,6 +86,8 @@ run_action() {
   if [ "${result}" -ne 0 ]; then
     printf '\n'
     say "Operation incomplete (exit ${result}). You can retry or choose Diagnostics." "操作未完成（退出码 ${result}）。可以重试或选择服务诊断。"
+  elif [ "${1:-}" = install ]; then
+    say 'Install / update finished. Source and dependency results are shown above.' '安装 / 更新执行完成。源码和依赖结果见上方。'
   fi
   return 0
 }

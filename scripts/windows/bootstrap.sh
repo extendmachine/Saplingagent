@@ -16,6 +16,7 @@ for SAPLING_WINDOWS_TOOL in cygpath powershell.exe iconv base64; do
   fi
 done
 export SAPLING_BOOTSTRAP_ROOT="$(cygpath -w "$SAPLING_WINDOWS_ROOT")"
+export SAPLING_GIT_BASH="$(cygpath -w "$(command -v bash)")"
 export SAPLING_BOOTSTRAP_ACTION="$SAPLING_WINDOWS_ACTION"
 export SAPLING_BOOTSTRAP_FLAG="$SAPLING_WINDOWS_FLAG"
 export SAPLING_PREVIOUS_ARG_CONV="${MSYS2_ARG_CONV_EXCL:-}"
