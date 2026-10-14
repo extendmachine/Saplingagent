@@ -62,3 +62,7 @@ Engine ID `claude` uses the project-local official Claude Agent SDK, with API-on
 ## Empty local repository (TASK-20261012-016)
 
 GET /api/git may return unborn:true and head:null before the first commit, with a single current symbolic main branch and empty recentCommits. Display main and No commits yet without an error; disable naming the current version until head exists. Save version remains an explicit user action for pending eligible source. Reading/refreshing the panel creates no history and contacts no remote. Existing committed-head responses remain compatible. Reset warnings and metadata deletion belong to the launcher; no reset button or destructive HTTP endpoint is added.
+
+## Explicit setup credential import (TASK-20261013-003)
+
+Configuration page uses protected POST /api/config/credentials/import from backend/ai-config contractv1.1: engine/source/revision/replace, upload JSON string (32KiB document), optional Claude profile draft. State response contains metadata only. Codex account supports local auth.json or upload; Claude API supports inherited/local settings API key or API JSON, with URL/model fields and explicit replacement. No credential persistence in browser storage, no automatic source detection, global write or inference. Errors leave the form available and never display uploaded JSON. Finish setup/restart/new conversation follows existing controls.
