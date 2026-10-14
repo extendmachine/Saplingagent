@@ -158,7 +158,12 @@ async function configureAI(noOpen) {
   await localSetup();
   console.log(t('Preparing the independent AI configuration page…','正在准备独立的 AI 配置网页…'));
   await required(process.execPath,[path.join(root,'front/node_modules/vite/bin/vite.js'),'build','--config',path.join(root,'front/ai-config/vite.config.mjs')]);
-  await required(process.execPath,[path.join(root,'backend/ai-config/server.mjs'),...(noOpen?['--no-open']:[])]);
+  const setupEnv={...env};
+  // Discovery uses the caller's Codex home; owned login/runtime still override it
+  // with project-private storage. An absent override means the user's ~/.codex.
+  if(process.env.CODEX_HOME)setupEnv.CODEX_HOME=process.env.CODEX_HOME;
+  else delete setupEnv.CODEX_HOME;
+  await required(process.execPath,[path.join(root,'backend/ai-config/server.mjs'),...(noOpen?['--no-open']:[])],{childEnv:setupEnv});
 }
 async function configuredAccess() {
   const connections = await readConnections(root);

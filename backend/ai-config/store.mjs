@@ -72,7 +72,9 @@ export class ConfigurationStore {
     finally { await handle.close(); await fs.rm(lock,{force:true}); }
   }
   async save(input) {
-    return this.write(async(data,ledger)=> {
+    return this.write((data,ledger)=>this.saveProfile(data,ledger,input),input.revision);
+  }
+  async saveProfile(data,ledger,input) {
       const previous = data.profiles.find(p=>p.id===input.id);
       if (input.id && !previous && input.id !== 'codex-account') throw failure('NOT_FOUND','Saved scheme no longer exists.',404);
       const profile = validateProfile(input,previous);
@@ -91,6 +93,28 @@ export class ConfigurationStore {
       }
       const index=data.profiles.findIndex(p=>p.id===profile.id);if(index<0)data.profiles.push(profile);else data.profiles[index]=profile;
       if(input.activate !== false)data.activeId=profile.id;
+  }
+  async importCodex(input, credential) {
+    return this.write(async(data,ledger)=> {
+      await privateDirectory(path.join(this.root,'local-secrets/codex'));
+      const file=path.join(this.root,'local-secrets/codex/auth.json');
+      let exists=true;try{await fs.lstat(file);}catch(error){if(error.code==='ENOENT')exists=false;else throw error;}
+      if(exists&&!input.replace)throw failure('CREDENTIAL_EXISTS','This project already has Codex credentials. Select Replace existing credentials to import a different account.',409);
+      await atomicJSON(file,credential);
+      await this.saveProfile(data,ledger,{id:'codex-account',engine:'codex',kind:'chatgpt',label:'ChatGPT account',activate:true});
+    },input.revision);
+  }
+  async importClaude(input, credential) {
+    return this.write(async(data,ledger)=> {
+      const draft=input.profile||{};
+      const previous=data.profiles.find(p=>p.id===draft.id);
+      if(previous&&previous.engine!=='claude')throw failure('INVALID_CONFIG','Choose a Claude API scheme to import credentials.');
+      // Replacement is explicit even when the editor would normally retain a key.
+      if(previous){
+        let exists=true;try{await fs.lstat(credentialPath(this.root,previous.id));}catch(error){if(error.code==='ENOENT')exists=false;else throw error;}
+        if(exists&&!input.replace)throw failure('CREDENTIAL_EXISTS','This scheme already has a key. Select Replace existing credentials or create a new scheme.',409);
+      }
+      await this.saveProfile(data,ledger,{...draft,label:draft.label?.trim()||'Claude API',baseUrl:draft.baseUrl?.trim()||credential.baseUrl||'https://api.anthropic.com/v1',model:draft.model?.trim()||credential.model,engine:'claude',kind:'api',protocol:'anthropic',apiKey:credential.apiKey,noAuth:false,activate:true});
     },input.revision);
   }
   async activate(input) { return this.write(async data=> { if(!data.profiles.some(p=>p.id===input.id))throw failure('NOT_FOUND','Scheme not found.',404);data.activeId=input.id; },input.revision); }
