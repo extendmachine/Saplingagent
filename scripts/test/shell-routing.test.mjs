@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
 const project = fileURLToPath(new URL('../../', import.meta.url));
@@ -45,6 +46,16 @@ test('the same Chinese menu returns after failed Windows install and supports co
   const result = await run(f, ['--lang', 'zh'], '2\n1\n4\n0\n');
   assert.equal(result.code, 0); assert.match(result.output, /配置 AI 接口/); assert.match(result.output, /退出码 7/);
   assert.deepEqual((await records(f.root)).map(x => x.action), ['configure','install','doctor']);
+});
+test('Windows routing respects independent storage and retains configure/diagnostics', async t => {
+  const f = await fixture(t);
+  const git = (...args) => promisify(execFile)('git', ['-C', f.root, ...args]);
+  await git('init', '-b', 'main'); await git('config', '--local', 'saplingagent.storageMode', 'own');
+  const result = await run(f, ['--lang', 'zh'], '1\n2\n4\n0\n');
+  assert.equal(result.code, 0, result.output);
+  assert.doesNotMatch(result.output, /1\. 安装|正在启动安装/);
+  assert.match(result.output, /\[0, 2-5, 9\]/);
+  assert.deepEqual((await records(f.root)).map(x => x.action), ['configure', 'doctor']);
 });
 test('Linux/WSL installation refuses without invoking Windows tools; help/menu quit remain available', async t => {
   const f = await fixture(t, 'Linux');

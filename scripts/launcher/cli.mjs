@@ -42,7 +42,7 @@ function run(command, args, { cwd = root, capture = false, childEnv = env } = {}
     const onInterrupt = () => forward('SIGINT'), onTerminate = () => forward('SIGTERM');
     process.on('SIGINT', onInterrupt); process.on('SIGTERM', onTerminate); process.on('SIGHUP', onTerminate);
     const detach = () => { process.off('SIGINT', onInterrupt); process.off('SIGTERM', onTerminate); process.off('SIGHUP', onTerminate); };
-    child.once('error', () => { detach(); reject(new Error(t('Command could not start. Open Saplingagent.sh and choose Install / update.', "命令无法启动。请运行 bash Saplingagent.sh，选择安装 / 更新。"))); });
+    child.once('error', () => { detach(); reject(new Error(t('Command could not start. For dependency repair, run: bash Saplingagent.sh install --repair', "命令无法启动。需要修复依赖时运行：bash Saplingagent.sh install --repair"))); });
     child.once('exit', (code, signal) => { detach(); resolve({ code: code ?? 1, signal, interrupted, output, errorOutput }); });
   });
 }
@@ -139,7 +139,7 @@ async function install(repair = false) {
   } finally { await fs.rm(stage, { recursive: true, force: true }); if(ownsLock)await fs.rm(lock, { recursive: true, force: true }); }
 }
 async function login(deviceAuth) {
-  if (!await installed()) throw new Error(t('Open Saplingagent.sh and choose Install / update first.', "请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
+  if (!await installed()) throw new Error(t('Install project dependencies first: bash Saplingagent.sh install --repair', "请先安装项目依赖：bash Saplingagent.sh install --repair"));
   await localSetup();
   if (await loggedIn()) { console.log(t('Project login credentials are saved. Choose Start app in Saplingagent.sh; if requests fail authentication, log out of this project as documented and log in again.', "项目登录凭据已保存，可以选择启动应用。如果请求认证失败，请按文档退出项目账号后重新登录。")); return; }
   console.log(t('Official Codex will open your browser. Log in with your own ChatGPT/Codex account.', "官方 Codex 将打开浏览器，请使用自己的 ChatGPT / Codex 账号登录。"));
@@ -150,12 +150,12 @@ async function login(deviceAuth) {
   console.log(t('Project login complete. Choose Start app in Saplingagent.sh.', "项目登录完成，请选择启动应用。"));
 }
 async function logout() {
-  if (!await exists(cli)) throw new Error(t('Open Saplingagent.sh and choose Install / update first.', "请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
+  if (!await exists(cli)) throw new Error(t('Install project dependencies first: bash Saplingagent.sh install --repair', "请先安装项目依赖：bash Saplingagent.sh install --repair"));
   await required(cli, [...authArgs, 'logout'], { capture: true });
   console.log(t('Logged out of the Codex account for this project; application files and sessions are retained. Choose Configure AI in Saplingagent.sh to sign in again.', "已退出此项目的 Codex 账号，应用文件和会话保留。重新登录请选择配置 AI 接口。"));
 }
 async function configureOpenCode() {
-  if (!await installed()) throw new Error(t('Open Saplingagent.sh and choose Install / update first.', "请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
+  if (!await installed()) throw new Error(t('Install project dependencies first: bash Saplingagent.sh install --repair', "请先安装项目依赖：bash Saplingagent.sh install --repair"));
   const data = path.join(root, 'local-secrets/opencode/data');
   const config = path.join(root, 'local-secrets/opencode/config');
   await Promise.all([fs.mkdir(data, { recursive: true, mode: 0o700 }), fs.mkdir(config, { recursive: true, mode: 0o700 })]);
@@ -168,7 +168,7 @@ async function configureOpenCode() {
   console.log(t('OpenCode provider saved. Restart Saplingagent, start a new conversation, then choose OpenCode.', "OpenCode 服务商已保存。请重启 Saplingagent，新建会话后选择 OpenCode。"));
 }
 async function configureAI(noOpen) {
-  if (!await installed()) throw new Error(t('Choose Install / update before opening AI setup.', '请先安装 / 更新，再打开 AI 配置网页。'));
+  if (!await installed()) throw new Error(t('Install dependencies before opening AI setup: bash Saplingagent.sh install --repair', '请先运行 bash Saplingagent.sh install --repair 安装依赖，再打开 AI 配置网页。'));
   await localSetup();
   console.log(t('Preparing the independent AI configuration page…','正在准备独立的 AI 配置网页…'));
   await required(process.execPath,[path.join(root,'front/node_modules/vite/bin/vite.js'),'build','--config',path.join(root,'front/ai-config/vite.config.mjs')]);
@@ -192,7 +192,7 @@ async function configuredAccess() {
   return loggedIn();
 }
 async function start(noOpen) {
-  if (!await installed()) throw new Error(t('Installation is incomplete or dependency lockfiles have changed. Open Saplingagent.sh and choose Install / update first.', "安装未完成或依赖锁文件已变化。请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
+  if (!await installed()) throw new Error(t('Installation is incomplete or dependency lockfiles have changed. Run: bash Saplingagent.sh install --repair', "安装未完成或依赖锁文件已变化。请运行：bash Saplingagent.sh install --repair"));
   await localSetup();
   if (!await configuredAccess()) throw new Error(t('Choose Configure AI in Saplingagent.sh and save an account or API scheme first.', '请先选择配置 AI 接口，在网页中保存账号或 API 方案。'));
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
@@ -253,7 +253,7 @@ async function start(noOpen) {
 async function doctor() {
   console.log(t(`${windows ? 'Windows' : 'macOS'} ${process.arch}; Node ${process.versions.node}; folder: ${root}`, `${windows ? 'Windows' : 'macOS'} ${process.arch}；Node ${process.versions.node}；项目目录：${root}`));
   const local = await installed();
-  console.log(t(`Project dependencies:${local ? 'installed' : 'not installed or changed; choose Install / update in Saplingagent.sh'}`, `项目依赖：${local ? '已安装' : '未安装或已变化；请选择安装 / 更新'}`));
+  console.log(t(`Project dependencies:${local ? 'installed' : 'not installed or changed; run bash Saplingagent.sh install --repair'}`, `项目依赖：${local ? '已安装' : '未安装或已变化；请运行 bash Saplingagent.sh install --repair'}`));
   let authenticated = false;
   if (await exists(cli)) {
     const version = await run(cli, ['--version'], { capture: true });
