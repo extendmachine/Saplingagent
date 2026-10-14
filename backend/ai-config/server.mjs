@@ -6,9 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { ConfigurationStore,failure } from './store.mjs';
 import { AccountSetup } from './auth.mjs';
+import { CredentialImport } from './credentials.mjs';
 const defaultRoot=fileURLToPath(new URL('../../',import.meta.url));
-export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRoot,assets=path.join(root,'.cache/ai-config-ui'),language='en',authOptions={},onClose}={}){
-  const store=new ConfigurationStore(root);const auth=new AccountSetup(root,store,authOptions);const token=randomBytes(32).toString('hex');let closing=false,shutdown;
+export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRoot,assets=path.join(root,'.cache/ai-config-ui'),language='en',authOptions={},importOptions={},onClose}={}){
+  const store=new ConfigurationStore(root);const auth=new AccountSetup(root,store,authOptions);const imports=new CredentialImport(store,importOptions);const token=randomBytes(32).toString('hex');let closing=false,shutdown;
   const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"};
   const send=(res,status,body)=>{res.writeHead(status,{...headers,'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
   const server=http.createServer(async(req,res)=>{
@@ -26,7 +27,9 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
         let size=0,parts=[];for await(const chunk of req){size+=chunk.length;if(size>65536)throw failure('BODY_TOO_LARGE','Configuration request is too large.',413);parts.push(chunk);}
         let body;try{body=JSON.parse(Buffer.concat(parts).toString('utf8'));}catch{throw failure('INVALID_CONFIG','Invalid configuration JSON.');}
         if(!body||typeof body!=='object'||Array.isArray(body))throw failure('INVALID_CONFIG','Expected a configuration object.');
-        if(['/api/config/profiles','/api/config/activate'].includes(url.pathname)&&['starting','pending','completing'].includes(auth.login.phase))throw failure('LOGIN_BUSY','Finish or cancel the current sign-in before changing schemes.',409);
+        if(['/api/config/profiles','/api/config/activate','/api/config/credentials/import'].includes(url.pathname)&&['starting','pending','completing'].includes(auth.login.phase))throw failure('LOGIN_BUSY','Finish or cancel the current sign-in before changing schemes.',409);
+        if(['/api/config/profiles','/api/config/activate','/api/config/login','/api/config/close'].includes(url.pathname)&&imports.busy)throw failure('IMPORT_BUSY','Wait for credential import to finish.',409);
+        if(url.pathname==='/api/config/credentials/import')return send(res,200,{...await imports.run(body),login:auth.snapshot()});
         if(url.pathname==='/api/config/profiles')return send(res,200,{...await store.save(body),login:auth.snapshot()});
         if(url.pathname==='/api/config/activate')return send(res,200,{...await store.activate(body),login:auth.snapshot()});
         if(url.pathname==='/api/config/models')return send(res,200,await store.models(body));
