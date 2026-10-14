@@ -18,3 +18,12 @@ Only manager-owned child process groups are stopped. Failed startup remains obse
 ## Windows x64 candidate (TASK-20261011-030)
 
 Native Windows10/11 x64 uses the shared contracts/local-process.mjs OS contract. Project Node and native executable dependencies remain local. App Server uses codex.exe with file credential storage; OpenCode uses its selected opencode.exe, local XDG data/config/cache/state. The manager and command cancellation stop only their owned live PID trees with taskkill /PID /T /F; POSIX detached process-group behavior is retained. Windows shell commands use ComSpec cmd.exe /d /s /c, regardless of an inherited Git Bash SHELL. HTTP/SSE/permissions remain unchanged, including Full Access. Windows forced termination is abrupt; finish active operations before restart, and externally detached programs or forced parent death cannot guarantee cleanup. Native Windows10 auth/model/restart acceptance is pending; current host checks are macOS/synthetic. Start with bash Saplingagent.sh in Windows Git Bash; platform guide ../../docs/windows-install.html. No actual credentials, global environment or running production processes are changed by this candidate.
+
+
+## Ascending ports (TASK-20261014-002)
+
+config/runtime.json ports are preferred starting values. The unified launcher selects distinct available loopback ports at or above each start (public frontPort first), without rewriting configuration or stopping occupied services. Effective ports stay fixed throughout this manager instance and its frontend/backend restarts. Changes to configured starting ports require a new launcher. A bind race on public/control listeners retries upward; a later internal bind race is reported for retry, never resolved by killing another process. Port exhaustion reports PORT_UNAVAILABLE.
+
+GET /api/runtime/status additionally returns ports containing frontPort, vitePort, runtimeManagerPort, agentPort, workspacePort, builderPort, pdfEditorPort and openCodePort. Manager-created children receive their selected existing SEED_*_PORT values plus SEED_FRONT_PORT. Host/Origin checks use actual public/control ports.
+
+.runtime/runtime-address.json is ignored local discovery metadata: {instanceId,pid,ports,url}. It contains no token/credential/conversation. The launcher writes it atomically once listeners bind, and removes it only if still owned by this instance on normal shutdown. Diagnostics checks its instanceId against runtime status before trusting it. Stale or another-root metadata must not claim readiness.
