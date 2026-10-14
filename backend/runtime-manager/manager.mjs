@@ -4,6 +4,7 @@ import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { terminateOwned } from '../../contracts/local-process.mjs';
 import { randomUUID } from 'node:crypto';
+import { portKeys } from './ports.mjs';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const failure = (code, message, service) => Object.assign(new Error(message), { code, service });
@@ -25,6 +26,7 @@ export class RuntimeManager {
   }
   state() {
     return { instanceId: this.instanceId, generation: this.generation, phase: this.phase, busy: !!this.operation, canRestart: !this.operation && !this.closed, jobId: this.jobId || null, scope: this.scope || 'all', error: this.error,
+      ports: this.config ? Object.fromEntries(portKeys.map(key => [key, this.config[key]])) : null,
       services: [...this.children].map(([name, child]) => ({ name, pid: child.pid || null, running: !!alive(child) })) };
   }
   async log(event, fields = {}) {
@@ -40,7 +42,7 @@ export class RuntimeManager {
   }
   launch(definition, config) {
     if (this.closed) throw failure('MANAGER_STOPPED', 'Runtime manager is stopping.');
-    const env = { ...process.env, SEED_ROOT: this.root, SEED_RUNTIME_MANAGER_PORT: String(config.runtimeManagerPort), SEED_AGENT_PORT: String(config.agentPort), SEED_WORKSPACE_PORT: String(config.workspacePort), SEED_BUILDER_PORT: String(config.builderPort), SEED_PDF_EDITOR_PORT: String(config.pdfEditorPort), SEED_OPENCODE_PORT: String(config.openCodePort), ...definition.env };
+    const env = { ...process.env, SEED_ROOT: this.root, SEED_FRONT_PORT: String(config.frontPort), SEED_RUNTIME_MANAGER_PORT: String(config.runtimeManagerPort), SEED_AGENT_PORT: String(config.agentPort), SEED_WORKSPACE_PORT: String(config.workspacePort), SEED_BUILDER_PORT: String(config.builderPort), SEED_PDF_EDITOR_PORT: String(config.pdfEditorPort), SEED_OPENCODE_PORT: String(config.openCodePort), ...definition.env };
     const child = spawn(process.execPath, [path.join(this.root, definition.file), ...(definition.args || [])], { cwd: this.root, env, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
     this.children.set(definition.name, child);
     child.stdout.on('data', chunk => { if (this.output) process.stdout.write(`[${definition.name}] ${chunk}`); });
@@ -86,8 +88,9 @@ export class RuntimeManager {
     const ports = ['frontPort','agentPort','workspacePort','builderPort','pdfEditorPort','runtimeManagerPort','vitePort','openCodePort'];
     config.vitePort ??= 5174; config.pdfEditorPort ??= 4313; config.runtimeManagerPort ??= 4314; config.openCodePort ??= 4315;
     if (ports.some(key => !Number.isInteger(config[key]) || config[key] < 1024 || config[key] > 65535) || new Set(ports.map(key => config[key])).size !== ports.length) throw failure('INVALID_CONFIG', 'Service ports must be distinct integers from 1024 to 65535.');
-    if (this.config && ports.some(key => config[key] !== this.config[key])) throw failure('LAUNCHER_RESTART_REQUIRED', 'Service ports changed. Restart with the launcher for your operating system.');
-    return config;
+    if (this.sourcePorts && ports.some(key => config[key] !== this.sourcePorts[key])) throw failure('LAUNCHER_RESTART_REQUIRED', 'Service ports changed. Restart with the launcher for your operating system.');
+    this.sourcePorts ??= Object.fromEntries(ports.map(key => [key, config[key]]));
+    return { ...config, ...this.portOverrides };
   }
   async startBackends(config) {
     this.activeDefinitions = [];

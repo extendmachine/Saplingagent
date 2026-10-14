@@ -70,6 +70,16 @@ test('invalid new config preserves live backends and startup failure remains obs
  await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify(config));await fs.writeFile(path.join(root,'builder.fail'),'fail');manager.restart();await manager.operation;assert.equal(manager.phase,'failed');assert.equal(manager.error.service,'builder');assert.equal(manager.children.get('front').pid,before.services.find(x=>x.name==='front').pid);assert.equal((await request('/api/runtime/status')).status,200);
  await fs.unlink(path.join(root,'builder.fail'));manager.restart();await manager.operation;assert.equal(manager.phase,'ready');assert.equal(manager.generation,2);
 });
+test('allocated ports stay fixed across config reload and configured port edits require a launcher restart', async t => {
+ const {manager,root,config}=await fixture(t);
+ const assigned={frontPort:await port(),agentPort:await port()};
+ manager.portOverrides=assigned;
+ const loaded=await manager.loadConfig();assert.equal(loaded.frontPort,assigned.frontPort);assert.equal(loaded.agentPort,assigned.agentPort);
+ await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify({...config,preferredModel:'fixture-model'}));
+ assert.equal((await manager.loadConfig()).preferredModel,'fixture-model');
+ await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify({...config,frontPort:await port()}));
+ await assert.rejects(manager.loadConfig(),{code:'LAUNCHER_RESTART_REQUIRED'});
+});
 test('Agent readiness is required; failed readiness preserves recovery controls and retry succeeds',async t=>{
  const {root,manager}=await fixture(t);await fs.writeFile(path.join(root,'agent.not-ready'),'not-ready');manager.restart();await manager.operation;assert.equal(manager.phase,'failed');assert.equal(manager.error.code,'SERVICE_NOT_READY');assert.equal(manager.generation,1);await fs.unlink(path.join(root,'agent.not-ready'));manager.restart();await manager.operation;assert.equal(manager.generation,2);
 });
