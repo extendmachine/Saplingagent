@@ -46,6 +46,16 @@ test('Git HTTP names, checks out, returns to main and retains existing authentic
   const returned = await f.request('/api/git/switch', { branch: 'main' });
   assert.equal(returned.status, 200); assert.equal((await returned.json()).git.branch, 'main');
 });
+test('managed frontend origin works on an allocated port while the old origin remains rejected', async t => {
+  const previous = process.env.SEED_FRONT_PORT;
+  process.env.SEED_FRONT_PORT = '55173';
+  let f;
+  try { f = await fixture(t); }
+  finally { if (previous === undefined) delete process.env.SEED_FRONT_PORT; else process.env.SEED_FRONT_PORT = previous; }
+  const response = await f.request('/api/git/label', { sha: f.initial, name: 'Shifted origin' }, { Origin: 'http://127.0.0.1:55173', Authorization: '' });
+  assert.equal(response.status, 200);
+  assert.equal((await f.request('/api/git/label', { sha: f.initial, name: 'Old origin' }, { Origin: 'http://127.0.0.1:5173', Authorization: '' })).status, 403);
+});
 
 test('Git reservation blocks a concurrent mutation and new chat before body parsing completes', async t => {
   const f = await fixture(t);

@@ -81,3 +81,10 @@ POST /api/git/switch to the current unborn main is a no-op. POST /api/git/commit
 ## OpenCode message ownership (TASK-20261012-017)
 
 The existing public SSE schema is unchanged. Internal OpenCode prompt submission uses an explicit native messageID; parts contains only the user text and system receives static instructions plus current runtime context. Only non-summary assistant messages whose parentID equals that submitted user message may produce text, tool or reasoning progress. User/synthetic/ignored parts and other turns/sessions are not assistant output. Parts received before their message metadata are retained until role/parent attribution is available. Text snapshots are deduplicated per part. Prompt rejection, message/session errors and cancellation remain truthful terminal states; an idle run with no attributed assistant response fails explicitly instead of inventing success. Per-run caches are released on terminal/close paths. Stored conversations are preserved; previous incorrectly recorded replies are not silently deleted.
+
+
+## Managed ascending ports (TASK-20261014-003)
+
+Unified runtime passes SEED_FRONT_PORT and SEED_AGENT_PORT as integer loopback ports. Agent uses these effective ports for same-origin browser mutation checks; configured defaults remain for standalone callers. Existing workspace/builder/OpenCode/MCP environment routing uses the selected internal ports. No browser token exposure, CORS expansion, endpoint change or Full Access restriction. config/runtime.json remains unchanged by managed startup.
+
+Standalone SEED_AGENT_PORT=0 still asks Node for an ephemeral listener (existing test/development behavior); managed allocation always supplies a positive selected port.

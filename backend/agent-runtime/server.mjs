@@ -33,6 +33,15 @@ const validId = id => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(id
 export async function createAgentServer({ root = process.env.SEED_ROOT || defaultRoot, AppServerClass = AppServer, OpenCodeProviderClass = OpenCodeProvider, ClaudeProviderClass = ClaudeProvider, progressClock } = {}) {
   root = await fs.realpath(root);
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
+  for (const [key, name] of [['frontPort', 'SEED_FRONT_PORT'], ['agentPort', 'SEED_AGENT_PORT']]) {
+    if (!process.env[name]) continue;
+    const port = Number(process.env[name]);
+    // Standalone callers/tests may ask Node for an ephemeral Agent port with 0.
+    if (key === 'agentPort' && port === 0) continue;
+    const minimum = key === 'agentPort' ? 1 : 1024;
+    if (!Number.isInteger(port) || port < minimum || port > 65535) throw new Error(`${name} must be an integer port from ${minimum} to 65535`);
+    config[key] = port;
+  }
   const timing = turnTiming(config);
   const registerTask = createTaskRegistry(root);
   const token = (await fs.readFile(path.join(root, 'local-secrets/runtime/service-token'), 'utf8')).trim();
