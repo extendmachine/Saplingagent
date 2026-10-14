@@ -64,7 +64,7 @@ First choose **English** or **中文** (Enter defaults to English), then use the
 
 | Menu choice | Action |
 | --- | --- |
-| 1. Install / update | Show source/dependency results. In follow mode, check/merge upstream source, reload the launcher, then prepare local runtimes/dependencies. Local/own modes retain customer source. |
+| 1. Install / update | Available before a storage choice and in follow mode. Check source/dependencies and reload changed upstream source. Hidden after choosing local Git or your own repository. |
 | 2. Configure AI | Open the standalone local account/API configuration page. |
 | 3. Start app | Launch the local services and open the chat page. |
 | 4. Diagnostics | Check installation, saved AI access and runtime readiness. |
@@ -148,7 +148,9 @@ On first upgrade to this launcher, stop the existing launch window with Control+
 
 Selecting **1. Install / update** prints progress immediately and reports source separately from dependencies. **Follow release** checks the tracked upstream branch, fetches without tags or author main/testcode refs, and merges compatible saved local commits. It does not reset or force a checkout. After a source change the launcher runs again with updated runtime settings before dependency checks. An already-current installation reports that fact clearly.
 
-**Local only / own repository** retain your application source and check only local dependencies. To follow upstream, deliberately choose **5. Git / storage setup → 3. Follow release**. Historical detached/untracked versions are retained. `install --repair` repairs dependencies without fetching source. First installation still asks the three existing storage choices; no model request or credential import is performed.
+**Local only / own repository** are independent applications. Once either choice is saved, subsequent menus hide **1. Install / update**, and **5. Git / storage setup** offers only local Git or your own repository. The menu rereads this folder’s `.git/config` after each action; viewing it never changes history or remotes. Configure AI, Start app, Diagnostics, Git setup, language selection and Quit remain available. First installation and follow mode keep all three storage choices.
+
+For missing or changed dependencies, run `bash Saplingagent.sh install --repair`; this repairs the local environment without fetching application source and retains saved Git configuration. Explicit `install` remains available as well. To deliberately reconnect to author release after independence, stop the app, save your work and explicitly run `SAPLING_GIT_MODE=upstream SAPLING_GIT_BRANCH=release bash Saplingagent.sh git`. Existing history/branch conflicts may need manual reconciliation; no automatic reset or publication is performed. Historical detached/untracked versions are retained. Menu visibility is guidance, not an Agent permission limit.
 
 Before updating follow mode, stop the running app with Control+C and save pending source changes. The updater checks for Git conflicts before merging; if it pauses, read the reason and reconcile deliberately. It never creates a PR, pushes customer changes or automatically rolls back. On old installations menu1 still updates dependencies only: use the existing manual `git fetch upstream` / `git merge upstream/release` workflow to obtain this updated launcher first. Do not rerun the fresh-folder curl bootstrap over an existing app. See [macOS installation](docs/macos-install.html).
 

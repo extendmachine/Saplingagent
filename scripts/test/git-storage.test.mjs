@@ -59,6 +59,47 @@ test('first-install menu only offers 1–3 and requires an explicit choice befor
     await assert.rejects(configure(other, { prompt: () => choice }), /invalid/i); assert.equal(await git(other, 'rev-parse', 'HEAD'), sha);
   }
 });
+
+test('saved independent Git setup omits upstream and rejects hidden 3 without altering files/history/remotes', async t => {
+  const originalLanguage = process.env.SAPLING_LANG;
+  t.after(() => { if (originalLanguage === undefined) delete process.env.SAPLING_LANG; else process.env.SAPLING_LANG = originalLanguage; });
+  for (const mode of ['local', 'own']) for (const language of ['en', 'zh']) {
+    process.env.SAPLING_LANG = language;
+    const root = await folder(t); await repo(root, 'customer');
+    await git(root, 'config', '--local', 'saplingagent.storageMode', mode);
+    if (mode === 'own') await git(root, 'remote', 'add', 'origin', 'https://example.invalid/customer.git');
+    await fs.writeFile(path.join(root, 'App.tsx'), 'pending customer edits');
+    const config = await fs.readFile(path.join(root, '.git/config'), 'utf8'), head = await git(root, 'rev-parse', 'HEAD');
+    const output = []; let promptText;
+    await assert.rejects(configure(root, { force: true, output: text => output.push(text), prompt: label => { promptText = label; return '3'; } }), /1.*2/);
+    assert.doesNotMatch(output.join('\n'), /3\.|Follow|跟随/);
+    assert.match(promptText, /\[1-2\]/);
+    assert.equal(await fs.readFile(path.join(root, '.git/config'), 'utf8'), config);
+    assert.equal(await git(root, 'rev-parse', 'HEAD'), head);
+    assert.equal(await fs.readFile(path.join(root, 'App.tsx'), 'utf8'), 'pending customer edits');
+  }
+});
+
+test('saved upstream reconfiguration still shows follow release and independent choice 2 still connects own remote', async t => {
+  const root = await folder(t); await repo(root); await git(root, 'config', '--local', 'saplingagent.storageMode', 'upstream');
+  const output = []; await assert.rejects(configure(root, { force: true, output: text => output.push(text), prompt: () => '' }), /invalid/i);
+  assert.match(output[0], /3\. Follow/);
+  await git(root, 'config', '--local', 'saplingagent.storageMode', 'local');
+  const responses = ['2', 'https://example.invalid/new.git'];
+  await configure(root, { force: true, prompt: () => responses.shift() });
+  assert.equal(await git(root, 'remote', 'get-url', 'origin'), 'https://example.invalid/new.git');
+  assert.equal(await git(root, 'config', '--local', '--get', 'saplingagent.storageMode'), 'own');
+});
+
+test('an explicit independent-to-upstream request remains supported without restoring the hidden menu entry', async t => {
+  const source = await folder(t); await repo(source, 'release');
+  const root = await folder(t); await repo(root, 'release');
+  await git(root, 'config', '--local', 'saplingagent.storageMode', 'own');
+  await git(root, 'config', `url.${source}.insteadOf`, AUTHOR_REMOTE);
+  await configure(root, { force: true, mode: 'upstream', branch: 'release', prompt: () => { throw new Error('Unexpected menu'); } });
+  assert.equal(await git(root, 'config', '--local', '--get', 'saplingagent.storageMode'), 'upstream');
+  assert.equal(await git(root, 'config', 'branch.release.remote'), 'upstream');
+});
 test('own remote belongs to customer; no network/publication and author origin is not retained', async t => {
   const root = await folder(t); await configure(root, { mode: 'own', remoteUrl: 'https://example.invalid/customer/app.git' });
   assert.equal(await git(root, 'remote', 'get-url', 'origin'), 'https://example.invalid/customer/app.git');

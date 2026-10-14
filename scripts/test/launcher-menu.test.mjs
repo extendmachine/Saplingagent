@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const exec = promisify(execFile);
+const git = async (root, ...args) => (await exec('git', ['-C', root, ...args])).stdout.trim();
 
 const project = fileURLToPath(new URL('../../', import.meta.url));
 async function fixture(t, { failure = false, longRunning = false } = {}) {
@@ -23,9 +27,9 @@ while true; do sleep 0.05; done` : failure ? 'exit 7' : 'exit 0'}
 `);
   return root;
 }
-function execute(root, input = '', args = [], language = 'en') {
+function execute(root, input = '', args = [], language = 'en', extraEnv = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn('/bin/bash', [path.join(root, 'Saplingagent.sh'), ...(language ? ['--lang', language] : []), ...args], { cwd: '/', stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn('/bin/bash', [path.join(root, 'Saplingagent.sh'), ...(language ? ['--lang', language] : []), ...args], { cwd: '/', env: { ...process.env, ...extraEnv }, stdio: ['pipe', 'pipe', 'pipe'] });
     let output = '';
     child.stdout.on('data', chunk => output += chunk);
     child.stderr.on('data', chunk => output += chunk);
@@ -146,4 +150,65 @@ test('Git storage setup is reachable in both languages from the same launcher', 
     assert.match(result.output, language === 'en' ? /Git \/ storage setup/ : /Git \/ 存放配置/);
   }
   assert.equal(await actions(root), 'git\ngit\n');
+});
+
+test('saved local/own menus hide install and reject its number without changing Git or losing other actions', async t => {
+  for (const mode of ['local', 'own']) for (const language of ['en', 'zh']) {
+    const root = await fixture(t);
+    await git(root, 'init', '-b', 'main');
+    await git(root, 'config', '--local', 'saplingagent.storageMode', mode);
+    if (mode === 'own') await git(root, 'remote', 'add', 'origin', 'https://example.invalid/customer.git');
+    const before = await fs.readFile(path.join(root, '.git/config'), 'utf8');
+    const result = await execute(root, '1\ninvalid\n2\n3\n4\n5\n0\n', [], language);
+    assert.equal(result.code, 0, result.output);
+    assert.doesNotMatch(result.output, /1\. Install|1\. 安装|Starting install|正在启动安装/);
+    assert.match(result.output, /\[0, 2-5, 9\]/);
+    assert.match(result.output, /bash Saplingagent.sh install --repair/);
+    assert.equal(await actions(root), 'configure\nstart\ndoctor\ngit\n');
+    assert.equal(await fs.readFile(path.join(root, '.git/config'), 'utf8'), before);
+    assert.equal(await git(root, 'for-each-ref'), '');
+  }
+});
+
+test('upstream and legacy menus keep install available', async t => {
+  for (const mode of ['upstream', 'existing']) {
+    const root = await fixture(t); await git(root, 'init', '-b', 'release');
+    await git(root, 'config', '--local', 'saplingagent.storageMode', mode);
+    const result = await execute(root, '1\n0\n');
+    assert.match(result.output, /1\. Install \/ update/);
+    assert.equal(await actions(root), 'install\n');
+  }
+});
+
+test('menu refreshes a newly saved storage choice immediately after a Git action', async t => {
+  const root = await fixture(t); await git(root, 'init', '-b', 'main');
+  await fs.appendFile(path.join(root, 'scripts/macos/bootstrap.sh'), "if [ \"$1\" = git ]; then git config --local saplingagent.storageMode own; fi\n");
+  // Replace the fixture's successful early exit so its Git action can save the choice.
+  const boot = path.join(root, 'scripts/macos/bootstrap.sh');
+  await fs.writeFile(boot, (await fs.readFile(boot, 'utf8')).replace('exit 0\n', ''));
+  const result = await execute(root, '5\n1\n0\n');
+  assert.equal(result.code, 0, result.output);
+  assert.equal((result.output.match(/1\. Install \/ update/g) || []).length, 1);
+  assert.match(result.output, /Storage: your repository/);
+  assert.equal(await actions(root), 'git\n');
+});
+
+test('menu reads its own local mode despite inherited Git routing and ignores a parent repository', async t => {
+  const parent = await fixture(t), root = path.join(parent, 'nested');
+  await git(parent, 'init', '-b', 'main');
+  await git(parent, 'config', '--local', 'saplingagent.storageMode', 'own');
+  await fs.mkdir(root); await fs.copyFile(path.join(project, 'Saplingagent.sh'), path.join(root, 'Saplingagent.sh'));
+  assert.match((await execute(root, '0\n')).output, /1\. Install/);
+  await git(root, 'init', '-b', 'main'); await git(root, 'config', '--local', 'saplingagent.storageMode', 'local');
+  const result = await execute(root, '0\n', [], 'en', { GIT_DIR: path.join(parent, '.git'), GIT_WORK_TREE: parent, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'saplingagent.storageMode', GIT_CONFIG_VALUE_0: 'upstream' });
+  assert.doesNotMatch(result.output, /1\. Install/);
+  assert.match(result.output, /Storage: local Git/);
+  assert.equal(await git(parent, 'config', '--local', '--get', 'saplingagent.storageMode'), 'own');
+});
+
+test('explicit dependency repair remains available for independent storage', async t => {
+  const root = await fixture(t); await git(root, 'init', '-b', 'main');
+  await git(root, 'config', '--local', 'saplingagent.storageMode', 'local');
+  assert.equal((await execute(root, '', ['install', '--repair'])).code, 0);
+  assert.equal(await actions(root), 'install --repair\n');
 });
