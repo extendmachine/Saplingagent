@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { readConnections,defaultSelection,codexConnection,claudeConnections,openCodeConnections } from '../../contracts/ai-configuration.mjs';
 import { configureGitStorage } from './git-storage.mjs';
 import { initializeDownloadedRecords } from './recipient-records.mjs';
+import { updateSource } from './source-update.mjs';
 import { setup } from '../setup.mjs';
 import { codexBinary, claudeBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
@@ -78,7 +79,9 @@ async function loggedIn() {
   throw new Error(t('Unable to read project login status. Check the Codex installation, architecture and local-secrets/codex/config.toml; this error does not mean the project is not logged in.', "无法读取项目登录状态。请检查 Codex 安装、架构和 local-secrets/codex/config.toml；此错误不代表未登录。"));
 }
 async function install(repair = false) {
+  console.log(t('Install / update started. Checking storage, source and project dependencies…','安装 / 更新已启动。正在检查存放配置、源码和项目依赖…'));
   const lock = path.join(root, `.runtime/${platformName}-install.lock`);
+  let ownsLock=true;
   try { await fs.mkdir(lock); }
   catch (error) {
     if (error.code === 'EEXIST') throw new Error(t('Another installation is in progress. Wait; if its window has closed, remove .runtime/macos-install.lock as documented and retry.', "另一个安装正在进行。请等待；确认其窗口已关闭后，按文档清理 .runtime/macos-install.lock 再重试。"));
@@ -87,11 +90,22 @@ async function install(repair = false) {
   const stage = path.join(root, '.runtime', `codex-install-${randomUUID()}`);
   try {
     await initializeDownloadedRecords(root);
-    await configureGitStorage(root);
+    const storage=await configureGitStorage(root);
+    if(!repair&&process.env.SAPLING_SOURCE_UPDATE_DONE!=='1'){
+      const source=await updateSource(root,{mode:storage.mode});
+      if(source.changed){
+        console.log(t('Loading the updated launcher and runtime settings to finish installation…','正在重新加载更新后的启动器和运行环境配置，继续安装…'));
+        await fs.rm(lock,{recursive:true,force:true});ownsLock=false;
+        const bash=windows?process.env.SAPLING_GIT_BASH:'/bin/bash';
+        if(windows&&!bash)throw new Error(t('Source updated. Reopen bash Saplingagent.sh and choose Install / update to load new dependencies.','源码已更新。请重新打开 bash Saplingagent.sh，选择安装 / 更新，以加载新依赖。'));
+        await required(bash.trim(),[path.join(root,'Saplingagent.sh'),'--lang',process.env.SAPLING_LANG||'en','install'],{childEnv:{...process.env,SAPLING_SOURCE_UPDATE_DONE:'1'}});
+        return;
+      }
+    }else console.log(t('Source check skipped for this dependency repair / updated-launcher continuation.','本次依赖修复／新启动器继续安装不重复更新源码。'));
     if (!windows) for (const file of ['Saplingagent.sh', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
     if (!repair && await installed()) {
       await localSetup();
-      console.log(t('The project environment is installed and up to date. Log in or start; repair damaged dependencies with bash Saplingagent.sh install --repair.', "项目环境已安装且为最新状态，可以配置接口或启动。修复依赖请运行 bash Saplingagent.sh --lang zh install --repair。"));
+      console.log(t('Dependency check complete: installed versions match this local source. See the source result above. Configure AI or start; use install --repair for damaged dependencies.', "依赖检查完成：已安装版本与当前本地源码配置一致。源码更新结果见上方。可以配置接口或启动；依赖损坏时使用 install --repair。"));
       return;
     }
     const packageFile = path.join(stage, 'package.json');
@@ -122,7 +136,7 @@ async function install(repair = false) {
     await localSetup();
     await fs.writeFile(stampFile, JSON.stringify({ schemaVersion: 1, nodeVersion: process.versions.node, codexVersion: settings.codexVersion, arch: process.arch, signature: await signature(), installedAt: new Date().toISOString() }, null, 2) + '\n');
     console.log(t('Installation complete. Choose Configure AI to connect your account or API provider, then Start app.', "安装完成。请选择配置 AI 接口，连接自己的账号或 API 服务商，然后启动应用。"));
-  } finally { await fs.rm(stage, { recursive: true, force: true }); await fs.rm(lock, { recursive: true, force: true }); }
+  } finally { await fs.rm(stage, { recursive: true, force: true }); if(ownsLock)await fs.rm(lock, { recursive: true, force: true }); }
 }
 async function login(deviceAuth) {
   if (!await installed()) throw new Error(t('Open Saplingagent.sh and choose Install / update first.', "请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
