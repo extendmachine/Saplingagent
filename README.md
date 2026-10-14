@@ -144,6 +144,14 @@ The stable recovery page is [http://127.0.0.1:5173/__saplingagent/runtime](http:
 
 On first upgrade to this launcher, stop the existing launch window with Control+C and run `bash Saplingagent.sh start` again. The public gateway keeps port5173; Vite moves to internal port5174. Manager4314 controls Agent4310, workspace4311, builder4312 and optional PDF4313 when its source exists. If a branch adds dependencies, install them first. Manager/launcher source or port changes require a full launcher restart. Legacy direct service callers cannot be tracked by the gateway; finish their work before restarting old versions.
 
+## Import existing local credentials
+
+Open **Configure AI → ChatGPT account**, then choose **Use local Codex login** or **Upload auth.json**. File-based local login is read from the caller's `CODEX_HOME`, otherwise `~/.codex/auth.json` (Windows: `%USERPROFILE%\.codex\auth.json`). The selected login is copied into this application’s `local-secrets/codex/auth.json` and activated. Keychain-only or desktop-only login may have no reusable file; use the existing official sign-in buttons in that case. An existing project account is preserved unless **Replace existing credentials** is explicitly selected. No global login/config is changed.
+
+For Claude choose **Claude API**, enter your provider URL/model and use **Import local Claude API credentials** or **Upload API credential JSON**. The local action reads `ANTHROPIC_API_KEY` inherited from the launcher terminal, or the API env fields in local Claude `settings.json` (`CLAUDE_CONFIG_DIR` or `~/.claude`). JSON accepts `apiKey`, `ANTHROPIC_API_KEY` or `env.ANTHROPIC_API_KEY`, with optional `baseUrl`/`model`; nonblank form fields take precedence. Existing scheme keys require explicit replacement. Claude subscription OAuth files, OS keychain and executable credential helpers are not imported.
+
+Files are limited to32KiB and sent only to the protected local configuration service. Secrets stay in ignored project files, never state responses or browser storage. Import validates local structure/storage, not token expiry, quota or successful model access. Finish setup, restart an existing app and start a new conversation. See the [configuration guide](docs/ai-configuration.html) and [Claude official API authentication](https://code.claude.com/docs/en/agent-sdk/quickstart).
+
 ## Authentication and costs
 
 **The local App Server does not charge a separate server fee. Model usage requires your own authentication and available quota.** Saplingagent includes no developer account, shared API key or promise of free model access.

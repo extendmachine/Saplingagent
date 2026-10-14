@@ -150,6 +150,10 @@ test('web configuration builds and launches its independent page without Codex l
  await fs.mkdir(path.join(root,'backend/ai-config'),{recursive:true});await fs.writeFile(path.join(root,'backend/ai-config/server.mjs'),"import fs from 'node:fs';fs.writeFileSync('configuration-start.json',JSON.stringify({args:process.argv.slice(2),root:process.env.SEED_ROOT,home:process.env.CODEX_HOME}));");
  const result=await runCli(root,['configure','--no-open']);assert.equal(result.code,0,result.output);assert.match(result.output,/independent AI configuration/);
  assert.deepEqual(JSON.parse(await fs.readFile(path.join(root,'build-args.json'),'utf8')),['build','--config',path.join(root,'front/ai-config/vite.config.mjs')]);
- const started=JSON.parse(await fs.readFile(path.join(root,'configuration-start.json'),'utf8'));assert.deepEqual(started.args,['--no-open']);assert.equal(path.resolve(started.root),root);assert.equal(started.home,path.join(root,'local-secrets/codex'));
+ const started=JSON.parse(await fs.readFile(path.join(root,'configuration-start.json'),'utf8'));assert.deepEqual(started.args,['--no-open']);assert.equal(path.resolve(started.root),root);assert.equal(started.home,'/invalid-codex-home');
+ // Runtime isolation is retained while explicit setup discovery uses caller home.
+ assert.equal(await fs.readFile(path.join(root,'local-secrets/codex/config.toml'),'utf8'),'cli_auth_credentials_store = "file"\n');
+ const defaultHome=await runCli(root,['configure','--no-open'],{CODEX_HOME:''});assert.equal(defaultHome.code,0,defaultHome.output);
+ assert.equal(JSON.parse(await fs.readFile(path.join(root,'configuration-start.json'),'utf8')).home,undefined);
  assert.equal(await fs.access(path.join(root,'UNEXPECTED_LAUNCH')).then(()=>true,()=>false),false);
 });
