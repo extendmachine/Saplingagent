@@ -46,3 +46,14 @@ https://github.com/user-attachments/assets/06893877-3172-4147-8d6c-b88137347074
 - `community/ai-farmer-cat.png`: user-supplied farmer-cat meme, edited with the built-in ImageGen tool on2026-10-14 for TASK-20261014-008. Displayed only in README.zh-CN.md, centered at320px, with the separate exact caption `让我们做新时代的AI农民`.
 - Edit prompt: Remove only the original large black Chinese text at the top and restore the white background. Preserve the orange-and-white cat's identity/expression, basket, hoe, original composition and photographic meme aesthetic. No crop, restyling, new text, watermark or extra objects.
 - Selected generated PNG pixels are preserved; SHA-256 `e7b56c858e78f7341288006c1af36759a9de70284f34da1f10213c07317af0c4`. The supplied original remains unchanged. This is a user-provided image edit, not a new project logo or a change to the English introduction.
+
+
+## Document-workspace case study
+
+Three unaltered 1280×720 browser screenshots captured on 2026-10-14 for TASK-20261014-009, approved by the project owner on 2026-10-15 and published in TASK-20261015-001. The example is the original testcode, now local adobe-replica source `3ecfff3712a01058f2c72bea641a947d4edbcd1d`; it is an optional application, not the minimal default UI. Images show only project sample documents. No generated interface, retouching or document-content changes were used.
+
+- `cases/document-workspace/workspace-overview.jpg`: file tree, sample spreadsheet and chat. SHA-256 `afdb3dc98d0e2dc2641fef63e3527cbfd7b51244315fb40daa525d138b16b5dd`.
+- `cases/document-workspace/word-editor.jpg`: direct DOCX paragraph editing and formatting toolbar. SHA-256 `51a0d9881a0b6f2bae7b3339b5a3d2f34a3c15ae5660b48d1d35d3c81ef9a76b`.
+- `cases/document-workspace/pdf-ocr-editor.jpg`: local Simplified Chinese OCR and recognized text selected for editing. OCR returned 10 selectable lines; no Apply or Save action was performed. SHA-256 `61a61962310f44ea1eaed132c5f173f00ebb88e3df25071f22e6e14a9311142b`.
+
+The interface's own panel-collapse and splitter controls were used for framing. English and Chinese introductions share these actual screenshots, with localized captions and feature descriptions.
