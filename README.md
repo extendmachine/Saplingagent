@@ -16,12 +16,18 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/extendmachine/Saplingagent/releases/download/demo-2026-10-14/Saplingagent-English-Demo-Final.mp4"><strong>▶ English demo · 1:41</strong></a> &nbsp;·&nbsp;
+  <a href="#demo"><strong>▶ English demo · 1:41</strong></a> &nbsp;·&nbsp;
   <a href="#install-configure-start">Get started</a> &nbsp;·&nbsp;
   <a href="docs/index.html">Documentation</a>
 </p>
 
 <p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 & ARM64 · Source available for noncommercial use</sub></p>
+
+<a id="demo"></a>
+
+https://github.com/user-attachments/assets/6f43f15f-38c4-4650-9383-669caa635dc8
+
+<p align="center"><sub>English narration and captions · 1:41 · <a href="https://github.com/extendmachine/Saplingagent/releases/download/demo-2026-10-14/Saplingagent-English-Demo-Final.mp4">Download the high-quality original</a></sub></p>
 
 ---
 

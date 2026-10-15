@@ -18,3 +18,13 @@ The English and Chinese demos were made for this project in OpenScreen and publi
 - [中文演示](https://github.com/extendmachine/Saplingagent/releases/download/demo-2026-10-14/Saplingagent-Chinese-Demo-Final.mp4): Mandarin narration and large Chinese captions, approximately 1:41; SHA-256 `2926f236fb19b36469a1db91bb935aaffd2a4e06eefef6c856b4b820e2740d20`.
 
 Hosting references checked 2026-10-14 for TASK-20261014-006: [GitHub release assets](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases) and [GitHub CLI release creation](https://cli.github.com/manual/gh_release_create). Publishing requires repository write access; published media links are readable without sign-in in this public repository.
+
+
+## Inline playback copies
+
+On 2026-10-14 (TASK-20261014-007), separate web copies were encoded from the original final demos for native GitHub README playback:1280×746,24fps,H.264/yuv420p,AAC stereo64kb/s,fast-start MP4,complete approximately101-second edit. Both are below10,000,000 bytes; originals above are unchanged. No video binary is committed to source.
+
+- [English web copy](https://github.com/user-attachments/assets/6f43f15f-38c4-4650-9383-669caa635dc8): 9181273 bytes; SHA-256 `8c243809a91a44e181cc24210fc03997e769956398b2275a3758cc850134251f`.
+- [中文网页播放版](https://github.com/user-attachments/assets/06893877-3172-4147-8d6c-b88137347074): 9181355 bytes; SHA-256 `9f966bf57ba6517b43f43b4d5b4b7f1e33cc637f6771bef2cbc52209a64c79bc`.
+
+Uploaded through GitHub's authenticated Markdown attachment UI. The README places each corresponding attachment URL on its own line for GitHub's native player; the HTML overview uses standard video controls. High-quality downloads remain available. [GitHub attachment limits and recommended H.264 codec](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/attaching-files) and [Markdown file attachments](https://github.blog/changelog/2021-03-03-attaching-files-to-markdown-files/) checked2026-10-14. Uploads require sign-in; reader access is checked separately from the upload preview.
