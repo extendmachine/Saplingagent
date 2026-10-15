@@ -28,3 +28,14 @@ On 2026-10-14 (TASK-20261014-007), separate web copies were encoded from the ori
 - [中文网页播放版](https://github.com/user-attachments/assets/06893877-3172-4147-8d6c-b88137347074): 9181355 bytes; SHA-256 `9f966bf57ba6517b43f43b4d5b4b7f1e33cc637f6771bef2cbc52209a64c79bc`.
 
 Uploaded through GitHub's authenticated Markdown attachment UI. The README places each corresponding attachment URL on its own line for GitHub's native player; the HTML overview uses standard video controls. High-quality downloads remain available. [GitHub attachment limits and recommended H.264 codec](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/attaching-files) and [Markdown file attachments](https://github.blog/changelog/2021-03-03-attaching-files-to-markdown-files/) checked2026-10-14. Uploads require sign-in; reader access is checked separately from the upload preview.
+
+
+### Playback previews
+
+English narration and captions:
+
+https://github.com/user-attachments/assets/6f43f15f-38c4-4650-9383-669caa635dc8
+
+中文配音与大字号字幕：
+
+https://github.com/user-attachments/assets/06893877-3172-4147-8d6c-b88137347074
