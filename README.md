@@ -37,6 +37,44 @@ https://github.com/user-attachments/assets/6f43f15f-38c4-4650-9383-669caa635dc8
 
 See a request become a working clock, then a saved version. English narration and captions · 1:41.
 
+<a id="document-workspace"></a>
+
+## Case study · A WPS-style local document workspace
+
+From one chat page to a document workspace. Browse files, make basic Office edits, work with PDFs and keep AI conversation alongside your documents.
+
+This is an example application built with Saplingagent. The default installation starts with the minimal chat interface.
+
+![File tree, spreadsheet and AI conversation in one workspace](assets/cases/document-workspace/workspace-overview.jpg)
+
+| Module | What the example does |
+| --- | --- |
+| File browsing and management | Browse a folder tree, filter file names, refresh listings, create files and folders, and copy absolute paths. |
+| Word documents | Preview DOCX, edit paragraph text directly, and adjust paragraph-wide font, size, emphasis, color and alignment. |
+| Spreadsheets | Open Excel, CSV and ODS files, switch worksheets, and edit cell values or formula text. |
+| PowerPoint | View PPTX slides and edit their text through a structured panel. |
+| PDF reading and editing | Navigate and zoom, add or replace text, fill text form fields, rotate or reorder pages, and delete pages. |
+| Local OCR | Recognize English or Simplified Chinese on a page, then select the recognized text for editing. |
+| PDF graphics | Replace, crop and adjust image objects; change vector geometry, color and paths. |
+| Markdown and code | Switch between Markdown editing and preview, and edit common code, configuration and text files. |
+| Images and media | Preview images and play audio or video files. |
+| Save and restore | Check for external file changes before saving, flag unsaved work, and restore the version before the last save. |
+
+**Word editing** — work directly on rendered paragraphs with a formatting toolbar.
+
+![Word document with direct paragraph editing and formatting controls](assets/cases/document-workspace/word-editor.jpg)
+
+**PDF and OCR** — local Simplified Chinese OCR with a recognized line selected in the text editor.
+
+![PDF page with local Chinese OCR and its text editing panel](assets/cases/document-workspace/pdf-ocr-editor.jpg)
+
+<details>
+<summary>Editing scope</summary>
+
+Office editing covers basic changes. Word controls format whole paragraphs; PowerPoint edits text rather than objects or animations. The spreadsheet view shows the first 250 rows and 60 columns; formula text can be edited, but no formula calculation engine is provided. PDF replacement can change typography or affect overlapping objects. The file panel currently covers browsing and creation; rename, move and recycle-bin workflows are not implemented.
+
+</details>
+
 <details>
 <summary>Explore the full guide</summary>
 
