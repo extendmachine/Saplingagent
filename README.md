@@ -16,64 +16,16 @@
 </p>
 
 <p align="center">
-  <a href="#demo"><strong>▶ English demo · 1:41</strong></a> &nbsp;·&nbsp;
+  <a href="https://github.com/extendmachine/Saplingagent/blob/release/README.md#demo"><strong>Public introduction and demos</strong></a> &nbsp;·&nbsp;
   <a href="#install-configure-start">Get started</a> &nbsp;·&nbsp;
   <a href="docs/index.html">Documentation</a>
 </p>
 
 <p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 & ARM64 · Source available for noncommercial use</sub></p>
 
-<a id="demo"></a>
+**Development branch: main.** This branch is the maintainer’s workspace for development and testing. Start shared changes here, validate them, then promote them to release when publication is requested.
 
-https://github.com/user-attachments/assets/6f43f15f-38c4-4650-9383-669caa635dc8
-
-<p align="center"><sub>English narration and captions · 1:41 · <a href="https://github.com/extendmachine/Saplingagent/releases/download/demo-2026-10-14/Saplingagent-English-Demo-Final.mp4">Download the high-quality original</a></sub></p>
-
----
-
-- **Build through conversation.** Turn requests into React interfaces and local application features.
-- **Keep your project local.** Code, conversations and version history stay with your application.
-- **Extend as you grow.** Connect Codex, OpenCode or Claude Agent with MCP tools and reusable Skills.
-
-See a request become a working clock, then a saved version. English narration and captions · 1:41.
-
-<a id="document-workspace"></a>
-
-## Case study · A WPS-style local document workspace
-
-From one chat page to a document workspace. Browse files, make basic Office edits, work with PDFs and keep AI conversation alongside your documents.
-
-This is an example application built with Saplingagent. The default installation starts with the minimal chat interface.
-
-![File tree, spreadsheet and AI conversation in one workspace](assets/cases/document-workspace/workspace-overview.jpg)
-
-| Module | What the example does |
-| --- | --- |
-| File browsing and management | Browse a folder tree, filter file names, refresh listings, create files and folders, and copy absolute paths. |
-| Word documents | Preview DOCX, edit paragraph text directly, and adjust paragraph-wide font, size, emphasis, color and alignment. |
-| Spreadsheets | Open Excel, CSV and ODS files, switch worksheets, and edit cell values or formula text. |
-| PowerPoint | View PPTX slides and edit their text through a structured panel. |
-| PDF reading and editing | Navigate and zoom, add or replace text, fill text form fields, rotate or reorder pages, and delete pages. |
-| Local OCR | Recognize English or Simplified Chinese on a page, then select the recognized text for editing. |
-| PDF graphics | Replace, crop and adjust image objects; change vector geometry, color and paths. |
-| Markdown and code | Switch between Markdown editing and preview, and edit common code, configuration and text files. |
-| Images and media | Preview images and play audio or video files. |
-| Save and restore | Check for external file changes before saving, flag unsaved work, and restore the version before the last save. |
-
-**Word editing** — work directly on rendered paragraphs with a formatting toolbar.
-
-![Word document with direct paragraph editing and formatting controls](assets/cases/document-workspace/word-editor.jpg)
-
-**PDF and OCR** — local Simplified Chinese OCR with a recognized line selected in the text editor.
-
-![PDF page with local Chinese OCR and its text editing panel](assets/cases/document-workspace/pdf-ocr-editor.jpg)
-
-<details>
-<summary>Editing scope</summary>
-
-Office editing covers basic changes. Word controls format whole paragraphs; PowerPoint edits text rather than objects or animations. The spreadsheet view shows the first 250 rows and 60 columns; formula text can be edited, but no formula calculation engine is provided. PDF replacement can change typography or affect overlapping objects. The file panel currently covers browsing and creation; rename, move and recycle-bin workflows are not implemented.
-
-</details>
+The public project introduction, videos and application examples are maintained only on [release](https://github.com/extendmachine/Saplingagent/tree/release). [Watch the English demo](https://github.com/extendmachine/Saplingagent/blob/release/README.md#demo) or [explore the document-workspace case](https://github.com/extendmachine/Saplingagent/blob/release/README.md#document-workspace).
 
 <details>
 <summary>Explore the full guide</summary>
@@ -396,11 +348,11 @@ Only three named branches are maintained:
 
 | Branch | Role |
 | --- | --- |
-| `main` | Shared development baseline and code review |
+| `main` | Maintainer development and testing |
 | `adobe-replica` | Adobe replication experiments |
-| `release` | Customer-facing source distribution |
+| `release` | Public default branch, source distribution and showcase |
 
-New users install `release`; it can lag behind `main`. Maintainer changes enter `main` after appropriate self-checks under the owner's standing authorization. `release` and `adobe-replica` synchronize only when requested. Previous branch histories remain reachable; main changes are not automatically a customer release.
+New users install `release`; it can lag behind `main`. Shared work lands on `main` first under the owner's standing authorization, is checked there, then proceeds to a requested release promotion. An explicit main-only task leaves release untouched. Videos, showcase cases and their images stay on release; preserve them when promoting code instead of overwriting release with the main tree. Adobe experiments synchronize only when requested. Previous history is retained.
 
 To prepare a clean source ZIP from a committed revision, use the installed project Node:
 
