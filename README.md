@@ -1,5 +1,7 @@
 # Saplingagent
 
+**English** · [简体中文](README.zh-CN.md)
+
 <p align="center">
   <img src="assets/brand/saplingagent-growth-logo.png" alt="Saplingagent: a technology sapling growing into a tree, connected by an arrow, with circuit traces and nodes in both." width="720">
 </p>
@@ -14,6 +16,30 @@ Saplingagent combines a React interface with the official **Codex App Server** a
 
 Commercial use requires separate written permission. See [LICENSE](LICENSE), [NOTICE](NOTICE) and the authentication limits below. Saplingagent is independent software and is not an official OpenAI product.
 
+## At a glance
+
+| Start with | Grow into |
+| --- | --- |
+| One local chat page | React interfaces and application features built around your requests |
+| Your own model access | Codex, OpenCode or Claude Agent conversations with project context |
+| A complete application folder | Code, configuration, Skills and local data that stay with your project |
+| Local version controls | Saved changes, named versions and user-selected recovery |
+
+For a first change, try: “Add a clock showing my local date and time.” Describe the result you want, follow the work in chat, then review the updated page. Backend or dependency changes may need a restart.
+
+## Contents
+
+- [Install, configure, start](#install-configure-start)
+- [Choose Git storage](#choose-where-your-application-lives)
+- [Switch versions and restart](#switch-versions-and-restart)
+- [Update or repair an existing installation](#what-menu-1-updates)
+- [Authentication and costs](#authentication-and-costs)
+- [Models, permissions and configuration](#models-permissions-and-configuration)
+- [Troubleshooting](#troubleshooting)
+- [Application structure](#application-structure)
+- [Branches and source delivery](#branches-and-release-preparation)
+- [License](#license)
+
 ## Folder ownership and conversation receipts
 
 The delivered application folder contains all Saplingagent-owned code, rules, Skills, configuration, documentation and launcher helpers. Dependencies install into that folder; declared model services remain external. Developing this product does not require editing another repository, global installation or external source code. Keep the complete folder together.
@@ -21,6 +47,8 @@ The delivered application folder contains all Saplingagent-owned code, rules, Sk
 Customer Full Access stays enabled. Rules recommend keeping normal application changes within the folder, while an explicit request can target external code accessible to the current OS user. This recommendation does not add a path blocker or sandbox. Every final assistant reply, including read-only conversation, is instructed to include the same eight-field completion-review receipt with actual changes, checks and pending items. Read-only replies do not create task records. Model compliance requires real conversation validation.
 
 ## Install, configure, start
+
+### 1. Get the complete application
 
 For a new installation, run one command in **macOS Terminal** or **Windows Git Bash** (install [Git for Windows](https://gitforwindows.org/) first):
 
@@ -49,9 +77,9 @@ cd Saplingagent
 
 Or [download release source](https://github.com/extendmachine/Saplingagent/archive/refs/heads/release.zip) and extract it. Customer downloads use `release`; choose another branch explicitly if needed. A private repository requires access.
 
-Open Terminal in the application folder and run:
+### 2. Install through the launcher
 
-Use the same **Saplingagent.sh** entry on both platforms:
+Use the same **Saplingagent.sh** entry from the application folder on both platforms:
 
 - **macOS:** open Terminal in the complete project folder.
 - **Windows10/11 x64 or ARM64:** install/use [Git for Windows](https://gitforwindows.org/), then open **Git Bash** in the complete project folder. Windows CMD/PowerShell do not run Bash scripts directly. Git Bash is required; WSL/Linux is not this native Windows installation path.
@@ -72,11 +100,13 @@ First choose **English** or **中文** (Enter defaults to English), then use the
 | 9. Change language | Switch English / Chinese. |
 | 0. Quit | Close the menu. |
 
-Install first, configure your own AI access, then start. Menu actions return to the menu when finished; an error leaves the menu available for retry. Stop an existing application before updating dependencies. During startup keep the terminal open; Control+C stops the owned services and exits the launcher.
+Choose **1. Install / update** if you downloaded the folder manually. The one-command installer already runs this step. Next choose **2. Configure AI**, finish setup, then **3. Start app**. Menu actions return to the menu when finished; an error leaves the menu available for retry. Stop an existing application before updating dependencies. While the app is running, keep the terminal open; Control+C stops the owned services and exits the launcher.
 
 Installation supports macOS 13.5+ on Apple Silicon or Intel, downloads official Node **24.21.0**, checks its official SHA-256 checksum, and installs project-local Codex **0.146.1**, OpenCode, Claude Agent SDK **0.3.296** and locked dependencies. No preinstalled Node, npm, Homebrew or Codex desktop app is required. Git is required for local version history; on Mac, install Apple Command Line Tools with `xcode-select --install` if Git is missing (full Xcode is unnecessary); Windows requires Git Bash and its bundled shell utilities. Windows10 must be version1809+; ARM64 and x64 are detected automatically. Internet access to official downloads, npm and your model provider is required. Versions are declared in [config/macos.json](config/macos.json) and dependency lockfiles.
 
 Runtimes stay in `.runtime/`, dependencies in their modules' `node_modules/`, and npm cache in `.cache/npm/`. No sudo or global npm installation is needed. Keep the entire application folder; the single user-facing launcher uses its internal scripts and configuration.
+
+### 3. Configure AI and start your first conversation
 
 **Configure AI** opens a separate local web page after installation, before the chat services are started. The page has English/Chinese controls:
 
@@ -90,6 +120,8 @@ Scheme metadata stays in `local-secrets/ai-config/connections.json`, API keys in
 Startup uses the saved default scheme. **An OpenCode-only or custom Codex API scheme does not require ChatGPT login.** Reconfigure while an app is running, then restart and start a new conversation to apply the choice. Existing conversations retain their engine/model; do not resume a Codex thread through a different provider. See [AI configuration guide](docs/ai-configuration.html) and [configuration service contract](backend/ai-config/CONTRACT.md).
 
 Startup opens the **actual address printed in the terminal** after local readiness checks. Port5173 is the default starting point; occupied public/internal ports are skipped upward. Send a message to verify an actual response. Installation and saved login do not prove model access or available quota.
+
+### Command-line actions
 
 For automation or recovery, the same launcher accepts explicit actions:
 
@@ -140,7 +172,7 @@ Local management starts empty `main`; own/follow modes start on `release` unless
 
 After switching, click **Restart app** to load that version's frontend, backend, Codex App Server and MCP. The options menu also offers **Restart backend** (keeps the current frontend process) and **Runtime recovery**. Wait for running AI/file work to finish or stop it yourself; restart refuses busy work.
 
-The stable recovery page is [http://127.0.0.1:5173/__saplingagent/runtime](http://127.0.0.1:5173/__saplingagent/runtime), or your configured `frontPort`. It survives frontend/backend failure and works when an older version lacks the restart button. Repair the source/dependencies/login and retry there. Current UI recovers an unsent draft; older UIs may not. Conversations and login files remain in the application folder. No automatic resend or code rollback.
+The recovery page is at **`<actual app URL>/__saplingagent/runtime`**. For example, if the launcher prints `http://127.0.0.1:5175/`, use `http://127.0.0.1:5175/__saplingagent/runtime`. It survives frontend/backend failure while the runtime manager remains running, and works when an older version lacks the restart button. Repair the source/dependencies/login and retry there. Current UI recovers an unsent draft; older UIs may not. Conversations and login files remain in the application folder. No automatic resend or code rollback.
 
 On first upgrade to this launcher, stop the existing launch window with Control+C and run `bash Saplingagent.sh start` again. The public gateway starts from port5173 and internal Vite from5174. Manager4314 controls Agent4310, workspace4311, builder4312 and optional PDF4313 when its source exists; all are configured starting values and are automatically advanced when occupied. Actual per-instance ports stay fixed across service restarts. If a branch adds dependencies, install them first. Manager/launcher source or port changes require a full launcher restart. Legacy direct service callers cannot be tracked by the gateway; finish their work before restarting old versions.
 
@@ -169,11 +201,13 @@ Files are limited to32KiB and sent only to the protected local configuration ser
 | Route | Authentication and billing |
 | --- | --- |
 | ChatGPT account scheme | Your own ChatGPT login through official Codex; access and limits depend on the account's plan, organization and model eligibility |
-| API scheme (Codex / OpenCode) | Your own provider credential and API endpoint; usage follows the provider's billing and eligibility, separate from a ChatGPT subscription. Supported protocols are selected in the setup page |
+| API scheme (Codex / OpenCode / Claude Agent) | Your own provider credential and API endpoint; usage follows the provider's billing and eligibility, separate from a ChatGPT subscription. Supported protocols are selected in the setup page |
 
 Installation, saved authentication and `model/list` discovery are separate from successful inference. Start/Doctor do not send a model prompt automatically. Sending a chat message initiates model usage. Reinstallation does not increase quota.
 
-For current eligibility and costs, consult [Codex authentication](https://learn.chatgpt.com/docs/auth) and [Codex pricing and usage limits](https://learn.chatgpt.com/docs/pricing); no plan price or free-tier entitlement is hard-coded here.**Commercial and hosted authentication:**the current implementation uses local Codex login. OpenAI documents continuation for existing local or open-source applications and recommends migration to Sign in with ChatGPT. App Server authentication has never been permitted for commercial or hosted services. This project has not completed commercial Sign in with ChatGPT registration/integration. A separate Saplingagent commercial license does not grant OpenAI authentication rights. Before commercial distribution, resolve both permissions. See [App Server authentication](https://learn.chatgpt.com/docs/app-server) and [Sign in with ChatGPT integration](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server).
+For current eligibility and costs, consult [Codex authentication](https://learn.chatgpt.com/docs/auth) and [Codex pricing and usage limits](https://learn.chatgpt.com/docs/pricing); no plan price or free-tier entitlement is hard-coded here.
+
+**Commercial and hosted authentication:** the current implementation uses local Codex login. OpenAI documents continuation for existing local or open-source applications and recommends migration to Sign in with ChatGPT. App Server authentication has never been permitted for commercial or hosted services. This project has not completed commercial Sign in with ChatGPT registration/integration. A separate Saplingagent commercial license does not grant OpenAI authentication rights. Before commercial distribution, resolve both permissions. See [App Server authentication](https://learn.chatgpt.com/docs/app-server) and [Sign in with ChatGPT integration](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server).
 
 ## Optional OpenCode providers
 
@@ -206,7 +240,7 @@ flowchart LR
 1. [scripts/macos/codex.sh](scripts/macos/codex.sh) selects project-local Node and Codex, sets project `CODEX_HOME`, and uses file credential storage.
 2. [backend/agent-runtime/rpc.mjs](backend/agent-runtime/rpc.mjs) launches `codex app-server --listen stdio://` and exchanges newline-delimited JSON through stdin/stdout.
 3. [server.mjs](backend/agent-runtime/server.mjs) sends `initialize`, then `initialized`; checks `account/read` and `model/list`; creates/resumes threads; starts turns; and forwards incremental text/tool events to the browser through SSE.
-4. Startup arguments configure `mcp_servers.seedagent` to launch [the project MCP server](backend/mcp-runtime/server.mjs) with local service endpoints. It exposes**15 tools** for project context, files, commands, change records, preferences and Skills.
+4. Startup arguments configure `mcp_servers.seedagent` to launch [the project MCP server](backend/mcp-runtime/server.mjs) with local service endpoints. It exposes **15 tools** for project context, files, commands, change records, preferences and Skills.
 5. Codex discovers `seed-page-edit`, `seed-research` and `seed-skill-author` under [.agents/skills/](.agents/skills/). The AI enters project rules through `AGENTS.md → rules/README.md`.
 
 The integration does not replace global Codex configuration. Existing `seedagent`, `SEED_*`, `SEEDAGENT_*` and `seed-*` identifiers remain for protocol/data compatibility.
@@ -237,7 +271,7 @@ Public settings live in [config/runtime.json](config/runtime.json).
 | --- | --- | --- |
 | Preferred model | `gpt-6.1-sol` | Uses the actual App Server catalog; falls back to its default/first model if unavailable |
 | Reasoning effort | `medium` | Must be supported by the selected model |
-| Gateway / Vite / Manager / Agent / Workspace / Builder ports | `5173` / `5174` / `4314` / `4310` / `4311` / `4312` | Local loopback services; PDF `4313` only when source exists; Agent-owned OpenCode uses `4315` |
+| Gateway / Vite / Manager / Agent / Workspace / Builder ports | `5173` / `5174` / `4314` / `4310` / `4311` / `4312` | Starting values; the launcher selects free, distinct loopback ports. PDF starts at `4313` only when source exists; Agent-owned OpenCode starts at `4315` |
 | Permission mode | `full-access` | Codex `danger-full-access`, `approvalPolicy: never`; Claude `bypassPermissions` with sandbox disabled |
 | Total turn deadline | `turnTimeoutMs: 0` | Disabled by default; explicit nonzero configuration enables a total deadline |
 | Inactivity reminder | `turnIdleWarningMs: 600000` | Warns after 10 minutes without effective progress; does not stop or resend the turn |
@@ -267,9 +301,9 @@ Doctor reports installation, versions, saved AI configuration and configured-por
 | Download/dependency failure | Check Node.js/npm network access; run `bash Saplingagent.sh install --repair` |
 | Installation lock remains | Confirm this project's installer has exited; remove only its stale `.runtime/node-install.lock` or `.runtime/macos-install.lock`, then retry |
 | Windows operation exits 150 before device detection | Update the complete source folder; menu actions now retain foreground terminal ownership and interactive install/Git setup use a foreground native console bridge when available. Retry `bash Saplingagent.sh --lang zh install` in Git Bash and retain preceding error text if it still fails; the exit number alone is not a diagnosis |
-| Port occupied | Stop your previous startup terminal or adjust `config/runtime.json`; the launcher does not kill another project's process |
+| Port occupied | Follow the actual URL printed by the launcher; it selects free ports automatically. If another process wins a bind race during startup, run Start app again. Other projects are left running |
 | Not ready within 120 seconds | Run Doctor and inspect the startup terminal and metadata in `logs/<service>/` |
-| Local service connection failed | Keep the startup terminal running and restart the full application; check Agent port `4310` and the frontend proxy |
+| Local service connection failed | Keep the startup terminal running, run Diagnostics, and use the actual runtime address/ports from `.runtime/runtime-address.json`; configured ports are starting values |
 | Session does not exist | The UI retains unsent/retry input and starts a new session; do not delete `data/` to resolve it |
 | No recent progress | Check whether a tool or user decision is pending; continue waiting or stop manually. The reminder does not impose a default turn deadline |
 | OpenCode shows `Current permissions: full-access` or internal instructions as a reply | Update source to a version containing the OpenCode message-attribution fix (TASK-20261012-017), then restart the backend/app and create a new conversation. Preserve `data/` and `local-secrets/`; older saved bubbles are not deleted. In follow mode Install / update checks source and dependencies; local/own modes retain source. Check the actual branch/version because release may lag main |
@@ -281,10 +315,13 @@ Stop services before moving the application. Move the whole folder. On the same 
 
 ```text
 Saplingagent/
-├── Saplingagent.sh          # macOS English / Chinese menu
+├── README.md / README.zh-CN.md # English / Chinese project guides
+├── Saplingagent.sh             # macOS / Windows English / Chinese menu
 ├── front/                     # React chat and application features
 ├── backend/
-│   ├── agent-runtime/         # App Server client, turns, SSE, Git API
+│   ├── agent-runtime/         # Agent engines, turns, SSE, Git API
+│   ├── ai-config/             # Standalone account / API configuration
+│   ├── runtime-manager/       # Runtime gateway and restart controls
 │   ├── workspace/             # Local sessions, preferences and evidence
 │   ├── app-builder/           # File/command tools and optional restoration
 │   └── mcp-runtime/           # MCP stdio tools
@@ -313,7 +350,7 @@ Only three named branches are maintained:
 | `adobe-replica` | Adobe replication experiments |
 | `release` | Customer-facing source distribution |
 
-This English candidate is intended for all three branches after exact-version human approval. Previous branch histories remain reachable. New changes are not silently propagated or presented as an approved release.
+New users install `release`; it can lag behind `main`. Maintainer changes enter `main` after appropriate self-checks under the owner's standing authorization. `release` and `adobe-replica` synchronize only when requested. Previous branch histories remain reachable; main changes are not automatically a customer release.
 
 To prepare a clean source ZIP from a committed revision, use the installed project Node:
 
@@ -326,19 +363,19 @@ if [ "$SEED_ARCH" = "x86_64" ]; then SEED_ARCH=x64; fi
 
 The package and `.sha256` file are written to `.cache/releases/`. It contains committed source, complete rules/Skills, license notices, pinned lockfiles and a per-file SHA-256 manifest in `delivery.json`. Recipient task/goal files are initialized without inheriting developer approvals. It excludes credentials, conversations, logs, snapshots, dependency directories and installed runtimes.
 
-**Do not distribute a ZIP of your running project folder.**Use this packager. GitHub Download ZIP is a source snapshot; the customer packager additionally initializes recipient task records. Version setup and repackaging require Git. Packaging defaults to the committed `release` ref; it never silently falls back to `main` or `HEAD`. An explicit ref is allowed for a reviewed candidate/custom distribution; delivery.json records the actual ref, commit and initial branch.
+**Do not distribute a ZIP of your running project folder.** Use this packager. GitHub Download ZIP is a source snapshot; the customer packager additionally initializes recipient task records. Version setup and repackaging require Git. Packaging defaults to the committed `release` ref; it never silently falls back to `main` or `HEAD`. An explicit ref is allowed for a reviewed candidate/custom distribution; delivery.json records the actual ref, commit and initial branch.
 
 Release checklist and known validation limits: [docs/release-checklist.html](docs/release-checklist.html). Public repository visibility and a published GitHub release are separate actions from preparing this candidate.
 
 ## License
 
-Project-owned source is available under**[PolyForm Noncommercial 1.0.0](LICENSE)**. It permits uses, modifications and distribution for its permitted noncommercial purposes, subject to its notice requirements. Commercial use needs a separate written agreement with the project owner; request authorization through [extendmachine](https://github.com/extendmachine). This is a source-available license, not an unrestricted open-source commercial grant.
+Project-owned source is available under **[PolyForm Noncommercial 1.0.0](LICENSE)**. It permits uses, modifications and distribution for its permitted noncommercial purposes, subject to its notice requirements. Commercial use needs a separate written agreement with the project owner; request authorization through [extendmachine](https://github.com/extendmachine). This is a source-available license, not an unrestricted open-source commercial grant.
 
 The license includes defined permissions for certain noncommercial organizations. The exact [official terms](https://polyformproject.org/licenses/noncommercial/1.0.0) govern scope. Dependencies and bundled third-party materials retain their own terms in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); this project's restriction does not relicense them or claim ownership of user-generated applications.
 
 ## References and development rules
 
-Installation and integration documentation checked on **2026-10-10**:
+Codex authentication, usage and App Server documentation rechecked on **2026-10-14**. Dependency versions above describe this repository's pinned installation, rather than the newest upstream releases:
 
 - [Codex App Server](https://learn.chatgpt.com/docs/app-server)
 - [Codex authentication](https://learn.chatgpt.com/docs/auth)
