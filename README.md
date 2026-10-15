@@ -1,35 +1,39 @@
-# Saplingagent
-
-**English** · [简体中文](README.zh-CN.md)
-
-This guide describes the `release` branch. Features on `main` may differ from the version you download.
+<h1 align="center">Saplingagent</h1>
 
 <p align="center">
-  <img src="assets/brand/saplingagent-growth-logo.png" alt="Saplingagent: a technology sapling growing into a tree, connected by an arrow, with circuit traces and nodes in both." width="720">
+  <img src="assets/brand/saplingagent-growth-logo.png" alt="Saplingagent — a technology sapling growing into a tree" width="320">
 </p>
 
-**Let your apps grow like trees.**
+<h3 align="center">From a conversation to your own application.</h3>
 
-Saplingagent is a minimal software seed package that you can modify yourself, directly or through conversation with AI. Start with a chat page in your own project folder, then add the interfaces, features and services you need.
+<p align="center">
+  A local workspace for building and evolving software with AI.<br>
+  Start with one chat. Shape the interface, add capabilities, and keep the code in your own project.
+</p>
 
-Saplingagent combines a React interface with the official **Codex App Server** and optional OpenCode and Claude Agent engines, project MCP tools and reusable Skills. Application code, conversations, preferences, rules and runtime stay in the application folder. The current page includes streaming chat, Markdown with GFM tables, and Git version controls; further features are added through conversation.
+<p align="center">
+  <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-**macOS 13.5+ · Windows 10/11 x64 and ARM64 · Source available for noncommercial use**
+<p align="center">
+  <a href="https://github.com/extendmachine/Saplingagent/releases/download/demo-2026-10-14/Saplingagent-English-Demo-Final.mp4"><strong>▶ English demo · 1:41</strong></a> &nbsp;·&nbsp;
+  <a href="#install-configure-start">Get started</a> &nbsp;·&nbsp;
+  <a href="docs/index.html">Documentation</a>
+</p>
 
-Commercial use requires separate written permission. See [LICENSE](LICENSE), [NOTICE](NOTICE) and the authentication limits below. Saplingagent is independent software and is not an official OpenAI product.
+<p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 & ARM64 · Source available for noncommercial use</sub></p>
 
-## At a glance
+---
 
-| Start with | Grow into |
-| --- | --- |
-| One local chat page | React interfaces and application features built around your requests |
-| Your own model access | Codex, OpenCode or Claude Agent conversations with project context |
-| A complete application folder | Code, configuration, Skills and local data that stay with your project |
-| Local version controls | Saved changes, named versions and user-selected recovery |
+- **Build through conversation.** Turn requests into React interfaces and local application features.
+- **Keep your project local.** Code, conversations and version history stay with your application.
+- **Extend as you grow.** Connect Codex, OpenCode or Claude Agent with MCP tools and reusable Skills.
 
-For a first change, try: “Add a clock showing my local date and time.” Describe the result you want, follow the work in chat, then review the updated page. Backend or dependency changes may need a restart.
+See a request become a working clock, then a saved version. English narration and captions · 1:41.
 
-## Contents
+<details>
+<summary>Explore the full guide</summary>
+
 
 - [Install, configure, start](#install-configure-start)
 - [Choose Git storage](#choose-where-your-application-lives)
@@ -42,15 +46,13 @@ For a first change, try: “Add a clock showing my local date and time.” Descr
 - [Branches and source delivery](#branches-and-release-preparation)
 - [License](#license)
 
-## Folder ownership and conversation receipts
-
-The delivered application folder contains all Saplingagent-owned code, rules, Skills, configuration, documentation and launcher helpers. Dependencies install into that folder; declared model services remain external. Developing this product does not require editing another repository, global installation or external source code. Keep the complete folder together.
-
-Customer Full Access stays enabled. Rules recommend keeping normal application changes within the folder, while an explicit request can target external code accessible to the current OS user. This recommendation does not add a path blocker or sandbox. Every final assistant reply, including read-only conversation, is instructed to include the same eight-field completion-review receipt with actual changes, checks and pending items. Read-only replies do not create task records. Model compliance requires real conversation validation.
+</details>
 
 ## Install, configure, start
 
 ### 1. Get the complete application
+
+This guide describes `release`; `main` may include features that are not in your download.
 
 For a new installation, run one command in **macOS Terminal** or **Windows Git Bash** (install [Git for Windows](https://gitforwindows.org/) first):
 
@@ -340,6 +342,10 @@ Git controls can save tracked/nonignored changes into a local commit and switch 
 
 AI development starts with [AGENTS.md](AGENTS.md) and [rules/README.md](rules/README.md). Services maintain `SERVICE.md`, `CONTRACT.md`, `DEPLOY.md` and `REFERENCES.md`. Technical paths and protocol identifiers retain compatibility; existing user conversations are never translated by this release.
 
+### Project ownership
+
+Keep the complete application folder together: it contains the source, rules, Skills, configuration and launcher helpers. Dependencies install locally; model services remain external. Full Access uses your current OS permissions. Ordinary edits stay within the project; an explicit request can target other accessible code. The bundled rules require an eight-field completion receipt, including for read-only replies; actual model compliance still needs conversation validation.
+
 ## Branches and release preparation
 
 Only three named branches are maintained:
@@ -368,6 +374,8 @@ The package and `.sha256` file are written to `.cache/releases/`. It contains co
 Release checklist and known validation limits: [docs/release-checklist.html](docs/release-checklist.html). Public repository visibility and a published GitHub release are separate actions from preparing this candidate.
 
 ## License
+
+Saplingagent is independent software, not an official OpenAI product. Commercial use requires separate written permission; third-party authentication has its own terms. See [NOTICE](NOTICE).
 
 Project-owned source is available under **[PolyForm Noncommercial 1.0.0](LICENSE)**. It permits uses, modifications and distribution for its permitted noncommercial purposes, subject to its notice requirements. Commercial use needs a separate written agreement with the project owner; request authorization through [extendmachine](https://github.com/extendmachine). This is a source-available license, not an unrestricted open-source commercial grant.
 

@@ -1,35 +1,39 @@
-# Saplingagent
-
-[English](README.md) · **简体中文**
-
-本文对应 `release` 分支。`main` 可能包含尚未发布的功能，请以实际下载分支的说明为准。
+<h1 align="center">Saplingagent</h1>
 
 <p align="center">
-  <img src="assets/brand/saplingagent-growth-logo.png" alt="Saplingagent：一棵科技幼苗沿箭头长成大树，枝叶之间连接着电路与节点。" width="720">
+  <img src="assets/brand/saplingagent-growth-logo.png" alt="Saplingagent — 从科技幼苗到参天大树" width="320">
 </p>
 
-**让应用像树一样生长。**
+<h3 align="center">从一句想法，到自己的应用。</h3>
 
-Saplingagent 是一个可以由你亲自修改、也可以通过 AI 对话持续构建的最小软件种子包。从自己项目文件夹中的一个聊天页面开始，逐步添加需要的界面、功能与服务。
+<p align="center">
+  在本地，与 AI 一起构建持续生长的软件。<br>
+  从一个聊天页面开始，塑造界面、添加能力，把代码留在自己的项目里。
+</p>
 
-它将 React 界面、Codex App Server、可选的 OpenCode 与 Claude Agent 引擎，以及项目 MCP 工具和 Skills 放在同一个应用中。代码、对话、偏好、规则与运行环境保存在应用文件夹里。当前已有流式聊天、支持 GFM 表格的 Markdown 和 Git 版本管理，后续业务功能由你的需求决定。
+<p align="center">
+  <a href="README.md">English</a> · <strong>简体中文</strong>
+</p>
 
-**macOS 13.5+ · Windows 10/11 x64 / ARM64 · 源码可用于许可证允许的非商业用途**
+<p align="center">
+  <a href="https://github.com/extendmachine/Saplingagent/releases/download/demo-2026-10-14/Saplingagent-Chinese-Demo-Final.mp4"><strong>▶ 中文演示 · 1:41</strong></a> &nbsp;·&nbsp;
+  <a href="#quick-start">开始使用</a> &nbsp;·&nbsp;
+  <a href="docs/index.html">使用文档</a>
+</p>
 
-商业使用需另行取得书面许可，参见 [LICENSE](LICENSE)、[NOTICE](NOTICE) 和下文的认证说明。Saplingagent 是独立软件，并非 OpenAI 官方产品。
+<p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 / ARM64 · 源码可用于许可证允许的非商业用途</sub></p>
 
-## 一眼了解
+---
 
-| 起点 | 可以逐步构建的内容 |
-| --- | --- |
-| 一个本地聊天页面 | 根据需求添加 React 界面和应用功能 |
-| 你自己的模型访问方式 | 带有项目上下文的 Codex、OpenCode 或 Claude Agent 对话 |
-| 一个完整应用文件夹 | 随项目一起保留的代码、配置、Skills 与本地数据 |
-| 本地版本管理 | 保存修改、命名版本和按需恢复源码 |
+- **用对话构建。** 将需求变成 React 界面与本地应用功能。
+- **让项目属于你。** 代码、对话与版本记录随应用保留。
+- **按需扩展能力。** 连接 Codex、OpenCode 或 Claude Agent，使用 MCP 工具与 Skills。
 
-第一次可以试着说：“在页面上添加一个显示本地日期和时间的时钟。”描述你想要的结果，在聊天中查看执行过程，再检查页面效果。后端或依赖发生变化时，可能需要重启应用。
+看一个需求如何变成可用的时钟，再保存为新版本。中文配音 · 大字号字幕 · 1 分 41 秒。
 
-## 目录
+<details>
+<summary>查看完整指南</summary>
+
 
 - [安装、配置与启动](#quick-start)
 - [选择 Git 与存储方式](#storage)
@@ -44,11 +48,15 @@ Saplingagent 是一个可以由你亲自修改、也可以通过 AI 对话持续
 - [分支与源码交付](#delivery)
 - [许可证与参考资料](#license)
 
+</details>
+
 <a id="quick-start"></a>
 
 ## 安装、配置与启动
 
 ### 1. 获取完整应用
+
+本文对应 `release` 分支；`main` 可能包含尚未发布的功能。
 
 在 **macOS 终端**或 **Windows Git Bash** 中运行以下命令，即可下载并安装，随后进入中文配置菜单。Windows 请先安装 [Git for Windows](https://gitforwindows.org/)。
 
@@ -395,6 +403,8 @@ Windows 源码包使用 `<project-node> scripts/package-windows.mjs release .cac
 <a id="license"></a>
 
 ## 许可证与参考资料
+
+Saplingagent 是独立软件，并非 OpenAI 官方产品。商业使用需另行取得书面许可，第三方认证须分别遵守其条款，参见 [NOTICE](NOTICE)。
 
 项目自有源码使用 **[PolyForm Noncommercial 1.0.0](LICENSE)**，允许许可证规定的非商业使用、修改与分发，需遵守声明保留等条款。商业用途需与所有者另行达成书面许可，可通过 [extendmachine](https://github.com/extendmachine) 联系。这是源码可用许可证，不是无限制的商业开源授权。准确范围以 [LICENSE](LICENSE)及[官方条款](https://polyformproject.org/licenses/noncommercial/1.0.0)为准。
 
