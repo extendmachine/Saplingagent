@@ -39,3 +39,10 @@ https://github.com/user-attachments/assets/6f43f15f-38c4-4650-9383-669caa635dc8
 中文配音与大字号字幕：
 
 https://github.com/user-attachments/assets/06893877-3172-4147-8d6c-b88137347074
+
+
+## Chinese introduction: farmer cat
+
+- `community/ai-farmer-cat.png`: user-supplied farmer-cat meme, edited with the built-in ImageGen tool on2026-10-14 for TASK-20261014-008. Displayed only in README.zh-CN.md, centered at320px, with the separate exact caption `让我们做新时代的AI农民`.
+- Edit prompt: Remove only the original large black Chinese text at the top and restore the white background. Preserve the orange-and-white cat's identity/expression, basket, hoe, original composition and photographic meme aesthetic. No crop, restyling, new text, watermark or extra objects.
+- Selected generated PNG pixels are preserved; SHA-256 `e7b56c858e78f7341288006c1af36759a9de70284f34da1f10213c07317af0c4`. The supplied original remains unchanged. This is a user-provided image edit, not a new project logo or a change to the English introduction.

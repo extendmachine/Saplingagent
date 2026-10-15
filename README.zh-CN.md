@@ -37,6 +37,14 @@ https://github.com/user-attachments/assets/06893877-3172-4147-8d6c-b88137347074
 
 看一个需求如何变成可用的时钟，再保存为新版本。中文配音 · 大字号字幕 · 1 分 41 秒。
 
+<a id="ai-farmer"></a>
+
+<p align="center">
+  <img src="assets/community/ai-farmer-cat.png" alt="背着竹筐、拿着锄头的橘白猫" width="320">
+</p>
+
+<p align="center"><strong>让我们做新时代的AI农民</strong></p>
+
 <details>
 <summary>查看完整指南</summary>
 
