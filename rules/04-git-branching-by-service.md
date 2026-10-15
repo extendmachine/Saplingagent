@@ -18,9 +18,21 @@ This explicit owner instruction supersedes this rule's mandatory per-version hum
 
 Other branches are synchronized only when requested. This authorization does not grant customer repositories permission to publish to the author repository, nor authorize unrelated releases, deployments or destructive actions. Recipient projects follow their own user's instructions. Historical acceptance records remain unchanged. The generic confirmation workflow below remains the default outside this explicitly authorized maintainer case.
 
+## Saplingagent main-first development and release showcase (2026-10-15)
+
+The maintainer explicitly assigns these roles to the original Saplingagent repository:
+
+1. `main` is the owner's development and testing branch. Prepare shared changes from main, perform appropriate checks, and merge/push main first under the existing owner authorization.
+2. `release` is the GitHub default branch, public project introduction and customer source/distribution branch. A requested release synchronization follows the checked main change; do not implement shared fixes on release first or treat release as the development workspace.
+3. An explicit main-only request stops after updating main. Publishing release is still a scoped action; do not silently synchronize it while the owner is testing main.
+4. Demo videos, playback embeds, presentation case tables, case screenshots and community showcase images belong only to release. Main may link to the corresponding release introduction, but must not duplicate those showcase blocks/assets. Shared branding, application assets and technical-guide illustrations needed for development are retained on main.
+5. For a release-only presentation change, establish its task/scope against main first, then edit the release presentation directly within the requested publication scope; do not stage duplicate media on main merely to satisfy the ordering rule.
+6. When promoting shared code from main to release, preserve release-specific presentation files and materials. Integrate the reviewed change deliberately; never reset release to main or copy the whole main README/assets tree over it. Record the main source commit, release result and checks. Existing branch-specific runtime differences remain until included in an authorized promotion.
+7. Keep only `main`, `adobe-replica` and `release` as named branches, retain history, and use detached candidate worktrees where needed. Adobe experiments synchronize only when requested. These maintainer conventions do not change a recipient project's own Git ownership or permissions.
+
 ## Branch type and naming
 
-1. `main`: the latest, most complete and manually confirmed stable code of the project.
+1. `main`: the development integration branch. In the original Saplingagent repository it is the owner’s development/testing code, with the maintainer authorization and promotion policy above.
 2. Microservice long-term branch: It is recommended to use `service/<service-name>` to collect the modifications that the microservice has been completed but has not yet entered `main`.
 3. Feature branch: It is recommended to use `feature/<service-name>/<feature-name>` for single function development.
 4. Repair branch: It is recommended to use `fix/<service-name>/<issue-name>` for single problem repair.

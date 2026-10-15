@@ -16,72 +16,16 @@
 </p>
 
 <p align="center">
-  <a href="#demo"><strong>▶ 中文演示 · 1:41</strong></a> &nbsp;·&nbsp;
+  <a href="https://github.com/extendmachine/Saplingagent/blob/release/README.zh-CN.md#demo"><strong>对外介绍与演示</strong></a> &nbsp;·&nbsp;
   <a href="#quick-start">开始使用</a> &nbsp;·&nbsp;
   <a href="docs/index.html">使用文档</a>
 </p>
 
 <p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 / ARM64 · 源码可用于许可证允许的非商业用途</sub></p>
 
-<a id="demo"></a>
+**开发分支：main。** 本分支用于维护者的开发和测试。共享修改先在 main 实现并验证，再按发布要求同步到 release。
 
-https://github.com/user-attachments/assets/06893877-3172-4147-8d6c-b88137347074
-
-<p align="center"><sub>中文配音 · 大字号字幕 · 1 分 41 秒 · <a href="https://github.com/extendmachine/Saplingagent/releases/download/demo-2026-10-14/Saplingagent-Chinese-Demo-Final.mp4">下载高清原片</a></sub></p>
-
----
-
-- **用对话构建。** 将需求变成 React 界面与本地应用功能。
-- **让项目属于你。** 代码、对话与版本记录随应用保留。
-- **按需扩展能力。** 连接 Codex、OpenCode 或 Claude Agent，使用 MCP 工具与 Skills。
-
-看一个需求如何变成可用的时钟，再保存为新版本。中文配音 · 大字号字幕 · 1 分 41 秒。
-
-<a id="document-workspace"></a>
-
-## 应用案例 · WPS 风格的本地文档工作台
-
-从一个聊天页面，生长出一套文档工作台。将文件浏览、Office 基础编辑、PDF 处理与 AI 对话放在同一个界面，让查阅、修改和保存更连贯。
-
-这是使用 Saplingagent 构建的应用案例；默认安装仍从简洁的聊天页面开始。
-
-![文件目录、电子表格与 AI 对话同屏展示](assets/cases/document-workspace/workspace-overview.jpg)
-
-| 功能模块 | 案例功能 |
-| --- | --- |
-| 文件浏览与管理 | 树形目录、文件名筛选、刷新列表、新建文件和文件夹、复制绝对路径。 |
-| Word 文档 | 预览 DOCX，直接修改段落文字，调整整段字体、字号、粗体、颜色和对齐方式。 |
-| 电子表格 | 查看 Excel、CSV、ODS 等文件，切换工作表，修改单元格内容及公式文本。 |
-| PowerPoint | 按页查看 PPTX，通过文本面板修改幻灯片文字。 |
-| PDF 查阅与编辑 | 翻页、缩放、修改或添加文字、填写文本表单、旋转与调整页面顺序、删除页面。 |
-| 本地 OCR | 识别英文、简体中文页面，选中识别出的文字进行修改。 |
-| PDF 图形处理 | 替换、裁剪和调整图片；修改矢量对象的位置、颜色及路径。 |
-| Markdown 与代码 | Markdown 编辑和预览切换；常见代码、配置及文本文件编辑。 |
-| 图片与影音 | 图片预览、音频播放、视频播放。 |
-| 保存与恢复 | 保存前检查文件是否被外部修改，提示未保存内容，并支持恢复最近一次保存前的版本。 |
-
-**Word 编辑**：在文档正文中直接修改段落，并使用格式工具栏。
-
-![Word 文档的段落编辑与格式工具栏](assets/cases/document-workspace/word-editor.jpg)
-
-**PDF 与 OCR**：本地中文识别后，选中文字进入编辑面板。
-
-![PDF 本地中文 OCR 与文字编辑面板](assets/cases/document-workspace/pdf-ocr-editor.jpg)
-
-<details>
-<summary>查看编辑范围</summary>
-
-Office 支持基础编辑：Word 格式作用于整段，PowerPoint 以文字修改为主，不包含对象或动画编辑。表格显示前 250 行、60 列，可修改公式文本，但没有公式计算引擎。PDF 修改可能改变字体或影响重叠对象。文件面板目前提供浏览和新建，尚未实现重命名、移动和回收站管理。
-
-</details>
-
-<a id="ai-farmer"></a>
-
-<p align="center">
-  <img src="assets/community/ai-farmer-cat.png" alt="背着竹筐、拿着锄头的橘白猫" width="320">
-</p>
-
-<p align="center"><strong>让我们做新时代的AI农民</strong></p>
+项目对外介绍、演示视频与应用案例统一维护在 [release](https://github.com/extendmachine/Saplingagent/tree/release)。查看[中文演示](https://github.com/extendmachine/Saplingagent/blob/release/README.zh-CN.md#demo)或[文档工作台案例](https://github.com/extendmachine/Saplingagent/blob/release/README.zh-CN.md#document-workspace)。
 
 <details>
 <summary>查看完整指南</summary>
@@ -429,11 +373,11 @@ AI 开发先读 [AGENTS.md](AGENTS.md)和 [rules/README.md](rules/README.md)。�
 
 | 分支 | 用途 |
 | --- | --- |
-| `main` | 共享开发基线与代码审查 |
+| `main` | 维护者的开发与测试 |
 | `adobe-replica` | Adobe 复刻实验 |
-| `release` | 面向使用者的源码交付 |
+| `release` | 对外默认首页、源码交付与演示展示 |
 
-新用户默认安装 `release`，它可能落后于 `main`。维护者按项目所有者授权，在适当自检后将已授权修改同步 main；其他分支仅在明确要求时同步，历史保留。main 上的文档或功能更新不自动等于新客户版本。
+新用户默认安装 `release`，它可能落后于 `main`。共享修改先进入 main 并验证，再按发布要求同步到 release；明确要求仅修改 main 时，release 保持不动。视频、展示案例及配图只维护在 release；同步代码时保留这些内容，不用 main 的整个目录覆盖 release。实验分支仅在明确要求时同步，历史保留。
 
 维护者打包 Mac 源码时，使用项目安装的 Node：
 
