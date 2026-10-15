@@ -16,12 +16,18 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/extendmachine/Saplingagent/releases/download/demo-2026-10-14/Saplingagent-Chinese-Demo-Final.mp4"><strong>▶ 中文演示 · 1:41</strong></a> &nbsp;·&nbsp;
+  <a href="#demo"><strong>▶ 中文演示 · 1:41</strong></a> &nbsp;·&nbsp;
   <a href="#quick-start">开始使用</a> &nbsp;·&nbsp;
   <a href="docs/index.html">使用文档</a>
 </p>
 
 <p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 / ARM64 · 源码可用于许可证允许的非商业用途</sub></p>
+
+<a id="demo"></a>
+
+https://github.com/user-attachments/assets/06893877-3172-4147-8d6c-b88137347074
+
+<p align="center"><sub>中文配音 · 大字号字幕 · 1 分 41 秒 · <a href="https://github.com/extendmachine/Saplingagent/releases/download/demo-2026-10-14/Saplingagent-Chinese-Demo-Final.mp4">下载高清原片</a></sub></p>
 
 ---
 
