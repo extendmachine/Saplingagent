@@ -13,3 +13,7 @@ The above checked the accessible page and purpose on 2026-10-09, and checked the
 Project Skills uses local skill-creator: `/Users/xty/.codex/skills/.system/skill-creator/SKILL.md`; through its init_skill.py creation and quick_validate.py verification, the verification environment is in this service `.venv/`, PyYAML 6.0.3. This absolute path is the source record of the local tool this time, not the operation dependency of the delivery application.
 
 TASK-20261009-011 Follow the above actual dependencies and protocol interfaces, and there are no new external dependencies. The current permission/HTTP is based on the user's clear complete access authorization, root disclosure contracts/runtime-api.md v2 and tool fingerprint contracts/agent-tools.mjs; it is not a declaration that the MCP specification automatically grants root or can revert all commands. The new version of 15 tools uses the locally installed SDK to complete the isolation protocol test; the skill format review and independent read-only behavior evaluation are completed, and the real new model/back-end integration is recorded by the coordinator.
+
+## Native page image content (TASK-20261015-013)
+
+Existing official @modelcontextprotocol/sdk1.32.1 installed protocol types validate CallToolResult content with separate text and image {data,mimeType} blocks. The stdio client/protocol test and real connected-page call verify this exact pinned schema; structuredContent retains only snapshot metadata. No SDK version change or new external platform.

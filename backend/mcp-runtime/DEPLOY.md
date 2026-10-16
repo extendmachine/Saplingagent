@@ -29,3 +29,7 @@ Try to save the originals and records of the files written and deleted; SNAPSHOT
 There is no database migration for this service. If you need to manually restore the MCP source code, restore the same set of server/package/lock from the explicit backup selected by the user and self-check; currently non-Git, no known stable submission/main merge/release. True secrets, dependencies, .venv, temporary test fixtures and logs are not distributed source code. See REFERENCES.md for information.
 
 TASK015 macOS source package is installed and started through the single Saplingagent.sh menu; the official CLI is provided by project .runtime/codex, and MCP is automatically loaded by Agent. The user logs in by himself and does not distribute developer authentication. For details, please refer to.../../Docs/macos-install.html and../../scripts/macos/README.md. Complete rules and Skills are included in the package as they are, and the running data is not included in the package.
+
+## page_read readiness
+
+Restart the Agent/MCP after source changes, then open or reload the project UI. Its bridge must be connected; collapse does not disconnect it. page_read waits up to 20 seconds inside the builder, within the35-second transport budget; cancellation propagates. No extra desktop permissions or browser dependency. DOM images may differ from browser pixels or be unavailable; use returned warnings and DOM/layout rather than declaring success from a stale capture. Explicitly request includeImage:false for text/layout only.
