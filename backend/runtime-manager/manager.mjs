@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { terminateOwned } from '../../contracts/local-process.mjs';
 import { randomUUID } from 'node:crypto';
 import { portKeys } from './ports.mjs';
+import { loadProjectServices, assignProjectPorts, serviceCommand, servicePortEnv } from './services.mjs';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const failure = (code, message, service) => Object.assign(new Error(message), { code, service });
@@ -21,13 +22,16 @@ export class RuntimeManager {
     Object.assign(this, { root, token, definitions, frontDefinition, healthTimeout, agentTimeout, stopTimeout, output });
     this.instanceId = randomUUID(); this.generation = 0; this.phase = 'starting'; this.children = new Map();
     this.intentional = new Set(); this.error = null; this.operation = null; this.closed = false;
-    this.gatewayWrites = 0; this.activeDefinitions = definitions;
+    this.gatewayWrites = 0; this.activeDefinitions = definitions; this.projectPorts = {};
     this.controlAbort = new AbortController();
   }
   state() {
     return { instanceId: this.instanceId, generation: this.generation, phase: this.phase, busy: !!this.operation, canRestart: !this.operation && !this.closed, jobId: this.jobId || null, scope: this.scope || 'all', error: this.error,
       ports: this.config ? Object.fromEntries(portKeys.map(key => [key, this.config[key]])) : null,
-      services: [...this.children].map(([name, child]) => ({ name, pid: child.pid || null, running: !!alive(child) })) };
+      services: [...this.children].map(([name, child]) => {
+        const definition = this.activeDefinitions.find(x => x.name === name);
+        return { name, pid: child.pid || null, running: !!alive(child), ...(definition?.project ? { project: true, ...(definition.port ? { port: definition.port } : {}) } : {}) };
+      }) };
   }
   async log(event, fields = {}) {
     try {
@@ -42,8 +46,10 @@ export class RuntimeManager {
   }
   launch(definition, config) {
     if (this.closed) throw failure('MANAGER_STOPPED', 'Runtime manager is stopping.');
-    const env = { ...process.env, SEED_ROOT: this.root, SEED_FRONT_PORT: String(config.frontPort), SEED_RUNTIME_MANAGER_PORT: String(config.runtimeManagerPort), SEED_AGENT_PORT: String(config.agentPort), SEED_WORKSPACE_PORT: String(config.workspacePort), SEED_BUILDER_PORT: String(config.builderPort), SEED_PDF_EDITOR_PORT: String(config.pdfEditorPort), SEED_OPENCODE_PORT: String(config.openCodePort), ...definition.env };
-    const child = spawn(process.execPath, [path.join(this.root, definition.file), ...(definition.args || [])], { cwd: this.root, env, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
+    const projectEnv = Object.fromEntries(Object.entries(this.projectPorts).map(([name, port]) => [servicePortEnv(name), String(port)]));
+    const spec = definition.launchSpec;
+    const env = { ...process.env, SEED_ROOT: this.root, SEED_FRONT_PORT: String(config.frontPort), SEED_RUNTIME_MANAGER_PORT: String(config.runtimeManagerPort), SEED_AGENT_PORT: String(config.agentPort), SEED_WORKSPACE_PORT: String(config.workspacePort), SEED_BUILDER_PORT: String(config.builderPort), SEED_PDF_EDITOR_PORT: String(config.pdfEditorPort), SEED_OPENCODE_PORT: String(config.openCodePort), SEED_SERVICE_PORTS: JSON.stringify(this.projectPorts), ...projectEnv, ...(spec?.env || definition.env), ...(definition.project && definition.port ? { PORT: String(definition.port), SEED_SERVICE_PORT: String(definition.port) } : {}) };
+    const child = spawn(spec?.command || process.execPath, spec?.args || [path.join(this.root, definition.file), ...(definition.args || [])], { cwd: spec?.cwd || this.root, env, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
     this.children.set(definition.name, child);
     child.stdout.on('data', chunk => { if (this.output) process.stdout.write(`[${definition.name}] ${chunk}`); });
     child.stderr.on('data', chunk => { if (this.output) process.stderr.write(`[${definition.name}] ${chunk}`); });
@@ -62,10 +68,31 @@ export class RuntimeManager {
     return data;
   }
   async waitHealth(definition, timeout, agent = false) {
+    if (definition.project && definition.healthCheck === 'process') {
+      await delay(100);
+      if (!alive(this.children.get(definition.name))) throw failure('SERVICE_EXITED', `${definition.name} could not start. Check its local terminal diagnostics.`, definition.name);
+      return;
+    }
     const end = Date.now() + timeout;
     while (!this.closed && Date.now() < end) {
       if (!alive(this.children.get(definition.name))) throw failure('SERVICE_EXITED', `${definition.name} could not start. Check its local terminal diagnostics.`, definition.name);
       try {
+        if (definition.project) {
+          if (definition.healthCheck === 'tcp') {
+            if (await new Promise(resolve => {
+              const socket = net.connect({ host: '127.0.0.1', port: definition.port });
+              const finish = ready => { socket.destroy(); resolve(ready); };
+              socket.setTimeout(500, () => finish(false)); socket.once('error', () => finish(false)); socket.once('connect', () => finish(true));
+            })) return;
+          } else {
+            const response = await fetch(`http://127.0.0.1:${definition.port}${definition.healthPath}`, { signal: AbortSignal.any([AbortSignal.timeout(1000), this.controlAbort.signal]) });
+            if (response.ok) {
+              if ((response.headers.get('content-type') || '').includes('json')) { if ((await response.json())?.ready !== false) return; }
+              else { await response.body?.cancel(); return; }
+            } else await response.body?.cancel();
+          }
+          await delay(100); continue;
+        }
         const data = await this.json(definition.port, agent ? '/api/status' : '/health');
         if (data.ready && (!agent || data.authenticated && data.mcp?.ready)) return;
       } catch {}
@@ -77,7 +104,7 @@ export class RuntimeManager {
     const child = this.children.get(name); if (!child) return;
     this.intentional.add(child);
     try { await terminateOwned(child, { graceMs: this.stopTimeout }); }
-    catch { throw failure('SERVICE_STOP_FAILED', `${name} did not stop. Close the launch window and check local processes.`, name); }
+    catch { throw failure('SERVICE_STOP_FAILED', `${name} did not stop. Check local diagnostics and retry Restart app.`, name); }
     this.children.delete(name);
   }
   async stopBackends() { for (const name of [...this.children.keys()].reverse()) if (name !== 'front') await this.stopChild(name); }
@@ -88,19 +115,35 @@ export class RuntimeManager {
     const ports = ['frontPort','agentPort','workspacePort','builderPort','pdfEditorPort','runtimeManagerPort','vitePort','openCodePort'];
     config.vitePort ??= 5174; config.pdfEditorPort ??= 4313; config.runtimeManagerPort ??= 4314; config.openCodePort ??= 4315;
     if (ports.some(key => !Number.isInteger(config[key]) || config[key] < 1024 || config[key] > 65535) || new Set(ports.map(key => config[key])).size !== ports.length) throw failure('INVALID_CONFIG', 'Service ports must be distinct integers from 1024 to 65535.');
-    if (this.sourcePorts && ports.some(key => config[key] !== this.sourcePorts[key])) throw failure('LAUNCHER_RESTART_REQUIRED', 'Service ports changed. Restart with the launcher for your operating system.');
+    this.nextSourcePorts = Object.fromEntries(ports.map(key => [key, config[key]]));
+    const overrides = Object.fromEntries(Object.entries(this.portOverrides || {}).filter(([key]) => ['frontPort', 'runtimeManagerPort'].includes(key) || !this.sourcePorts || config[key] === this.sourcePorts[key]));
     this.sourcePorts ??= Object.fromEntries(ports.map(key => [key, config[key]]));
-    return { ...config, ...this.portOverrides };
+    const effective = { ...config, ...overrides };
+    if (new Set(ports.map(key => effective[key])).size !== ports.length) throw failure('INVALID_CONFIG', 'Internal ports must differ from the current public and control addresses.');
+    return effective;
   }
-  async startBackends(config) {
+  async servicePlan(config) {
+    const plan = await loadProjectServices(this.root, this.definitions);
+    const old = new Map(this.activeDefinitions.filter(x => x.project).map(x => [x.name, x]));
+    const ownedPorts = new Set(this.activeDefinitions.filter(x => alive(this.children.get(x.name))).map(x => x.port));
+    await assignProjectPorts(plan, config, old, ownedPorts);
+    for (const definition of plan) {
+      if (!definition.project) definition.port = config[definition.portKey];
+      else definition.launchSpec = await serviceCommand(this.root, definition, definition.port);
+    }
+    return plan;
+  }
+  activatePlan(plan) {
+    this.projectPorts = Object.fromEntries(plan.filter(x => x.project && x.port).map(x => [x.name, x.port]));
+  }
+  async startBackends(config, plan) {
     this.activeDefinitions = [];
-    for (const definition of this.definitions) {
-      if (definition.optional && !await fs.access(path.join(this.root, definition.file)).then(() => true, () => false)) continue;
+    for (const definition of plan) {
       this.activeDefinitions.push(definition);
-      definition.port = config[definition.portKey];
-      await availablePort(definition.port);
+      if (definition.port) await availablePort(definition.port);
       this.phase = 'starting'; this.launch(definition, config);
-      await this.waitHealth(definition, this.healthTimeout);
+      if (definition.name === 'agent') this.phase = 'connecting';
+      await this.waitHealth(definition, definition.name === 'agent' ? this.agentTimeout : definition.timeoutMs || this.healthTimeout, definition.name === 'agent');
     }
     this.phase = 'connecting';
     const agent = this.activeDefinitions.find(x => x.name === 'agent');
@@ -122,7 +165,7 @@ export class RuntimeManager {
   async start() {
     const config = await this.loadConfig(); this.config = config;
     this.scope = 'all';
-    this.startOperation(async () => { await this.startFrontend(config); await this.startBackends(config); await this.ready(); });
+    this.startOperation(async () => { const plan = await this.servicePlan(config); this.activatePlan(plan); await this.startFrontend(config); await this.startBackends(config, plan); await this.ready(); });
   }
   async startFrontend(config) {
     if (!this.frontDefinition) return;
@@ -141,6 +184,16 @@ export class RuntimeManager {
   async ready() {
     if (this.closed || [...this.children.values()].some(child => !alive(child))) throw failure('SERVICE_EXITED', 'A service stopped during startup.');
     this.phase = 'ready'; this.error = null; this.generation++;
+    this.sourcePorts = this.nextSourcePorts;
+    this.portOverrides = Object.fromEntries(portKeys.map(key => [key, this.config[key]]));
+    const file = path.join(this.root, '.runtime/runtime-address.json');
+    try {
+      const record = JSON.parse(await fs.readFile(file, 'utf8'));
+      if (record.instanceId === this.instanceId) {
+        const temporary = `${file}.${this.instanceId}.tmp`;
+        await fs.writeFile(temporary, JSON.stringify({ ...record, ports: this.portOverrides }) + '\n', { mode: 0o600 }); await fs.rename(temporary, file);
+      }
+    } catch (error) { if (error.code !== 'ENOENT') await this.log('discovery_update_failed', { code: error.code || 'INVALID_DISCOVERY' }); }
     await this.log('ready', { generation: this.generation, jobId: this.jobId, scope: this.scope });
   }
   async prepareLegacy(definition) {
@@ -152,7 +205,7 @@ export class RuntimeManager {
       if (saved.session?.running) throw failure('RUNTIME_BUSY', 'An AI task is still running. Wait or stop it before restarting.');
     }
   }
-  restart({ scope = 'backend' } = {}) {
+  restart({ scope = 'all' } = {}) {
     if (this.closed) throw failure('MANAGER_STOPPED', 'Runtime manager is stopping.');
     if (this.operation) return this.jobId;
     this.scope = scope;
@@ -161,16 +214,21 @@ export class RuntimeManager {
       this.phase = 'preparing';
       const prepared = [];
       let config;
+      let plan;
       try {
-        config = await this.loadConfig();
         if (this.gatewayWrites) throw failure('RUNTIME_BUSY', 'A browser operation is still running. Wait before restarting.');
         // Gate Agent first so new AI/proxy/Git work cannot race the downstream gates.
-        for (const definition of [...this.activeDefinitions].reverse()) {
+        const gates = [...this.activeDefinitions.filter(x => x.name === 'agent'), ...this.activeDefinitions.filter(x => x.name !== 'agent').reverse()];
+        for (const definition of gates) {
           if (!alive(this.children.get(definition.name))) continue;
+          if (definition.project && (!definition.drain || !definition.port)) continue;
           prepared.push(definition);
           try { await this.json(definition.port, '/internal/runtime/prepare', 'POST'); }
           catch (error) { if (error.status === 404) { prepared.pop(); await this.prepareLegacy(definition); } else { error.service = definition.name; throw error; } }
         }
+        config = await this.loadConfig();
+        plan = await this.servicePlan(config);
+        if (scope === 'backend' && this.config && portKeys.some(key => config[key] !== this.config[key])) throw failure('FULL_RESTART_REQUIRED', 'Use Restart app to apply changed internal ports.');
       } catch (error) {
         let released = true;
         for (const definition of prepared.reverse()) try { await this.json(definition.port, '/internal/runtime/release', 'POST'); } catch { released = false; }
@@ -182,7 +240,8 @@ export class RuntimeManager {
       this.phase = 'stopping'; await this.log('restart', { jobId: this.jobId, scope });
       if (scope === 'all') await this.stopChild('front');
       await this.stopBackends();
-      await this.startBackends(config);
+      this.config = config; this.activatePlan(plan);
+      await this.startBackends(config, plan);
       if (scope === 'all') await this.startFrontend(config);
       await this.ready();
     });

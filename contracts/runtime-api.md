@@ -68,3 +68,8 @@ Saving versions excludes known private/runtime artifacts even if historical igno
 ## Independent AI setup and default engine
 
 The demand-started backend/ai-config serves a separate compiled React entry at its assigned loopback port. Its HTTP token/origin transport and account/API endpoints are defined by backend/ai-config/CONTRACT.md; setup does not use chat gateway routes or change file permissions. Keys are project-private. `GET /api/engines` includes `defaultSelection:{engine,providerId,modelId}` from the saved scheme. `GET /api/status` adds `defaultEngine` and `codexReady`; aggregate `ready` follows the configured default, while selecting another engine uses that engine's catalog/readiness. Existing conversations keep their binding; defaults apply after runtime restart/new conversation.
+
+
+## Complete project restart (2026-10-15)
+
+POST /api/runtime/restart {scope?:'all'|'backend'} defaults to all. Runtime rereads Node backend discovery and optional config/services.json before stopping live processes, then replaces frontend/backends and registered project processes in dependency order. GET /api/runtime/status.services adds optional project:true and port for those processes; commands/env remain private. Complete success requires readiness; frontend refresh works with an in-memory marker when sessionStorage is unavailable. Public gateway/control stay live, internal port edits apply through Restart app. Errors and retry remain in-page. See backend/runtime-manager/CONTRACT.md and docs/project-services.html for the manifest/readiness/drain contract.
