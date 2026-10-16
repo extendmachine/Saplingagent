@@ -46,7 +46,7 @@ Agent rejects mutations during active AI (GIT_AGENT_BUSY), concurrent Git mutati
 Saving versions excludes known private/runtime artifacts even if historical ignore rules are absent; GIT_PRIVATE_FILES (409) rejects already staged private paths. History is bounded to 500 commits per read; older versions can also be loaded by a full commit ID through the API.
 
 ## Restart app
-The version control is followed by Restart app (frontend and backends) and Restart backend only. These use the runtime-manager contract and same-origin endpoints; polling survives Vite restart through the persistent gateway. Selected persisted conversations are reloaded after backend generation changes without sending model requests. Current frontend temporarily saves an unsent composer draft in sessionStorage before switching/restarting, restores only the same selected session, then removes the recovery copy. Legacy UIs may lack this support. Switching and restarting are two explicit steps.
+The version control is followed by a single Restart app button (frontend, backends and managed project services). It always posts {scope:"all"} to the runtime-manager same-origin endpoint; polling survives Vite restart through the persistent gateway. Selected persisted conversations are reloaded after backend generation changes without sending model requests. Current frontend temporarily saves an unsent composer draft in sessionStorage before switching/restarting, restores only the same selected session, then removes the recovery copy. Legacy UIs may lack this support. Switching and restarting are two explicit steps.
 
 ## Standalone AI setup and saved default (TASK-20261012-002)
 
@@ -70,7 +70,7 @@ Configuration page uses protected POST /api/config/credentials/import from backe
 
 ## Complete project restart (2026-10-15)
 
-The primary Restart app action always requests scope all, including the frontend, backends and project service plan. The explicit submenu is labeled Restart backend only. A successful new runtime generation refreshes the selected frontend; an in-memory marker works even when sessionStorage is denied. An old ready poll does not consume the marker, and failed/unfinished restarts do not trigger a reload. Conversation/draft recovery and no automatic message resend remain unchanged. New project process registration is handled by the runtime manager, not arbitrary browser commands.
+The primary Restart app action always requests scope all, including the frontend, backends and project service plan. The main UI has no restart dropdown, backend-only action or recovery link. A successful new runtime generation refreshes the selected frontend; an in-memory marker works even when sessionStorage is denied. An old ready poll does not consume the marker, and failed/unfinished restarts do not trigger a reload. Conversation/draft recovery and no automatic message resend remain unchanged. New project process registration is handled by the runtime manager, not arbitrary browser commands.
 
 Accessing the sessionStorage property can itself be denied. RestartDraft catches that case before invoking its storage helpers, keeping the chat usable; draft recovery then remains unavailable, while full-restart reload uses its in-memory marker.
 
