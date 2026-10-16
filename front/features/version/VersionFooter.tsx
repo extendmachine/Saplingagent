@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { ChevronUp, RefreshCw } from 'lucide-react';
 
 type VersionState = {
   branch: string | null;
@@ -62,11 +62,20 @@ export function VersionFooter() {
   const label = version ? `${version.branch || 'detached'} · ${version.version}` : unavailable ? 'Version unavailable' : 'Loading version…';
 
   return <footer className={`version-footer${hasUpdate ? ' has-update' : ''}`} aria-live="polite">
-    <span className="version-footer-label version-footer-kernel">Kernel version <code>{KERNEL_VERSION}</code></span>
-    <span className="version-footer-label"><span className="version-footer-dot" />Current version <code>{label}</code></span>
-    {hasUpdate ? <button type="button" onClick={() => window.location.reload()}>
-      <RefreshCw size={13} aria-hidden="true" />
-      New version available - refresh
-    </button> : null}
+    <details className="version-footer-disclosure">
+      <summary aria-label="Version information">
+        <span className="version-footer-dot" />Version <code>{KERNEL_VERSION}</code>
+        {hasUpdate ? <span className="version-footer-update">Update</span> : null}
+        <ChevronUp size={13} className="version-footer-chevron" aria-hidden="true" />
+      </summary>
+      <div className="version-footer-content">
+        <span className="version-footer-label">Kernel version <code>{KERNEL_VERSION}</code></span>
+        <span className="version-footer-label">Current version <code>{label}</code></span>
+        {hasUpdate ? <button type="button" onClick={() => window.location.reload()}>
+          <RefreshCw size={13} aria-hidden="true" />
+          New version available - refresh
+        </button> : null}
+      </div>
+    </details>
   </footer>;
 }

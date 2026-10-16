@@ -62,4 +62,4 @@ Accessing the sessionStorage property can itself be denied. RestartDraft catches
 
 ## Kernel baseline version (2026-10-15)
 
-The page footer always displays Kernel version 0.90, a source-owned string in front/features/version/VersionFooter.tsx. It records the original kernel baseline independently of Git branches, commits and custom version names, including when Git is unavailable. Keep the trailing zero; update this value only for an explicit kernel release. Existing Git version polling/refresh behavior is unchanged.
+The bottom-right version disclosure shows a compact Version 0.90 trigger and expands to Kernel version 0.90 and the current Git version. It starts collapsed and supports keyboard activation. A pending Git update remains visible on the trigger, with the existing refresh action inside. Kernel version 0.90 is a source-owned string in front/features/version/VersionFooter.tsx. It records the original kernel baseline independently of Git branches, commits and custom version names, including when Git is unavailable. Keep the trailing zero; update this value only for an explicit kernel release. Existing Git version polling/refresh behavior is unchanged.
