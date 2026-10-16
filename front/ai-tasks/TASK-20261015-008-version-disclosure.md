@@ -1,0 +1,7 @@
+# Bottom-right collapsible version information
+
+- Executor: Codex/root; TASK-20261015-008; 2026-10-15. Detached .worktrees/version-disclosure from main77ca715; main-only owner-authorized integration. Exact frozen/main SHA are in the authoritative coordination index.
+- User's context was the newly added footer version information. Optional clarification received no reply for60seconds; the stated assumption is to collapse this version information at the far right. The main chat layout is unchanged.
+- Native details/summary starts collapsed at the bottom right with Version0.90. Click or keyboard Enter opens/closes kernel/current Git details. A pending update is visible on the compact trigger and the original refresh action is inside the panel. Git polling/fingerprint baseline is unchanged. Source-owned kernel baseline remains0.90.
+- Footer styles and front SERVICE/CONTRACT/human runtime guide synchronized. No backend/API/dependency/auth/data changes or new tests for this presentation-only change.
+- Verification: project-local TypeScript/Vite production build passes. Actual compiled UI checked initial collapsed state, click expand, Enter collapse,375px viewport panel bounds (left63/right363 inside375), new fingerprint Update indicator while collapsed, explicit refresh and new baseline clearing the indicator. Screenshot in ignored original-root .cache/version-disclosure/expanded-proof.png. Synthetic core transports only, no model invocation or user data. Temporary viewport reset, tab closed and owned preview stopped. Human acceptance not claimed.
