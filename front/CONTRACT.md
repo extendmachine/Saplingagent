@@ -46,7 +46,7 @@ Agent rejects mutations during active AI (GIT_AGENT_BUSY), concurrent Git mutati
 Saving versions excludes known private/runtime artifacts even if historical ignore rules are absent; GIT_PRIVATE_FILES (409) rejects already staged private paths. History is bounded to 500 commits per read; older versions can also be loaded by a full commit ID through the API.
 
 ## Restart app
-The version control is followed by Restart app (frontend and backends) and Restart backend. These use the runtime-manager contract and same-origin endpoints; polling survives Vite restart through the persistent gateway. Selected persisted conversations are reloaded after backend generation changes without sending model requests. Current frontend temporarily saves an unsent composer draft in sessionStorage before switching/restarting, restores only the same selected session, then removes the recovery copy. Legacy UIs may lack this support. Switching and restarting are two explicit steps.
+The version control is followed by Restart app (frontend and backends) and Restart backend only. These use the runtime-manager contract and same-origin endpoints; polling survives Vite restart through the persistent gateway. Selected persisted conversations are reloaded after backend generation changes without sending model requests. Current frontend temporarily saves an unsent composer draft in sessionStorage before switching/restarting, restores only the same selected session, then removes the recovery copy. Legacy UIs may lack this support. Switching and restarting are two explicit steps.
 
 ## Standalone AI setup and saved default (TASK-20261012-002)
 
@@ -66,3 +66,10 @@ GET /api/git may return unborn:true and head:null before the first commit, with 
 ## Explicit setup credential import (TASK-20261013-003)
 
 Configuration page uses protected POST /api/config/credentials/import from backend/ai-config contractv1.1: engine/source/revision/replace, upload JSON string (32KiB document), optional Claude profile draft. State response contains metadata only. Codex account supports local auth.json or upload; Claude API supports inherited/local settings API key or API JSON, with URL/model fields and explicit replacement. No credential persistence in browser storage, no automatic source detection, global write or inference. Errors leave the form available and never display uploaded JSON. Finish setup/restart/new conversation follows existing controls.
+
+
+## Complete project restart (2026-10-15)
+
+The primary Restart app action always requests scope all, including the frontend, backends and project service plan. The explicit submenu is labeled Restart backend only. A successful new runtime generation refreshes the selected frontend; an in-memory marker works even when sessionStorage is denied. An old ready poll does not consume the marker, and failed/unfinished restarts do not trigger a reload. Conversation/draft recovery and no automatic message resend remain unchanged. New project process registration is handled by the runtime manager, not arbitrary browser commands.
+
+Accessing the sessionStorage property can itself be denied. RestartDraft catches that case before invoking its storage helpers, keeping the chat usable; draft recovery then remains unavailable, while full-restart reload uses its in-memory marker.

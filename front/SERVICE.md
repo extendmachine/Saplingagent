@@ -42,7 +42,7 @@ Select a commit, edit Version name and choose Save name. Empty text clears its a
 The starting page remains chat with Git controls/footer. The earlier uncommitted clock was explicitly reverted by the user. Checkout reloads frontend source, while changed backend code/dependencies require a service restart; old commits may lack the panel, in which case git switch main from Terminal restores its source. Do not reset sessions/authentication to restore source. No new dependency or login change.
 
 ## Version switch and restart
-After choosing a branch or historical version in Versions, click **Restart app** to reload frontend, backend, Codex App Server and MCP. The adjacent options provide **Restart backend** and **Runtime recovery**. Busy AI/file work refuses restart. The current frontend stores only a temporary unsent composer draft in sessionStorage for reload, restores the same session and removes that recovery copy; persisted messages stay in workspace. Older versions may not implement this draft support. The fixed recovery page `/__saplingagent/runtime` remains available through the gateway. First adoption and manager/port changes require stopping the old launch window and starting the Mac launcher.
+After choosing a branch or historical version in Versions, click **Restart app** to reload frontend, backend, Codex App Server and MCP. The adjacent options provide **Restart backend only** and **Runtime recovery**. Busy AI/file work refuses restart. The current frontend stores only a temporary unsent composer draft in sessionStorage for reload, restores the same session and removes that recovery copy; persisted messages stay in workspace. Older versions may not implement this draft support. The fixed recovery page `/__saplingagent/runtime` remains available through the gateway. The current controller must be installed/launched once; subsequent project service changes and internal port edits use Restart app in-page.
 
 TASK-20261012-002 adds the separate front/ai-config React entry and project-local .cache/ai-config-ui build using existing dependencies. It runs through backend/ai-config without the main chat. Frontend default-engine selection accepts the new optional Agent catalog/status fields only for fresh conversations, preserving saved/manual selections and legacy protocol compatibility. See ai-config/README.md and backend setup contract. No credential browser persistence or new main-page component.
 
@@ -52,3 +52,10 @@ Claude Agent engine support: see CONTRACT.md and DEPLOY.md for the shared API pr
 ## Empty local main (TASK-20261012-016)
 
 The version panel accepts nullable head and unborn status, shows only the current main supplied by the Agent, and displays No commits yet with an empty committed list. Current-version naming stays disabled until a commit exists. Save version is explicit; polling does not populate history. The footer still uses a valid version string/fingerprint before the first commit.
+
+
+## Complete project restart (2026-10-15)
+
+The primary Restart app action always requests scope all, including the frontend, backends and project service plan. The explicit submenu is labeled Restart backend only. A successful new runtime generation refreshes the selected frontend; an in-memory marker works even when sessionStorage is denied. An old ready poll does not consume the marker, and failed/unfinished restarts do not trigger a reload. Conversation/draft recovery and no automatic message resend remain unchanged. New project process registration is handled by the runtime manager, not arbitrary browser commands.
+
+Accessing the sessionStorage property can itself be denied. RestartDraft catches that case before invoking its storage helpers, keeping the chat usable; draft recovery then remains unavailable, while full-restart reload uses its in-memory marker.
