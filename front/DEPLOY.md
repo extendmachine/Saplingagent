@@ -65,3 +65,9 @@ Full restart includes auto-discovered/registered project services; see ../docs/p
 ## Right-side collapsible AI chat (2026-10-15)
 
 The central conversation is now a right-edge AI chat panel, initially expanded. Collapse chat hides the panel and leaves an Open AI chat edge tab; reopening restores focus to the composer. The ChatPanel remains mounted while hidden, preserving draft text, messages, running response transport and session state. Desktop application content uses the remaining width; small screens use the available width. Existing App error isolation, Git/restart controls, Stop/Retry/New conversation and API semantics remain unchanged. The version footer is restored to its centered layout with kernel0.90, correcting the earlier footer-target assumption.
+
+## Attachment and page bridge update
+
+Install the locked frontend dependencies with npm ci and rebuild/reload. html-to-image1.11.13 is dynamically loaded only for page images; no global package or browser executable. Keep /api/attachments and /api/page on the existing same-origin Agent proxy, with32MiB upload bodies and long polling. Restart app loads changed backends/MCP. Local original bytes remain in data/attachments; deleting a composer chip does not erase storage. Pending composer attachments survive chat collapse, but unsent attachment selections are not restored across full page reload. Sent attachments restore from workspace. Clipboard formats depend on browser/OS: image/file payloads upload, plain text/file paths remain text.
+
+The current main entry mounts PageContextBridge; standalone project entries need the same component if their rendered DOM is to be inspected. Source files remain available to workspace tools without extra folder permission. External resources, frames, canvas/video and font rendering have DOM-image limitations; see builder deployment guidance.
