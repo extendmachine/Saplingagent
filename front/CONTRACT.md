@@ -73,3 +73,7 @@ Configuration page uses protected POST /api/config/credentials/import from backe
 The primary Restart app action always requests scope all, including the frontend, backends and project service plan. The explicit submenu is labeled Restart backend only. A successful new runtime generation refreshes the selected frontend; an in-memory marker works even when sessionStorage is denied. An old ready poll does not consume the marker, and failed/unfinished restarts do not trigger a reload. Conversation/draft recovery and no automatic message resend remain unchanged. New project process registration is handled by the runtime manager, not arbitrary browser commands.
 
 Accessing the sessionStorage property can itself be denied. RestartDraft catches that case before invoking its storage helpers, keeping the chat usable; draft recovery then remains unavailable, while full-restart reload uses its in-memory marker.
+
+## Kernel baseline version (2026-10-15)
+
+The page footer always displays Kernel version 0.90, a source-owned string in front/features/version/VersionFooter.tsx. It records the original kernel baseline independently of Git branches, commits and custom version names, including when Git is unavailable. Keep the trailing zero; update this value only for an explicit kernel release. Existing Git version polling/refresh behavior is unchanged.
