@@ -416,3 +416,7 @@ Codex 认证、使用限制和 App Server 说明于 **2026-10-14**重新核对�
 项目规则随 `rules/` 交付。本文翻译不改变授权、凭据处理、任务协调或 Full Access。只有明确要求向其他项目引入规范时，才使用[规范分发指南](rules/DISTRIBUTION.md)；正常安装不依赖开发者的规范源文件夹。
 
 Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍使用 Git Bash 的同一入口，不要求独立 `.ps1`、全局 Node / Codex、注册表 / 全局 PATH 或永久执行策略修改。启动器自动选择 Mac Intel / Apple Silicon、Windows x64 / ARM64；Linux、WSL 和 32 位设备在下载前被拒绝。强制关闭终端、断电或另行脱离的程序不保证能清理；运行命令的副作用不会被自动撤销。更多平台实现与调试细节见 [English README](README.md#windows-operation-and-delivery)。
+
+## 文件对话与页面读取
+
+点击回形针、拖入文件或粘贴图片，即可随消息发送。附件保存在本地项目，已发送附件可随会话恢复（单文件20MiB、每条消息10个）。界面修改后，AI 可通过 page_read 读取当前打开页面的新 DOM、布局及可用的渲染图像，无需额外申请项目文件夹或录屏权限；页面未打开、图像不可用时会明确报告。[使用说明与限制](docs/runtime.html#chat-files-pages)。

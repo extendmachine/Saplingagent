@@ -28,3 +28,10 @@ TASK019 Check the official remark-gfm 4.0.1 README and the installed @assistant-
 - https://registry.npmjs.org/@anthropic-ai/claude-agent-sdk/0.3.296 — exact SDK and platform optional dependency metadata. Installed official sdk.d.ts verifies Query, spawn, permissions, hooks and MCP control signatures.
 
 Public documentation and npm metadata need no login; real inference/model catalogs need the user's own API account and quota. No inference was sent to a real model for candidate validation. Local native/synthetic API tests establish this pinned version's behavior; Windows10 native acceptance remains pending.
+
+## Attachments and DOM image capture (checked2026-10-15)
+
+- https://www.assistant-ui.com/docs/api-reference/adapters/attachments — official custom AttachmentAdapter. Installed0.15.26 source/types confirm async add/send/remove, attachment primitives and paste handling. Its all-file accept sentinel is *, verified against fileMatchesAccept and browser selection/paste.
+- https://github.com/bubkoo/html-to-image — official source/documentation for toPng,filter,pixelRatio,cacheBust,skipFonts. Exact1.11.13, MIT, frontend-only lazy import; npm lock records integrity. Public documentation and npm metadata require no account. DOM rendering cannot guarantee native screenshot parity for external/canvas/video content.
+
+No model SDK changes accompany this frontend dependency. UI previews use isolated local fixtures and synthetic replies, not paid model inference.

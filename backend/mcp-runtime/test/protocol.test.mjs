@@ -16,7 +16,7 @@ function result(value) { return value.structuredContent ?? JSON.parse(value.cont
 async function listen(server) { await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); return server.address().port; }
 async function close(server) { await new Promise(resolve => server.close(resolve)); }
 
-test('official MCP stdio transport, 15 full-access tools, HTTP mapping and nonblocking registration', { timeout: 90_000 }, async t => {
+test('official MCP stdio transport, 16 full-access tools, HTTP mapping and nonblocking registration', { timeout: 90_000 }, async t => {
   const fixtureParent = join(serviceDirectory, '.test-data');
   await mkdir(fixtureParent, { recursive: true });
   const fixture = await mkdtemp(join(fixtureParent, 'protocol-'));
@@ -58,7 +58,8 @@ test('official MCP stdio transport, 15 full-access tools, HTTP mapping and nonbl
     response.setHeader('Content-Type', 'application/json');
     const url = new URL(request.url, 'http://127.0.0.1');
     let output;
-    if (request.method === 'POST' && url.pathname === '/internal/register-task') {
+    if (request.method === 'POST' && url.pathname === '/page/read') output = { snapshot: { pageId: 'current', capturedAt: new Date().toISOString(), text: 'Fresh rendered page', elements: [], image: { mimeType: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ' } } };
+    else if (request.method === 'POST' && url.pathname === '/internal/register-task') {
       assert.deepEqual(Object.keys(parsed).sort(), ['fingerprint', 'tool']);
       assert.match(parsed.fingerprint, /^[a-f0-9]{64}$/);
       if (registrationDenied) { response.statusCode = 409; output = { error: { code: 'TASK_REQUIRED', message: 'No matching active tool request.' } }; }
@@ -106,14 +107,19 @@ test('official MCP stdio transport, 15 full-access tools, HTTP mapping and nonbl
   t.after(async () => { await client.close(); await close(httpServer); await rm(fixture, { recursive: true, force: true }); });
 
   const listed = await client.listTools();
-  assert.equal(listed.tools.length, 15);
-  assert.deepEqual(listed.tools.map(tool => tool.name).sort(), ['workspace_list_files', 'workspace_read_file', 'workspace_write_file', 'workspace_delete_file', 'workspace_run_command', 'page_propose', 'page_apply', 'page_rollback', 'page_changes', 'preferences_get', 'preferences_set', 'preferences_forget', 'skills_list', 'skills_read', 'project_context'].sort());
+  assert.equal(listed.tools.length, 16);
+  assert.deepEqual(listed.tools.map(tool => tool.name).sort(), ['page_read', 'workspace_list_files', 'workspace_read_file', 'workspace_write_file', 'workspace_delete_file', 'workspace_run_command', 'page_propose', 'page_apply', 'page_rollback', 'page_changes', 'preferences_get', 'preferences_set', 'preferences_forget', 'skills_list', 'skills_read', 'project_context'].sort());
   assert.ok(listed.tools.some(tool => tool.name === 'page_propose' && tool.inputSchema.required.includes('files')));
   assert.ok(listed.tools.find(tool => tool.name === 'preferences_set').inputSchema.required.includes('evidence'));
   assert.equal(listed.tools.find(tool => tool.name === 'page_apply').annotations.readOnlyHint, false);
   assert.equal(listed.tools.find(tool => tool.name === 'workspace_run_command').annotations.destructiveHint, true);
   assert.equal(listed.tools.find(tool => tool.name === 'workspace_write_file').inputSchema.properties.content.maxLength, 16 * 1024 * 1024);
 
+  const inspected = await client.callTool({ name: 'page_read', arguments: { includeImage: true } });
+  assert.equal(result(inspected).snapshot.text, 'Fresh rendered page');
+  assert.equal(result(inspected).snapshot.image, undefined);
+  assert.equal(inspected.content.find(part => part.type === 'image').mimeType, 'image/png');
+  assert.equal(listed.tools.find(tool => tool.name === 'page_read').annotations.readOnlyHint, true);
   const context = result(await client.callTool({ name: 'project_context', arguments: {} }));
   assert.equal(context.files.length, 6);
   assert.equal(context.errors.length, 0);

@@ -26,6 +26,7 @@ export function useSeedRuntime() {
   const running = useRef(false);
   const restarting = useRef(false);
   const lastRequest = useRef<Request | null>(null);
+  const messageAttachments = useRef(new Map<string, import('./runtime-api').AttachmentMetadata[]>());
   const stream = useRef<AbortController | null>(null);
   const epoch = useRef(0);
   const pending = useRef(new Map<string, string>());
@@ -83,7 +84,7 @@ export function useSeedRuntime() {
     setSelection({ engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null });
     if (!lastRequest.current) {
       const user = [...saved.messages].reverse().find(message => message.role === 'user');
-      if (user) lastRequest.current = { sessionId: saved.id, text: user.text, requestId: user.requestId || user.id, engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null };
+      if (user) lastRequest.current = { sessionId: saved.id, text: user.text, requestId: user.requestId || user.id, engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null, ...(user.attachments?.length ? { attachmentIds: user.attachments.map(value => value.id) } : {}) };
     }
     if (!saved.running && saved.messages.at(-1)?.status === 'failed') {
       setError(current => current || 'The previous run failed. Retry or send a new request.');
@@ -316,7 +317,7 @@ export function useSeedRuntime() {
     setTools([]);
     setApprovals([]);
     setActivity(isRetry ? 'Retrying…' : 'Thinking…');
-    if (!isRetry) setMessages(current => [...current, { id: request.requestId, requestId: request.requestId, role: 'user', text: request.text }]);
+    if (!isRetry) setMessages(current => [...current, { id: request.requestId, requestId: request.requestId, role: 'user', text: request.text, ...(request.attachmentIds?.length ? { attachments: messageAttachments.current.get(request.requestId) } : {}) }]);
     try {
       const response = await checkedFetch('/api/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
@@ -356,8 +357,12 @@ export function useSeedRuntime() {
 
   const onNew = useCallback(async (message: AppendMessage) => {
     const text = message.content.filter(part => part.type === 'text').map(part => part.type === 'text' ? part.text : '').join('\n').trim();
-    if (!text || running.current || restarting.current) return;
-    await runRequest({ requestId: crypto.randomUUID(), text, ...selection, ...(session.current ? { sessionId: session.current } : {}) });
+    const files = message.attachments || [];
+    if ((!text && !files.length) || running.current || restarting.current) return;
+    const requestId = crypto.randomUUID();
+    if (files.length) messageAttachments.current.set(requestId, files.map(file => ({ id: file.id, name: file.name, contentType: file.contentType || 'application/octet-stream', kind: file.type === 'image' ? 'image' : 'file', size: file.file?.size || 0 })));
+    try { await runRequest({ requestId, text, ...selection, ...(files.length ? { attachmentIds: files.map(file => file.id) } : {}), ...(session.current ? { sessionId: session.current } : {}) }); }
+    finally { messageAttachments.current.delete(requestId); }
   }, [runRequest, selection]);
 
   const onCancel = useCallback(async () => {

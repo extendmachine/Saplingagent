@@ -353,3 +353,11 @@ test('Claude default is ready without Codex login and restored conversation reta
  const selection={engine:'claude',providerId:'sapling-synthetic',modelId:'synthetic-claude'};const catalog={defaultSelection:selection,engines:[{id:'claude',ready:true,authenticated:true,providers:[{id:selection.providerId,models:[{id:selection.modelId}]}]}]};
  const h=await harness({engineCatalog:catalog,runtimeStatus:{ready:true,codexReady:false},savedId:'claude-saved',route:r=>r.url==='/api/sessions/claude-saved'?json({session:{...session('claude-saved'),...selection}}):undefined});t.after(()=>h.close());assert.deepEqual({...h.current.selection},selection);assert.equal(h.current.engineReady,true);assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0);
 });
+
+test('file-only sends retain attachment IDs and restored retries reuse the same files and request ID',async t=>{
+ const attachment={id:'ab48eef0-7780-4ac5-9c92-6490279ca6f2',name:'reference.png',kind:'image',contentType:'image/png',size:20};let saved=[],posted=[];
+ const route=r=>{if(r.url==='/api/chat'){posted.push(r.input);saved=[{...message(r.input.requestId,r.input.text),attachments:[attachment]}];return sse('files',saved)}if(r.url==='/api/sessions/files')return json({session:session('files',saved)})};
+ const h=await harness({route});t.after(()=>h.close());await h.current.onNew({content:[],attachments:[{id:attachment.id,type:'image',name:attachment.name,contentType:attachment.contentType,status:{type:'complete'},content:[{type:'image',image:'/api/attachments/'+attachment.id+'/content'}]}]});await h.settle();assert.equal(posted.length,1);assert.equal(posted[0].text,'');assert.deepEqual([...posted[0].attachmentIds],[attachment.id]);assert.equal(h.current.messages[0].attachments[0].id,attachment.id);
+ const original=posted[0].requestId;saved.push({...message('failed-answer','Failed','assistant'),status:'failed'});
+ const resumed=await harness({savedId:'files',route});t.after(()=>resumed.close());assert.equal(posted.length,1);await resumed.current.retry();await resumed.settle();assert.equal(posted.length,2);assert.equal(posted[1].requestId,original);assert.deepEqual([...posted[1].attachmentIds],[attachment.id]);
+});

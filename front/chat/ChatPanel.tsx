@@ -1,3 +1,5 @@
+import { attachmentAdapter, completeAttachment } from './attachments';
+import { AttachmentDropzone, AttachFilesButton, ComposerAttachments, MessageAttachment } from './AttachmentControls';
 import { RestartDraft } from './RestartDraft';
 import { AssistantRuntimeProvider, ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useExternalStoreRuntime, type ThreadMessageLike } from '@assistant-ui/react';
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown';
@@ -7,7 +9,7 @@ import { useSeedRuntime } from './useSeedRuntime';
 import type { Message } from './runtime-api';
 
 const convertMessage = (message: Message): ThreadMessageLike => ({
-  id: message.id, role: message.role, content: [{ type: 'text', text: message.text }],
+  id: message.id, role: message.role, ...(message.attachments?.length ? { attachments: message.attachments.map(completeAttachment) } : {}), content: [{ type: 'text', text: message.text }],
   ...(message.role === 'assistant' && { status: message.status === 'streaming' ? { type: 'running' as const } : message.status === 'interrupted' ? { type: 'incomplete' as const, reason: 'cancelled' as const } : message.status === 'failed' ? { type: 'incomplete' as const, reason: 'error' as const } : { type: 'complete' as const, reason: 'stop' as const } }),
 });
 function MarkdownText() {
@@ -20,18 +22,18 @@ function AssistantMessage() {
   return <MessagePrimitive.Root className="message assistant-message"><span className="message-author">Saplingagent</span><div className="message-text"><MessagePrimitive.Parts components={{ Text: MarkdownText }} /></div></MessagePrimitive.Root>;
 }
 function UserMessage() {
-  return <MessagePrimitive.Root className="message user-message"><div className="message-text"><MessagePrimitive.Parts /></div></MessagePrimitive.Root>;
+  return <MessagePrimitive.Root className="message user-message"><div className="message-text"><div className="chat-attachments"><MessagePrimitive.Attachments components={{ Attachment: MessageAttachment }} /></div><MessagePrimitive.Parts /></div></MessagePrimitive.Root>;
 }
 
 const toolLabel = (name: string) => {
-  const labels: Record<string, string> = { list_files: 'Browse project files', read_file: 'Read file', propose_change: 'Record page change', apply_change: 'Apply page change', rollback_change: 'Restore page version', get_preferences: 'Read preferences', set_preference: 'Save preference', search_web: 'Search sources' };
+  const labels: Record<string, string> = { page_read: 'Inspect current page', list_files: 'Browse project files', read_file: 'Read file', propose_change: 'Record page change', apply_change: 'Apply page change', rollback_change: 'Restore page version', get_preferences: 'Read preferences', set_preference: 'Save preference', search_web: 'Search sources' };
   return labels[name.split(/[./]/).at(-1) || ''] || (name.includes('command') ? 'Run project command' : 'Use project tool');
 };
 const decisionLabel = (decision: string) => ({ accept: 'Allow', decline: 'Decline', acceptForSession: 'Allow for this session', cancel: 'Cancel' }[decision] || decision);
 
 export function ChatPanel() {
   const agent = useSeedRuntime();
-  const runtime = useExternalStoreRuntime({ messages: agent.messages, convertMessage, onNew: agent.onNew, onCancel: agent.onCancel, isRunning: agent.isRunning, isLoading: agent.isLoading, isSendDisabled: agent.isLoading || !agent.engineReady });
+  const runtime = useExternalStoreRuntime({ messages: agent.messages, convertMessage, onNew: agent.onNew, onCancel: agent.onCancel, isRunning: agent.isRunning, isLoading: agent.isLoading, isSendDisabled: agent.isLoading || !agent.engineReady, adapters: { attachments: attachmentAdapter } });
   const selectedEngine = agent.engines.find(engine => engine.id === agent.selection.engine);
   const selectedProvider = selectedEngine?.providers?.find(provider => provider.id === agent.selection.providerId);
   const offline = !agent.isLoading && !agent.engineReady;
@@ -47,7 +49,7 @@ export function ChatPanel() {
   };
 
   return <AssistantRuntimeProvider runtime={runtime}>
-    <ThreadPrimitive.Root className={`conversation ${agent.messages.length === 0 ? 'conversation-empty' : ''}`}>
+    <AttachmentDropzone><ThreadPrimitive.Root className={`conversation ${agent.messages.length === 0 ? 'conversation-empty' : ''}`}>
       <ThreadPrimitive.Viewport className="message-viewport">
         {agent.messages.length === 0 && <div className="welcome"><h1>Start with a conversation.</h1><p>Tell Saplingagent what you want to build.</p></div>}
         <ThreadPrimitive.Messages components={{ AssistantMessage, UserMessage }} />
@@ -63,17 +65,17 @@ export function ChatPanel() {
       </ThreadPrimitive.Viewport>
       <div className="composer-area">
         {agent.error && <div className="chat-error" role="alert"><span>{agent.error}</span>{agent.retryable && <button type="button" disabled={agent.isRunning} onClick={() => { void agent.retry(); }}><RotateCcw size={12} />Retry</button>}</div>}
-        <ComposerPrimitive.Root className="composer"><RestartDraft />
-          <ComposerPrimitive.Input className="composer-input" placeholder="Describe your idea…" aria-label="Chat with Saplingagent" rows={2} autoFocus />
-          <div className="composer-bottom"><div className="composer-meta">{agent.canSelectEngine && <div className="engine-picker">
+        <ComposerPrimitive.Root className="composer"><RestartDraft /><ComposerAttachments />
+          <ComposerPrimitive.Input addAttachmentOnPaste={false} className="composer-input" placeholder="Describe your idea…" aria-label="Chat with Saplingagent" rows={2} autoFocus />
+          <div className="composer-bottom"><div className="composer-meta"><AttachFilesButton />{agent.canSelectEngine && <div className="engine-picker">
             <select aria-label="Agent engine" value={agent.selection.engine} onChange={event => selectEngine(event.target.value as 'codex' | 'opencode' | 'claude')}><option value="codex">Codex</option><option value="opencode">OpenCode</option><option value="claude">Claude Agent</option></select>
             {agent.selection.engine !== 'codex' && <><select aria-label="Agent provider" value={agent.selection.providerId || ''} onChange={event => selectProvider(event.target.value)} disabled={!selectedEngine?.providers?.length}><option value="" disabled>Select provider</option>{selectedEngine?.providers?.map(provider => <option key={provider.id} value={provider.id}>{provider.label}</option>)}</select><select aria-label="Agent model" value={agent.selection.modelId || ''} onChange={event => agent.setSelection({ ...agent.selection, modelId: event.target.value })} disabled={!selectedProvider?.models.length}><option value="" disabled>Select model</option>{selectedProvider?.models.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}</select></>}
           </div>}<span className="input-hint">Enter to send · Shift + Enter for a new line</span></div>{agent.isRunning ? <ComposerPrimitive.Cancel className="send-button stop-button" aria-label="Stop response"><Square size={14} fill="currentColor" /></ComposerPrimitive.Cancel> : <ComposerPrimitive.Send className="send-button" aria-label="Send message"><ArrowUp size={19} /></ComposerPrimitive.Send>}</div>
         </ComposerPrimitive.Root>
         <div className="runtime-footer"><span className={`runtime-caption ${offline ? 'runtime-offline' : ''}`} role="status">{agent.isRunning || agent.isLoading ? <LoaderCircle size={11} className="spinning" /> : <span className="connection-dot" />}{caption}</span>
-          <div className="conversation-actions">{offline && <button type="button" title="Reconnect to local Agent" onClick={() => { void agent.refreshStatus(); void agent.refreshEngines(); }}><RotateCcw size={12} />Reconnect</button>}<button type="button" disabled={agent.isRunning || agent.isLoading} onClick={() => { agent.startNew(); runtime.thread.composer.setText(''); }}><Plus size={12} />New conversation</button></div>
+          <div className="conversation-actions">{offline && <button type="button" title="Reconnect to local Agent" onClick={() => { void agent.refreshStatus(); void agent.refreshEngines(); }}><RotateCcw size={12} />Reconnect</button>}<button type="button" disabled={agent.isRunning || agent.isLoading} onClick={() => { agent.startNew(); void runtime.thread.composer.reset(); }}><Plus size={12} />New conversation</button></div>
         </div>
       </div>
-    </ThreadPrimitive.Root>
+    </ThreadPrimitive.Root></AttachmentDropzone>
   </AssistantRuntimeProvider>;
 }

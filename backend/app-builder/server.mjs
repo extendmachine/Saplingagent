@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { createBuilder, safePath, BuilderError } from './builder.mjs';
+import { createPageBroker, PageError } from './page-broker.mjs';
 
 const defaultRoot = fileURLToPath(new URL('../../', import.meta.url));
 async function logger(root) {
@@ -49,7 +50,7 @@ export async function createBuilderServer({ root = process.env.SEED_ROOT || defa
   root = await fs.realpath(root);
   token ??= (await fs.readFile(await safePath(root, 'local-secrets/runtime/service-token'), 'utf8')).trim();
   if (!token || token.length < 20) throw new Error('Local service token is missing or invalid');
-  const builder = await createBuilder(root, build ? { build } : {}); const log = await logger(root);
+  const builder = await createBuilder(root, build ? { build } : {}); const log = await logger(root); const pageBroker = createPageBroker();
   const drain = createDrainGate();
   const server = http.createServer(async (request, response) => {
     const requestId = randomUUID(); let leave;
@@ -60,6 +61,17 @@ export async function createBuilderServer({ root = process.env.SEED_ROOT || defa
       if (request.method === 'POST' && url.pathname === '/internal/runtime/prepare') return send(response, 200, drain.prepare());
       if (request.method === 'POST' && url.pathname === '/internal/runtime/release') return send(response, 200, drain.release());
       if (request.method !== 'GET') leave = drain.enter();
+      if (request.method === 'POST' && url.pathname === '/page/heartbeat') return send(response, 200, pageBroker.heartbeat(await body(request)));
+      if (request.method === 'POST' && url.pathname === '/page/results') return send(response, 200, pageBroker.complete(await body(request)));
+      if (url.pathname === '/page/requests' && request.method === 'GET' || url.pathname === '/page/read' && request.method === 'POST') {
+        const controller = new AbortController();
+        const abort = () => { if (!response.writableEnded) controller.abort(); };
+        response.once('close', abort); request.once('aborted', abort);
+        try {
+          const result = request.method === 'GET' ? await pageBroker.next(url.searchParams.get('pageId'), { signal: controller.signal }) : await pageBroker.read(await body(request), { signal: controller.signal });
+          return send(response, 200, result);
+        } finally { response.removeListener('close', abort); request.removeListener('aborted', abort); }
+      }
       if (request.method === 'GET' && url.pathname === '/files') return send(response, 200, await builder.listFiles(url.searchParams.get('path') || '.', { limit: url.searchParams.get('limit'), cursor: url.searchParams.get('cursor') }));
       if (request.method === 'GET' && url.pathname === '/file') return send(response, 200, await builder.readFile(url.searchParams.get('path'), { encoding: url.searchParams.get('encoding') || 'utf8', offset: url.searchParams.get('offset'), maxBytes: url.searchParams.get('maxBytes') }));
       if (request.method === 'GET' && url.pathname === '/changes') return send(response, 200, { changes: await builder.listChanges() });
@@ -89,7 +101,7 @@ export async function createBuilderServer({ root = process.env.SEED_ROOT || defa
       }
       throw new BuilderError('NOT_FOUND', 'Endpoint does not exist', 404);
     } catch (error) {
-      const known = error instanceof BuilderError || ['RUNTIME_BUSY', 'RUNTIME_RESTARTING'].includes(error.code);
+      const known = error instanceof BuilderError || error instanceof PageError || ['RUNTIME_BUSY', 'RUNTIME_RESTARTING'].includes(error.code);
       const filesystemStatus = ['ENOENT', 'ENOTDIR'].includes(error.code) ? 404 : ['EACCES', 'EPERM', 'EROFS'].includes(error.code) ? 403 : ['EISDIR', 'EINVAL', 'ENAMETOOLONG', 'ERR_INVALID_ARG_VALUE', 'ERR_INVALID_ARG_TYPE'].includes(error.code) ? 400 : 500;
       const status = known ? error.status : filesystemStatus;
       const code = error.code || 'INTERNAL_ERROR';
@@ -99,7 +111,7 @@ export async function createBuilderServer({ root = process.env.SEED_ROOT || defa
   });
   server.requestTimeout = 150000; server.headersTimeout = 10000;
   const close = server.close.bind(server);
-  server.close = (...args) => { builder.cancelCommands(); return close(...args); };
+  server.close = (...args) => { pageBroker.close(); builder.cancelCommands(); return close(...args); };
   return server;
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
