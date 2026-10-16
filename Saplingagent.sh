@@ -20,6 +20,16 @@ export SAPLING_LANG
 say() {
   if [ "$SAPLING_LANG" = 'zh' ]; then printf '%s\n' "$2"; else printf '%s\n' "$1"; fi
 }
+
+# Read only this independent folder's saved choice, without Node/bootstrap.
+# A linked worktree must not inherit and reinterpret shared maintainer settings.
+storage_mode() (
+  [ -d "$SAPLING_ROOT/.git" ] && [ ! -L "$SAPLING_ROOT/.git" ] || return 0
+  command -v git >/dev/null 2>&1 || return 0
+  local variable
+  for variable in ${!GIT_@}; do unset "$variable"; done
+  git -C "$SAPLING_ROOT" config --local --get saplingagent.storageMode 2>/dev/null || true
+)
 usage() {
   say 'Usage: bash Saplingagent.sh [--lang en|zh] [install [--repair] | login [--device-auth] | configure [--no-open] | opencode | start [--no-open] | doctor | logout | git]' '用法：bash Saplingagent.sh [--lang en|zh] [install [--repair] | login [--device-auth] | configure [--no-open] | opencode | start [--no-open] | doctor | logout | git]'
   say 'Run without arguments to choose a language and open the interactive menu.' '不带参数运行即可选择语言并进入交互菜单。'
@@ -94,24 +104,43 @@ run_action() {
 
 if [ "$SAPLING_LANG_CHOSEN" -eq 0 ]; then choose_language || exit 0; fi
 while true; do
+  SAPLING_STORAGE_MODE="$(storage_mode)"
+  SAPLING_INDEPENDENT=0
+  case "$SAPLING_STORAGE_MODE" in local|own) SAPLING_INDEPENDENT=1 ;; esac
   printf '\n%s\n' 'Saplingagent'
-  say '  1. Install / update' '  1. 安装 / 更新'
+  if [ "$SAPLING_INDEPENDENT" -eq 0 ]; then
+    say '  1. Install / update' '  1. 安装 / 更新'
+  elif [ "$SAPLING_STORAGE_MODE" = local ]; then
+    say '  Storage: local Git; independent of Saplingagent upstream.' '  存放方式：本地 Git；独立于 Saplingagent 上游。'
+  else
+    say '  Storage: your repository; independent of Saplingagent upstream.' '  存放方式：自己的仓库；独立于 Saplingagent 上游。'
+  fi
   say '  2. Configure AI' '  2. 配置 AI 接口'
   say '  3. Start app' '  3. 启动应用'
   say '  4. Diagnostics' '  4. 服务诊断'
   say '  5. Git / storage setup' '  5. Git / 存放配置'
   say '  9. Change language' '  9. 切换语言'
   say '  0. Quit' '  0. 退出'
-  if [ "$SAPLING_LANG" = 'zh' ]; then printf '请选择 [0-5, 9]: '; else printf 'Choose [0-5, 9]: '; fi
+  if [ "$SAPLING_INDEPENDENT" -eq 1 ]; then
+    if [ "$SAPLING_LANG" = 'zh' ]; then printf '请选择 [0, 2-5, 9]: '; else printf 'Choose [0, 2-5, 9]: '; fi
+  else
+    if [ "$SAPLING_LANG" = 'zh' ]; then printf '请选择 [0-5, 9]: '; else printf 'Choose [0-5, 9]: '; fi
+  fi
   if ! IFS= read -r choice; then printf '\n'; exit 0; fi
   case "$choice" in
-    1) run_action install ;;
+    1)
+      if [ "$SAPLING_INDEPENDENT" -eq 0 ]; then run_action install
+      else say 'This application uses independent storage. For dependency repair, run: bash Saplingagent.sh install --repair' '此应用使用独立存放方式。需要修复依赖时运行：bash Saplingagent.sh install --repair'
+      fi ;;
     2) run_action configure ;;
     3) run_action start ;;
     4) run_action doctor ;;
     5) run_action git ;;
     9) choose_language || exit 0 ;;
     0) exit 0 ;;
-    *) say 'Please enter 0, 1, 2, 3, 4, 5 or 9.' '请输入 0、1、2、3、4、5 或 9。' ;;
+    *)
+      if [ "$SAPLING_INDEPENDENT" -eq 1 ]; then say 'Please enter 0, 2, 3, 4, 5 or 9.' '请输入 0、2、3、4、5 或 9。'
+      else say 'Please enter 0, 1, 2, 3, 4, 5 or 9.' '请输入 0、1、2、3、4、5 或 9。'
+      fi ;;
   esac
 done

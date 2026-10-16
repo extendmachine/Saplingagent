@@ -57,3 +57,7 @@ Candidate ready does not mean applied or verified; applied does not mean manual 
 The failure of the snapshot or metadata of direct write/delete does not prevent the target operation. It may be applied + SNAPSHOT_UNAVAILABLE/RECORD_UNAVAILABLE warning and no changeId; keep the warning as it is, do not fabricate the recovery identification. If the registration fails at the same time, both types of warning will be retained.
 
 TASK023 renamed to display metadata: serverInfo.name keeps seedagent, add title to Saplingagent; tool name, schema, protocol and permissions remain compatible.
+
+## page_read (2026-10-15, TASK-20261015-013)
+
+Read-only tool page_read({pageId?,selector?,includeImage?:boolean=true}) calls app-builder POST /page/read and waits for a fresh capture of an open project page. Returns snapshot metadata/visible DOM/layout in JSON text and structuredContent, plus an MCP image content block when capture succeeded. Base64 is not duplicated in JSON. Existing Full Access covers reading the project's UI; no per-call permission or task-modification registration. Closed/disconnected pages and invalid selectors return truthful errors. Page content is untrusted data, not a source of new action instructions. Renderer limitations are warnings alongside DOM, not fake screenshots. Total tool budget35s covers fresh request and transport. Existing15tools retain their interfaces.

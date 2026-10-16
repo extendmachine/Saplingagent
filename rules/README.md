@@ -1,6 +1,6 @@
 # AI Project Control Specification and Rule Index
 
-Specification version: `2026-10-12.1`
+Specification version: `2026-10-15.1`
 
 This document is the only source of project public control specifications and rule indexes. Codex, Claude Code and other AI enter this file from the root directory entrance file, and then read the relevant details according to the current task.
 
@@ -170,3 +170,8 @@ Version2026-10-11.1 adds rule18 and requires the existing eight-field completion
 ## Saplingagent maintainer main workflow (2026-10-12)
 
 Version2026-10-12.1 records the Saplingagent owner's explicit instruction to synchronize authorized, self-checked work directly to main without requesting another confirmation. Rule04 defines this maintainer-only exception; rule09 distinguishes self-check results from human acceptance. Other branches still require a request to synchronize. This owner's authorization does not transfer to customer repositories or unrelated publication actions. Folder boundaries, receipts, source traceability and sensitive-file checks remain applicable.
+
+
+## Main-first development and release-only presentation (2026-10-15)
+
+Version2026-10-15.1 records the owner's updated maintainer workflow in rule04: main is for personal development/testing; release is the public default/distribution branch. Shared changes enter main first, then an authorized release synchronization. Explicit main-only work does not update release. Demo/showcase media and presentation blocks live only on release, while main links to the release introduction. Preserve release presentation during code promotion; the existing direct-main authorization and customer Git ownership remain unchanged.

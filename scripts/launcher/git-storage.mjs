@@ -86,11 +86,12 @@ export async function configureGitStorage(root, { force = false, mode, remoteUrl
     return { mode: 'worktree', preserved: true };
   }
   const existing = Boolean(marker);
+  let saved = '';
   const hasHead = existing && Boolean(await git(root, ['rev-parse', '--verify', 'HEAD'], { optional: true }));
   if (existing) {
     const top = await fs.realpath(await git(root, ['rev-parse', '--show-toplevel']));
     if (top !== await fs.realpath(root)) throw new Error(t('Git belongs to another folder; configuration was not changed.', 'Git 属于其他目录，未修改配置。'));
-    const saved = await git(root, ['config', '--local', '--get', 'saplingagent.storageMode'], { optional: true });
+    saved = await git(root, ['config', '--local', '--get', 'saplingagent.storageMode'], { optional: true });
     if (saved && !force) {
       output(t('Keeping saved Git / storage configuration and your current branch/version.', '保留已保存的 Git / 存放配置和当前分支 / 版本。'));
       return { mode: saved, branch: await git(root, ['branch', '--show-current']), preserved: true };
@@ -102,10 +103,13 @@ export async function configureGitStorage(root, { force = false, mode, remoteUrl
   remoteUrl ??= process.env.SAPLING_GIT_REMOTE;
   branch ??= process.env.SAPLING_GIT_BRANCH;
   if (!mode) {
-    output(t('\nGit / storage — choose where your application changes belong:\n  1. Local only (ERASE all Git history/config; start empty main, no remotes)\n  2. My own repository (connect your existing repository URL)\n  3. Follow Saplingagent release (author upstream; no automatic push/PR)', '\nGit / 存放 — 选择应用修改存放位置：\n  1. 仅本地（清除全部 Git 历史和配置，重建空 main，无远端）\n  2. 自己的远端仓库（连接已创建的仓库地址）\n  3. 跟随 Saplingagent release（作者上游；不自动推送或发 PR）'));
-    const choice = prompt(t('Choose [1-3] (local clears Git history): ', '请选择 [1-3]（仅本地会清除 Git 历史）：'), '');
-    mode = { '1': 'local', '2': 'own', '3': 'upstream' }[choice];
-    if (!mode) throw new Error(t('Invalid selection. Choose 1, 2 or 3; nothing was changed.', '选项无效。请选择 1、2 或 3；未进行修改。'));
+    const independent = saved === 'local' || saved === 'own';
+    let menu = t('\nGit / storage — choose where your application changes belong:\n  1. Local only (ERASE all Git history/config; start empty main, no remotes)\n  2. My own repository (connect your existing repository URL)', '\nGit / 存放 — 选择应用修改存放位置：\n  1. 仅本地（清除全部 Git 历史和配置，重建空 main，无远端）\n  2. 自己的远端仓库（连接已创建的仓库地址）');
+    if (!independent) menu += t('\n  3. Follow Saplingagent release (author upstream; no automatic push/PR)', '\n  3. 跟随 Saplingagent release（作者上游；不自动推送或发 PR）');
+    output(menu);
+    const choice = prompt(independent ? t('Choose [1-2] (local clears Git history): ', '请选择 [1-2]（仅本地会清除 Git 历史）：') : t('Choose [1-3] (local clears Git history): ', '请选择 [1-3]（仅本地会清除 Git 历史）：'), '');
+    mode = { '1': 'local', '2': 'own', ...(!independent ? { '3': 'upstream' } : {}) }[choice];
+    if (!mode) throw new Error(independent ? t('Invalid selection. Choose 1 or 2; nothing was changed.', '选项无效。请选择 1 或 2；未进行修改。') : t('Invalid selection. Choose 1, 2 or 3; nothing was changed.', '选项无效。请选择 1、2 或 3；未进行修改。'));
   }
   if (!modes.includes(mode) || (mode === 'existing' && !hasHead)) throw new Error(t('Invalid Git storage mode.', 'Git 存放模式无效。'));
   if (mode === 'local') {
@@ -209,6 +213,6 @@ export async function configureGitStorage(root, { force = false, mode, remoteUrl
   }
   await git(root, ['config', '--local', 'saplingagent.initialBranch', target]);
   await git(root, ['config', '--local', 'saplingagent.storageMode', mode]);
-  output(t(`Git storage configured: ${mode}; branch/version: ${target || 'detached HEAD'}. Changes stay local until you explicitly publish them. Install / update checks upstream source only in follow mode; local/own code is retained.`, `Git 存放已配置：${mode}；分支 / 版本：${target || 'detached HEAD'}。修改保存在本地，只有主动发布才会上传。安装 / 更新仅在跟随上游模式检查源码；本地／自有仓库代码保留。`));
+  output(t(`Git storage configured: ${mode}; branch/version: ${target || 'detached HEAD'}. Changes stay local until you explicitly publish them.`, `Git 存放已配置：${mode}；分支 / 版本：${target || 'detached HEAD'}。修改保存在本地，只有主动发布才会上传。`));
   return { mode, branch: target, preserved: false };
 }

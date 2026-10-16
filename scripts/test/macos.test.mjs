@@ -88,6 +88,8 @@ test('dependency changes invalidate the success marker before launching', async 
   const root = await fixture(t, { auth: 'present' }); await fs.writeFile(path.join(root, 'front/package-lock.json'), '{"changed":true}');
   const result = await runCli(root, ['start', '--no-open']);
   assert.equal(result.code, 1); assert.match(result.output, /lockfiles have changed/);
+  assert.match(result.output, /bash Saplingagent.sh install --repair/);
+  assert.doesNotMatch(result.output, /choose Install \/ update/);
   assert.equal(await fs.access(path.join(root, 'UNEXPECTED_LAUNCH')).then(() => true, () => false), false);
 });
 test('a failed launcher cannot claim another live project is ready', async t => {
@@ -120,6 +122,23 @@ test('failed managed startup keeps the recovery gateway alive until the user sto
   const end=Date.now()+5000;while(!output.includes('Keep this window open')&&child.exitCode===null&&Date.now()<end)await new Promise(resolve=>setTimeout(resolve,30));
   assert.match(output,/Keep this window open/);assert.equal(child.exitCode,null);assert.equal((await fetch(`http://127.0.0.1:${port}/api/runtime/status`)).status,200);
   child.kill('SIGTERM');assert.equal(await exited,0);
+});
+
+test('Mac startup follows the announced port instead of a ready foreign app on the configured port', async t => {
+ const root=await fixture(t,{auth:'present'});const http=await import('node:http');let foreignRequests=0;
+ const foreign=http.createServer((req,res)=>{foreignRequests++;res.end(JSON.stringify({ready:true,authenticated:true,phase:'ready',mcp:{ready:true,tools:[]},skills:[],model:'foreign-model'}))});
+ await new Promise(resolve=>foreign.listen(0,'127.0.0.1',resolve));t.after(()=>{foreign.closeAllConnections();return new Promise(resolve=>foreign.close(resolve))});
+ const configFile=path.join(root,'config/runtime.json'),config=JSON.parse(await fs.readFile(configFile));config.frontPort=foreign.address().port;await fs.writeFile(configFile,JSON.stringify(config));
+ await fs.writeFile(path.join(root,'scripts/dev.mjs'),`import http from 'node:http';import fs from 'node:fs';const s=http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({instanceId:'fixture-instance',phase:'ready',busy:false,ready:true,authenticated:true,provider:'Fixture',model:'fixture-model',mcp:{ready:true,tools:[]},skills:[]}))});s.listen(0,'127.0.0.1',()=>{const port=s.address().port;fs.writeFileSync('.runtime/runtime-address.json',JSON.stringify({instanceId:'fixture-instance',ports:{frontPort:port}}));console.log('Saplingagent: http://127.0.0.1:'+port+'/')});process.on('SIGTERM',()=>{s.closeAllConnections();s.close(()=>process.exit(0))});`);
+ const child=spawn(process.execPath,[path.join(root,'scripts/macos/cli.mjs'),'start','--no-open'],{cwd:root,stdio:['ignore','pipe','pipe']});
+ let output='';child.stdout.on('data',x=>output+=x);child.stderr.on('data',x=>output+=x);const exited=new Promise(resolve=>child.once('exit',code=>resolve(code)));t.after(()=>{if(child.exitCode===null)child.kill('SIGTERM')});
+ const end=Date.now()+5000;while(!output.includes('Keep this window open')&&child.exitCode===null&&Date.now()<end)await new Promise(r=>setTimeout(r,30));
+ assert.match(output,/Connected to Fixture: fixture-model/);assert.equal(foreignRequests,0);
+ const address=JSON.parse(await fs.readFile(path.join(root,'.runtime/runtime-address.json')));assert.match(output,new RegExp('Web page: http://127.0.0.1:'+address.ports.frontPort+'/'));
+ const diagnostic=await runCli(root,['doctor']);assert.match(diagnostic.output,new RegExp('Runtime address: http://127.0.0.1:'+address.ports.frontPort+'/'));assert.match(diagnostic.output,/model:fixture-model/);
+ await fs.writeFile(path.join(root,'.runtime/runtime-address.json'),JSON.stringify({instanceId:'stale',ports:{frontPort:address.ports.frontPort}}));
+ const stale=await runCli(root,['doctor']);assert.match(stale.output,/Runtime status: not started/);assert.doesNotMatch(stale.output,/model:fixture-model/);
+ child.kill('SIGTERM');assert.equal(await exited,0);assert.equal(foreignRequests,0);
 });
 
 test('Chinese bootstrap reports missing Node without downloading anything', async t => {
@@ -160,7 +179,7 @@ test('web configuration builds and launches its independent page without Codex l
  assert.equal(await fs.access(path.join(root,'UNEXPECTED_LAUNCH')).then(()=>true,()=>false),false);
 });
 
-async function menuPty(root,{storageChoice=false}={}) {
+async function menuPty(root,{storageChoice=false,independent=false}={}) {
  const python=`import os,pty,select,time,sys,signal,json
 pid,fd=pty.fork()
 if pid==0:
@@ -172,6 +191,7 @@ try:
    try:text+=os.read(fd,65536)
    except OSError:break
    decoded=text.decode('utf8',errors='replace')
+   if sys.argv[3]=='yes' and '请选择 [0, 2-5, 9]' in decoded and not quit:os.write(fd,b'0\\n');quit=True
    if '请选择 [0-5, 9]' in decoded and not menu:os.write(fd,b'1\\n');menu=True
    if sys.argv[2]=='yes' and '请选择 [1-3]' in decoded and not storage:os.write(fd,b'1\\n');storage=True
    if '安装 / 更新执行完成' in decoded and not quit:os.write(fd,b'0\\n');quit=True
@@ -184,13 +204,24 @@ try:
  print(json.dumps({'code':os.waitstatus_to_exitcode(status),'menu':menu,'storage':storage,'quit':quit,'text':text.decode('utf8',errors='replace')}))
 finally:os.close(fd)
 `;
- const {stdout}=await promisify(execFile)('python3',['-c',python,root,storageChoice?'yes':'no'],{timeout:20000,env:{...process.env,SAPLING_GIT_MODE:'',SAPLING_SOURCE_UPDATE_DONE:''}});return JSON.parse(stdout);
+ const {stdout}=await promisify(execFile)('python3',['-c',python,root,storageChoice?'yes':'no',independent?'yes':'no'],{timeout:20000,env:{...process.env,SAPLING_GIT_MODE:'',SAPLING_SOURCE_UPDATE_DONE:''}});return JSON.parse(stdout);
 }
 async function nativeNode(root) {
  const settings=JSON.parse(await fs.readFile(path.join(root,'config/macos.json'))),folder=path.join(root,'.runtime',`node-v${settings.nodeVersion}-darwin-${process.arch}`,'bin');await fs.mkdir(folder,{recursive:true});await fs.symlink(process.execPath,path.join(folder,'node'));
 }
 test('actual macOS terminal menu1 reports progress and first Git prompt receives foreground input',{skip:process.platform!=='darwin',timeout:25000},async t=>{
  const root=await fixture(t);await nativeNode(root);const result=await menuPty(root,{storageChoice:true});assert.equal(result.code,0,result.text);assert.equal(result.storage,true);assert.equal(result.quit,true);assert.match(result.text,/正在启动安装 \/ 更新/);assert.match(result.text,/依赖检查完成/);assert.match(result.text,/只检查本地依赖/);
+});
+test('actual macOS terminal hides install for saved local/own storage without bootstrapping',{skip:process.platform!=='darwin',timeout:25000},async t=>{
+ for(const mode of ['local','own']){
+  const root=await fixture(t);
+  await promisify(execFile)('git',['-C',root,'init','-b','main']);
+  await promisify(execFile)('git',['-C',root,'config','--local','saplingagent.storageMode',mode]);
+  const result=await menuPty(root,{independent:true});
+  assert.equal(result.code,0,result.text);assert.equal(result.quit,true);assert.equal(result.menu,false);
+  assert.doesNotMatch(result.text,/1\. 安装|检测到设备|正在启动安装/);
+  assert.match(result.text,/独立于 Saplingagent 上游/);
+ }
 });
 test('actual macOS terminal menu1 updates source and reloads fresh launcher without reinstalling unchanged dependencies',{skip:process.platform!=='darwin',timeout:25000},async t=>{
  const source=await fixture(t),app=source+'-recipient';t.after(()=>fs.rm(app,{recursive:true,force:true}));const exec=promisify(execFile),git=async(root,...args)=>(await exec('git',['-C',root,...args],{env:{...process.env,GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:path.join(root,'absent-global')},encoding:'utf8'})).stdout.trim();

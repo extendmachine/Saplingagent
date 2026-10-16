@@ -1,0 +1,18 @@
+.chat-dropzone { position: relative; display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.chat-attachments { display: flex; flex-wrap: wrap; gap: 7px; }
+.chat-attachments:empty { display: none; }
+.chat-attachments:not(:empty) { margin-bottom: 10px; }
+.chat-attachment { min-width: 0; max-width: 100%; display: flex; align-items: center; gap: 8px; border: 1px solid #dfe5d8; border-radius: 9px; background: #f6f8f2; padding: 7px 8px; color: #627255; font-size: 11px; }
+.chat-attachment.has-error { border-color: #d9b6a5; color: #986049; }
+.chat-attachment-image { width: 42px; height: 42px; object-fit: cover; border-radius: 5px; }
+.chat-attachment-description { min-width: 0; display: flex; flex-direction: column; gap: 3px; overflow-wrap: anywhere; }
+.chat-attachment-description a { color: inherit; text-decoration: none; }
+.chat-attachment-description a:hover { text-decoration: underline; }
+.chat-attachment-description small { display: flex; align-items: center; gap: 4px; font-size: 10px; }
+.chat-attachment-remove, .attach-files-button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border: 0; border-radius: 7px; background: transparent; color: #748369; }
+.chat-attachment-remove { width: 23px; height: 23px; }
+.attach-files-button { width: 28px; height: 28px; }
+.chat-attachment-remove:hover, .attach-files-button:hover { color: #425635; background: #e8eedf; }
+.chat-drop-overlay { position: absolute; inset: 8px; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border: 2px dashed #91a17f; border-radius: 14px; background: #f4f7eef2; color: #536744; pointer-events: none; font-size: 13px; }
+.attachment-input-error { margin: 0; padding: 4px 16px 10px; color: #986049; font-size: 11px; }
+.user-message .chat-attachments { margin: 0 0 8px; }

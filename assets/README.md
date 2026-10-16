@@ -57,3 +57,7 @@ Three unaltered 1280×720 browser screenshots captured on 2026-10-14 for TASK-20
 - `cases/document-workspace/pdf-ocr-editor.jpg`: local Simplified Chinese OCR and recognized text selected for editing. OCR returned 10 selectable lines; no Apply or Save action was performed. SHA-256 `61a61962310f44ea1eaed132c5f173f00ebb88e3df25071f22e6e14a9311142b`.
 
 The interface's own panel-collapse and splitter controls were used for framing. English and Chinese introductions share these actual screenshots, with localized captions and feature descriptions.
+
+## Public resources and private chat data
+
+These are the previously published release presentation assets. User chat uploads belong in ignored data/attachments, and conversation sessions in ignored data/sessions. Do not place personal conversations, uploads, credentials, logs or runtime caches in public assets or commit them. Release synchronization preserves the published demos/cases without copying local user data.

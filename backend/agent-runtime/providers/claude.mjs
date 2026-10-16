@@ -97,7 +97,7 @@ export class ClaudeProvider {
       finally { this.probe = null; }
     }
   }
-  async execute(run, text) {
+  async execute(run, text, { images = [] } = {}) {
     if (!this.ready) await this.start();
     if (run.cancelRequested || this.closing) { this.onEvent(run, { type: 'done', status: 'interrupted' }); return; }
     const profile = this.profiles?.find(item => item.providerId === run.session.providerId && item.model === run.session.modelId);
@@ -105,7 +105,10 @@ export class ClaudeProvider {
     const state = {}; this.runs.set(run, state);
     let terminal, result = false, messageId, streamed = new Set();
     try {
-      state.query = this.queryFactory({ prompt: text, options: { ...this.options(profile, state, run), ...(run.session.threadId ? { resume: run.session.threadId } : {}) } });
+      const prompt = images.length ? (async function* () {
+        yield { type: 'user', session_id: run.session.threadId || '', parent_tool_use_id: null, message: { role: 'user', content: [{ type: 'text', text }, ...images.map(image => ({ type: 'image', source: { type: 'base64', media_type: image.contentType, data: image.data } }))] } };
+      })() : text;
+      state.query = this.queryFactory({ prompt, options: { ...this.options(profile, state, run), ...(run.session.threadId ? { resume: run.session.threadId } : {}) } });
       for await (const message of state.query) {
         if (run.cancelRequested || run.finished || this.closing) break;
         if (message.type === 'system' && message.subtype === 'init') {

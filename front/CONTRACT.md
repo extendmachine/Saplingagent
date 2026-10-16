@@ -46,7 +46,7 @@ Agent rejects mutations during active AI (GIT_AGENT_BUSY), concurrent Git mutati
 Saving versions excludes known private/runtime artifacts even if historical ignore rules are absent; GIT_PRIVATE_FILES (409) rejects already staged private paths. History is bounded to 500 commits per read; older versions can also be loaded by a full commit ID through the API.
 
 ## Restart app
-The version control is followed by Restart app (frontend and backends) and Restart backend. These use the runtime-manager contract and same-origin endpoints; polling survives Vite restart through the persistent gateway. Selected persisted conversations are reloaded after backend generation changes without sending model requests. Current frontend temporarily saves an unsent composer draft in sessionStorage before switching/restarting, restores only the same selected session, then removes the recovery copy. Legacy UIs may lack this support. Switching and restarting are two explicit steps.
+The version control is followed by a single Restart app button (frontend, backends and managed project services). It always posts {scope:"all"} to the runtime-manager same-origin endpoint; polling survives Vite restart through the persistent gateway. Selected persisted conversations are reloaded after backend generation changes without sending model requests. Current frontend temporarily saves an unsent composer draft in sessionStorage before switching/restarting, restores only the same selected session, then removes the recovery copy. Legacy UIs may lack this support. Switching and restarting are two explicit steps.
 
 ## Standalone AI setup and saved default (TASK-20261012-002)
 
@@ -66,3 +66,24 @@ GET /api/git may return unborn:true and head:null before the first commit, with 
 ## Explicit setup credential import (TASK-20261013-003)
 
 Configuration page uses protected POST /api/config/credentials/import from backend/ai-config contractv1.1: engine/source/revision/replace, upload JSON string (32KiB document), optional Claude profile draft. State response contains metadata only. Codex account supports local auth.json or upload; Claude API supports inherited/local settings API key or API JSON, with URL/model fields and explicit replacement. No credential persistence in browser storage, no automatic source detection, global write or inference. Errors leave the form available and never display uploaded JSON. Finish setup/restart/new conversation follows existing controls.
+
+
+## Complete project restart (2026-10-15)
+
+The primary Restart app action always requests scope all, including the frontend, backends and project service plan. The main UI has no restart dropdown, backend-only action or recovery link. A successful new runtime generation refreshes the selected frontend; an in-memory marker works even when sessionStorage is denied. An old ready poll does not consume the marker, and failed/unfinished restarts do not trigger a reload. Conversation/draft recovery and no automatic message resend remain unchanged. New project process registration is handled by the runtime manager, not arbitrary browser commands.
+
+Accessing the sessionStorage property can itself be denied. RestartDraft catches that case before invoking its storage helpers, keeping the chat usable; draft recovery then remains unavailable, while full-restart reload uses its in-memory marker.
+
+## Kernel baseline version (2026-10-15)
+
+The page footer always displays Kernel version 0.90, a source-owned string in front/features/version/VersionFooter.tsx. It records the original kernel baseline independently of Git branches, commits and custom version names, including when Git is unavailable. Keep the trailing zero; update this value only for an explicit kernel release. Existing Git version polling/refresh behavior is unchanged.
+
+## Right-side collapsible AI chat (2026-10-15)
+
+The central conversation is now a right-edge AI chat panel, initially expanded. Collapse chat hides the panel and leaves an Open AI chat edge tab; reopening restores focus to the composer. The ChatPanel remains mounted while hidden, preserving draft text, messages, running response transport and session state. Desktop application content uses the remaining width; small screens use the available width. Existing App error isolation, Git/restart controls, Stop/Retry/New conversation and API semantics remain unchanged. The version footer is restored to its centered layout with kernel0.90, correcting the earlier footer-target assumption.
+
+## Composer attachments and page inspection (2026-10-15, TASK-20261015-014)
+
+Existing assistant-ui AttachmentAdapter integrates a multiple-file picker, file/image drag-drop on the chat, and paste events exposing clipboard files/images; ordinary text paste remains normal. Uploads go to POST /api/attachments, persist locally and show pending/progress/error/removal/preview states. Sending accepts text or completed attachments and forwards opaque IDs; messages restore previews/downloads from persisted metadata. Existing same requestId and attachment IDs are retained for retry. Collapsing the chat keeps uploads/drafts/runtime mounted. Browser clipboard formats that expose only text are treated as text; no clipboard-read permission is requested.
+
+An independent PageContextBridge stays mounted for the open project page, registers with /api/page/heartbeat and long-polls capture requests, then posts fresh DOM/layout and optional PNG from the rendered document. DOM-to-image uses one locked frontend-only dependency; no browser executable/OS screen capture. Password inputs, unsent drafts and private capture-excluded nodes are omitted. Screenshot failures produce warnings with real DOM; closed-page capture reports unavailable. Captures do not execute AI-supplied scripts or interact with controls.

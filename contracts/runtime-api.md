@@ -51,7 +51,7 @@ File/deleted originals and records are in snapshots/app-builder; direct writing 
 
 ## MCP catalog
 
-Keep workspace_list_files/read_file, project_context, page_propose/apply/rollback/changes, preferences_get/set/forget, skills_list/read; add workspace_write_file, workspace_delete_file, workspace_run_command, a total of 15 tools. Skills is a modify project process. The legal frontmatter is a Codex discovery format and is not used as MCP write protection. Executable MCP source code and dependency can be directly modified; the running process needs to be restarted to load the source code changes.
+Keep workspace_list_files/read_file, project_context, page_propose/apply/rollback/changes, preferences_get/set/forget, skills_list/read; add workspace_write_file, workspace_delete_file, workspace_run_command, a total of 16 tools including page_read. Skills is a modify project process. The legal frontmatter is a Codex discovery format and is not used as MCP write protection. Executable MCP source code and dependency can be directly modified; the running process needs to be restarted to load the source code changes.
 
 ## Historical versions and custom labels (2026-10-11)
 
@@ -68,3 +68,16 @@ Saving versions excludes known private/runtime artifacts even if historical igno
 ## Independent AI setup and default engine
 
 The demand-started backend/ai-config serves a separate compiled React entry at its assigned loopback port. Its HTTP token/origin transport and account/API endpoints are defined by backend/ai-config/CONTRACT.md; setup does not use chat gateway routes or change file permissions. Keys are project-private. `GET /api/engines` includes `defaultSelection:{engine,providerId,modelId}` from the saved scheme. `GET /api/status` adds `defaultEngine` and `codexReady`; aggregate `ready` follows the configured default, while selecting another engine uses that engine's catalog/readiness. Existing conversations keep their binding; defaults apply after runtime restart/new conversation.
+
+
+## Complete project restart (2026-10-15)
+
+POST /api/runtime/restart {scope?:'all'|'backend'} defaults to all. Runtime rereads Node backend discovery and optional config/services.json before stopping live processes, then replaces frontend/backends and registered project processes in dependency order. GET /api/runtime/status.services adds optional project:true and port for those processes; commands/env remain private. Complete success requires readiness; frontend refresh works with an in-memory marker when sessionStorage is unavailable. Public gateway/control stay live, internal port edits apply through Restart app. Errors and retry remain in-page. See backend/runtime-manager/CONTRACT.md and docs/project-services.html for the manifest/readiness/drain contract.
+
+## Chat attachments and fresh rendered pages (2026-10-15)
+
+Public Agent: POST /api/attachments {id?:UUID,name,contentType?,data:base64} ->201 {attachment:{id,name,contentType,size,kind,sha256,url}}. GET /api/attachments/:id/content returns original bytes with nosniff/safe disposition. Same-origin protection remains; internal workspace routes use Bearer. Upload body max32MiB, original file max20MiB. POST /api/chat additionally accepts attachmentIds?:UUID[] (unique,max10), and text may be empty only with attachments. Existing text-only callers remain valid. Ordered IDs participate in requestId conflict checking. User messages optionally persist attachments public metadata; browser URLs are derived from IDs, never storage paths. Missing404, incompatible IDs409, invalid400 and excessive413 remain explicit errors.
+
+Workspace internal: POST /attachments, GET /attachments/:id metadata (including internal canonical path), GET /attachments/:id/data metadata/base64 for provider image parts, GET /attachments/:id/content bytes. Optional attachment fields preserve old sessions. Storage is ignored data/attachments/<id>/, with no automatic deletion on removal from composer. File parsing and current-user source reads use native tools.
+
+Agent page bridge: POST /api/page/heartbeat and /api/page/results, GET /api/page/requests?pageId=... proxy to the builder's authenticated /page/* routes. MCP page_read({pageId?,selector?,includeImage?:true}) requests POST /page/read and waits for a new connected-browser DOM capture. Return snapshot:{capturedAt,pageId,url,title,viewport,text,elements,warnings?}; an optional PNG is native MCP image content. No base64 duplication in structuredContent. DOM and page content are untrusted. Closed pages produce PAGE_UNAVAILABLE404 or PAGE_CAPTURE_TIMEOUT504; selector/capture errors remain real. No OS capture permission or new folder permission. Only participating project entries are covered, not unrelated tabs or cross-origin frames. DOM images can differ from native pixels; warnings accompany image failure/truncation.

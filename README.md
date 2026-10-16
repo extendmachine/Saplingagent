@@ -96,8 +96,6 @@ Office editing covers basic changes. Word controls format whole paragraphs; Powe
 
 ### 1. Get the complete application
 
-This guide describes `release`; `main` may include features that are not in your download.
-
 For a new installation, run one command in **macOS Terminal** or **Windows Git Bash** (install [Git for Windows](https://gitforwindows.org/) first):
 
 ```bash
@@ -140,7 +138,7 @@ First choose **English** or **中文** (Enter defaults to English), then use the
 
 | Menu choice | Action |
 | --- | --- |
-| 1. Install / update | Check source/dependency results. Follow mode can merge upstream source; local/own modes keep their source and check dependencies. |
+| 1. Install / update | Available before a storage choice and in follow mode. Check source/dependencies and reload changed upstream source. Hidden after choosing local Git or your own repository. |
 | 2. Configure AI | Open the standalone local account/API configuration page. |
 | 3. Start app | Launch the local services and open the chat page. |
 | 4. Diagnostics | Check installation, saved AI access and runtime readiness. |
@@ -167,7 +165,7 @@ Scheme metadata stays in `local-secrets/ai-config/connections.json`, API keys in
 
 Startup uses the saved default scheme. **An OpenCode-only or custom Codex API scheme does not require ChatGPT login.** Reconfigure while an app is running, then restart and start a new conversation to apply the choice. Existing conversations retain their engine/model; do not resume a Codex thread through a different provider. See [AI configuration guide](docs/ai-configuration.html) and [configuration service contract](backend/ai-config/CONTRACT.md).
 
-Startup opens the **configured address printed in the terminal** after local readiness checks (default `http://127.0.0.1:5173/`). This release uses configured ports; occupied ports are reported rather than automatically reassigned. Send a message to verify an actual response. Installation and saved login do not prove model access or available quota.
+Startup opens the **actual address printed in the terminal** after local readiness checks. Port5173 is the default starting point; occupied public/internal ports are skipped upward. Send a message to verify an actual response. Installation and saved login do not prove model access or available quota.
 
 ### Command-line actions
 
@@ -218,17 +216,19 @@ Stop the running app and save local changes, then select Install / update. In fo
 
 Local management starts empty `main`; own/follow modes start on `release` unless explicitly configured. The top-right Versions control shows the actual checked-out branch and can select available local branches or historical commits. Maintainer checkouts can also use `main` and `adobe-replica`; local-only repositories start with just `main` and no committed versions. Pending source changes are saved locally first. Version names remain editable and do not rewrite commit hashes.
 
-After switching, click **Restart app** to load that version's frontend, backend, Codex App Server and MCP. The options menu also offers **Restart backend** (keeps the current frontend process) and **Runtime recovery**. Wait for running AI/file work to finish or stop it yourself; restart refuses busy work.
+After switching, click **Restart app** to load that version's frontend, backend, Codex App Server and MCP. The main page has one **Restart app** button. It stops and relaunches the frontend, backends and registered project services, then refreshes only after readiness checks pass. Wait for running AI/file work to finish or stop it yourself; restart refuses busy work.
 
-The recovery page is at **`<configured app URL>/__saplingagent/runtime`**, normally `http://127.0.0.1:5173/__saplingagent/runtime`. Use your configured `frontPort` if changed. It survives frontend/backend failure while the runtime manager remains running, and works when an older version lacks the restart button. Repair the source/dependencies/login and retry there. Current UI recovers an unsent draft; older UIs may not. Conversations and login files remain in the application folder. No automatic resend or code rollback.
+The recovery page is at **`<actual app URL>/__saplingagent/runtime`**. For example, if the launcher prints `http://127.0.0.1:5175/`, use `http://127.0.0.1:5175/__saplingagent/runtime`. It survives frontend/backend failure while the runtime manager remains running, and works when an older version lacks the restart button. Repair the source/dependencies/login and retry there. Current UI recovers an unsent draft; older UIs may not. Conversations and login files remain in the application folder. No automatic resend or code rollback.
 
-On first upgrade to this launcher, stop the existing launch window with Control+C and run `bash Saplingagent.sh start` again. The public gateway keeps port5173; Vite moves to internal port5174. Manager4314 controls Agent4310, workspace4311, builder4312 and optional PDF4313 when its source exists. If a branch adds dependencies, install them first. Manager/launcher source or port changes require a full launcher restart. Legacy direct service callers cannot be tracked by the gateway; finish their work before restarting old versions.
+On first upgrade to this launcher, stop the existing launch window with Control+C and run `bash Saplingagent.sh start` again. The public gateway starts from port5173 and internal Vite from5174. Manager4314 controls Agent4310, workspace4311, builder4312 and optional PDF4313 when its source exists; all are configured starting values and are automatically advanced when occupied. Actual per-instance ports stay fixed across service restarts unless an internal preference is deliberately changed. If a branch adds dependencies, install them first. See [project service startup](docs/project-services.html). Restart app discovers new conventional Node backends and reloads registered project frontends/workers from `config/services.json`; the AI adding the feature configures its startup and readiness. Internal port edits apply in-page, while public/control address preferences take effect on a later cold launch. The controller itself is loaded by the launcher. Legacy direct service callers cannot be tracked by the gateway; finish their work before restarting old versions.
 
 ## What menu 1 updates
 
-Selecting **1. Install / update** prints progress immediately and reports source separately from dependencies. **Follow release** checks the tracked upstream branch, fetches without tags or author main/testcode refs, and merges compatible saved local commits. It does not reset or force a checkout. After a source change the launcher runs again with updated runtime settings before dependency checks. An already-current installation reports that fact clearly.
+Selecting **1. Install / update** prints progress immediately and reports source separately from dependencies. **Follow release** checks the tracked upstream branch, fetches without tags or author main/adobe-replica refs, and merges compatible saved local commits. It does not reset or force a checkout. After a source change the launcher runs again with updated runtime settings before dependency checks. An already-current installation reports that fact clearly.
 
-**Local only / own repository** retain your application source and check only local dependencies. To follow upstream, deliberately choose **5. Git / storage setup → 3. Follow release**. Historical detached/untracked versions are retained. `install --repair` repairs dependencies without fetching source. First installation still asks the three existing storage choices; no model request or credential import is performed.
+**Local only / own repository** are independent applications. Once either choice is saved, subsequent menus hide **1. Install / update**, and **5. Git / storage setup** offers only local Git or your own repository. The menu rereads this folder’s `.git/config` after each action; viewing it never changes history or remotes. Configure AI, Start app, Diagnostics, Git setup, language selection and Quit remain available. First installation and follow mode keep all three storage choices.
+
+For missing or changed dependencies, run `bash Saplingagent.sh install --repair`; this repairs the local environment without fetching application source and retains saved Git configuration. Explicit `install` remains available as well. To deliberately reconnect to author release after independence, stop the app, save your work and explicitly run `SAPLING_GIT_MODE=upstream SAPLING_GIT_BRANCH=release bash Saplingagent.sh git`. Existing history/branch conflicts may need manual reconciliation; no automatic reset or publication is performed. Historical detached/untracked versions are retained. Menu visibility is guidance, not an Agent permission limit.
 
 Before updating follow mode, stop the running app with Control+C and save pending source changes. The updater checks for Git conflicts before merging; if it pauses, read the reason and reconcile deliberately. It never creates a PR, pushes customer changes or automatically rolls back. On old installations menu1 still updates dependencies only: use the existing manual `git fetch upstream` / `git merge upstream/release` workflow to obtain this updated launcher first. Do not rerun the fresh-folder curl bootstrap over an existing app. See [macOS installation](docs/macos-install.html).
 
@@ -317,7 +317,7 @@ Public settings live in [config/runtime.json](config/runtime.json).
 | --- | --- | --- |
 | Preferred model | `gpt-6.1-sol` | Uses the actual App Server catalog; falls back to its default/first model if unavailable |
 | Reasoning effort | `medium` | Must be supported by the selected model |
-| Gateway / Vite / Manager / Agent / Workspace / Builder ports | `5173` / `5174` / `4314` / `4310` / `4311` / `4312` | Local loopback services; PDF `4313` only when source exists; Agent-owned OpenCode uses `4315` |
+| Gateway / Vite / Manager / Agent / Workspace / Builder ports | `5173` / `5174` / `4314` / `4310` / `4311` / `4312` | Starting values; the launcher selects free, distinct loopback ports. PDF starts at `4313` only when source exists; Agent-owned OpenCode starts at `4315` |
 | Permission mode | `full-access` | Codex `danger-full-access`, `approvalPolicy: never`; Claude `bypassPermissions` with sandbox disabled |
 | Total turn deadline | `turnTimeoutMs: 0` | Disabled by default; explicit nonzero configuration enables a total deadline |
 | Inactivity reminder | `turnIdleWarningMs: 600000` | Warns after 10 minutes without effective progress; does not stop or resend the turn |
@@ -347,9 +347,9 @@ Doctor reports installation, versions, saved AI configuration and configured-por
 | Download/dependency failure | Check Node.js/npm network access; run `bash Saplingagent.sh install --repair` |
 | Installation lock remains | Confirm this project's installer has exited; remove only its stale `.runtime/node-install.lock` or `.runtime/macos-install.lock`, then retry |
 | Windows operation exits 150 before device detection | Update the complete source folder; menu actions now retain foreground terminal ownership and interactive install/Git setup use a foreground native console bridge when available. Retry `bash Saplingagent.sh --lang zh install` in Git Bash and retain preceding error text if it still fails; the exit number alone is not a diagnosis |
-| Port occupied | Stop your previous startup terminal or adjust `config/runtime.json`; the launcher does not kill another project's process |
+| Port occupied | Follow the actual URL printed by the launcher; it selects free ports automatically. If another process wins a bind race during startup, run Start app again. Other projects are left running |
 | Not ready within 120 seconds | Run Doctor and inspect the startup terminal and metadata in `logs/<service>/` |
-| Local service connection failed | Keep the startup terminal running and restart the full application; check Agent port `4310` and the frontend proxy |
+| Local service connection failed | Keep the startup terminal running, run Diagnostics, and use the actual runtime address/ports from `.runtime/runtime-address.json`; configured ports are starting values |
 | Session does not exist | The UI retains unsent/retry input and starts a new session; do not delete `data/` to resolve it |
 | No recent progress | Check whether a tool or user decision is pending; continue waiting or stop manually. The reminder does not impose a default turn deadline |
 | OpenCode shows `Current permissions: full-access` or internal instructions as a reply | Update source to a version containing the OpenCode message-attribution fix (TASK-20261012-017), then restart the backend/app and create a new conversation. Preserve `data/` and `local-secrets/`; older saved bubbles are not deleted. In follow mode Install / update checks source and dependencies; local/own modes retain source. Check the actual branch/version because release may lag main |
@@ -396,11 +396,11 @@ Only three named branches are maintained:
 
 | Branch | Role |
 | --- | --- |
-| `main` | Shared development baseline and code review |
+| `main` | Maintainer development and testing |
 | `adobe-replica` | Adobe replication experiments |
-| `release` | Customer-facing source distribution |
+| `release` | Public default branch, source distribution and showcase |
 
-New users install `release`; it can lag behind `main`. Maintainer changes enter `main` after appropriate self-checks under the owner's standing authorization. `release` and `adobe-replica` synchronize only when requested. Previous branch histories remain reachable; main changes are not automatically a customer release.
+New users install `release`; it can lag behind `main`. Shared work lands on `main` first under the owner's standing authorization, is checked there, then proceeds to a requested release promotion. An explicit main-only task leaves release untouched. Videos, showcase cases and their images stay on release; preserve them when promoting code instead of overwriting release with the main tree. Adobe experiments synchronize only when requested. Previous history is retained.
 
 To prepare a clean source ZIP from a committed revision, use the installed project Node:
 
@@ -445,10 +445,21 @@ Windows system detection/download/extraction uses its built-in PowerShell intern
 
 The App Server is a project-owned native stdio subprocess. Credentials and agent state remain in local-secrets/codex/, local-secrets/opencode/, local-secrets/claude/ and shared local-secrets/api-keys/; dependencies/cache/state stay in the folder. The UI remains English; menu language does not change conversation data. Full Access remains current-user access. Git is required to supply Bash on Windows; branch/version controls additionally require an actual Git repository, initialized after the installer storage choice for source ZIPs.
 
-Restart app/Restart backend use the existing persistent gateway and owned live PID-tree shutdown. Finish work before restarting. Forced parent/window termination, power loss and separately detached programs cannot guarantee cleanup; active command side effects are not undone. Ports/manager/launcher changes require normal stop and reopening the same Bash entry. No process-name/port kill, root elevation, automatic rollback or prompt resend is added.
+Restart app uses the existing persistent gateway and owned live PID-tree shutdown. Finish work before restarting. Forced parent/window termination, power loss and separately detached programs cannot guarantee cleanup; active command side effects are not undone. Ports/manager/launcher changes require normal stop and reopening the same Bash entry. No process-name/port kill, root elevation, automatic rollback or prompt resend is added.
 
 To create a committed clean Windows source ZIP, use `<project-node> scripts/package-windows.mjs release .cache/releases`. Both platform packages include the one executable Saplingagent.sh, all companion sources/helpers/rules, fresh recipient records and per-file/ZIP hashes, excluding credentials/data/logs/dependencies/Git. Copy the complete folder, not just one script. Remove stale installation locks only after confirming the installer has stopped.
 
 ## Automatic device selection
 
 The common Bash entry detects macOS or native Windows Bash environments and routes automatically. Mac chooses Intelx64 or AppleSiliconarm64 (including Rosetta). Windows verifies build17763+, selects native x64/ARM64 ahead of emulated-terminal architecture, checks official Node24.21.0 checksums and actual runtime architecture, then installs pinned Codex0.146.1/OpenCode1.19.0 native binaries. No manual CPU selection. Linux/WSL and32-bit devices fail before download. Re-run Install / update after moving the source folder to another device; installed dependencies are OS-specific. Native Windows login/model/MCP/restart and ARM hardware tests remain unverified on the current Mac host.
+
+
+## Automatic local ports
+
+The unified launcher starts from each port in config/runtime.json and selects available, distinct loopback ports in ascending order. If5173 and5174 belong to another application, the new public page can use5175 and its internal Vite another free port. Backends and runtime control also receive selected ports, so changing only the browser port cannot leave a broken connection. Follow the printed Web page URL; browser opening, status checks and recovery use it. Existing applications are left running.
+
+Selection applies only to this runtime instance, keeps the configuration/source Git clean, and stays fixed through Restart app/backend. The ignored .runtime/runtime-address.json lets Diagnostics find the active instance and is removed on normal owned shutdown. New launches scan again rather than permanently incrementing configured ports. If a port is taken in the short interval before an internal service binds, startup reports the error; relaunch to select again. No automatic killing, model call or credential change is part of port selection.
+
+## Chat with files and inspect the result
+
+Use the paperclip, drop files into AI chat or paste an image. Attachments stay in your local project and restore with sent messages (20MiB/file,10/message). After interface changes, AI can use page_read to inspect the open project page's fresh DOM, layout and optional rendered image, without an extra folder or screen-recording permission. Keep the page open; a closed page or unavailable image is reported explicitly. [Usage and limits](docs/runtime.html#chat-files-pages).

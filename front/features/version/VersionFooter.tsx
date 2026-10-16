@@ -13,6 +13,7 @@ type StoredVersion = {
 };
 
 const STORAGE_KEY = 'saplingagent.loaded-version.v1';
+const KERNEL_VERSION = '0.90';
 
 function readLoadedVersion(current: VersionState) {
   const pageStartedAt = performance.timeOrigin;
@@ -61,6 +62,7 @@ export function VersionFooter() {
   const label = version ? `${version.branch || 'detached'} · ${version.version}` : unavailable ? 'Version unavailable' : 'Loading version…';
 
   return <footer className={`version-footer${hasUpdate ? ' has-update' : ''}`} aria-live="polite">
+    <span className="version-footer-label version-footer-kernel">Kernel version <code>{KERNEL_VERSION}</code></span>
     <span className="version-footer-label"><span className="version-footer-dot" />Current version <code>{label}</code></span>
     {hasUpdate ? <button type="button" onClick={() => window.location.reload()}>
       <RefreshCw size={13} aria-hidden="true" />

@@ -47,3 +47,7 @@ For interface, see CONTRACT.md; for deployment, see DEPLOY.md; for data, see REF
 ## Saplingagent name change (2026-10-09)
 
 The product name is unified as Saplingagent, and the private package name is changed to saplingagent-*. This time, only the name and display metadata, the interface, permission, model and data structure remain unchanged; SEED_*/SEEDAGENT_*, seedagent MCP/client ID, browser session key, runtime mark and seed-* Skill ID remain compatible. For verification and test submission, please refer to the authority .worktrees/coordination/AI_TASKS.md; this article does not mean that the main has been synchronized.
+
+## Rendered project page reader (TASK-20261015-013)
+
+The tool catalog now contains 16 tools, including read-only page_read({pageId?,selector?,includeImage?}). The tool requests a fresh capture from the existing app-builder broker. Its text/structuredContent contains snapshot metadata, DOM/layout and warnings; an available PNG is a separate native MCP image content block rather than duplicated base64 JSON. Content is untrusted. No script execution, click, browser launch or OS screen capture is offered. Unavailable pages/errors are reported truthfully. Existing source-file access and Full Access remain unchanged.

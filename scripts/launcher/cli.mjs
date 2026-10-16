@@ -42,7 +42,7 @@ function run(command, args, { cwd = root, capture = false, childEnv = env } = {}
     const onInterrupt = () => forward('SIGINT'), onTerminate = () => forward('SIGTERM');
     process.on('SIGINT', onInterrupt); process.on('SIGTERM', onTerminate); process.on('SIGHUP', onTerminate);
     const detach = () => { process.off('SIGINT', onInterrupt); process.off('SIGTERM', onTerminate); process.off('SIGHUP', onTerminate); };
-    child.once('error', () => { detach(); reject(new Error(t('Command could not start. Open Saplingagent.sh and choose Install / update.', "命令无法启动。请运行 bash Saplingagent.sh，选择安装 / 更新。"))); });
+    child.once('error', () => { detach(); reject(new Error(t('Command could not start. For dependency repair, run: bash Saplingagent.sh install --repair', "命令无法启动。需要修复依赖时运行：bash Saplingagent.sh install --repair"))); });
     child.once('exit', (code, signal) => { detach(); resolve({ code: code ?? 1, signal, interrupted, output, errorOutput }); });
   });
 }
@@ -139,7 +139,7 @@ async function install(repair = false) {
   } finally { await fs.rm(stage, { recursive: true, force: true }); if(ownsLock)await fs.rm(lock, { recursive: true, force: true }); }
 }
 async function login(deviceAuth) {
-  if (!await installed()) throw new Error(t('Open Saplingagent.sh and choose Install / update first.', "请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
+  if (!await installed()) throw new Error(t('Install project dependencies first: bash Saplingagent.sh install --repair', "请先安装项目依赖：bash Saplingagent.sh install --repair"));
   await localSetup();
   if (await loggedIn()) { console.log(t('Project login credentials are saved. Choose Start app in Saplingagent.sh; if requests fail authentication, log out of this project as documented and log in again.', "项目登录凭据已保存，可以选择启动应用。如果请求认证失败，请按文档退出项目账号后重新登录。")); return; }
   console.log(t('Official Codex will open your browser. Log in with your own ChatGPT/Codex account.', "官方 Codex 将打开浏览器，请使用自己的 ChatGPT / Codex 账号登录。"));
@@ -150,12 +150,12 @@ async function login(deviceAuth) {
   console.log(t('Project login complete. Choose Start app in Saplingagent.sh.', "项目登录完成，请选择启动应用。"));
 }
 async function logout() {
-  if (!await exists(cli)) throw new Error(t('Open Saplingagent.sh and choose Install / update first.', "请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
+  if (!await exists(cli)) throw new Error(t('Install project dependencies first: bash Saplingagent.sh install --repair', "请先安装项目依赖：bash Saplingagent.sh install --repair"));
   await required(cli, [...authArgs, 'logout'], { capture: true });
   console.log(t('Logged out of the Codex account for this project; application files and sessions are retained. Choose Configure AI in Saplingagent.sh to sign in again.', "已退出此项目的 Codex 账号，应用文件和会话保留。重新登录请选择配置 AI 接口。"));
 }
 async function configureOpenCode() {
-  if (!await installed()) throw new Error(t('Open Saplingagent.sh and choose Install / update first.', "请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
+  if (!await installed()) throw new Error(t('Install project dependencies first: bash Saplingagent.sh install --repair', "请先安装项目依赖：bash Saplingagent.sh install --repair"));
   const data = path.join(root, 'local-secrets/opencode/data');
   const config = path.join(root, 'local-secrets/opencode/config');
   await Promise.all([fs.mkdir(data, { recursive: true, mode: 0o700 }), fs.mkdir(config, { recursive: true, mode: 0o700 })]);
@@ -168,7 +168,7 @@ async function configureOpenCode() {
   console.log(t('OpenCode provider saved. Restart Saplingagent, start a new conversation, then choose OpenCode.', "OpenCode 服务商已保存。请重启 Saplingagent，新建会话后选择 OpenCode。"));
 }
 async function configureAI(noOpen) {
-  if (!await installed()) throw new Error(t('Choose Install / update before opening AI setup.', '请先安装 / 更新，再打开 AI 配置网页。'));
+  if (!await installed()) throw new Error(t('Install dependencies before opening AI setup: bash Saplingagent.sh install --repair', '请先运行 bash Saplingagent.sh install --repair 安装依赖，再打开 AI 配置网页。'));
   await localSetup();
   console.log(t('Preparing the independent AI configuration page…','正在准备独立的 AI 配置网页…'));
   await required(process.execPath,[path.join(root,'front/node_modules/vite/bin/vite.js'),'build','--config',path.join(root,'front/ai-config/vite.config.mjs')]);
@@ -192,16 +192,17 @@ async function configuredAccess() {
   return loggedIn();
 }
 async function start(noOpen) {
-  if (!await installed()) throw new Error(t('Installation is incomplete or dependency lockfiles have changed. Open Saplingagent.sh and choose Install / update first.', "安装未完成或依赖锁文件已变化。请先运行 bash Saplingagent.sh，选择安装 / 更新。"));
+  if (!await installed()) throw new Error(t('Installation is incomplete or dependency lockfiles have changed. Run: bash Saplingagent.sh install --repair', "安装未完成或依赖锁文件已变化。请运行：bash Saplingagent.sh install --repair"));
   await localSetup();
   if (!await configuredAccess()) throw new Error(t('Choose Configure AI in Saplingagent.sh and save an account or API scheme first.', '请先选择配置 AI 接口，在网页中保存账号或 API 方案。'));
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   const child = spawn(process.execPath, [path.join(root, 'scripts/dev.mjs')], { cwd: root, env, detached: false, stdio: ['inherit', 'pipe', 'pipe'] });
-  let ended = false, interrupted = false, stopRequested = false, launched = false, startupOutput = '';
+  let ended = false, interrupted = false, stopRequested = false, launched = false, startupOutput = '', frontPort = config.frontPort;
   child.stdout.on('data', chunk => {
     process.stdout.write(chunk);
     startupOutput = (startupOutput + chunk).slice(-2048);
-    if (startupOutput.includes(`Saplingagent: http://127.0.0.1:${config.frontPort}/`)) launched = true;
+    const announced = startupOutput.match(/(?:^|\n)Saplingagent: http:\/\/127\.0\.0\.1:(\d+)\//);
+    if (announced && Number(announced[1]) >= 1024 && Number(announced[1]) <= 65535) { frontPort = Number(announced[1]); launched = true; }
   });
   child.stderr.on('data', chunk => process.stderr.write(chunk));
   const exit = new Promise(resolve => {
@@ -216,22 +217,22 @@ async function start(noOpen) {
     while (!ended && !interrupted && Date.now() < deadline) {
       if (!launched) { await delay(100); continue; }
       try {
-        const lifecycleResponse = await fetch(`http://127.0.0.1:${config.frontPort}/api/runtime/status`, { signal: AbortSignal.timeout(1500) });
+        const lifecycleResponse = await fetch(`http://127.0.0.1:${frontPort}/api/runtime/status`, { signal: AbortSignal.timeout(1500) });
         if (!lifecycleResponse.ok) { await delay(300); continue; }
         const lifecycle = await lifecycleResponse.json();
         if (lifecycle.phase === 'failed' && !lifecycle.busy) break;
         if (lifecycle.phase !== 'ready' || lifecycle.busy) { await delay(300); continue; }
-        const response = await fetch(`http://127.0.0.1:${config.agentPort}/api/status`, { signal: AbortSignal.timeout(1500) });
+        const response = await fetch(`http://127.0.0.1:${frontPort}/api/status`, { signal: AbortSignal.timeout(1500) });
         const status = await response.json();
         if (status.ready && status.authenticated && status.mcp?.ready) {
-          const front = await fetch(`http://127.0.0.1:${config.frontPort}/`, { signal: AbortSignal.timeout(1500) });
+          const front = await fetch(`http://127.0.0.1:${frontPort}/`, { signal: AbortSignal.timeout(1500) });
           if (front.ok) {
             ready = true;
             console.log(status.provider === 'OpenCode' ? t(`Connected to OpenCode: ${status.model}; project MCP connected.`, `已连接 OpenCode：${status.model}；项目 MCP 已连接。`) : t(`Connected to ${status.provider || 'Agent'}: ${status.model}; ${status.mcp.tools.length} MCP tools; ${status.skills.length} Skills.`, `已连接 ${status.provider || 'Agent'}：${status.model}；${status.mcp.tools.length} 个 MCP 工具；${status.skills.length} 个 Skills。`));
-            console.log(t(`Web page: http://127.0.0.1:${config.frontPort}/\nKeep this window open; press Control+C to stop these services.`, `网页：http://127.0.0.1:${config.frontPort}/\n请保持终端窗口打开；按 Control+C 停止这些服务。`));
+            console.log(t(`Web page: http://127.0.0.1:${frontPort}/\nKeep this window open; press Control+C to stop these services.`, `网页：http://127.0.0.1:${frontPort}/\n请保持终端窗口打开；按 Control+C 停止这些服务。`));
             if (!noOpen) {
-              if (windows) await run('powershell.exe', ['-NoProfile', '-Command', `Start-Process 'http://127.0.0.1:${config.frontPort}/'`], { capture: true });
-              else await run('/usr/bin/open', [`http://127.0.0.1:${config.frontPort}/`], { capture: true });
+              if (windows) await run('powershell.exe', ['-NoProfile', '-Command', `Start-Process 'http://127.0.0.1:${frontPort}/'`], { capture: true });
+              else await run('/usr/bin/open', [`http://127.0.0.1:${frontPort}/`], { capture: true });
             }
             break;
           }
@@ -240,7 +241,7 @@ async function start(noOpen) {
       await delay(300);
     }
     if (!ready && !ended && !interrupted) {
-      console.error(t(`Model/authentication/MCP is not ready. Keep this window open, inspect local diagnostics and retry at http://127.0.0.1:${config.frontPort}/__saplingagent/runtime. Choose Diagnostics in Saplingagent.sh to check installation/login.`, `模型、认证或 MCP 尚未就绪。请保持终端窗口打开，检查诊断，并在 http://127.0.0.1:${config.frontPort}/__saplingagent/runtime 重试。选择服务诊断可检查安装和登录状态。`));
+      console.error(t(`Model/authentication/MCP is not ready. Keep this window open, inspect local diagnostics and retry at http://127.0.0.1:${frontPort}/__saplingagent/runtime. Choose Diagnostics in Saplingagent.sh to check installation/login.`, `模型、认证或 MCP 尚未就绪。请保持终端窗口打开，检查诊断，并在 http://127.0.0.1:${frontPort}/__saplingagent/runtime 重试。选择服务诊断可检查安装和登录状态。`));
     }
     const result = await exit;
     if (result.code !== 0 && !interrupted) throw new Error(t(`Services stopped (exit code ${result.code}). Check for port, installation or authentication errors.`, `服务已停止（退出码 ${result.code}）。请检查端口、安装或认证错误。`));
@@ -253,7 +254,7 @@ async function start(noOpen) {
 async function doctor() {
   console.log(t(`${windows ? 'Windows' : 'macOS'} ${process.arch}; Node ${process.versions.node}; folder: ${root}`, `${windows ? 'Windows' : 'macOS'} ${process.arch}；Node ${process.versions.node}；项目目录：${root}`));
   const local = await installed();
-  console.log(t(`Project dependencies:${local ? 'installed' : 'not installed or changed; choose Install / update in Saplingagent.sh'}`, `项目依赖：${local ? '已安装' : '未安装或已变化；请选择安装 / 更新'}`));
+  console.log(t(`Project dependencies:${local ? 'installed' : 'not installed or changed; run bash Saplingagent.sh install --repair'}`, `项目依赖：${local ? '已安装' : '未安装或已变化；请运行 bash Saplingagent.sh install --repair'}`));
   let authenticated = false;
   if (await exists(cli)) {
     const version = await run(cli, ['--version'], { capture: true });
@@ -266,7 +267,17 @@ async function doctor() {
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   let online = false;
   try {
-    const status = await fetch(`http://127.0.0.1:${config.agentPort}/api/status`, { signal: AbortSignal.timeout(2000) }).then(r => r.json());
+    let address;
+    try { address = JSON.parse(await fs.readFile(path.join(root, '.runtime/runtime-address.json'), 'utf8')); } catch {}
+    let port = config.agentPort;
+    if (address) {
+      if (!Number.isInteger(address.ports?.frontPort) || address.ports.frontPort < 1024 || address.ports.frontPort > 65535 || typeof address.instanceId !== 'string') throw new Error('Invalid runtime discovery');
+      port = address.ports.frontPort;
+      const state = await fetch(`http://127.0.0.1:${port}/api/runtime/status`, { signal: AbortSignal.timeout(2000) }).then(r => r.json());
+      if (state.instanceId !== address.instanceId) throw new Error('Stale runtime discovery');
+      console.log(t(`Runtime address: http://127.0.0.1:${port}/`, `运行地址：http://127.0.0.1:${port}/`));
+    }
+    const status = await fetch(`http://127.0.0.1:${port}/api/status`, { signal: AbortSignal.timeout(2000) }).then(r => r.json());
     online = status.ready === true;
     console.log(t(`Runtime status on configured ports:${online ? 'ready' : 'process running but Agent not ready'}; model:${status.model || 'not selected'}; MCP:${status.mcp?.tools?.length || 0}; Skills:${status.skills?.length || 0}`, `运行状态：${online ? '就绪' : '进程运行中，但 Agent 尚未就绪'}；模型：${status.model || '未选择'}；MCP：${status.mcp?.tools?.length || 0}；Skills：${status.skills?.length || 0}`));
   } catch { console.log(t('Runtime status: not started. Install, log in, then choose Start app in Saplingagent.sh.', "运行状态：尚未启动。请安装、登录后选择启动应用。")); }

@@ -14,3 +14,15 @@ Executable behavior is checked through real isolated Node child processes and lo
 - Microsoft taskkill: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/taskkill — /PID /T /F termination of an owned live process tree. Public; Windows10/11 x64; current-user OS rights.
 - OpenAI Windows: https://learn.chatgpt.com/docs/windows/windows-sandbox — native PowerShell, Windows11 recommendation and recent Windows10 best effort. Public; this project still pins Codex0.146.1 and retains Full Access. Real account required for inference; no sandbox migration is inferred from newer docs.
 - Exact npm metadata https://registry.npmjs.org/@openai/codex/0.146.1 and https://registry.npmjs.org/opencode-ai/1.19.0 — native Windows optional dependencies; local OpenCode postinstall selects executable. Public, downloads/install required; no model request.
+
+## Ascending port allocation (TASK-20261014-002)
+
+https://nodejs.org/docs/latest-v24.x/api/net.html — official Node24 LTS net.Server listen/error/address/close behavior, checked2026-10-14 via the official24.x documentation navigation (current page24.22.0; project executable remains24.21.0). Public, no account required. Actual project Node24.21.0 port contention, retries and shutdown are verified by isolated tests. No SDK/runtime upgrade.
+
+
+## Project service lifecycle (checked 2026-10-15)
+
+- https://nodejs.org/download/release/v24.21.0/docs/api/child_process.html — official project-pinned Node spawn argv/cwd/env/PATH and owned-process lifecycle; no implicit shell. Windows .cmd requires a shell, so registered npm uses the project npm CLI through Node.
+- https://nodejs.org/download/release/v24.21.0/docs/api/fs.html — project-owned startup manifest/directory discovery and file preflight.
+
+Public documentation, no account needed. No SDK/runtime or dependency upgrade; executable behavior is checked through isolated real Node processes and loopback HTTP.
