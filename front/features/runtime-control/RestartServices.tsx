@@ -51,17 +51,17 @@ export function RestartServices() {
     const timer = window.setInterval(() => { void update(); }, 1000);
     return () => { alive.current = false; window.clearInterval(timer); };
   }, []);
-  async function restart(scope: 'all' | 'backend') {
+  async function restart() {
     if (pending || state?.busy || unavailable) return;
     window.dispatchEvent(new Event('saplingagent:before-restart'));
     acceptedJob.current = null;
-    if (scope === 'all' && state) {
+    if (state) {
       reloadMarker.current = { instanceId: state.instanceId, generation: state.generation };
       try { sessionStorage.setItem(RELOAD_KEY, JSON.stringify(reloadMarker.current)); } catch { /* The active page keeps its marker in memory. */ }
     } else { reloadMarker.current = null; try { sessionStorage.removeItem(RELOAD_KEY); } catch { /* Optional storage. */ } }
     setPending(true); setError('');
     try {
-      const response = await fetch('/api/runtime/restart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope }), signal: AbortSignal.timeout(5000) });
+      const response = await fetch('/api/runtime/restart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope: 'all' }), signal: AbortSignal.timeout(5000) });
       const value = await response.json();
       if (!response.ok) {
         reloadMarker.current = null; try { sessionStorage.removeItem(RELOAD_KEY); } catch { /* Optional storage. */ }
@@ -77,10 +77,9 @@ export function RestartServices() {
   const busy = pending || !!state?.busy;
   const label = busy ? labels[state?.phase || 'preparing'] || 'Restarting…' : 'Restart app';
   return <div className="runtime-control">
-    <button type="button" className="runtime-restart-button" onClick={() => void restart('all')} disabled={busy || unavailable || !state?.canRestart} aria-label={label} title={error || 'Reload the frontend, backend, new project services, AI engines and MCP without closing the app.'}>
+    <button type="button" className="runtime-restart-button" onClick={() => void restart()} disabled={busy || unavailable || !state?.canRestart} aria-label={label} title={error || 'Reload the frontend, backend, new project services, AI engines and MCP without closing the app.'}>
       {busy ? <LoaderCircle className="spinning" size={15} /> : <RotateCw size={15} />}<span>{label}</span>
     </button>
-    <details className="runtime-options"><summary aria-label="Restart options" title="Restart options">⌄</summary><div><button type="button" disabled={busy || unavailable || !state?.canRestart} onClick={() => void restart('backend')}>Restart backend only</button><a href="/__saplingagent/runtime">Runtime recovery</a></div></details>
     {(error || busy || requested) && <div className={`runtime-control-notice${error ? ' has-error' : ''}`} role={error ? 'alert' : 'status'}>
       {error ? <AlertTriangle size={13} /> : null}<span>{error || (busy ? label : labels[state?.phase || ''] || 'Checking services…')}</span>
     </div>}
