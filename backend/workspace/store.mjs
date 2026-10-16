@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { attachmentIds, attachmentSummary } from '../../contracts/attachments.mjs';
 
 export class WorkspaceError extends Error {
   constructor(code, message, status = 400) { super(message); this.code = code; this.status = status; }
@@ -83,6 +84,10 @@ function messages(value) {
     const output = { id, role: item.role, text: text(item.text, 'message.text', 500000, true) };
     if (item.status !== undefined) output.status = text(item.status, 'message.status', 40);
     if (item.requestId !== undefined) output.requestId = text(item.requestId, 'message.requestId', 160);
+    if (item.attachments !== undefined) {
+      try { attachmentIds(item.attachments.map(value => value.id)); output.attachments = item.attachments.map(attachmentSummary); }
+      catch (error) { fail(error.message); }
+    }
     return output;
   });
   if (Buffer.byteLength(JSON.stringify(result)) > 4 * 1024 * 1024) fail('Session messages exceed 4 MiB');

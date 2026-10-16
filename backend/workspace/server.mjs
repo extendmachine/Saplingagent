@@ -5,6 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { createStore, safePath, WorkspaceError } from './store.mjs';
+import { createAttachmentStore } from './attachments.mjs';
+import { AttachmentError, ATTACHMENT_JSON_BYTES } from '../../contracts/attachments.mjs';
 
 const defaultRoot = fileURLToPath(new URL('../../', import.meta.url));
 async function createLogger(root) {
@@ -28,11 +30,11 @@ function authorized(header, token) {
   const supplied = Buffer.from(header); const expected = Buffer.from(`Bearer ${token}`);
   return supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }
-async function body(request) {
+async function body(request, limit = 5 * 1024 * 1024) {
   let size = 0; const chunks = [];
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > 5 * 1024 * 1024) throw new WorkspaceError('PAYLOAD_TOO_LARGE', 'Request is too large', 413);
+    if (size > limit) throw new WorkspaceError('PAYLOAD_TOO_LARGE', 'Request is too large', 413);
     chunks.push(chunk);
   }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
@@ -46,7 +48,7 @@ export async function createWorkspaceServer({ root = process.env.SEED_ROOT || de
   root = await fs.realpath(root);
   token ??= (await fs.readFile(await safePath(root, 'local-secrets/runtime/service-token'), 'utf8')).trim();
   if (!token || token.length < 20) throw new Error('Local service token is missing or invalid');
-  const store = await createStore(root); const log = await createLogger(root);
+  const store = await createStore(root); const attachments = await createAttachmentStore(root); const log = await createLogger(root);
   const drain = createDrainGate();
   const server = http.createServer(async (request, response) => {
     const requestId = randomUUID();
@@ -58,6 +60,15 @@ export async function createWorkspaceServer({ root = process.env.SEED_ROOT || de
       if (request.method === 'POST' && url.pathname === '/internal/runtime/prepare') return send(response, 200, drain.prepare());
       if (request.method === 'POST' && url.pathname === '/internal/runtime/release') return send(response, 200, drain.release());
       if (request.method !== 'GET') leave = drain.enter();
+      if (request.method === 'POST' && url.pathname === '/attachments') return send(response, 201, await attachments.put(await body(request, ATTACHMENT_JSON_BYTES)));
+      const attachmentRoute = url.pathname.match(/^\/attachments\/([^/]+)(?:\/(data|content))?$/);
+      if (request.method === 'GET' && attachmentRoute) {
+        const result = await attachments.get(attachmentRoute[1], { data: !!attachmentRoute[2] });
+        if (attachmentRoute[2] !== 'content') return send(response, 200, result);
+        const bytes = Buffer.from(result.data, 'base64'), attachment = result.attachment;
+        response.writeHead(200, { 'Content-Type': attachment.kind === 'image' ? attachment.contentType : 'application/octet-stream', 'Content-Length': bytes.length, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Disposition': `${attachment.kind === 'image' ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(attachment.name).replaceAll("'", '%27')}` });
+        response.end(bytes); return;
+      }
       const id = url.pathname.match(/^\/sessions\/([^/]+)$/)?.[1];
       const preferenceId = url.pathname.match(/^\/preferences\/([^/]+)$/)?.[1];
       if (request.method === 'GET' && url.pathname === '/sessions') return send(response, 200, { sessions: await store.listSessions() });
@@ -69,7 +80,7 @@ export async function createWorkspaceServer({ root = process.env.SEED_ROOT || de
       if (request.method === 'DELETE' && preferenceId) return send(response, 200, await store.deletePreference(preferenceId));
       throw new WorkspaceError('NOT_FOUND', 'Endpoint does not exist', 404);
     } catch (error) {
-      const known = error instanceof WorkspaceError || ['RUNTIME_BUSY', 'RUNTIME_RESTARTING'].includes(error.code);
+      const known = error instanceof WorkspaceError || error instanceof AttachmentError || ['RUNTIME_BUSY', 'RUNTIME_RESTARTING'].includes(error.code);
       await log(known && error.status < 500 ? 'warn' : 'error', 'request_failed', { requestId, code: known ? error.code : 'INTERNAL_ERROR' }).catch(() => {});
       send(response, known ? error.status : 500, { error: { code: known ? error.code : 'INTERNAL_ERROR', message: known ? error.message : 'Workspace operation failed', requestId } });
     } finally { leave?.(); }

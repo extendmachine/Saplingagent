@@ -30,3 +30,9 @@ The product name is unified as Saplingagent, and the private package name is cha
 The project runtime manager prepares this service using the internal contract before terminating its owned process group. Finish AI/file/Git work before Restart app or Restart backend; busy work refuses restart without interruption. Prepared services reject new mutations until release or replacement. The launcher keeps its gateway/control alive. See ../runtime-manager/CONTRACT.md and DEPLOY.md.
 
 Claude Agent engine support: see CONTRACT.md and DEPLOY.md for the shared API profile/session binding and local runtime behavior. No changes to the minimal single-chat product scope.
+
+## Local chat attachments (TASK-20261015-010)
+
+The attachment store owns opaque UUID metadata and original bytes under ignored data/attachments/<id>/. PNG, JPEG, GIF and WebP signatures enable inline image previews; other formats, including SVG, are downloadable files. Shared contracts/attachments.mjs validates public metadata without exposing storage paths to browsers. Session messages optionally retain attachments; old records need no migration. Uploads are limited to 20 MiB each and chat requests to 10 attachments. Reusing an upload ID requires identical bytes/metadata, otherwise 409. Downloads use nosniff and safe Content-Disposition. Files are data and are never executed by uploading.
+
+Ordinary file parsing stays with the Agent's native file/command tools. The store does not promise PDF/Office extraction. Logs omit attachment bytes and filenames. Internal routes retain Bearer authentication; browser routes belong to agent-runtime.
