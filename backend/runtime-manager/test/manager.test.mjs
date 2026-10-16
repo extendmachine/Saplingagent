@@ -21,7 +21,7 @@ async function fixture(t, options = {}) {
   await fs.mkdir(path.join(root,'config')); await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify(config));
   const code = `import http from 'node:http'; import fs from 'node:fs/promises';
 const name=process.env.FIXTURE_NAME; let prepared=false; const version=await fs.readFile('version.txt','utf8').catch(()=> 'initial');
-const port=Number(process.env.FIXTURE_PORT);
+const key=name==='pdf-editor'?'PDF_EDITOR':name.toUpperCase();const port=Number(name==='front'?process.env.FIXTURE_PORT:process.env['SEED_'+key+'_PORT']||process.env.FIXTURE_PORT);
 const server=http.createServer(async(req,res)=>{let body={ready:true,authenticated:true,mcp:{ready:true},version},status=200;
 if(req.url==='/api/sessions')body={sessions:await fs.access('agent.busy').then(()=>[{id:'running'}],()=>[])};
 if(req.url==='/api/sessions/running')body={session:{running:true}};
@@ -67,10 +67,10 @@ test('busy downstream task releases already-prepared Agent and leaves all PIDs a
 });
 test('invalid new config preserves live backends and startup failure remains observable and retryable',async t=>{
  const {root,config,manager,request}=await fixture(t);const before=manager.state();await fs.writeFile(path.join(root,'config/runtime.json'),'broken');manager.restart();await manager.operation;assert.equal(manager.error.code,'INVALID_CONFIG');assert.deepEqual(manager.state().services,before.services);
- await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify(config));await fs.writeFile(path.join(root,'builder.fail'),'fail');manager.restart();await manager.operation;assert.equal(manager.phase,'failed');assert.equal(manager.error.service,'builder');assert.equal(manager.children.get('front').pid,before.services.find(x=>x.name==='front').pid);assert.equal((await request('/api/runtime/status')).status,200);
+ await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify(config));await fs.writeFile(path.join(root,'builder.fail'),'fail');manager.restart({scope:'backend'});await manager.operation;assert.equal(manager.phase,'failed');assert.equal(manager.error.service,'builder');assert.equal(manager.children.get('front').pid,before.services.find(x=>x.name==='front').pid);assert.equal((await request('/api/runtime/status')).status,200);
  await fs.unlink(path.join(root,'builder.fail'));manager.restart();await manager.operation;assert.equal(manager.phase,'ready');assert.equal(manager.generation,2);
 });
-test('allocated ports stay fixed across config reload and configured port edits require a launcher restart', async t => {
+test('allocated ports stay fixed; changed public preferences retain the live origin and internal preferences can reload', async t => {
  const {manager,root,config}=await fixture(t);
  const assigned={frontPort:await port(),agentPort:await port()};
  manager.portOverrides=assigned;
@@ -78,7 +78,9 @@ test('allocated ports stay fixed across config reload and configured port edits 
  await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify({...config,preferredModel:'fixture-model'}));
  assert.equal((await manager.loadConfig()).preferredModel,'fixture-model');
  await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify({...config,frontPort:await port()}));
- await assert.rejects(manager.loadConfig(),{code:'LAUNCHER_RESTART_REQUIRED'});
+ assert.equal((await manager.loadConfig()).frontPort,assigned.frontPort);
+ const agentPort=await port();await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify({...config,agentPort}));
+ assert.equal((await manager.loadConfig()).agentPort,agentPort);
 });
 test('Agent readiness is required; failed readiness preserves recovery controls and retry succeeds',async t=>{
  const {root,manager}=await fixture(t);await fs.writeFile(path.join(root,'agent.not-ready'),'not-ready');manager.restart();await manager.operation;assert.equal(manager.phase,'failed');assert.equal(manager.error.code,'SERVICE_NOT_READY');assert.equal(manager.generation,1);await fs.unlink(path.join(root,'agent.not-ready'));manager.restart();await manager.operation;assert.equal(manager.generation,2);
@@ -93,7 +95,7 @@ test('foreign occupied port is reported without terminating its owner or the fro
  const {root,config,manager}=await fixture(t);const frontPid=manager.children.get('front').pid;
  const old=manager.children.get('workspace'); old.kill('SIGTERM'); await until(()=>old.exitCode!==null);
  const foreign=net.createServer();await new Promise(resolve=>foreign.listen(config.workspacePort,'127.0.0.1',resolve));t.after(()=>{if(foreign.listening)return new Promise(resolve=>foreign.close(resolve))});
- manager.restart();await manager.operation;assert.equal(manager.error.code,'PORT_OCCUPIED');assert.equal(foreign.listening,true);assert.equal(manager.children.get('front').pid,frontPid);
+ manager.restart({scope:'backend'});await manager.operation;assert.equal(manager.error.code,'PORT_OCCUPIED');assert.equal(foreign.listening,true);assert.equal(manager.children.get('front').pid,frontPid);
  await new Promise(resolve=>foreign.close(resolve));manager.restart();await manager.operation;assert.equal(manager.phase,'ready');
 });
 
@@ -146,4 +148,85 @@ test('scope validation rejects arbitrary operation arguments', async t=>{
 test('gateway forwards WebSocket upgrades and their initial bytes', async t=> {
  const {config}=await fixture(t,{gateway:true});
  await new Promise((resolve,reject)=>{const req=http.request({host:'127.0.0.1',port:config.frontPort,path:'/hmr',headers:{Connection:'Upgrade',Upgrade:'websocket',Origin:`http://127.0.0.1:${config.frontPort}`}});req.once('error',reject);req.once('upgrade',(res,socket,head)=>{assert.equal(res.statusCode,101);if(head.toString().includes('welcome')){socket.destroy();resolve()}else socket.once('data',data=>{assert.match(data.toString(),/welcome/);socket.destroy();resolve()})});req.end()});
+});
+
+async function projectEntry(root, name, file = `backend/${name}/server.mjs`) {
+ const target=path.join(root,file);await fs.mkdir(path.dirname(target),{recursive:true});
+ await fs.writeFile(target,`import http from 'node:http';import fs from 'node:fs/promises';import path from 'node:path';
+const root=process.env.SEED_ROOT,name=${JSON.stringify(name)},port=Number(process.env.PORT);let prepared=false;
+if(await fs.access(path.join(root,name+'.fail')).then(()=>true,()=>false))process.exit(2);
+const version=await fs.readFile(path.join(root,name+'.version'),'utf8').catch(()=>'initial');
+const s=http.createServer(async(req,res)=>{let status=200,body={ready:true,name,version,port,services:JSON.parse(process.env.SEED_SERVICE_PORTS),arg:process.argv[2],root:process.env.PROJECT_ROOT};
+if(req.url==='/internal/runtime/prepare'){if(await fs.access(path.join(root,name+'.busy')).then(()=>true,()=>false)){status=409;body={error:{code:'RUNTIME_BUSY'}}}else prepared=true;}
+if(req.url==='/internal/runtime/release')prepared=false;
+if(req.url==='/mutate'&&prepared)status=503;
+res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(body));});
+s.listen(port,'127.0.0.1',()=>fs.appendFile(path.join(root,'project-starts.txt'),name+'\\n'));
+process.on('SIGTERM',()=>{s.closeAllConnections();s.close(()=>process.exit(0));});`);
+}
+async function manifest(root, services) { await fs.writeFile(path.join(root,'config/services.json'),JSON.stringify({version:1,services})); }
+
+test('default full restart discovers a new backend, reloads its content and retains the public control origin',async t=>{
+ const {root,manager,config}=await fixture(t,{gateway:true});const before=manager.state();
+ await projectEntry(root,'reports');manager.restart();await manager.operation;
+ assert.equal(manager.phase,'ready');assert.equal(manager.generation,2);assert.equal(manager.instanceId,before.instanceId);
+ for(const item of before.services)assert.notEqual(manager.children.get(item.name).pid,item.pid);
+ const reports=manager.state().services.find(x=>x.name==='reports');assert.equal(reports.project,true);assert.ok(reports.port>=4500);
+ assert.equal((await(await fetch(`http://127.0.0.1:${reports.port}/health`)).json()).version,'initial');
+ await fs.writeFile(path.join(root,'reports.version'),'new source');await projectEntry(root,'analytics');manager.restart();await manager.operation;
+ assert.equal(manager.phase,'ready');assert.equal(manager.state().services.find(x=>x.name==='reports').port,reports.port);
+ assert.notEqual(manager.children.get('reports').pid,reports.pid);
+ assert.equal((await(await fetch(`http://127.0.0.1:${reports.port}/health`)).json()).version,'new source');
+ assert.equal((await fetch(`http://127.0.0.1:${config.frontPort}/api/runtime/status`)).status,200);
+});
+
+test('registered independent frontend/backend and worker start in dependency order and removed services stop',async t=>{
+ const {root,manager}=await fixture(t,{gateway:true});
+ await projectEntry(root,'demo-api','projects/demo/api/server.mjs');await projectEntry(root,'demo-ui','projects/demo/ui/server.mjs');
+ await fs.writeFile(path.join(root,'projects/demo/ui/package.json'),JSON.stringify({name:'fixture-ui',private:true,scripts:{dev:'node server.mjs'}}));
+ await fs.mkdir(path.join(root,'projects/demo/worker'));
+ await fs.writeFile(path.join(root,'projects/demo/worker/worker.mjs'),`import fs from 'node:fs/promises';await fs.writeFile(process.env.SEED_ROOT+'/worker-started','yes');setInterval(()=>{},1000);`);
+ await manifest(root,[{name:'demo-ui',cwd:'projects/demo/ui',command:['npm','run','dev','--','${PORT}'],dependsOn:['demo-api'],env:{PROJECT_ROOT:'${ROOT}',PRIVATE_TEST_VALUE:'fixture-only-secret'}},{name:'demo-api',cwd:'projects/demo/api',file:'server.mjs',dependsOn:['workspace']},{name:'demo-worker',cwd:'projects/demo/worker',command:['node','worker.mjs'],healthCheck:'process',dependsOn:['demo-api']}]);
+ manager.restart();await manager.operation;assert.equal(manager.phase,'ready');
+ const starts=(await fs.readFile(path.join(root,'project-starts.txt'),'utf8')).trim().split('\n');assert.ok(starts.indexOf('demo-api')<starts.indexOf('demo-ui'));
+ const ui=manager.state().services.find(x=>x.name==='demo-ui');const data=await(await fetch(`http://127.0.0.1:${ui.port}/`)).json();assert.equal(data.arg,String(ui.port));assert.equal(data.root,root);assert.equal(data.services['demo-ui'],ui.port);assert.ok(data.services['demo-api']);
+ assert.equal(await fs.readFile(path.join(root,'worker-started'),'utf8'),'yes');assert.ok(!JSON.stringify(manager.state()).includes('fixture-only-secret'));
+ const pids=manager.state().services.filter(x=>x.project).map(x=>x.pid);await manifest(root,[]);manager.restart();await manager.operation;assert.equal(manager.phase,'ready');assert.ok(!manager.state().services.some(x=>x.project));for(const pid of pids)assert.throws(()=>process.kill(pid,0));
+});
+
+test('invalid new service definitions leave all existing processes running and can be corrected in place',async t=>{
+ const {root,manager,config}=await fixture(t,{gateway:true});const before=manager.state();
+ await fs.writeFile(path.join(root,'config/services.json'),'{broken');manager.restart();await manager.operation;assert.equal(manager.error.code,'INVALID_SERVICES');assert.deepEqual(manager.state().services,before.services);assert.equal(manager.generation,1);
+ await manifest(root,[{name:'missing',file:'not-created.mjs'}]);manager.restart();await manager.operation;assert.equal(manager.error.code,'INVALID_SERVICES');assert.deepEqual(manager.state().services,before.services);
+ await projectEntry(root,'fixed');await manifest(root,[]);manager.restart();await manager.operation;assert.equal(manager.phase,'ready');assert.ok(manager.children.has('fixed'));assert.equal((await fetch(`http://127.0.0.1:${config.frontPort}/api/runtime/status`)).status,200);
+});
+
+test('new project port allocation skips a foreign listener and project drain refuses busy work',async t=>{
+ const {root,manager}=await fixture(t,{gateway:true});const foreign=net.createServer();await new Promise(r=>foreign.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>foreign.close(r)));
+ const occupied=foreign.address().port;await projectEntry(root,'documents');await manifest(root,[{name:'documents',file:'backend/documents/server.mjs',port:occupied,drain:true}]);manager.restart();await manager.operation;assert.equal(manager.phase,'ready');
+ const service=manager.state().services.find(x=>x.name==='documents');assert.ok(service.port>occupied);assert.equal(foreign.listening,true);
+ const before=manager.state();await fs.writeFile(path.join(root,'documents.busy'),'busy');manager.restart();await manager.operation;assert.equal(manager.error.code,'RUNTIME_BUSY');assert.equal(manager.phase,'ready');assert.deepEqual(manager.state().services,before.services);
+ await fs.unlink(path.join(root,'documents.busy'));manager.restart();await manager.operation;assert.equal(manager.phase,'ready');assert.equal(manager.state().services.find(x=>x.name==='documents').port,service.port);assert.equal(foreign.listening,true);
+});
+
+test('disabled auto-discovered services are stopped without returning on the next restart',async t=>{
+ const {root,manager}=await fixture(t);await projectEntry(root,'notes');manager.restart();await manager.operation;const pid=manager.children.get('notes').pid;
+ await manifest(root,[{name:'notes',enabled:false}]);manager.restart();await manager.operation;assert.equal(manager.phase,'ready');assert.equal(manager.children.has('notes'),false);assert.throws(()=>process.kill(pid,0));
+});
+
+test('failed new service keeps recovery available and retry loads its corrected source',async t=>{
+ const {root,manager,config}=await fixture(t,{gateway:true});await projectEntry(root,'new-service');await fs.writeFile(path.join(root,'new-service.fail'),'fail');manager.restart();await manager.operation;assert.equal(manager.phase,'failed');assert.equal(manager.error.service,'new-service');assert.equal(manager.generation,1);
+ const base=`http://127.0.0.1:${config.frontPort}`;assert.match(await(await fetch(base+'/',{headers:{Accept:'text/html'}})).text(),/Saplingagent runtime/);
+ await fs.unlink(path.join(root,'new-service.fail'));manager.restart();await manager.operation;assert.equal(manager.phase,'ready');assert.equal(manager.generation,2);
+});
+
+test('internal port edits apply on full restart without changing the browser origin or requiring launcher exit',async t=>{
+ const {root,manager,config}=await fixture(t,{gateway:true});const before=manager.state();let workspacePort;do{workspacePort=await port();}while(Object.values(config).includes(workspacePort));
+ await fs.mkdir(path.join(root,'.runtime'));await fs.writeFile(path.join(root,'.runtime/runtime-address.json'),JSON.stringify({instanceId:manager.instanceId,pid:process.pid,ports:before.ports,url:`http://127.0.0.1:${config.frontPort}/`}));
+ await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify({...config,workspacePort,frontPort:await port()}));
+ manager.restart();await manager.operation;assert.equal(manager.phase,'ready');assert.equal(manager.config.workspacePort,workspacePort);assert.equal(manager.config.frontPort,config.frontPort);assert.equal(manager.instanceId,before.instanceId);assert.equal(manager.generation,2);
+ assert.equal((await(await fetch(`http://127.0.0.1:${workspacePort}/health`)).json()).ready,true);
+ assert.equal((await fetch(`http://127.0.0.1:${config.frontPort}/api/runtime/status`)).status,200);
+ const saved=JSON.parse(await fs.readFile(path.join(root,'.runtime/runtime-address.json')));assert.equal(saved.ports.workspacePort,workspacePort);assert.equal(saved.url,`http://127.0.0.1:${config.frontPort}/`);
+ manager.restart();await manager.operation;assert.equal(manager.phase,'ready');assert.equal(manager.config.workspacePort,workspacePort);
 });

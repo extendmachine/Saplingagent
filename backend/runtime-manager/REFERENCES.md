@@ -18,3 +18,11 @@ Executable behavior is checked through real isolated Node child processes and lo
 ## Ascending port allocation (TASK-20261014-002)
 
 https://nodejs.org/docs/latest-v24.x/api/net.html — official Node24 LTS net.Server listen/error/address/close behavior, checked2026-10-14 via the official24.x documentation navigation (current page24.22.0; project executable remains24.21.0). Public, no account required. Actual project Node24.21.0 port contention, retries and shutdown are verified by isolated tests. No SDK/runtime upgrade.
+
+
+## Project service lifecycle (checked 2026-10-15)
+
+- https://nodejs.org/download/release/v24.21.0/docs/api/child_process.html — official project-pinned Node spawn argv/cwd/env/PATH and owned-process lifecycle; no implicit shell. Windows .cmd requires a shell, so registered npm uses the project npm CLI through Node.
+- https://nodejs.org/download/release/v24.21.0/docs/api/fs.html — project-owned startup manifest/directory discovery and file preflight.
+
+Public documentation, no account needed. No SDK/runtime or dependency upgrade; executable behavior is checked through isolated real Node processes and loopback HTTP.
