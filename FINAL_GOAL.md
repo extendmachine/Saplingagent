@@ -87,3 +87,7 @@ Customer source downloads/packaging default to release unless explicitly configu
 ## Chat attachments and fresh page inspection (2026-10-15)
 
 Authorized capability: select, drop or paste files/images into AI chat, retain original bytes locally with conversation metadata, and deliver native image inputs plus file references to the selected Agent. Provide fresh rendered project-page DOM/layout and optional DOM image through page_read so AI can inspect its UI changes without additional own-project or OS screen-recording permission. Preserve existing Full Access, authentication, sessions and restart behavior. Current entry participates automatically; standalone pages require the bridge. Image/model/clipboard format limitations and unavailable pages must be reported truthfully. This is a main-only development change; release presentation remains separate.
+
+## Single complete-restart action (2026-10-15)
+
+The main page exposes one Restart app button, with no adjacent backend-only/recovery dropdown. It always uses the existing full managed-project restart: stop owned frontend/backend/project processes, relaunch from the current source plan, await readiness and refresh the page. Keep persistent gateway/controller, busy protection, truthful failure status and conversation recovery. Diagnostic recovery HTTP access remains available for failures.
