@@ -19,3 +19,12 @@ The current request authorizes the relevant implementation. Do not repeatedly as
 For user-requested restoration, identify the record with `page_changes`, then call `page_rollback`. It overwrites later edits with recorded originals; explain which files were restored. Never automatically roll back. Shell, native-tool, network and business-data side effects are not guaranteed reversible.
 
 Finish with visible results, actual verification and any recorded restoration ID. Keep the response concise and within the requested feature scope.
+
+
+## Integrate newly created processes
+
+When adding a persistent backend or independent application, make Restart app start it with the rest of the project. Read backend/runtime-manager/CONTRACT.md and docs/project-services.html. Conventional backend/<name>/server.mjs,server.cjs or server.js is auto-discovered and should bind process.env.PORT on loopback with /health readiness. Excluded infrastructure is not a business-service discovery target.
+
+For another directory, frontend,worker or runtime, create/update config/services.json as part of the requested feature: unique name,cwd,argv command or Node file,dependencies,preferred port and readiness. Use the project runtime/dependencies; install them during feature implementation. Wire inter-service addresses with SEED_SERVICE_PORTS or SEED_<NAME>_PORT. Do not hardcode occupied ports. Services with ongoing writes should implement the shared /internal/runtime/prepare and /release protocol and register drain:true. Keep credentials in local-secrets and read them from files, not manifest literals.
+
+Verify the real feature through Restart app, including a newly added service and reload of changed code. Do not leave an independent process that the user has to start manually, treat an arbitrary command execution as lifecycle registration, or ask the user to exit the launcher for ordinary project changes.

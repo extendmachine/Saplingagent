@@ -24,7 +24,7 @@ Minimality concerns required functionality, installation, interaction and mainte
 
 1. **Conversation and context:** usable streaming chat, persistent project sessions and user context, interruption and understandable error recovery.
 2. **User-directed modification:** understand the project, edit frontend/backend code and configuration, execute development commands, and create or adjust MCP tools and Skills as needed.
-3. **Local operation:** install declared dependencies, start the application, and reload the selected frontend/backend version through documented runtime controls.
+3. **Local operation:** install declared dependencies and start the application. Restart app reloads frontend/backend code and newly created project/microservice processes in-page, using discovery or project-owned startup registrations. The AI creating a process integrates its startup, dependencies and readiness; users do not need a separate terminal or complete exit for ordinary feature changes.
 4. **Versions and recovery:** expose current source/version information and user-selected source restoration. Keep source recovery and business-data recovery separate.
 5. **Project ownership:** organize code, rules, goals, documentation, configuration, environment and local data under the application's folder, with declared external dependencies.
 
