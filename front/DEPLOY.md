@@ -61,3 +61,7 @@ Rollback: preserve local-secrets and data, select the previous reviewed Git vers
 Unified launcher port note (TASK-20261014-004):5173/5174 are starting values. Use the actual printed gateway URL after ascending allocation; existing SEED_AGENT_PORT/SEED_RUNTIME_MANAGER_PORT route Vite to selected backends. Selected ports persist through in-app restart; source config is unchanged. Standalone npm run dev behavior is unchanged.
 
 Full restart includes auto-discovered/registered project services; see ../docs/project-services.html. Browser storage/draft recovery is optional: denied storage does not crash the chat or prevent the active page from refreshing after successful restart.
+
+## Right-side collapsible AI chat (2026-10-15)
+
+The central conversation is now a right-edge AI chat panel, initially expanded. Collapse chat hides the panel and leaves an Open AI chat edge tab; reopening restores focus to the composer. The ChatPanel remains mounted while hidden, preserving draft text, messages, running response transport and session state. Desktop application content uses the remaining width; small screens use the available width. Existing App error isolation, Git/restart controls, Stop/Retry/New conversation and API semantics remain unchanged. The version footer is restored to its centered layout with kernel0.90, correcting the earlier footer-target assumption.

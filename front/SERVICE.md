@@ -1,6 +1,6 @@
 # Frontend service
 
-React single-page chat and requested application components. `main.tsx` mounts `ChatPanel` independently from lazy `App`, wrapped in `ApplicationBoundary`; `App` currently mounts `GitVersionPanel` and `VersionFooter`. Previous empty-App descriptions in task records are historical.
+React single-page chat and requested application components. `main.tsx` mounts `ChatDock`/`ChatPanel` independently from lazy `App`, wrapped in `ApplicationBoundary`; `App` currently mounts `GitVersionPanel`, `RestartServices` and `VersionFooter`. Previous empty-App descriptions in task records are historical.
 
 ## Responsibilities and boundaries
 
@@ -62,4 +62,8 @@ Accessing the sessionStorage property can itself be denied. RestartDraft catches
 
 ## Kernel baseline version (2026-10-15)
 
-The bottom-right version disclosure shows a compact Version 0.90 trigger and expands to Kernel version 0.90 and the current Git version. It starts collapsed and supports keyboard activation. A pending Git update remains visible on the trigger, with the existing refresh action inside. Kernel version 0.90 is a source-owned string in front/features/version/VersionFooter.tsx. It records the original kernel baseline independently of Git branches, commits and custom version names, including when Git is unavailable. Keep the trailing zero; update this value only for an explicit kernel release. Existing Git version polling/refresh behavior is unchanged.
+The page footer always displays Kernel version 0.90, a source-owned string in front/features/version/VersionFooter.tsx. It records the original kernel baseline independently of Git branches, commits and custom version names, including when Git is unavailable. Keep the trailing zero; update this value only for an explicit kernel release. Existing Git version polling/refresh behavior is unchanged.
+
+## Right-side collapsible AI chat (2026-10-15)
+
+The central conversation is now a right-edge AI chat panel, initially expanded. Collapse chat hides the panel and leaves an Open AI chat edge tab; reopening restores focus to the composer. The ChatPanel remains mounted while hidden, preserving draft text, messages, running response transport and session state. Desktop application content uses the remaining width; small screens use the available width. Existing App error isolation, Git/restart controls, Stop/Retry/New conversation and API semantics remain unchanged. The version footer is restored to its centered layout with kernel0.90, correcting the earlier footer-target assumption.
