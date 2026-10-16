@@ -103,7 +103,7 @@ export class OpenCodeProvider {
     };
   }
 
-  async execute(run, text, { context = '' } = {}) {
+  async execute(run, text, { context = '', images = [] } = {}) {
     if (run.cancelRequested || run.finished) {
       if (!run.finished) this.onEvent(run, { type: 'done', status: 'interrupted' });
       return;
@@ -132,7 +132,7 @@ export class OpenCodeProvider {
           messageID,
           model: { providerID: run.session.providerId, modelID: run.session.modelId },
           system: [this.instructions, context].filter(Boolean).join('\n\n'),
-          parts: [{ type: 'text', text }],
+          parts: [{ type: 'text', text }, ...images.map(image => ({ type: 'file', mime: image.contentType, filename: image.name, url: `data:${image.contentType};base64,${image.data}` }))],
         },
       }), 'OpenCode did not accept the prompt');
       if (run.cancelRequested) await this.interrupt(run);

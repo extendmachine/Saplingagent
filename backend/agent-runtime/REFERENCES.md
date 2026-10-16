@@ -70,3 +70,11 @@ Git project-root correctness (TASK-20261012-011), checked 2026-10-12: https://gi
 - https://opencode.ai/docs/sdk/ — official SDK session prompts, message metadata, SSE subscription and generated OpenAPI types. Public documentation; real provider inference requires the customer's credentials/quota.
 - https://opencode.ai/docs/server/ — official headless native server, prompt_async and message retrieval. Public; native server remains project-local.
 - Installed @opencode-ai/sdk1.19.0 dist/gen/types.gen.d.ts verifies message.updated.info.role, assistant parentID, message.part.updated, explicit prompt messageID/system/parts and session.message. Local native1.19.0 synthetic Chat Completions, MCP, resume and error regression verify pinned behavior without a real model or key. No v2/latest SDK upgrade is assumed; Windows native acceptance remains pending.
+
+## File/image inputs (checked2026-10-15, TASK-20261015-012)
+
+- https://developers.openai.com/codex/app-server redirects to https://learn.chatgpt.com/docs/app-server — official App Server protocol and generated types. Exact local Codex0.146.1 generate-ts schema confirms UserInput localImage/path; this change uses that pinned native shape.
+- https://opencode.ai/docs/sdk/ — official SDK/parts API; installed @opencode-ai/sdk1.19.0 FilePartInput confirms type:file,mime,filename,url and existing promptAsync. Protocol test checks actual image-part input.
+- https://code.claude.com/docs/en/agent-sdk/streaming-vs-single-mode — official structured streaming-input approach. Installed @anthropic-ai/claude-agent-sdk0.3.296 SDKUserMessage allows image/base64 content; native SDK test sends an image through a synthetic local Messages API and resumes the existing session.
+
+Public sources need no login. Exact installed schema/types take precedence over evolving examples. No SDK upgrade or real inference/account validation is implied.
