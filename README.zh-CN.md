@@ -155,6 +155,7 @@ bash Saplingagent.sh --lang zh
 | 3. 启动应用 | 启动本地服务并打开聊天页 |
 | 4. 诊断 | 检查安装、AI 配置和运行状态 |
 | 5. Git / 存储设置 | 查看或调整仓库归属，无需重装依赖 |
+| 6. 内核管理 | 独立查看版本、检查更新、备份更新与手动恢复；所有 Git 模式均可使用 |
 | 9. 切换语言 | 切换英文 / 中文菜单 |
 | 0. 退出 | 关闭菜单 |
 
@@ -200,6 +201,7 @@ bash Saplingagent.sh opencode
 bash Saplingagent.sh start --no-open
 bash Saplingagent.sh doctor
 bash Saplingagent.sh git
+bash Saplingagent.sh kernel
 bash Saplingagent.sh logout
 ```
 
@@ -247,6 +249,18 @@ bash Saplingagent.sh logout
 
 <a id="updates"></a>
 
+## 独立管理内核
+
+安装更新、Git 管理、完整重启、AI 接入配置与引擎适配层归入 **Kernel**，当前版本 **0.90**。聊天界面、工作区与上下文、页面构建与读取、MCP 和全部默认／自定义 Skills 均为用户可自由修改的应用能力，不纳入内核更新或恢复。业务页面与新增业务服务独立维护；页脚分别显示内核版本和应用 Git 版本。
+
+使用 **6. 内核管理** 或 `bash Saplingagent.sh kernel`：查看版本和备份、检查更新、更新内核、手动恢复。即使选择本地 Git 或自己的仓库，也能单独获取官方 release 的内核功能，无需合并应用历史或更换远程仓库。应用入口、样式、构建配置与应用依赖、混合聊天 HTTP 入口、业务模块、运行配置、对话、附件与凭据不属于更新覆盖范围。完整安装包仍包含这些应用能力。
+
+**更新可能导致已有功能、依赖或集成失效。** 更新前先检查冲突，停止应用并备份重要业务数据；确认风险后才应用源码。本地修改与上游冲突时拒绝覆盖，内核源码另有本地备份。完成后运行 `bash Saplingagent.sh install --repair`，再启动并验证。若失效，通过 `kernel restore <备份 ID>` 手动恢复；启动器损坏时仍可用保存的恢复脚本。源码恢复不能回退业务数据或保证兼容。
+
+新版使用 schema2 清单，旧更新器会先拒绝它，避免把移出内核的应用文件当成删除项。首次从早期宽范围原型迁移时，需要新版完整管理工具及核对过的 schema2 基线；旧计划／备份需要单独核对，不能自动套用。
+
+详见 [内核更新与恢复指南](docs/kernel-management.html)。新内核只有经维护者发布到 release 后才可获取；不含内核清单的旧版本会明确报告不可用。
+
 ## 更新与依赖修复
 
 **跟随 release：**选择 **1. 安装 / 更新**时分别报告源码与依赖进度。更新器获取所跟踪的上游分支，提前检查冲突，合并兼容的已提交历史；源码变化后重新加载启动器，再检查依赖。它不会强制切换、重置或发布你的修改。
@@ -265,6 +279,7 @@ bash Saplingagent.sh install --repair
 
 ```bash
 SAPLING_GIT_MODE=upstream SAPLING_GIT_BRANCH=release bash Saplingagent.sh git
+bash Saplingagent.sh kernel
 ```
 
 已有分支冲突或无关历史需要有意识地处理；安装器不会自动重置。菜单是否显示选项不限制 Agent 的 Full Access。

@@ -28,3 +28,9 @@ Saplingagent.sh rereads saplingagent.storageMode from this independent folder's 
 ## Runtime port discovery (TASK-20261014-004)
 
 Start reads the exact loopback URL announced by its owned dev child, then checks runtime and Agent readiness through that gateway; it never claims an unrelated app on the configured starting port is its child. Browser opening/recovery use the actual port. Diagnostics reads runtime-address metadata and verifies instanceId before using its port; source-update busy checks include selected ports as well as configured starts. No new dependencies or real model request.
+
+## Independent kernel management (2026-10-16)
+
+Menu **6. Kernel management** and `bash Saplingagent.sh kernel` are available in every Git storage mode, including local/own storage with menu1 hidden. `kernel status` reads installed metadata/backups; `kernel check` stages an update preview; `kernel update` requires explicit compatibility-risk acknowledgement; `kernel restore <backup-id>` restores owned source. `--accept-risk` is the deliberate noninteractive update acknowledgement. No application Git fetch/merge/reset, remote change, push, model call or automatic startup occurs. The existing whole-source follow-mode install path remains separate.
+
+The root startup holds the shared `.runtime/kernel-operation.lock` until runtime discovery is published. Update/restore refuse a live owned runtime and active installation. Dependency install creates its installer lock before checking this shared lock, preventing overlap with kernel apply. Inspect a dead lock's owner before removing it manually. Repair uses `install --repair`; new dependency declarations do not become usable merely because source was applied. Stop the application with Control+C before kernel maintenance; ordinary Restart app still reloads all managed application services in-page. See ../../kernel/CONTRACT.md and ../../docs/kernel-management.html.

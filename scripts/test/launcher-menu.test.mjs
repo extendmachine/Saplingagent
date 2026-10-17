@@ -120,7 +120,7 @@ test('Chinese failed operation returns to the menu and language switching propag
   const result = await execute(root, 'invalid\n1\n9\n1\n4\n0\n', [], 'zh');
   assert.equal(result.code, 0, result.output);
   assert.match(result.output, /操作未完成（退出码 7）/);
-  assert.match(result.output, /请输入 0、1、2、3、4、5 或 9/);
+  assert.match(result.output, /请输入 0、1、2、3、4、5、6 或 9/);
   assert.match(result.output, /Operation incomplete \(exit 7\)/);
   assert.equal(await actions(root), 'install\ndoctor\n');
   assert.equal(await fs.readFile(path.join(root, 'languages.txt'), 'utf8'), 'zh\nen\n');
@@ -162,7 +162,7 @@ test('saved local/own menus hide install and reject its number without changing 
     const result = await execute(root, '1\ninvalid\n2\n3\n4\n5\n0\n', [], language);
     assert.equal(result.code, 0, result.output);
     assert.doesNotMatch(result.output, /1\. Install|1\. 安装|Starting install|正在启动安装/);
-    assert.match(result.output, /\[0, 2-5, 9\]/);
+    assert.match(result.output, /\[0, 2-6, 9\]/);
     assert.match(result.output, /bash Saplingagent.sh install --repair/);
     assert.equal(await actions(root), 'configure\nstart\ndoctor\ngit\n');
     assert.equal(await fs.readFile(path.join(root, '.git/config'), 'utf8'), before);
@@ -211,4 +211,10 @@ test('explicit dependency repair remains available for independent storage', asy
   await git(root, 'config', '--local', 'saplingagent.storageMode', 'local');
   assert.equal((await execute(root, '', ['install', '--repair'])).code, 0);
   assert.equal(await actions(root), 'install --repair\n');
+});
+
+test('independent Git users retain the separate kernel menu and direct kernel actions',async t=>{
+ const root=await fixture(t);await exec('git',['init','-b','main',root]);await exec('git',['-C',root,'config','saplingagent.storageMode','local']);
+ const result=await execute(root,'6\n0\n');assert.equal(result.code,0);assert.match(result.output,/Kernel management/);assert.doesNotMatch(result.output,/1\. Install \/ update/);assert.equal(await actions(root),'kernel\n');
+ assert.equal((await execute(root,'',['kernel','status'])).code,0);assert.equal(await actions(root),'kernel\nkernel status\n');
 });

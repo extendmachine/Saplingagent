@@ -89,6 +89,7 @@ async function install(repair = false) {
   }
   const stage = path.join(root, '.runtime', `codex-install-${randomUUID()}`);
   try {
+    if(await exists(path.join(root,'.runtime/kernel-operation.lock')))throw new Error('A kernel/start operation is active. Finish it before installing dependencies.');
     await initializeDownloadedRecords(root);
     const storage=await configureGitStorage(root);
     if(!repair&&process.env.SAPLING_SOURCE_UPDATE_DONE!=='1'){
@@ -292,9 +293,10 @@ try {
   else if (action === 'login' && args.every(x => x === '--device-auth')) await login(args.includes('--device-auth'));
   else if (action === 'start' && args.every(x => x === '--no-open')) await start(args.includes('--no-open'));
   else if (action === 'git' && !args.length) await configureGitStorage(root, { force: true });
+  else if (action === 'kernel') await required(process.execPath,[path.join(root,'kernel/cli.mjs'),...args]);
   else if (action === 'doctor' && !args.length) await doctor();
   else if (action === 'logout' && !args.length) await logout();
   else if (action === 'configure' && args.every(x=>x==='--no-open')) await configureAI(args.includes('--no-open'));
   else if (action === 'opencode' && !args.length) await configureOpenCode();
-  else throw new Error(t('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode / git.', "可用操作：install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode / git。"));
+  else throw new Error(t('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode / git / kernel.', "可用操作：install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode / git / kernel。"));
 } catch (error) { console.error(error.message); process.exitCode = 1; }

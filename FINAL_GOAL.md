@@ -1,6 +1,6 @@
 # Saplingagent Final Goal
 
-Updated: 2026-10-15. This document defines current product positioning and how future requirements are interpreted. History and implementation/acceptance status belong in TODO.md and AI_TASKS.md; live development records are authoritative in .worktrees/coordination/ when present. Public control rules remain in rules/README.md.
+Updated: 2026-10-16. This document defines current product positioning and how future requirements are interpreted. History and implementation/acceptance status belong in TODO.md and AI_TASKS.md; live development records are authoritative in .worktrees/coordination/ when present. Public control rules remain in rules/README.md.
 
 ## Product positioning
 
@@ -91,3 +91,7 @@ Authorized capability: select, drop or paste files/images into AI chat, retain o
 ## Single complete-restart action (2026-10-15)
 
 The main page exposes one Restart app button, with no adjacent backend-only/recovery dropdown. It always uses the existing full managed-project restart: stop owned frontend/backend/project processes, relaunch from the current source plan, await readiness and refresh the page. Keep persistent gateway/controller, busy protection, truthful failure status and conversation recovery. Diagnostic recovery HTTP access remains available for failures.
+
+## Independently managed kernel (2026-10-16)
+
+Install/update, Git management, full app restart, AI configuration and engine adapters are a separately versioned kernel, originally0.90. Chat UI, workspace/context, page construction/reading, MCP and all default/custom Skills/plugin registrations belong to the freely editable application layer, outside kernel update/delete/restore. Mixed application HTTP/frontend entries, styles, build settings and application dependency declarations stay with that layer. A schema2 manifest defines owned files while retaining compatible source paths. Old broad schema1 manifests/plans/backups are refused before source writes; use current tooling and a reviewed baseline instead of treating released application files as deletions. Business App/features/services, customer configuration, history and private records remain independent. Every Git storage mode can explicitly check/update the kernel without merging the application's Git history. Download an immutable official release, validate compatibility/hashes, detect conflicts, back up owned source and provide manual recovery. Updates can invalidate custom apps or dependencies; source success does not establish runtime readiness or data safety. Keep source recovery separate from business-data recovery and verify after dependency repair/startup. This does not add Agent permissions restrictions or authorize release publication.
