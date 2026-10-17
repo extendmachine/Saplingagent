@@ -37,6 +37,7 @@ async function requestVersion(): Promise<VersionState> {
 export function VersionFooter() {
   const [version, setVersion] = useState<VersionState | null>(null);
   const [unavailable, setUnavailable] = useState(false);
+  const [releaseVersion, setReleaseVersion] = useState<string | null>(null);
   const [kernelVersion, setKernelVersion] = useState(KERNEL_VERSION);
   const baseline = useRef<string | null>(null);
 
@@ -49,6 +50,20 @@ export function VersionFooter() {
     } catch {
       setUnavailable(true);
     }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void fetch('/api/release', { cache: 'no-store', signal: AbortSignal.timeout(5000) })
+      .then(async response => {
+        if (!response.ok) return;
+        const value = await response.json();
+        if (active && value.release?.schemaVersion === 1 && typeof value.release.version === 'string'
+          && /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/.test(value.release.version)) {
+          setReleaseVersion(value.release.version);
+        }
+      }).catch(() => {});
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -76,8 +91,9 @@ export function VersionFooter() {
   const label = version ? `${version.branch || 'detached'} · ${version.version}` : unavailable ? 'Version unavailable' : 'Loading version…';
 
   return <footer className={`version-footer${hasUpdate ? ' has-update' : ''}`} aria-live="polite">
+    <span className="version-footer-label version-footer-release">Saplingagent <code>{releaseVersion || 'Release unavailable'}</code></span>
     <span className="version-footer-label version-footer-kernel">Kernel version <code>{kernelVersion}</code></span>
-    <span className="version-footer-label"><span className="version-footer-dot" />Current version <code>{label}</code></span>
+    <span className="version-footer-label"><span className="version-footer-dot" />Workspace version <code>{label}</code></span>
     {hasUpdate ? <button type="button" onClick={() => window.location.reload()}>
       <RefreshCw size={13} aria-hidden="true" />
       New version available - refresh

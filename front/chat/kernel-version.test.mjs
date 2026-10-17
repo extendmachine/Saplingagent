@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import { transformSync } from "rolldown/utils";
-async function footer(kernel) {
+async function footer(kernel, release) {
 	let cursor = 0;
 	const slots = [], effects = [], jsx = (type, props) => ({
 		type,
@@ -46,9 +46,9 @@ async function footer(kernel) {
 			location: { reload() {} }
 		},
 		fetch: async (url) => ({
-			ok: url === "/api/kernel",
+			ok: url === "/api/kernel" || (url === "/api/release" && Boolean(release)),
 			status: 503,
-			json: async () => url === "/api/kernel" ? { kernel } : { error: { message: "Git unavailable" } }
+			json: async () => url === "/api/kernel" ? { kernel } : url === "/api/release" ? { release } : { error: { message: "Git unavailable" } }
 		})
 	});
 	const mocks = {
@@ -99,4 +99,16 @@ test("legacy or invalid kernel metadata retains original0.90 baseline", async ()
 		state: "invalid",
 		version: "not-version"
 	}]) assert.match(text(await footer(kernel)), /Kernel version 0\.90/);
+});
+
+
+test("product release stays distinct from kernel and unavailable workspace Git", async () => {
+ const value = text(await footer({state:"managed",version:"0.90"},{schemaVersion:1,version:"0.9.2"}));
+ assert.match(value,/Saplingagent 0\.9\.2/); assert.match(value,/Kernel version 0\.90/); assert.match(value,/Workspace version Version unavailable/);
+});
+test("missing or malformed product metadata never falls back to the kernel version", async () => {
+ for(const release of [undefined,{schemaVersion:1,version:"0.90"},{schemaVersion:2,version:"0.9.2"},{schemaVersion:1,version:92}]) {
+  const value=text(await footer({state:"managed",version:"0.90"},release));
+  assert.match(value,/Saplingagent Release unavailable/); assert.doesNotMatch(value,/Saplingagent 0\.90/);
+ }
 });

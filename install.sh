@@ -76,14 +76,18 @@ while IFS= read -r sapling_entry; do
 done < "$sapling_stage/types.txt"
 mkdir "$sapling_stage/app"
 tar -xzf "$sapling_stage/source.tar.gz" --strip-components=1 -C "$sapling_stage/app"
-for sapling_file in install.sh Saplingagent.sh AGENTS.md FINAL_GOAL.md TODO.md AI_TASKS.md rules/README.md scripts/launcher/recipient-records.mjs scripts/macos/bootstrap.sh scripts/windows/bootstrap.sh; do
+for sapling_file in config/release.json install.sh Saplingagent.sh AGENTS.md FINAL_GOAL.md TODO.md AI_TASKS.md rules/README.md scripts/launcher/recipient-records.mjs scripts/macos/bootstrap.sh scripts/windows/bootstrap.sh; do
   [ -f "$sapling_stage/app/$sapling_file" ] && [ ! -L "$sapling_stage/app/$sapling_file" ] || fail "Incomplete source: $sapling_file" "源码不完整：$sapling_file"
 done
+sapling_release_json="$(cat "$sapling_stage/app/config/release.json")"
+sapling_version_pattern='"version"[[:space:]]*:[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)"'
+if [[ "$sapling_release_json" =~ $sapling_version_pattern ]]; then sapling_release_version="${BASH_REMATCH[1]}";
+else fail 'Release metadata is missing or invalid.' '发布版本元数据缺失或无效。'; fi
 sapling_hash() {
   if [ "$sapling_hash_command" = sha256sum ]; then sha256sum "$1"; else shasum -a 256 "$1"; fi
 }
 {
-  printf '{"schemaVersion":2,"sourceRef":"release","sourceCommit":"%s","platform":"%s","initializeRecords":true,"git":{"initialBranch":"release","upstreamBranch":"release","upstreamUrl":"https://github.com/extendmachine/Saplingagent.git"},"recordHashes":{' "$sapling_sha" "$sapling_platform"
+  printf '{"schemaVersion":2,"releaseVersion":"%s","sourceRef":"release","sourceCommit":"%s","platform":"%s","initializeRecords":true,"git":{"initialBranch":"release","upstreamBranch":"release","upstreamUrl":"https://github.com/extendmachine/Saplingagent.git"},"recordHashes":{' "$sapling_release_version" "$sapling_sha" "$sapling_platform"
   sapling_separator=''
   for sapling_file in AGENTS.md FINAL_GOAL.md TODO.md AI_TASKS.md; do
     sapling_hash_line="$(sapling_hash "$sapling_stage/app/$sapling_file")";sapling_digest="${sapling_hash_line%% *}"
@@ -98,7 +102,7 @@ shopt -s dotglob nullglob
 mv "$sapling_stage/app/"* "$sapling_destination/"
 chmod +x "$sapling_destination/Saplingagent.sh" "$sapling_destination/install.sh"
 cleanup; sapling_stage=''; trap - EXIT
-say "Release source ready: $sapling_destination" "release 源码已就绪：$sapling_destination"
+say "Saplingagent $sapling_release_version ready: $sapling_destination ($sapling_sha)" "Saplingagent $sapling_release_version 已就绪：${sapling_destination}（${sapling_sha}）"
 if [ "$sapling_download_only" -eq 1 ]; then
   say 'Next: enter this folder and run bash Saplingagent.sh.' '下一步：进入该文件夹，运行 bash Saplingagent.sh。'
   exit 0

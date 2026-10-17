@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.2 — Explicit release identity (2026-10-17)
+
+- Declare the product distribution once in config/release.json; show it separately from Kernel0.90 and customer Workspace Git history.
+- Add read-only /api/release metadata, with explicit unavailable state instead of an old product fallback.
+- Include product version and exact source commit in download receipts and source ZIP filenames.
+- Verify committed code/main ancestry, release version, kernel hashes and exact tag target before publication. Preserve the existing public v0.9.1 tag.
+- Record actual checks/publication separately; native Windows and real model-account acceptance are not implied.
+
 ## Unreleased — Independent AI configuration
 
 - Open a standalone bilingual local configuration page from the Bash launcher's Configure AI menu after installation.

@@ -100,3 +100,8 @@ POST /api/page/heartbeat, GET /api/page/requests?pageId=..., POST /api/page/resu
 ## Independent kernel metadata (TASK-20261016-003)
 
 GET /api/kernel ->200 {kernel:{baselineVersion:'0.90',version,appApi,sourceCommit?,installedAt?,state:'managed'|'legacy'|'invalid',lastBackupId?,warning?}}. Read local public manifest and installed receipt through shared contracts/kernel.mjs. Read-only, no network/model/Git mutation or sensitive paths/credentials. Older folders without a manifest return legacy0.90; malformed metadata is invalid with a warning, never a claimed successful update. Kernel updates/restore are offline launcher operations, not arbitrary HTTP file writes.
+
+
+## Distribution release identity (TASK-20261017-003)
+
+GET /api/release ->200 {release:{schemaVersion:1,version:"0.9.2"}}. No input/body/token required; same loopback/same-origin read policy as GET /api/kernel. Reads the complete folder's public config/release.json through contracts/release.mjs, independently of Git, kernel and authentication. Returns503 {error:{code:"RELEASE_UNAVAILABLE",message}} for missing/invalid/oversized/symlink metadata; no fallback product version, raw source/paths or extra JSON fields exposed. No model, network, task registration or write. Older backends may return404; frontend retains chat and labels release unavailable. No change to kernel or Git API shape.
