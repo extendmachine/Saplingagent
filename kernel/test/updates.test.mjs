@@ -32,6 +32,7 @@ function manifest(files, version = "0.90") {
 	};
 }
 const applicationFiles = {
+	"config/release.json": '{"schemaVersion":1,"version":"0.9.1"}',
 	"front/chat/ChatPanel.tsx": "custom chat",
 	"backend/workspace/server.mjs": "custom workspace/context",
 	"backend/app-builder/server.mjs": "custom builder",

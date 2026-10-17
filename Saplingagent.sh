@@ -108,6 +108,14 @@ while true; do
   SAPLING_INDEPENDENT=0
   case "$SAPLING_STORAGE_MODE" in local|own) SAPLING_INDEPENDENT=1 ;; esac
   printf '\n%s\n' 'Saplingagent'
+  SAPLING_PRODUCT_VERSION=''
+  if [ -f "$SAPLING_ROOT/config/release.json" ]; then
+    SAPLING_RELEASE_TEXT="$(cat "$SAPLING_ROOT/config/release.json")"
+    SAPLING_VERSION_PATTERN='"version"[[:space:]]*:[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)"'
+    if [[ "$SAPLING_RELEASE_TEXT" =~ $SAPLING_VERSION_PATTERN ]]; then SAPLING_PRODUCT_VERSION="${BASH_REMATCH[1]}"; fi
+  fi
+  if [ -n "$SAPLING_PRODUCT_VERSION" ]; then say "  Release: $SAPLING_PRODUCT_VERSION" "  发布版本：$SAPLING_PRODUCT_VERSION";
+  else say '  Release: unavailable' '  发布版本：不可用'; fi
   if [ "$SAPLING_INDEPENDENT" -eq 0 ]; then
     say '  1. Install / update' '  1. 安装 / 更新'
   elif [ "$SAPLING_STORAGE_MODE" = local ]; then
