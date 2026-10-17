@@ -22,24 +22,24 @@ async function fixture(t) {
     files.push({ path: name, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), executable: false });
   }
   await write('kernel/manifest.json', JSON.stringify({ schemaVersion: 2, version: '0.90', appApi: 1, minNode: '24.11.0', files }));
-  await write('config/release.json', JSON.stringify({ schemaVersion: 1, version: '0.9.2' }));
+  await write('config/release.json', JSON.stringify({ schemaVersion: 1, version: '0.9.1' }));
   git('add', '.'); git('commit', '-m', 'Freeze synthetic source');
-  return { root, git, write, commit: git('rev-parse', 'HEAD'), verify: options => verifyRelease({ sourceRoot: root, ref: 'HEAD', version: '0.9.2', ...options }) };
+  return { root, git, write, commit: git('rev-parse', 'HEAD'), verify: options => verifyRelease({ sourceRoot: root, ref: 'HEAD', version: '0.9.1', ...options }) };
 }
 
 test('gate reads committed version, validates source and immutable tag, ignoring pending metadata', async t => {
-  const f = await fixture(t); f.git('tag', 'v0.9.2');
+  const f = await fixture(t); f.git('tag', 'v0.9.1');
   await f.write('config/release.json', '{broken pending metadata');
-  const result = f.verify({ tag: 'v0.9.2' });
-  assert.equal(result.commit, f.commit); assert.equal(result.version, '0.9.2'); assert.equal(result.kernelVersion, '0.90');
-  assert.throws(() => f.verify({ version: '0.9.1' }), /committed/);
+  const result = f.verify({ tag: 'v0.9.1' });
+  assert.equal(result.commit, f.commit); assert.equal(result.version, '0.9.1'); assert.equal(result.kernelVersion, '0.90');
+  assert.throws(() => f.verify({ version: '0.9.0' }), /committed/);
   assert.match(f.git('status', '--porcelain'), /config\/release.json/);
 });
 test('gate rejects a tag pointing at older code and release-only application changes', async t => {
-  const f = await fixture(t); f.git('tag', 'v0.9.2');
+  const f = await fixture(t); f.git('tag', 'v0.9.1');
   await f.write('README.md', 'Presentation change'); f.git('add', '.'); f.git('commit', '-m', 'Presentation only');
-  assert.equal(f.verify().version, '0.9.2');
-  assert.throws(() => f.verify({ tag: 'v0.9.2' }), /tag\/version/);
+  assert.equal(f.verify().version, '0.9.1');
+  assert.throws(() => f.verify({ tag: 'v0.9.1' }), /tag\/version/);
   await f.write('front/main.tsx', 'Unreviewed release code'); f.git('add', '.'); f.git('commit', '-m', 'Release code drift');
   assert.throws(() => f.verify({ main: f.commit }), /differs from the frozen main/);
 });

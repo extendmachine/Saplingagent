@@ -499,8 +499,8 @@
     },
     {
       "path": "scripts/launcher/README.md",
-      "sha256": "eba553d4f7a50cc24cac3124436455b2a5e3e04161c9d71c5fb3b6f78ae7f290",
-      "bytes": 7312,
+      "sha256": "1941e9c898fc40b693b9fcf320a38e49e1c5f43d47138e36fb9b505606ad5f7c",
+      "bytes": 7467,
       "executable": false
     },
     {
@@ -607,7 +607,7 @@
     },
     {
       "path": "scripts/test/release-version.test.mjs",
-      "sha256": "039608c627399276aaef53fa13575872ac537c1bb85f734627b2612b2d07a0ce",
+      "sha256": "66c61238b4fbc615a45b3379e0854d106d62f771615fbe3218f9ff93dd0c6429",
       "bytes": 3375,
       "executable": false
     },

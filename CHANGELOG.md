@@ -1,11 +1,11 @@
 # Changelog
 
-## 0.9.2 — Explicit release identity (2026-10-17)
+## 0.9.1 — Explicit release identity (2026-10-17)
 
 - Declare the product distribution once in config/release.json; show it separately from Kernel0.90 and customer Workspace Git history.
 - Add read-only /api/release metadata, with explicit unavailable state instead of an old product fallback.
 - Include product version and exact source commit in download receipts and source ZIP filenames.
-- Verify committed code/main ancestry, release version, kernel hashes and exact tag target before publication. Preserve the existing public v0.9.1 tag.
+- Verify committed code/main ancestry, release version, kernel hashes and exact tag target before publication. Use the owner-selected v0.9.1 release and correct erroneous public labels only with explicit owner instruction and saved provenance.
 - Record actual checks/publication separately; native Windows and real model-account acceptance are not implied.
 
 ## Unreleased — Independent AI configuration
