@@ -75,3 +75,8 @@ The current main entry mounts PageContextBridge; standalone project entries need
 ## Installed kernel version
 
 The same-origin Agent GET /api/kernel supplies installed package metadata independently of GET /api/git. VersionFooter keeps0.90 as its original baseline/fallback and displays a valid managed manifest version after reload. No update button or mutation is performed in the browser. Use launcher menu6 for explicit offline update/recovery; see ../docs/kernel-management.html. No new frontend dependency.
+
+
+## Explicit distribution version (2026-10-17)
+
+Ship the complete source with config/release.json and the additive Agent GET /api/release. Rebuild/reload the frontend and restart changed Agent code. The footer labels Saplingagent product release, independently installed Kernel and Workspace Git version separately. Missing/old/offline metadata shows release unavailable instead of0.90. Product identity remains available without Git/authentication; a kernel-only update does not change the complete distribution declaration. No new process/dependency.

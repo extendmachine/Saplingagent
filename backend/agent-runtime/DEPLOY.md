@@ -66,3 +66,8 @@ Restart app after source changes and reload the frontend. Existing workspace/Age
 ## Kernel metadata deployment
 
 Ship contracts/kernel.mjs and kernel/manifest.json with the complete folder. GET /api/kernel reports installed metadata without model calls, conversations, local paths or arbitrary receipt fields. Missing legacy manifests fall back to0.90; invalid metadata reports a warning. Independent updates require a stopped app and the launcher kernel command, followed by dependency repair and startup verification. Source recovery does not restore business data. See ../../kernel/DEPLOY.md.
+
+
+## Distribution metadata deployment (2026-10-17)
+
+Ship config/release.json and contracts/release.mjs with the complete source; restart Agent to load GET /api/release. No model or credential is needed to read public distribution identity. Missing/invalid metadata returns503, without changing chat/Git/kernel behavior. An independent kernel update preserves the product declaration and may leave old application HTTP code without this additive route; frontend handles404 explicitly.

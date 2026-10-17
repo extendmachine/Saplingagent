@@ -478,3 +478,9 @@ Selection applies only to this runtime instance, keeps the configuration/source 
 ## Chat with files and inspect the result
 
 Use the paperclip, drop files into AI chat or paste an image. Attachments stay in your local project and restore with sent messages (20MiB/file,10/message). After interface changes, AI can use page_read to inspect the open project page's fresh DOM, layout and optional rendered image, without an extra folder or screen-recording permission. Keep the page open; a closed page or unavailable image is reported explicitly. [Usage and limits](docs/runtime.html#chat-files-pages).
+
+## Release identity
+
+The product distribution is **Saplingagent 0.9.2** (`config/release.json`). The footer and Bash menu display this release separately from **Kernel 0.90** and your **Workspace Git version**. Missing release metadata is shown as unavailable. A local Git reset does not erase product identity. Kernel-only updates preserve the complete distribution version.
+
+Downloadable source ZIPs record `releaseVersion` and the exact `sourceCommit` in `delivery.json`; their filenames contain both. The immutable `v0.9.1` tag predates this display correction; `v0.9.2` is the corrected patch. See the [release checklist](docs/release-checklist.html) for code-first verification and the [published releases](https://github.com/extendmachine/Saplingagent/releases) for the actual publication status. Source tags, published Releases and real-device/model acceptance are separate facts.

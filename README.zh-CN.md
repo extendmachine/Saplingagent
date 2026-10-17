@@ -491,3 +491,9 @@ Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍
 ## 文件对话与页面读取
 
 点击回形针、拖入文件或粘贴图片，即可随消息发送。附件保存在本地项目，已发送附件可随会话恢复（单文件20MiB、每条消息10个）。界面修改后，AI 可通过 page_read 读取当前打开页面的新 DOM、布局及可用的渲染图像，无需额外申请项目文件夹或录屏权限；页面未打开、图像不可用时会明确报告。[使用说明与限制](docs/runtime.html#chat-files-pages)。
+
+## 发布版本识别
+
+本发行源码的产品版本为 **Saplingagent 0.9.2**，唯一声明在 `config/release.json`。网页页脚和 Bash 菜单分别展示产品发布版本、**Kernel 0.90** 和用户的 **Workspace Git 版本**；信息缺失时明确显示不可用。重建本地 Git 不会清除产品标识，单独更新内核也不代表升级了整个应用。
+
+源码 ZIP 的 `delivery.json` 同时记录 `releaseVersion` 和精确的 `sourceCommit`，文件名也包含二者。已公开的 `v0.9.1` 标签保持原样；本次显示修正使用新补丁版 `v0.9.2`。维护者先核对并冻结代码，再核对版本声明、release 提交、不可移动的标签及下载包校验值。参见[发布检查表](docs/release-checklist.html)和[实际发布记录](https://github.com/extendmachine/Saplingagent/releases)；源码标签、GitHub Release、真机和真实模型验收分别记录。

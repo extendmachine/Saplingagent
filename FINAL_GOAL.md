@@ -75,7 +75,8 @@ Cloud content upload/download, additional operating-system installers, native ap
 3. A representative user request can change the local interface or backend with a verifiable, reloadable result. The delivered project remains modifiable.
 4. Context, source and business data remain organized and identifiable. Restart/source switching preserve actual data/login state according to documented behavior, without silently resending a task.
 5. User-created functionality can remain application-specific. Common seed changes have a stated reuse need and avoid unnecessary default complexity.
-6. Rules, dependencies, installation and modification instructions agree with the complete-folder delivery boundary and the every-turn completion-review receipt; Full Access remains unchanged. Unsupported platforms/dependencies and unverified adaptation are clearly identified.
+6. Before publishing, freeze and verify the actual code, then verify that the product version declaration, promoted release commit, immutable tag and downloaded package receipts agree. Product release, kernel and customer Git versions are distinct; never treat a bare tag as complete release metadata.
+7. Rules, dependencies, installation and modification instructions agree with the complete-folder delivery boundary and the every-turn completion-review receipt; Full Access remains unchanged. Unsupported platforms/dependencies and unverified adaptation are clearly identified.
 
 These criteria define the desired product. Actual implementation, automated checks, human acceptance and branch synchronization are recorded separately in the authoritative TODO.md and AI_TASKS.md.
 

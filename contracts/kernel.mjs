@@ -18,6 +18,7 @@ export const KERNEL_FILE_PATHS = [
 	"config/macos.json",
 	"config/windows.json",
 	"contracts/kernel.mjs",
+	"contracts/release.mjs",
 	"contracts/local-process.mjs",
 	"contracts/runtime-drain.mjs",
 	"contracts/ai-configuration.mjs",

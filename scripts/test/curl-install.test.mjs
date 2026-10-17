@@ -8,11 +8,13 @@ import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { initializeDownloadedRecords } from '../launcher/recipient-records.mjs';
 const exec=promisify(execFile),project=fileURLToPath(new URL('../../',import.meta.url)),sha='a'.repeat(40);
-async function fixture(t,{bad=false,link=false,os='Darwin'}={}){
+async function fixture(t,{bad=false,link=false,os='Darwin',invalidVersion=false}={}){
   const base=path.join(project,'.cache/curl-tests');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,"客户 app's "));t.after(()=>fs.rm(root,{recursive:true,force:true}));
   const bin=path.join(root,'bin'),source=path.join(root,'source',`Saplingagent-${sha}`);await fs.mkdir(bin);await fs.mkdir(source,{recursive:true});
   for(const f of ['install.sh','AGENTS.md','FINAL_GOAL.md','TODO.md','AI_TASKS.md','rules/README.md','scripts/launcher/recipient-records.mjs','scripts/macos/bootstrap.sh','scripts/windows/bootstrap.sh']){await fs.mkdir(path.dirname(path.join(source,f)),{recursive:true});await fs.writeFile(path.join(source,f),'Synthetic '+f+'\n');}
   await fs.writeFile(path.join(source,'Saplingagent.sh'),`#!/bin/bash\nprintf '%s\\n' "$*" >> "${root}/actions.txt"\nif [ "\${3:-}" = install ]; then printf SYNTHETIC_CHOICE; read -r answer; printf '%s\\n' "$answer" >> "${root}/actions.txt"; fi\n`);
+  await fs.mkdir(path.join(source,'config'),{recursive:true}); await fs.copyFile(path.join(project,'config/release.json'),path.join(source,'config/release.json'));
+  if(invalidVersion)await fs.writeFile(path.join(source,'config/release.json'),JSON.stringify({schemaVersion:1,version:'0.90'}));
   if(link)await fs.symlink('../../outside',path.join(source,'symlink'));
   const archive=path.join(root,'source.tar.gz');await exec('tar',['-czf',archive,'-C',path.dirname(source),path.basename(source)]);
   if(bad)await fs.writeFile(archive,'Not an archive');
@@ -23,6 +25,7 @@ async function fixture(t,{bad=false,link=false,os='Darwin'}={}){
 }
 test('release-only bootstrap downloads a pinned snapshot into a Unicode/new folder without Git refs',async t=>{
  const f=await fixture(t);await f.run(['--download-only','--dir','new 客户 app']);const dest=path.join(f.root,'new 客户 app');const receipt=JSON.parse(await fs.readFile(path.join(dest,'delivery.json'),'utf8'));
+ assert.equal(receipt.releaseVersion,JSON.parse(await fs.readFile(path.join(project,'config/release.json'),'utf8')).version);
  assert.equal(receipt.sourceCommit,sha);assert.equal(receipt.sourceRef,'release');assert.equal(receipt.git.initialBranch,'release');assert.equal(receipt.initializeRecords,true);
  const log=await fs.readFile(path.join(f.root,'curl.log'),'utf8');assert.doesNotMatch(log,/heads\/(main|testcode)/);assert.match(log,new RegExp(sha+'.tar.gz'));await assert.rejects(fs.access(path.join(dest,'.git')));
  for(const file of Object.keys(receipt.recordHashes))assert.equal(receipt.recordHashes[file],createHash('sha256').update(await fs.readFile(path.join(dest,file))).digest('hex'));
@@ -67,4 +70,9 @@ finally:os.close(fd)
 `;
   const {stdout}=await exec('python3',['-c',python,path.join(project,'install.sh'),f.root],{env:f.env});const result=JSON.parse(stdout);assert.equal(result.status,0,result.text);assert.equal(result.sent,true);
   const actions=await fs.readFile(path.join(f.root,'actions.txt'),'utf8');assert.match(actions,/--lang en install\n3\n--lang en/);
+});
+
+test('invalid distribution version is refused before reserving the customer destination',async t=>{
+ const f=await fixture(t,{invalidVersion:true});await assert.rejects(f.run(['--download-only']),/Release metadata/);
+ await assert.rejects(fs.access(path.join(f.root,'Saplingagent')));
 });

@@ -307,14 +307,20 @@
     },
     {
       "path": "contracts/kernel.mjs",
-      "sha256": "b9d02d5136be9d67d7d93235337fa26abcb414971cffc49949544daa8eea0705",
-      "bytes": 7705,
+      "sha256": "02508fb01179d8cba66ac24cacae158d6383c0bb9d2fa61d5c8864c8847dc4aa",
+      "bytes": 7731,
       "executable": false
     },
     {
       "path": "contracts/local-process.mjs",
       "sha256": "4fddd78b18dd869057da14a73c1ec9bf4501b344fc0f0214c0c8e8dca8edc17c",
       "bytes": 4550,
+      "executable": false
+    },
+    {
+      "path": "contracts/release.mjs",
+      "sha256": "a29b9aa0a123fc20e974107334db4594112af135744236dc9fb3beecf8943206",
+      "bytes": 828,
       "executable": false
     },
     {
@@ -391,14 +397,14 @@
     },
     {
       "path": "front/features/version/VersionFooter.tsx",
-      "sha256": "a7d735a6ae41a174a2f833661f9dfb76e74f7e64453a6917dc57b05ba742ceff",
-      "bytes": 3511,
+      "sha256": "f5a3cfb6b9256d6f4e5860bc3730e6a3c376b021ce27380fd92311687a60551c",
+      "bytes": 4322,
       "executable": false
     },
     {
       "path": "install.sh",
-      "sha256": "b0cc255232e7e122ceb98b56b57a78752229496c418405fdb149f252396146fa",
-      "bytes": 7140,
+      "sha256": "98ef901a58965c11dec4186bc99946e703960f0cefc0c06a6d5934124885ee6e",
+      "bytes": 7680,
       "executable": true
     },
     {
@@ -421,8 +427,8 @@
     },
     {
       "path": "kernel/DEPLOY.md",
-      "sha256": "342a90cfe6470c16c445308732c417f31ed869af90c2b6e3896210a566b21e4f",
-      "bytes": 3968,
+      "sha256": "2917df9c14f5164c6b74cc2e0a5273dd5bb86085599186532dda2171ce6807a3",
+      "bytes": 4401,
       "executable": false
     },
     {
@@ -457,14 +463,14 @@
     },
     {
       "path": "kernel/test/updates.test.mjs",
-      "sha256": "3b306e00f442d72b0da14c0071bfac93aa7702ce0c803081350db9463f6f48ce",
-      "bytes": 18925,
+      "sha256": "6c6a1fc1e57c057d27235e034f91f00f81bc4fafbd8ff49b312a351d96a736dd",
+      "bytes": 18990,
       "executable": false
     },
     {
       "path": "Saplingagent.sh",
-      "sha256": "d416685d31b3a5577ea7a0b59462d23a6f1e0edd1ff1798925c7a1a0cc3fd38d",
-      "bytes": 6566,
+      "sha256": "aaa7ba3214feeae40198283694a3becdd03d14865ff02779aeb97d0e1c11590d",
+      "bytes": 7154,
       "executable": true
     },
     {
@@ -493,8 +499,8 @@
     },
     {
       "path": "scripts/launcher/README.md",
-      "sha256": "190500a0684ad99348d984ae1bd6af3f66ef9dafbee56d49b1644a15be87ccbd",
-      "bytes": 6601,
+      "sha256": "eba553d4f7a50cc24cac3124436455b2a5e3e04161c9d71c5fb3b6f78ae7f290",
+      "bytes": 7312,
       "executable": false
     },
     {
@@ -541,8 +547,8 @@
     },
     {
       "path": "scripts/package-macos.mjs",
-      "sha256": "50ebf4fc891824d1942cec4f306e6bc20acc5411c9116c3db926b88ce79e11a2",
-      "bytes": 9158,
+      "sha256": "95aca515d8076fe5677d6f17ce62da4e33de4f2f4b6bfba9735c943774bee806",
+      "bytes": 9476,
       "executable": false
     },
     {
@@ -571,8 +577,8 @@
     },
     {
       "path": "scripts/test/curl-install.test.mjs",
-      "sha256": "d5132456c7d00a2444ac84950b527e8c986e9a80ffd02f2623d36f4622acf56a",
-      "bytes": 8344,
+      "sha256": "ef7a55fbc035d0f20db6bcc77c35d741758eaff0a6bb5700a6d931912c31a210",
+      "bytes": 9075,
       "executable": false
     },
     {
@@ -595,8 +601,14 @@
     },
     {
       "path": "scripts/test/macos.test.mjs",
-      "sha256": "106e1cb755640f896120b4a79bc40f21ee72f01299d3b32be56827081c64c49c",
-      "bytes": 24735,
+      "sha256": "0362dfc637830c3028ed497467319e5571c2c99880925020a3b45312c236d17b",
+      "bytes": 24876,
+      "executable": false
+    },
+    {
+      "path": "scripts/test/release-version.test.mjs",
+      "sha256": "039608c627399276aaef53fa13575872ac537c1bb85f734627b2612b2d07a0ce",
+      "bytes": 3375,
       "executable": false
     },
     {
@@ -627,6 +639,12 @@
       "path": "scripts/test/windows.test.mjs",
       "sha256": "1a2ff866633861e2ff24ad57b8e22a60db84bb903f9823e1b2d1bbb5a2149a5e",
       "bytes": 6631,
+      "executable": false
+    },
+    {
+      "path": "scripts/verify-release.mjs",
+      "sha256": "7e95035887c5f4877990b95cf590adaa9fc745d9eff08b13590c929835d09b8d",
+      "bytes": 3649,
       "executable": false
     },
     {
