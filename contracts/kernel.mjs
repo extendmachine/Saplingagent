@@ -13,7 +13,7 @@ export class KernelError extends Error {
 	}
 }
 export function isKernelPath(file) {
-	if (typeof file !== "string" || /[\x00-\x1f\x7f:]/.test(file) || file.includes("\\") || file.startsWith("/") || file.split("/").some((p) => !p || p === "." || p === ".." || p.startsWith(".test-")) || /(^|\/)(?:node_modules|data|logs|local-secrets|secrets|\.secrets|snapshots|\.runtime|\.cache|ai-tasks)(\/|$)/.test(file)) return false;
+	if (typeof file !== "string" || /[\x00-\x1f\x7f:]/.test(file) || /(?:^|\/)(?:\.DS_Store|selfdata\.json|auth\.json|service-token)$/.test(file) || file.includes("\\") || file.startsWith("/") || file.split("/").some((p) => !p || p === "." || p === ".." || p.startsWith(".test-")) || /(^|\/)(?:node_modules|data|logs|local-secrets|secrets|\.secrets|snapshots|\.runtime|\.cache|\.git|\.worktrees|\.venv|__pycache__|dist|build|ai-tasks)(\/|$)/.test(file)) return false;
 	if ([
 		"Saplingagent.sh",
 		"install.sh",
@@ -31,7 +31,7 @@ export function isKernelPath(file) {
 		".agents/.claude-plugin/plugin.json"
 	].includes(file)) return true;
 	if (/^\.agents\/skills\/(?:seed-page-edit|seed-research|seed-skill-author)\//.test(file)) return true;
-	return /^(?:kernel\/|contracts\/|scripts\/|backend\/(?:agent-runtime|workspace|app-builder|mcp-runtime|runtime-manager|ai-config)\/|front\/(?:chat|ai-config|features\/(?:git-version|runtime-control|version|page-context))\/)/.test(file) && !/(?:\.tsbuildinfo|\.log|\.env(?:\..*)?|\.key|\.pem)$/.test(file);
+	return /^(?:kernel\/|contracts\/|scripts\/|backend\/(?:agent-runtime|workspace|app-builder|mcp-runtime|runtime-manager|ai-config)\/|front\/(?:chat|ai-config|features\/(?:git-version|runtime-control|version|page-context))\/)/.test(file) && !/(?:\.tsbuildinfo|\.py[co]|\.log|\.env(?:\..*)?|\.key|\.pem|\.p12|\.pfx)$/.test(file);
 }
 export function validateKernelManifest(value) {
 	if (!value || value.schemaVersion !== 1 || typeof value.version !== "string" || !/^\d+\.\d+(?:\.\d+)?$/.test(value.version) || !Number.isInteger(value.appApi) || value.appApi < 1 || typeof value.minNode !== "string" || !/^\d+\.\d+\.\d+$/.test(value.minNode) || !Array.isArray(value.files) || !value.files.length || value.files.length > 512) throw new KernelError("INVALID_KERNEL", "Unsupported or malformed kernel manifest.", 400);

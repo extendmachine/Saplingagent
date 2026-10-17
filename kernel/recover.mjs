@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const idOk = (id) => typeof id === "string" && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(id);
 function owned(file) {
-	if (typeof file !== "string" || /[\x00-\x1f\x7f:]/.test(file) || file.includes("\\") || file.startsWith("/") || file.split("/").some((x) => !x || x === "." || x === ".." || x.startsWith(".test-")) || /(^|\/)(?:node_modules|data|logs|local-secrets|secrets|\.secrets|snapshots|\.runtime|\.cache|ai-tasks)(\/|$)/.test(file)) return false;
+	if (typeof file !== "string" || /[\x00-\x1f\x7f:]/.test(file) || /(?:^|\/)(?:\.DS_Store|selfdata\.json|auth\.json|service-token)$/.test(file) || file.includes("\\") || file.startsWith("/") || file.split("/").some((x) => !x || x === "." || x === ".." || x.startsWith(".test-")) || /(^|\/)(?:node_modules|data|logs|local-secrets|secrets|\.secrets|snapshots|\.runtime|\.cache|\.git|\.worktrees|\.venv|__pycache__|dist|build|ai-tasks)(\/|$)/.test(file)) return false;
 	return [
 		"Saplingagent.sh",
 		"install.sh",
@@ -23,7 +23,7 @@ function owned(file) {
 		"front/tsconfig.node.json",
 		"front/vite.config.ts",
 		".agents/.claude-plugin/plugin.json"
-	].includes(file) || /^\.agents\/skills\/(?:seed-page-edit|seed-research|seed-skill-author)\//.test(file) || !/(?:\.tsbuildinfo|\.log|\.env(?:\..*)?|\.key|\.pem)$/.test(file) && /^(?:kernel\/|contracts\/|scripts\/|backend\/(?:agent-runtime|workspace|app-builder|mcp-runtime|runtime-manager|ai-config)\/|front\/(?:chat|ai-config|features\/(?:git-version|runtime-control|version|page-context))\/)/.test(file);
+	].includes(file) || /^\.agents\/skills\/(?:seed-page-edit|seed-research|seed-skill-author)\//.test(file) || !/(?:\.tsbuildinfo|\.py[co]|\.log|\.env(?:\..*)?|\.key|\.pem|\.p12|\.pfx)$/.test(file) && /^(?:kernel\/|contracts\/|scripts\/|backend\/(?:agent-runtime|workspace|app-builder|mcp-runtime|runtime-manager|ai-config)\/|front\/(?:chat|ai-config|features\/(?:git-version|runtime-control|version|page-context))\/)/.test(file);
 }
 async function safe(root, file) {
 	if (/[\x00-\x1f\x7f:]/.test(file) || file.includes("\\") || file.startsWith("/") || file.split("/").some((x) => !x || x === "." || x === "..")) throw Error("Invalid recovery path.");

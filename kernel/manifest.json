@@ -601,8 +601,8 @@
     },
     {
       "path": "contracts/kernel.mjs",
-      "sha256": "55a9c8ca3c9422e1530798c80f97c69e7baaafc84589e5bc971b01e241c6ead1",
-      "bytes": 6612,
+      "sha256": "3324e5fbc7b0c6cf585518d2f397073a99fcc2b615caf57fc2551a5382a266c8",
+      "bytes": 6761,
       "executable": false
     },
     {
@@ -889,8 +889,8 @@
     },
     {
       "path": "kernel/build-manifest.mjs",
-      "sha256": "6468504eb1e9e99dfd98f5f878adf804d2e1554236e865bdfd20d056ba9584f7",
-      "bytes": 2952,
+      "sha256": "58256ddcbf507ed9e570c7cf9cbe20d0726fbe521684d2111efc1b60a6f92cfb",
+      "bytes": 3260,
       "executable": false
     },
     {
@@ -919,8 +919,8 @@
     },
     {
       "path": "kernel/recover.mjs",
-      "sha256": "69eb7a06cae962f7f5791d7c878a249aaa46814b9a34d494b0814651bb7af456",
-      "bytes": 8270,
+      "sha256": "3ea25c26fce5da6054caf8ad6ad13121606d8023121fed2bdb81d42e55fe6a83",
+      "bytes": 8419,
       "executable": false
     },
     {
@@ -943,8 +943,8 @@
     },
     {
       "path": "kernel/test/updates.test.mjs",
-      "sha256": "76bd11914f0f8acbba15fe1e0c1ee7adf81a80ca078d0df321cccd12b0736283",
-      "bytes": 12646,
+      "sha256": "15be88c15f6cf171ee983178a9910050d1058a58c92409f55b38317a55b8922e",
+      "bytes": 13840,
       "executable": false
     },
     {
