@@ -178,11 +178,13 @@ On first upgrade to this launcher, stop the existing launch window with Control+
 
 ## Manage the kernel independently
 
-Updates, Git management, complete restart and the common Agent/workspace/MCP/chat platform form the **Kernel**, currently **0.90**. Application pages and new business services remain independently maintained. The footer shows installed kernel and application Git versions separately.
+Install/update tooling, Git management, complete restart, AI configuration and engine adapters form the **Kernel**, currently **0.90**. Chat UI, workspace/context, page building/reading, MCP and all default/custom Skills remain freely editable application capabilities outside kernel updates and recovery. Application pages and new business services remain independently maintained. The footer shows installed kernel and application Git versions separately.
 
-Choose **6. Kernel management** or `bash Saplingagent.sh kernel` for status/backups, update preview, explicit update or manual restore. Local/own Git users can receive official release kernel features without merging application history or changing remotes. Business App/features/services, runtime configuration, conversations, attachments and credentials are outside the update package.
+Choose **6. Kernel management** or `bash Saplingagent.sh kernel` for status/backups, update preview, explicit update or manual restore. Local/own Git users can receive official release kernel features without merging application history or changing remotes. Application entries, styles, build settings/dependencies, mixed chat HTTP entry, business features/services, runtime configuration, conversations, attachments and credentials stay outside the update package. The complete installation still includes the application capabilities.
 
 **Updating can invalidate existing applications, dependencies or integrations.** Check conflicts, stop the app and back up important business data first. Applying source requires risk acknowledgement and saves a local kernel backup; conflicting local core edits are refused. Then run `bash Saplingagent.sh install --repair`, start and verify. Use `kernel restore <backup-id>` for explicit source recovery, including the saved standalone helper if the new launcher fails. Source restoration cannot undo business data changes or guarantee compatibility.
+
+The current schema2 manifest rejects the earlier broad prototype; old managers reject it before treating application files as deletions. Use current complete management tooling with a reviewed schema2 baseline once; obsolete plans/backups require deliberate reconciliation.
 
 See [kernel update and recovery](docs/kernel-management.html). A new kernel becomes available only after the maintainer publishes its manifest/files to release; older releases without a manifest report unavailable.
 

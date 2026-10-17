@@ -61,7 +61,7 @@ export async function checkKernel(root, { source = githubSource() } = {}) {
 		local = validateKernelManifest(JSON.parse(installed.bytes.toString()));
 		localManifestHash = installed.hash;
 	} catch {
-		throw new KernelError("INVALID_KERNEL", "Install a kernel-aware release once before independent updates; keep your application/data.", 400);
+		throw new KernelError("INVALID_KERNEL", "Install the current schema2 management tooling and reviewed baseline once. Obsolete broad manifests cannot be updated automatically; application files are unchanged.", 400);
 	}
 	const commit = await source.resolve();
 	if (!/^[a-f0-9]{40}$/.test(commit)) throw new KernelError("KERNEL_INTEGRITY", "Invalid source revision.", 500);
@@ -111,12 +111,12 @@ export async function prepareKernel(root, { source = githubSource() } = {}) {
 	const payloads = changes.filter((entry) => entry.afterHash !== null);
 	for (let i = 0; i < payloads.length; i += 4) {
 		const results = await Promise.allSettled(payloads.slice(i, i + 4).map(async (entry) => {
-		const expected = next.get(entry.path), bytes = await source.read(checked.sourceCommit, entry.path);
-		if (bytes.length !== expected.bytes || digest(bytes) !== expected.sha256) throw new KernelError("KERNEL_INTEGRITY", "Release digest/size mismatch: " + entry.path, 500);
-		await writeAtomic(root, prefix + "/files/" + entry.index, bytes, 0o600, { internal: true });
+			const expected = next.get(entry.path), bytes = await source.read(checked.sourceCommit, entry.path);
+			if (bytes.length !== expected.bytes || digest(bytes) !== expected.sha256) throw new KernelError("KERNEL_INTEGRITY", "Release digest/size mismatch: " + entry.path, 500);
+			await writeAtomic(root, prefix + "/files/" + entry.index, bytes, 0o600, { internal: true });
 		}));
 		// Wait for all staged writes before returning a download failure.
-		const failed = results.find(result => result.status === "rejected");
+		const failed = results.find((result) => result.status === "rejected");
 		if (failed) throw failed.reason;
 	}
 	const beforeManifest = await readOwned(root, KERNEL_MANIFEST);
@@ -174,7 +174,9 @@ export async function applyKernel(root, id, { acceptRisk = false } = {}) {
 		await assertOffline(root);
 		const prefix = ".runtime/kernel/plans/" + id, plan = validPlan(await jsonRead(root, prefix + "/plan.json"), id);
 		if (plan.conflicts.length) throw new KernelError("KERNEL_CONFLICT", "Locally changed kernel files require deliberate merging: " + plan.conflicts.join(", "));
-		if ((await readOwned(root, KERNEL_MANIFEST)).hash !== plan.baselineManifestHash) throw new KernelError("KERNEL_CONFLICT", "Kernel baseline changed after preview. Check again.");
+		const installed = await readOwned(root, KERNEL_MANIFEST);
+		validateKernelManifest(JSON.parse(installed.bytes.toString()));
+		if (installed.hash !== plan.baselineManifestHash) throw new KernelError("KERNEL_CONFLICT", "Kernel baseline changed after preview. Check again.");
 		const current = [];
 		for (const entry of plan.changes) {
 			const before = await readOwned(root, entry.path);
@@ -186,6 +188,10 @@ export async function applyKernel(root, id, { acceptRisk = false } = {}) {
 				if (stat.size > 8 * 1024 * 1024) throw new KernelError("INVALID_PLAN", "Staged source is too large.", 400);
 				bytes = await fs.readFile(file);
 				if (digest(bytes) !== entry.afterHash) throw new KernelError("KERNEL_INTEGRITY", "Staged file integrity mismatch.", 500);
+				if (entry.path === KERNEL_MANIFEST) {
+					const target = validateKernelManifest(JSON.parse(bytes.toString()));
+					if (target.version !== plan.version || target.appApi !== plan.appApi) throw new KernelError("INVALID_PLAN", "Staged manifest does not match the preview.", 400);
+				}
 			}
 			current.push({
 				entry,
