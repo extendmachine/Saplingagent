@@ -18,7 +18,7 @@ async function fixture(t, os = 'MINGW64_NT-10.0-19045') {
   await fs.writeFile(path.join(bin, 'uname'), `#!/bin/bash\nprintf '%s\\n' '${os}'\n`, { mode: 0o755 });
   await fs.writeFile(path.join(bin, 'cygpath'), "#!/bin/bash\nprintf '%s' \"C:\\\\test\\\\中文 app's folder\"\n", { mode: 0o755 });
   const decode = path.join(root, 'capture.mjs');
-  await fs.writeFile(decode, `import fs from 'node:fs'; const args=process.argv.slice(2); const i=args.indexOf('-EncodedCommand'); if(i<0)process.exit(90); const program=Buffer.from(args[i+1],'base64').toString('utf16le'); const item={args,program,root:process.env.SAPLING_BOOTSTRAP_ROOT,action:process.env.SAPLING_BOOTSTRAP_ACTION,flag:process.env.SAPLING_BOOTSTRAP_FLAG,language:process.env.SAPLING_LANG,argConversion:process.env.MSYS2_ARG_CONV_EXCL}; fs.appendFileSync(new URL('./capture.jsonl',import.meta.url),JSON.stringify(item)+'\\n'); process.exit(7);`);
+  await fs.writeFile(decode, `import fs from 'node:fs'; const args=process.argv.slice(2); const i=args.indexOf('-EncodedCommand'); if(i<0)process.exit(90); const program=Buffer.from(args[i+1],'base64').toString('utf16le'); const item={args,program,root:process.env.SAPLING_BOOTSTRAP_ROOT,action:process.env.SAPLING_BOOTSTRAP_ACTION,flag:process.env.SAPLING_BOOTSTRAP_FLAG,secondFlag:process.env.SAPLING_BOOTSTRAP_SECOND_FLAG,language:process.env.SAPLING_LANG,argConversion:process.env.MSYS2_ARG_CONV_EXCL}; fs.appendFileSync(new URL('./capture.jsonl',import.meta.url),JSON.stringify(item)+'\\n'); process.exit(7);`);
   await fs.writeFile(path.join(bin, 'powershell.exe'), `#!/bin/bash\nexec "${process.execPath}" "${decode}" "$@"\n`, { mode: 0o755 });
   return { root, env: { ...process.env, PATH: `${bin}:/usr/bin:/bin` } };
 }
@@ -54,7 +54,7 @@ test('Windows routing respects independent storage and retains configure/diagnos
   const result = await run(f, ['--lang', 'zh'], '1\n2\n4\n0\n');
   assert.equal(result.code, 0, result.output);
   assert.doesNotMatch(result.output, /1\. 安装|正在启动安装/);
-  assert.match(result.output, /\[0, 2-5, 9\]/);
+  assert.match(result.output, /\[0, 2-6, 9\]/);
   assert.deepEqual((await records(f.root)).map(x => x.action), ['configure', 'doctor']);
 });
 test('Linux/WSL installation refuses without invoking Windows tools; help/menu quit remain available', async t => {
@@ -69,3 +69,5 @@ test('invalid Windows action flags stop before PowerShell or downloads', async t
   assert.equal((await run(f, ['install', '--repair', '--other'])).code, 2);
   await assert.rejects(fs.access(path.join(f.root, 'capture.jsonl')));
 });
+
+test('Windows kernel routes optional update acknowledgement and recovery ID without shell interpolation',async t=>{const f=await fixture(t),id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';for(const args of [[],['status'],['check'],['update','--accept-risk'],['restore',id]])assert.equal((await run(f,['kernel',...args])).code,7);const rows=await records(f.root);assert.deepEqual(rows.map(x=>[x.action,x.flag,x.secondFlag]),[['kernel','',''],['kernel','status',''],['kernel','check',''],['kernel','update','--accept-risk'],['kernel','restore',id]]);assert.equal((await run(f,['kernel','restore','../escape'])).code,2);assert.equal((await records(f.root)).length,5);});

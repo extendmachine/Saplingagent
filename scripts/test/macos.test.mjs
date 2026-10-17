@@ -39,7 +39,7 @@ function runCli(root, action, extraEnv = {}) {
 }
 test('distribution filter excludes runtime/private files while retaining complete rules and Skills', () => {
   for (const file of ['local-secrets/codex/auth.json', 'backend/a/local-secrets/key.txt', 'data/session.json', 'backend/agent-runtime/ai-tasks/runtime/run.md', 'front/node_modules/react/index.js', '.runtime/codex/package.json', '.worktrees/coordination/TODO.md', 'logs/front/x.log', 'backend/a/.env.local', 'backend/a/token.pem', 'front/dist/index.html', '1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', 'Saplingagent.command', '4-Doctor.command', '5-Configure-OpenCode.command']) assert.equal(distributable(file), false, file);
-  for (const file of ['LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', 'rules/README.md', 'rules/clawtask-package-skill-v2.zip', '.agents/skills/seed-page-edit/SKILL.md', 'Saplingagent.sh', 'install.sh', 'scripts/launcher/recipient-records.mjs', '.agents/.claude-plugin/plugin.json', 'backend/agent-runtime/providers/claude.mjs', 'front/App.tsx', 'scripts/macos/codex.sh']) assert.equal(distributable(file), true, file);
+  for (const file of ['kernel/manifest.json','kernel/recover.mjs','contracts/kernel.mjs','LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', 'rules/README.md', 'rules/clawtask-package-skill-v2.zip', '.agents/skills/seed-page-edit/SKILL.md', 'Saplingagent.sh', 'install.sh', 'scripts/launcher/recipient-records.mjs', '.agents/.claude-plugin/plugin.json', 'backend/agent-runtime/providers/claude.mjs', 'front/App.tsx', 'scripts/macos/codex.sh']) assert.equal(distributable(file), true, file);
 });
 test('missing login does not launch services or copy global authentication', async t => {
   const root = await fixture(t);
@@ -191,8 +191,8 @@ try:
    try:text+=os.read(fd,65536)
    except OSError:break
    decoded=text.decode('utf8',errors='replace')
-   if sys.argv[3]=='yes' and '请选择 [0, 2-5, 9]' in decoded and not quit:os.write(fd,b'0\\n');quit=True
-   if '请选择 [0-5, 9]' in decoded and not menu:os.write(fd,b'1\\n');menu=True
+   if sys.argv[3]=='yes' and '请选择 [0, 2-6, 9]' in decoded and not quit:os.write(fd,b'0\\n');quit=True
+   if '请选择 [0-6, 9]' in decoded and not menu:os.write(fd,b'1\\n');menu=True
    if sys.argv[2]=='yes' and '请选择 [1-3]' in decoded and not storage:os.write(fd,b'1\\n');storage=True
    if '安装 / 更新执行完成' in decoded and not quit:os.write(fd,b'0\\n');quit=True
   done,value=os.waitpid(pid,os.WNOHANG)
@@ -231,3 +231,5 @@ test('actual macOS terminal menu1 updates source and reloads fresh launcher with
  await fs.writeFile(path.join(source,'feature.txt'),'new-source');const cli=path.join(source,'scripts/launcher/cli.mjs');await fs.writeFile(cli,"console.log('UPDATED_LAUNCHER_LOADED');\n"+await fs.readFile(cli,'utf8'));await git(source,'commit','-am','new release');const latest=await git(source,'rev-parse','HEAD');
  const result=await menuPty(app);assert.equal(result.code,0,result.text);assert.equal(result.quit,true);assert.match(result.text,/源码已更新/);assert.match(result.text,/UPDATED_LAUNCHER_LOADED/);assert.match(result.text,/依赖检查完成/);assert.equal(await fs.readFile(path.join(app,'feature.txt'),'utf8'),'new-source');assert.equal(await git(app,'rev-parse','HEAD'),latest);assert.equal(await fs.access(path.join(app,'.runtime/macos-install.lock')).then(()=>true,()=>false),false);
 });
+
+test('actual macOS bootstrap dispatches independent kernel status without install or model setup',{skip:process.platform!=='darwin'},async t=>{const root=await fixture(t);await nativeNode(root);await fs.cp(path.join(project,'kernel'),path.join(root,'kernel'),{recursive:true});await fs.copyFile(path.join(project,'contracts/kernel.mjs'),path.join(root,'contracts/kernel.mjs'));const result=await promisify(execFile)('/bin/bash',[path.join(root,'Saplingagent.sh'),'--lang','en','kernel','status'],{cwd:root,env:{...process.env,SEED_ROOT:root}});assert.match(result.stdout,/"version": "0.90"/);assert.match(result.stdout,/Local kernel backups/);assert.equal(await fs.access(path.join(root,'UNEXPECTED_LAUNCH')).then(()=>true,()=>false),false);});
