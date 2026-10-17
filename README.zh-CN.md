@@ -438,6 +438,6 @@ Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍
 
 ## 发布版本识别
 
-本发行源码的产品版本为 **Saplingagent 0.9.2**，唯一声明在 `config/release.json`。网页页脚和 Bash 菜单分别展示产品发布版本、**Kernel 0.90** 和用户的 **Workspace Git 版本**；信息缺失时明确显示不可用。重建本地 Git 不会清除产品标识，单独更新内核也不代表升级了整个应用。
+本发行源码的产品版本为 **Saplingagent 0.9.1**，唯一声明在 `config/release.json`。网页页脚和 Bash 菜单分别展示产品发布版本、**Kernel 0.90** 和用户的 **Workspace Git 版本**；信息缺失时明确显示不可用。重建本地 Git 不会清除产品标识，单独更新内核也不代表升级了整个应用。
 
-源码 ZIP 的 `delivery.json` 同时记录 `releaseVersion` 和精确的 `sourceCommit`，文件名也包含二者。已公开的 `v0.9.1` 标签保持原样；本次显示修正使用新补丁版 `v0.9.2`。维护者先核对并冻结代码，再核对版本声明、release 提交、不可移动的标签及下载包校验值。参见[发布检查表](docs/release-checklist.html)和[实际发布记录](https://github.com/extendmachine/Saplingagent/releases)；源码标签、GitHub Release、真机和真实模型验收分别记录。
+源码 ZIP 的 `delivery.json` 同时记录 `releaseVersion` 和精确的 `sourceCommit`，文件名也包含二者。维护者明确指定本次发布为 `v0.9.1`，标签、发布页面、产品声明和下载回执必须对应同一份已核对源码；不得自行递增用户指定的版本号。维护者先核对并冻结代码，再核对版本声明、release 提交、不可移动的标签及下载包校验值。参见[发布检查表](docs/release-checklist.html)和[实际发布记录](https://github.com/extendmachine/Saplingagent/releases)；源码标签、GitHub Release、真机和真实模型验收分别记录。
