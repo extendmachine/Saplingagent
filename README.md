@@ -95,6 +95,7 @@ First choose **English** or **中文** (Enter defaults to English), then use the
 | 3. Start app | Launch the local services and open the chat page. |
 | 4. Diagnostics | Check installation, saved AI access and runtime readiness. |
 | 5. Git / storage setup | Review or change repository ownership without reinstalling dependencies. |
+| 6. Kernel management | Inspect, check, update or restore the independent platform kernel in every Git storage mode. |
 | 9. Change language | Switch English / Chinese. |
 | 0. Quit | Close the menu. |
 
@@ -132,6 +133,7 @@ bash Saplingagent.sh opencode
 bash Saplingagent.sh start --no-open
 bash Saplingagent.sh doctor
 bash Saplingagent.sh git
+bash Saplingagent.sh kernel
 bash Saplingagent.sh logout
 ```
 
@@ -173,6 +175,16 @@ After switching, click **Restart app** to load that version's frontend, backend,
 The recovery page is at **`<actual app URL>/__saplingagent/runtime`**. For example, if the launcher prints `http://127.0.0.1:5175/`, use `http://127.0.0.1:5175/__saplingagent/runtime`. It survives frontend/backend failure while the runtime manager remains running, and works when an older version lacks the restart button. Repair the source/dependencies/login and retry there. Current UI recovers an unsent draft; older UIs may not. Conversations and login files remain in the application folder. No automatic resend or code rollback.
 
 On first upgrade to this launcher, stop the existing launch window with Control+C and run `bash Saplingagent.sh start` again. The public gateway starts from port5173 and internal Vite from5174. Manager4314 controls Agent4310, workspace4311, builder4312 and optional PDF4313 when its source exists; all are configured starting values and are automatically advanced when occupied. Actual per-instance ports stay fixed across service restarts unless an internal preference is deliberately changed. If a branch adds dependencies, install them first. See [project service startup](docs/project-services.html). Restart app discovers new conventional Node backends and reloads registered project frontends/workers from `config/services.json`; the AI adding the feature configures its startup and readiness. Internal port edits apply in-page, while public/control address preferences take effect on a later cold launch. The controller itself is loaded by the launcher. Legacy direct service callers cannot be tracked by the gateway; finish their work before restarting old versions.
+
+## Manage the kernel independently
+
+Updates, Git management, complete restart and the common Agent/workspace/MCP/chat platform form the **Kernel**, currently **0.90**. Application pages and new business services remain independently maintained. The footer shows installed kernel and application Git versions separately.
+
+Choose **6. Kernel management** or `bash Saplingagent.sh kernel` for status/backups, update preview, explicit update or manual restore. Local/own Git users can receive official release kernel features without merging application history or changing remotes. Business App/features/services, runtime configuration, conversations, attachments and credentials are outside the update package.
+
+**Updating can invalidate existing applications, dependencies or integrations.** Check conflicts, stop the app and back up important business data first. Applying source requires risk acknowledgement and saves a local kernel backup; conflicting local core edits are refused. Then run `bash Saplingagent.sh install --repair`, start and verify. Use `kernel restore <backup-id>` for explicit source recovery, including the saved standalone helper if the new launcher fails. Source restoration cannot undo business data changes or guarantee compatibility.
+
+See [kernel update and recovery](docs/kernel-management.html). A new kernel becomes available only after the maintainer publishes its manifest/files to release; older releases without a manifest report unavailable.
 
 ## What menu 1 updates
 
@@ -287,6 +299,7 @@ Choose Diagnostics in the menu, or run:
 ```bash
 bash Saplingagent.sh doctor
 bash Saplingagent.sh git
+bash Saplingagent.sh kernel
 ```
 
 Doctor reports installation, versions, saved AI configuration and configured-port status without displaying credentials or issuing model prompts.
