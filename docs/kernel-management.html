@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kernel management · Saplingagent</title>
+<style>
+:root{color-scheme:light}body{margin:0;background:#f6f7f4;color:#283128;font:16px/1.75 system-ui,sans-serif}main{max-width:980px;margin:auto;padding:36px 22px 72px}nav{display:flex;gap:20px;flex-wrap:wrap}a{color:#456a39}h1{font-size:42px;line-height:1.15;letter-spacing:-1.4px;margin-bottom:16px}h2{font-size:23px;line-height:1.4}section{background:white;border:1px solid #dde2d8;border-radius:16px;padding:24px;margin:22px 0}.eyebrow{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#64745a}.lead{font-size:20px;max-width:740px;color:#52614c}.warning{background:#fff7e9;border-color:#ead2a6}pre{background:#edf0e9;padding:18px;overflow:auto;border-radius:10px;font-size:14px}table{border-collapse:collapse;width:100%}th,td{padding:12px;border-bottom:1px solid #dde2d8;text-align:left;vertical-align:top}small{color:#67735e}code{overflow-wrap:anywhere}@media(max-width:650px){h1{font-size:34px}section{padding:18px}table{display:block;overflow:auto}}
+</style></head><body><main>
+<nav><a href="index.html">Documentation</a><a href="git-versions.html">Application versions</a><a href="project-services.html">Restart app</a><a href="../README.md">Quick start</a></nav>
+<p class="eyebrow">Saplingagent · Platform maintenance</p>
+<h1>Your application.<br>A separately maintained kernel.</h1>
+<p class="lead">Receive shared platform improvements while keeping your application's code, Git history and private records. Original kernel baseline: <strong>0.90</strong>.</p>
+<section class="warning"><h2>Updates can invalidate existing functionality</h2>
+<p>A compatible manifest cannot guarantee that custom imports, dependencies, services or external integrations still work. Preview changes, stop the app and back up important business data before applying. An owned-source backup is created, but source recovery cannot undo business data changes. Updates are optional and require explicit compatibility-risk acknowledgement.</p></section>
+<section><h2>What belongs to the kernel?</h2><table>
+<thead><tr><th>Maintained as kernel</th><th>Kept with your application</th></tr></thead>
+<tbody><tr><td>Install/update tooling, Git controls, complete restart and runtime management</td><td>Application Git metadata, branches, remotes, commits and version names</td></tr>
+<tr><td>Common Agent, workspace, app-builder, MCP, AI configuration and chat platform</td><td>Business entry <code>front/App.tsx</code>, separate business features and new backend services</td></tr>
+<tr><td>Shared contracts, platform controls, required dependency declarations and default Skills</td><td><code>config/runtime.json</code>, <code>config/services.json</code>, rules/goals/task records, custom Skills</td></tr>
+<tr><td>Exact owned files and hashes in <code>kernel/manifest.json</code></td><td>Conversations, uploaded files, credentials, business data, logs and installed dependencies</td></tr></tbody></table>
+<p>Membership defines the update package. Existing current-user Full Access remains unchanged. You may edit core source; changes can conflict with later updates. Do not regenerate a recipient manifest just to conceal those differences.</p></section>
+<section><h2>Open independent management</h2><pre>bash Saplingagent.sh kernel</pre>
+<p>Or choose <strong>6. Kernel management</strong> from the launcher, available with local Git, your own repository or follow-release storage. The kernel has no daemon, additional port or model request. It downloads the official public release at one immutable commit; it never runs Git checkout/merge, changes remotes or uploads local content.</p>
+<table><tr><th>Command</th><th>Result</th></tr>
+<tr><td><code>kernel status</code></td><td>Installed version, original baseline and local backup IDs.</td></tr>
+<tr><td><code>kernel check</code></td><td>Download a staged preview, validate hashes/compatibility and list conflicts. Application source stays unchanged.</td></tr>
+<tr><td><code>kernel update</code></td><td>Preview, acknowledge risk, back up and apply owned source while the app is stopped.</td></tr>
+<tr><td><code>kernel restore &lt;backup-id&gt;</code></td><td>Explicitly recover recorded source; refuse unrelated later edits.</td></tr></table>
+<p>Commands are passed after <code>bash Saplingagent.sh</code>. Noninteractive update additionally requires <code>--accept-risk</code>; using it deliberately accepts the same compatibility warning.</p></section>
+<section><h2>Update, repair, verify</h2><ol>
+<li>Run <code>bash Saplingagent.sh kernel check</code>. Resolve listed core conflicts deliberately. Unchanged upstream files with local customizations are preserved.</li>
+<li>Back up important application data and stop this app using Control+C in its startup terminal. Apply/restore refuse a live owned runtime or installation.</li>
+<li>Run <code>bash Saplingagent.sh kernel update</code>. Review the preview and type <code>UPDATE</code> to acknowledge the warning. Keep the reported backup ID.</li>
+<li>Run <code>bash Saplingagent.sh install --repair</code> to install the applied dependency declarations without merging application source.</li>
+<li>Start the app normally; verify health, your existing application and an existing conversation. The footer displays the installed kernel version separately from Git.</li></ol>
+<p><strong>Source applied is not runtime-ready.</strong> Update does not automatically start the app, run a model or migrate your data. Ordinary application changes still use the in-page Restart app control.</p></section>
+<section><h2>If the new kernel fails</h2><pre>bash Saplingagent.sh kernel status
+bash Saplingagent.sh kernel restore &lt;backup-id&gt;
+bash Saplingagent.sh install --repair</pre>
+<p>Stop the app first, restore explicitly, repair old dependencies, then start and verify. Original bytes/modes and a journal stay under <code>.runtime/kernel/backups/</code>. Partial application is recorded; there is no automatic rollback. Recovery checks every target before writing and refuses source edited after the update.</p>
+<p>If the new launcher cannot run, use the <strong>previous project Node executable</strong> directly with the saved independent helper:</p><pre>&lt;project-node-executable&gt; .runtime/kernel/recover.mjs &lt;backup-id&gt;</pre>
+<p>The previous updater copies this self-contained helper before replacing source. It needs no installed npm dependencies. Keep the old Node runtime if a new release changes its version. A failed or interrupted operation can leave <code>.runtime/kernel-operation.lock</code>; inspect its PID/owner and confirm that operation is stopped before removing only that stale lock manually. Backups are retained locally; manage their retention yourself after verification.</p></section>
+<section><h2>Publishing and limits</h2><p>The maintainer generates and checks <code>kernel/manifest.json</code> with <code>node kernel/build-manifest.mjs --maintainer</code> and <code>--check</code>. A new kernel becomes available only after those checked files are deliberately published to <code>release</code>. Older releases without the manifest report <code>KERNEL_UNAVAILABLE</code>; do not interpret that as a completed update.</p>
+<p>Unsupported application API changes, a Node runtime below the minimum, invalid paths, hash mismatches, changed previews and automatic downgrades are refused. Public GitHub access is required; network or rate-limit errors leave source unchanged. Hashes validate a commit-pinned download, not a separate publisher signature. Native Windows update/recovery still requires hardware acceptance.</p>
+<p>Machine contracts: <a href="../kernel/CONTRACT.md">Kernel</a>, <a href="../kernel/DEPLOY.md">Deployment/recovery</a>, <a href="api-interfaces.html">Metadata API</a>. Official platform references: <a href="../kernel/REFERENCES.md">GitHub sources</a>.</p></section>
+<small>Technical guide · 2026-10-16 · Kernel baseline0.90</small>
+</main></body></html>

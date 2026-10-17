@@ -62,3 +62,7 @@ New turns attribute replies to the submitted message and send runtime instructio
 ## Enabling attachments and fresh page reading
 
 Restart app after source changes and reload the frontend. Existing workspace/Agent/builder/MCP processes implement this feature; there is no new persistent process to register. Frontend dependency installation is covered by its lockfile. Back up local data/attachments with sessions; removing composer chips does not delete stored files. No session migration, credential import, API-key change or global dependency is needed. Real image understanding depends on the selected model/provider and quota; synthetic checks establish transport, not account entitlement. File uploads are20 MiB each, JSON upload 32 MiB and chat attachment count 10. Reverse proxies must preserve same-origin routes/body budgets and support long polling.
+
+## Kernel metadata deployment
+
+Ship contracts/kernel.mjs and kernel/manifest.json with the complete folder. GET /api/kernel reports installed metadata without model calls, conversations, local paths or arbitrary receipt fields. Missing legacy manifests fall back to0.90; invalid metadata reports a warning. Independent updates require a stopped app and the launcher kernel command, followed by dependency repair and startup verification. Source recovery does not restore business data. See ../../kernel/DEPLOY.md.

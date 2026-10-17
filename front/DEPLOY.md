@@ -71,3 +71,7 @@ The central conversation is now a right-edge AI chat panel, initially expanded. 
 Install the locked frontend dependencies with npm ci and rebuild/reload. html-to-image1.11.13 is dynamically loaded only for page images; no global package or browser executable. Keep /api/attachments and /api/page on the existing same-origin Agent proxy, with32MiB upload bodies and long polling. Restart app loads changed backends/MCP. Local original bytes remain in data/attachments; deleting a composer chip does not erase storage. Pending composer attachments survive chat collapse, but unsent attachment selections are not restored across full page reload. Sent attachments restore from workspace. Clipboard formats depend on browser/OS: image/file payloads upload, plain text/file paths remain text.
 
 The current main entry mounts PageContextBridge; standalone project entries need the same component if their rendered DOM is to be inspected. Source files remain available to workspace tools without extra folder permission. External resources, frames, canvas/video and font rendering have DOM-image limitations; see builder deployment guidance.
+
+## Installed kernel version
+
+The same-origin Agent GET /api/kernel supplies installed package metadata independently of GET /api/git. VersionFooter keeps0.90 as its original baseline/fallback and displays a valid managed manifest version after reload. No update button or mutation is performed in the browser. Use launcher menu6 for explicit offline update/recovery; see ../docs/kernel-management.html. No new frontend dependency.

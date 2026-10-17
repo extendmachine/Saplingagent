@@ -1,0 +1,1131 @@
+{
+  "schemaVersion": 1,
+  "version": "0.90",
+  "appApi": 1,
+  "minNode": "24.11.0",
+  "notes": "Independent platform kernel. Updates may invalidate custom applications; back up, inspect conflicts and verify after dependency repair.",
+  "files": [
+    {
+      "path": ".agents/.claude-plugin/plugin.json",
+      "sha256": "ced16d1413cebb23907081662a483ca0a839acae216ebdd758a7e6547ed5974b",
+      "bytes": 92,
+      "executable": false
+    },
+    {
+      "path": ".agents/skills/seed-page-edit/agents/openai.yaml",
+      "sha256": "791c40e8d5396de4b55ab19bd17c197b551ac2574759286b8ff439bb6aeec209",
+      "bytes": 264,
+      "executable": false
+    },
+    {
+      "path": ".agents/skills/seed-page-edit/SKILL.md",
+      "sha256": "6d5de90146b88c6215940c7fa22ca759801a092ae2f14b28094608c4180870bf",
+      "bytes": 6142,
+      "executable": false
+    },
+    {
+      "path": ".agents/skills/seed-research/agents/openai.yaml",
+      "sha256": "cb41aed8b98f1765eed79f34ac775f5cd5ad5d01c2ead57abdd758320d1016bd",
+      "bytes": 245,
+      "executable": false
+    },
+    {
+      "path": ".agents/skills/seed-research/SKILL.md",
+      "sha256": "a5333655aba7741b6f47719cd349e554c21a9be903f68d5ad6f7bf2250a68650",
+      "bytes": 2124,
+      "executable": false
+    },
+    {
+      "path": ".agents/skills/seed-skill-author/agents/openai.yaml",
+      "sha256": "ee2589f2a7d683608682c5776cb8bd6b0b232379c42fb2cc8c2e5ae4ee6feb0d",
+      "bytes": 249,
+      "executable": false
+    },
+    {
+      "path": ".agents/skills/seed-skill-author/SKILL.md",
+      "sha256": "15bde86692f250251935ec0ff9df081e999357b6bb9ee0407e408c197a90a5b9",
+      "bytes": 3237,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/approval.mjs",
+      "sha256": "109ee6fa700521029c9306aa313efe31b8d9a96c06c1527f9d673ff24827c2b4",
+      "bytes": 1103,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/CONTRACT.md",
+      "sha256": "bc4f40358e669802d21de9f1209787d2d773b8f0395cd9775758ec5e791bbf27",
+      "bytes": 22488,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/DEPLOY.md",
+      "sha256": "80b2f7293b19c73b37bafa2beab585d1ff846a49b49f268517477f9e3a2fb4e9",
+      "bytes": 15861,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/git-versions.mjs",
+      "sha256": "22f83d2471da4cfbced3581c381a5a274098dd12b70c987a818fb4409d1cd86a",
+      "bytes": 12522,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/package-lock.json",
+      "sha256": "6879a5e93a92cffa94fddd1bbe87ec15db3710d9a6eb53465d5c648578ee4944",
+      "bytes": 59490,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/package.json",
+      "sha256": "39c065f2eeff7d96078d084ac7a59db337abd1132ca7262320bac3510a7285cc",
+      "bytes": 418,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/permissions.mjs",
+      "sha256": "43ebd6dc060cd71c6fa002dd6c8680ff77f716ff916a2d52c86fe8b4bcc1d2f7",
+      "bytes": 1252,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/providers/claude.mjs",
+      "sha256": "154a8c1ebc56014e444435110764a6656a42374bda814cf23965f85b6d250d8e",
+      "bytes": 10763,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/providers/contract.mjs",
+      "sha256": "61efc3970773b00427b91ad8b757e1f2e87613791814d84d1b73617282425407",
+      "bytes": 1779,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/providers/opencode.mjs",
+      "sha256": "05088a93dcbbec26e4fbc818f80cf08cbd16f07f9f78e922caf6a32418af2813",
+      "bytes": 13243,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/REFERENCES.md",
+      "sha256": "e4bd558894b42083d51586aaa287e1110096d1c2d6f7052c2a80ec6490468062",
+      "bytes": 12689,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/rpc.mjs",
+      "sha256": "6a9fbd0114208d86c0d42b2809b4fb0c0d44f7d7a73948c01d953bb3dd7c62d3",
+      "bytes": 138,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/server.mjs",
+      "sha256": "8534d888c43085ab9c22df9230f89719cd6cc94ecb4cf2bc6b96f40f5fb89381",
+      "bytes": 59534,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/SERVICE.md",
+      "sha256": "e6d5d1d5c3ebc7446fc51d9b623693d781b38906ba44e14177fc01a6b6b78371",
+      "bytes": 17315,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/tasks.mjs",
+      "sha256": "bdbffe173ab3ec9b6ae99e3343f602cc1f0f988fccedc0171f5748bccb091b79",
+      "bytes": 4621,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/approval.test.mjs",
+      "sha256": "2c59503fffb69380afc282cf71ea81329e9d5cbe4a5e4415afa10ecd8f6777d5",
+      "bytes": 886,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/attachments-http.test.mjs",
+      "sha256": "9479ce8e79282f2b7740ef801b5c460c07aecb7d71067f87a8cf2536eeaec107",
+      "bytes": 5190,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/claude.test.mjs",
+      "sha256": "490d1d8783381f0d7541e6aebd9b7d1f2c1460da0b68764e921ab4e4efd6c7d7",
+      "bytes": 14562,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/configured-engine.test.mjs",
+      "sha256": "bf67db03c27bf048034e21afb2912ed88f953eb929d742bd786d40a0502d23f1",
+      "bytes": 8926,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/git-http.test.mjs",
+      "sha256": "888aef8dd30c9aa996f1f4ce6e865b9bba609fd5207ee7254257500decf8be74",
+      "bytes": 7671,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/git-versions.test.mjs",
+      "sha256": "a288359bf31a32cc9ddd2e41376600fa3aa490bb022276bd9e46cfb27f7df905",
+      "bytes": 13056,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/kernel-http.test.mjs",
+      "sha256": "13f9bf3ec70e270082f2f7828de403078d093b918c568e753b09c1f2b062b59a",
+      "bytes": 1810,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/media-fixture.mjs",
+      "sha256": "62d19ac15a47bce9e025b1f36e2a1e580041d2b4fbd471a3d6ff1f3f7c534d82",
+      "bytes": 3347,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/opencode-chat-http.test.mjs",
+      "sha256": "c3794512c1744a156cb7c1da8d8c54b8b4b71be2e6109ecd542ec1092be96d25",
+      "bytes": 6386,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/opencode-messages.test.mjs",
+      "sha256": "adbb106435aaae3832733e3181fb389a9dcd1719c0b7c71299b82c1d8b204074",
+      "bytes": 13472,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/permissions.test.mjs",
+      "sha256": "5f43f675b083f55ddd0167a26a4f898b2a0ee3272c4c882a642e62884956c255",
+      "bytes": 1726,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/progress-clock.mjs",
+      "sha256": "46ed5e76a4e013e0bacb12123034f89d4c522fe576e889f90287880c95966982",
+      "bytes": 631,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/provider-contract.test.mjs",
+      "sha256": "3316374e637df086353fffda01901d5c918c7e92a084a96d630af070e4c4279b",
+      "bytes": 1757,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/rpc.test.mjs",
+      "sha256": "f79908be30f4c0b96e7273cc70ff9cb833af32904b4d64ce1c466a6dd4d0cb11",
+      "bytes": 10775,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/tasks.test.mjs",
+      "sha256": "39b9537ac43b0606592f84d20838d18ed208fd150192af41fea62443a1c7d076",
+      "bytes": 1864,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/tool-context.test.mjs",
+      "sha256": "31948cdbca7c25973ec63d15d5b5aeb0a5a288da45db0d93b7ab7d5f3c3a0f3d",
+      "bytes": 913,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/turn-progress-integration.test.mjs",
+      "sha256": "89333822d8aac056ff7ccc7e066f93edf9f21d93c0b7c1a42b532f8eee1dc64f",
+      "bytes": 23718,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/test/turn-progress.test.mjs",
+      "sha256": "2f8433aecb97909daa36a5423ea3a46de83c10a5e0eae550fcdc872a1d336552",
+      "bytes": 6809,
+      "executable": false
+    },
+    {
+      "path": "backend/agent-runtime/turn-progress.mjs",
+      "sha256": "38a137631c3f3508e6dc3157fcc6d06dd82de846b151a15c48cd91ef33f03a63",
+      "bytes": 5214,
+      "executable": false
+    },
+    {
+      "path": "backend/ai-config/auth.mjs",
+      "sha256": "1ffebe55f1dfc1f12e1ab86cbb2460412d8ee7e2c38169c714205d7e2cc57463",
+      "bytes": 4495,
+      "executable": false
+    },
+    {
+      "path": "backend/ai-config/CONTRACT.md",
+      "sha256": "1d681e6db88f2a1c9db8617417b2c6acbb74da83b5f8b12f832b5336fff1b2b1",
+      "bytes": 7114,
+      "executable": false
+    },
+    {
+      "path": "backend/ai-config/credentials.mjs",
+      "sha256": "6b0e958bf59290c6e718ac28aca69da771cf76dd1d76b5856953a8864db95e33",
+      "bytes": 5800,
+      "executable": false
+    },
+    {
+      "path": "backend/ai-config/DEPLOY.md",
+      "sha256": "a3fc9846a6fe3fd4ef5c1c4c2a350b1325899f054decee1328255c1ca0bde0e0",
+      "bytes": 5552,
+      "executable": false
+    },
+    {
+      "path": "backend/ai-config/REFERENCES.md",
+      "sha256": "731cd2c96e64e00fdf9779061d1a73c6c300740a486db28d2072dc544b74a259",
+      "bytes": 4419,
+      "executable": false
+    },
+    {
+      "path": "backend/ai-config/server.mjs",
+      "sha256": "84787cb035126e5b99a929be6d68193b9974eebe9696d633be98a546a65a9892",
+      "bytes": 7061,
+      "executable": false
+    },
+    {
+      "path": "backend/ai-config/SERVICE.md",
+      "sha256": "149f6bae529407f8df00036cbc5ee5a8a912f03a33fb54551bc5649df2b9cc09",
+      "bytes": 2059,
+      "executable": false
+    },
+    {
+      "path": "backend/ai-config/store.mjs",
+      "sha256": "582107020a2588e5071150921a946c82011875be6ec100aaf40c135a280ecc1a",
+      "bytes": 13142,
+      "executable": false
+    },
+    {
+      "path": "backend/ai-config/test/configuration.test.mjs",
+      "sha256": "f0aed6a4c1d19279bc18b7043662a08273189a9f19519cdd83f45f7cbbf4bd85",
+      "bytes": 12751,
+      "executable": false
+    },
+    {
+      "path": "backend/ai-config/test/credentials.test.mjs",
+      "sha256": "80fcef58a08bec735abbac27bfb6de221b01697c771f67b3aa7702f9ed76dc55",
+      "bytes": 12300,
+      "executable": false
+    },
+    {
+      "path": "backend/app-builder/builder.mjs",
+      "sha256": "5051ed69858ba8c5f6eec5fda76179e5f71e7c1b5f804327d5e88bdad61991ea",
+      "bytes": 18956,
+      "executable": false
+    },
+    {
+      "path": "backend/app-builder/CONTRACT.md",
+      "sha256": "bd62b4c6a23574baf790bab8a50da0f9daa5916acb32e776d54921be4f324916",
+      "bytes": 9323,
+      "executable": false
+    },
+    {
+      "path": "backend/app-builder/DEPLOY.md",
+      "sha256": "2bf221c7b793fbf46dcf101f0da81ae51a4a2de2024512725ed3b0959edd91d9",
+      "bytes": 6506,
+      "executable": false
+    },
+    {
+      "path": "backend/app-builder/package-lock.json",
+      "sha256": "08eb695ca71076b127f719cba2e038edf11f54e1d29d46fd24710e6b5979a28c",
+      "bytes": 316,
+      "executable": false
+    },
+    {
+      "path": "backend/app-builder/package.json",
+      "sha256": "d6fb080cd429d0b411482db8a806a087ffb6e68e4ef4e40514804c148312fbe2",
+      "bytes": 285,
+      "executable": false
+    },
+    {
+      "path": "backend/app-builder/page-broker.mjs",
+      "sha256": "854147cf8a54a9c99dfe756e3a2cac233696fa99c34b6689ef9f7cd35d81b913",
+      "bytes": 5652,
+      "executable": false
+    },
+    {
+      "path": "backend/app-builder/REFERENCES.md",
+      "sha256": "86c5904891f8d82766e56a65b8503ab2e90fd99997fd7943908ed333c3489cf3",
+      "bytes": 2994,
+      "executable": false
+    },
+    {
+      "path": "backend/app-builder/server.mjs",
+      "sha256": "7b9200fb81d4e365e8785f9b159adbbd00d3aa405a9b174f322c3eea6d081e0c",
+      "bytes": 9237,
+      "executable": false
+    },
+    {
+      "path": "backend/app-builder/SERVICE.md",
+      "sha256": "dfe3d852f4f54561f834d0fa8ddb696116e98ff41879ecb3c8224649593f8764",
+      "bytes": 8330,
+      "executable": false
+    },
+    {
+      "path": "backend/app-builder/test/builder.test.mjs",
+      "sha256": "2848297c9c0dc9bb8d218a8b777a765da762b7cbd7302261f4b89af56f9a6b9a",
+      "bytes": 21182,
+      "executable": false
+    },
+    {
+      "path": "backend/app-builder/test/page-broker.test.mjs",
+      "sha256": "ad1ce0e5d972251d0d2debc20ba830c86ccab88aa552ee74a9540c93a3186eac",
+      "bytes": 2634,
+      "executable": false
+    },
+    {
+      "path": "backend/mcp-runtime/CONTRACT.md",
+      "sha256": "a06ed41589fc1b3dd0ad35cbb0472ea8d2bf20d70ccfb35eaa5d7126b9bb67fd",
+      "bytes": 8407,
+      "executable": false
+    },
+    {
+      "path": "backend/mcp-runtime/DEPLOY.md",
+      "sha256": "8fdb585ef0866721fd0d9953abb233e6c9c8fbfd1cee1320ccc740ae0329d4c5",
+      "bytes": 5761,
+      "executable": false
+    },
+    {
+      "path": "backend/mcp-runtime/package-lock.json",
+      "sha256": "1d0782445ad7318fad0410a55e800abd6955e02fce55b672da64d14b892a84bb",
+      "bytes": 43442,
+      "executable": false
+    },
+    {
+      "path": "backend/mcp-runtime/package.json",
+      "sha256": "3b4eaa1d0c1796fa9407fb31b6d05536acebe9a11ac3ea0f832103f21d5c0137",
+      "bytes": 428,
+      "executable": false
+    },
+    {
+      "path": "backend/mcp-runtime/REFERENCES.md",
+      "sha256": "b19cb92f2ca7d1e87aa8423723625bc662c3ac137a470b587642ca43cfa196fb",
+      "bytes": 3482,
+      "executable": false
+    },
+    {
+      "path": "backend/mcp-runtime/server.mjs",
+      "sha256": "446d235763bd7c7d3c56ee21dc92f6bf5bcdd488443d686b9b3ebd539d8d05f7",
+      "bytes": 23861,
+      "executable": false
+    },
+    {
+      "path": "backend/mcp-runtime/SERVICE.md",
+      "sha256": "69174c0b8b3853d8a2a04eeffd3f2ca0ae9f766279301f2940c6b8b4a289e096",
+      "bytes": 6537,
+      "executable": false
+    },
+    {
+      "path": "backend/mcp-runtime/test/protocol.test.mjs",
+      "sha256": "5ca6640e4ed6c43a776f2c342b9b0baa7704325d2bae9b297678c2c9d3887004",
+      "bytes": 22332,
+      "executable": false
+    },
+    {
+      "path": "backend/runtime-manager/CONTRACT.md",
+      "sha256": "7233fe416fd1a7bdff4812692918bc75123ae3628f3781c43628aca67ee846d7",
+      "bytes": 8506,
+      "executable": false
+    },
+    {
+      "path": "backend/runtime-manager/DEPLOY.md",
+      "sha256": "a8346457f72aced73c301a5aa9ec3dceff837dbced295891b490bf4b79ca1056",
+      "bytes": 4513,
+      "executable": false
+    },
+    {
+      "path": "backend/runtime-manager/gateway.mjs",
+      "sha256": "54fe1700c786a865289bd8f7e33450e6b2cbe96e55a4918f734f60ab6295abc3",
+      "bytes": 6058,
+      "executable": false
+    },
+    {
+      "path": "backend/runtime-manager/manager.mjs",
+      "sha256": "98f8399961c6178409bf349f2cc00eddb606a0fd41727d50fe57779be9993160",
+      "bytes": 17554,
+      "executable": false
+    },
+    {
+      "path": "backend/runtime-manager/package.json",
+      "sha256": "08991e2ebe64fcf21b6c115c9125fb067dac0e4be7ed66dcb70562b88e1aaafe",
+      "bytes": 208,
+      "executable": false
+    },
+    {
+      "path": "backend/runtime-manager/ports.mjs",
+      "sha256": "c3909f015ac6f1ed5b55e9e3e48aca924f6fdcd8fffc8c2b09c6b1584c278274",
+      "bytes": 1674,
+      "executable": false
+    },
+    {
+      "path": "backend/runtime-manager/REFERENCES.md",
+      "sha256": "94e21ae6e874203913e387393e107ecd2a4108a6ed28d2291276296b8f067195",
+      "bytes": 2962,
+      "executable": false
+    },
+    {
+      "path": "backend/runtime-manager/server.mjs",
+      "sha256": "7b5645d9dc5b745238ad6db55306094f6fc5d2da02a34ad89cf262cd5a192498",
+      "bytes": 3223,
+      "executable": false
+    },
+    {
+      "path": "backend/runtime-manager/SERVICE.md",
+      "sha256": "79054a1211e33111a9dd317bb51a56f05cad4e24d17504a4ecc13ea091b1534b",
+      "bytes": 3614,
+      "executable": false
+    },
+    {
+      "path": "backend/runtime-manager/services.mjs",
+      "sha256": "c494a73e387e1f79e9d3b0d9712a9c518749d2758720a2481c78740abd9f2af8",
+      "bytes": 10854,
+      "executable": false
+    },
+    {
+      "path": "backend/runtime-manager/test/manager.test.mjs",
+      "sha256": "7d40a04230913268492a0ea9d3fd8476f9d93f79b757a7ee57c4ec5cac174454",
+      "bytes": 27716,
+      "executable": false
+    },
+    {
+      "path": "backend/runtime-manager/test/ports.test.mjs",
+      "sha256": "a3ee8fb8582358f5f2c9b3881635fcb08e4104b4d1f43612fa960dc47b127e59",
+      "bytes": 2072,
+      "executable": false
+    },
+    {
+      "path": "backend/runtime-manager/test/services.test.mjs",
+      "sha256": "d5da33f4ea8b82b7d036714a4690c4a09c2049035cd0f411a4eff05c8401fa73",
+      "bytes": 3387,
+      "executable": false
+    },
+    {
+      "path": "backend/workspace/attachments.mjs",
+      "sha256": "93141607acd70177297c10f846e13b754e2073b2d1cc920b0d9f52139e42b523",
+      "bytes": 5678,
+      "executable": false
+    },
+    {
+      "path": "backend/workspace/CONTRACT.md",
+      "sha256": "28184550900ec79efd5c151fbb4a1e3407b64386043f48e8f93608568711e74f",
+      "bytes": 5605,
+      "executable": false
+    },
+    {
+      "path": "backend/workspace/DEPLOY.md",
+      "sha256": "09ab366cd3089358047410a6ff0fd21b8a737da83562ab8c30a0586b70f4c1bc",
+      "bytes": 4435,
+      "executable": false
+    },
+    {
+      "path": "backend/workspace/package.json",
+      "sha256": "e5f5cf4d44808603e7a8fc476dedb911cb53cd892877a7cc0c1865e42169a684",
+      "bytes": 278,
+      "executable": false
+    },
+    {
+      "path": "backend/workspace/REFERENCES.md",
+      "sha256": "a80715f943f9288082ef6b5381af06fbc0ba694bf6cbc2e4a157ccd3939fcf5a",
+      "bytes": 764,
+      "executable": false
+    },
+    {
+      "path": "backend/workspace/server.mjs",
+      "sha256": "6c679aca1915e954cbd9ae9723f52c8de74b9e548794836b4462f08fb063ad30",
+      "bytes": 7009,
+      "executable": false
+    },
+    {
+      "path": "backend/workspace/SERVICE.md",
+      "sha256": "ecd1771cedce08b492fa3077acce0df5eb4268fec58a3bddc40491dd4b917499",
+      "bytes": 4609,
+      "executable": false
+    },
+    {
+      "path": "backend/workspace/store.mjs",
+      "sha256": "bb4efccc9bd7922f99db8cceae475f06c34acf75def5f5f70d027d5b8eb7526d",
+      "bytes": 12466,
+      "executable": false
+    },
+    {
+      "path": "backend/workspace/test/attachments.test.mjs",
+      "sha256": "9d8ee26853ee6b52ae9046827749d79aa300ba17fad99c8db4a495fe56f41e19",
+      "bytes": 4194,
+      "executable": false
+    },
+    {
+      "path": "backend/workspace/test/workspace.test.mjs",
+      "sha256": "0e783d0d0c574d867c6f6a6c58987101c3a6fd5871941d525b20787789809d66",
+      "bytes": 7780,
+      "executable": false
+    },
+    {
+      "path": "config/macos.json",
+      "sha256": "5375ad7f3d2c762bf9b2755bea1ee41a5f499d98b92bc46b660c7d72c9321f06",
+      "bytes": 60,
+      "executable": false
+    },
+    {
+      "path": "config/windows.json",
+      "sha256": "e712cf54235eab103e0535116157695fbbb96aa65b041dcfdccdef0978d2b73c",
+      "bytes": 242,
+      "executable": false
+    },
+    {
+      "path": "contracts/agent-tools.mjs",
+      "sha256": "fc21adb6edf33230eb7b028042af7149968ee5d0deefaa938ea54f1ec3b04666",
+      "bytes": 839,
+      "executable": false
+    },
+    {
+      "path": "contracts/ai-configuration.mjs",
+      "sha256": "2f6bc2da6fc51f515db9baa380eecc5a397d751fa197aadeb7653b0ed48d2077",
+      "bytes": 6096,
+      "executable": false
+    },
+    {
+      "path": "contracts/attachments.mjs",
+      "sha256": "3b0c7977898006ae51acdd7a71143bc10f3075a80c2f4476118de5665d2821bf",
+      "bytes": 2000,
+      "executable": false
+    },
+    {
+      "path": "contracts/codex-rpc.mjs",
+      "sha256": "45b6e3addc3a5fe989543782073b453588081614733fdd026e3c3a404dab57ec",
+      "bytes": 3692,
+      "executable": false
+    },
+    {
+      "path": "contracts/kernel.mjs",
+      "sha256": "55a9c8ca3c9422e1530798c80f97c69e7baaafc84589e5bc971b01e241c6ead1",
+      "bytes": 6612,
+      "executable": false
+    },
+    {
+      "path": "contracts/local-process.mjs",
+      "sha256": "4fddd78b18dd869057da14a73c1ec9bf4501b344fc0f0214c0c8e8dca8edc17c",
+      "bytes": 4550,
+      "executable": false
+    },
+    {
+      "path": "contracts/README.md",
+      "sha256": "cf6d1c97bc37b7b32b3443dd8abd3bd5c67301bd1f72e5093e9c0b55af0bf1e1",
+      "bytes": 2960,
+      "executable": false
+    },
+    {
+      "path": "contracts/runtime-api.md",
+      "sha256": "43dfa39455fd5898f884edf3aebee84e9fe1c22c6dfe2df2a66f66d9f2211e3b",
+      "bytes": 17387,
+      "executable": false
+    },
+    {
+      "path": "contracts/runtime-drain.mjs",
+      "sha256": "0c83824a976c9d4015c352dc19725448670e573ce30280f011dc5ccd4f28fda7",
+      "bytes": 952,
+      "executable": false
+    },
+    {
+      "path": "front/ai-config/import-file.test.mjs",
+      "sha256": "44111330466bc8c9b8db9d7d0327c1a52ce2621ec31a1b969009ad34f2fb5289",
+      "bytes": 1312,
+      "executable": false
+    },
+    {
+      "path": "front/ai-config/import-file.ts",
+      "sha256": "50132e4c227f453f9b3f42e01b96e45b920fc43bf239ebc0fcd4f4122ab99a6d",
+      "bytes": 744,
+      "executable": false
+    },
+    {
+      "path": "front/ai-config/index.html",
+      "sha256": "8581e6cc0839596e1afa4be50d15f13ae3682232ffbdb6ae5f5493354657e0df",
+      "bytes": 418,
+      "executable": false
+    },
+    {
+      "path": "front/ai-config/main.tsx",
+      "sha256": "e3d7b48d6a051eb08e29b920e6f85eef98fdc3681405de888706bc66f6c18e0a",
+      "bytes": 22215,
+      "executable": false
+    },
+    {
+      "path": "front/ai-config/README.md",
+      "sha256": "18c6108a21ce4f5d5367299d8d36b49f4c6b79f6bee9c0b64a959b251de32054",
+      "bytes": 2016,
+      "executable": false
+    },
+    {
+      "path": "front/ai-config/styles.css",
+      "sha256": "03534c8b3080db97c1f4b94ec80c69db3c9b3a8776055db7fe5ae36163418ecc",
+      "bytes": 5881,
+      "executable": false
+    },
+    {
+      "path": "front/ai-config/vite.config.mjs",
+      "sha256": "783a44532b165ac99d528ef84cf76bd2d65e81ace24e505a08e42dabc6776c4c",
+      "bytes": 286,
+      "executable": false
+    },
+    {
+      "path": "front/chat/ApplicationBoundary.tsx",
+      "sha256": "f02ebb4916a828166ca864c6c115171b9b8f2ced21978345d06524f9e6791367",
+      "bytes": 595,
+      "executable": false
+    },
+    {
+      "path": "front/chat/AttachmentControls.tsx",
+      "sha256": "8476832faab974fe0ec736503a72d7b5c1badd4e80f96b3aa815dfb4bf774e45",
+      "bytes": 3907,
+      "executable": false
+    },
+    {
+      "path": "front/chat/attachments.css",
+      "sha256": "cf2f963a4f69110070bd2198cffca98c32fcc312ed9750d9d687f220148704a3",
+      "bytes": 1861,
+      "executable": false
+    },
+    {
+      "path": "front/chat/attachments.test.mjs",
+      "sha256": "ed9fa97710c4dd3b39a1056b211260d5f8cd5ec4906346b5babe6378177965eb",
+      "bytes": 3788,
+      "executable": false
+    },
+    {
+      "path": "front/chat/attachments.ts",
+      "sha256": "24619fadc07a33dd13f690db2eac763b82f8f2269b41f2768ed86724f3f3f9ce",
+      "bytes": 3117,
+      "executable": false
+    },
+    {
+      "path": "front/chat/chat-dock.css",
+      "sha256": "8f2a7ef6228f6e3bb33cb8c23da6802656f55bf134cfba106f2945f29b67a37a",
+      "bytes": 2961,
+      "executable": false
+    },
+    {
+      "path": "front/chat/chat.css",
+      "sha256": "c852f34269b708b41c13e22bc061d930c91a35d2810bfc1654c82c3c1cdfaf0f",
+      "bytes": 7562,
+      "executable": false
+    },
+    {
+      "path": "front/chat/ChatDock.tsx",
+      "sha256": "c17995139b4c8c7ba90d5e9916bd601e5697f4f2250693087352997c16d1983a",
+      "bytes": 1526,
+      "executable": false
+    },
+    {
+      "path": "front/chat/ChatPanel.tsx",
+      "sha256": "93175f2d885e38d28b56fe71a257497cc733a94df86bb77ecd43dcc4c0fd2481",
+      "bytes": 9385,
+      "executable": false
+    },
+    {
+      "path": "front/chat/kernel-version.test.mjs",
+      "sha256": "f7e5d6a4308e85a0eeb0f5a62418ecd18b6786fa4b513aee2335ac5075a6c774",
+      "bytes": 2838,
+      "executable": false
+    },
+    {
+      "path": "front/chat/README.md",
+      "sha256": "e11110151e6a4783fa13d6025e8dd6fd5f7b073952c5104dfe14ae4845dcd234",
+      "bytes": 6446,
+      "executable": false
+    },
+    {
+      "path": "front/chat/restart-control.test.mjs",
+      "sha256": "b03b90b68caf2b6eda1d2fde9bcb0078f74edb2399ccae97b157c78e76120d9a",
+      "bytes": 3591,
+      "executable": false
+    },
+    {
+      "path": "front/chat/restart-draft.test.mjs",
+      "sha256": "903953ecdbacbb926d5904ec88d5563ed6f3e10ee2799868c5c0d2d04f3b80b0",
+      "bytes": 1651,
+      "executable": false
+    },
+    {
+      "path": "front/chat/restart-draft.ts",
+      "sha256": "fdd70227b50988bb08916315465233f72d4e085bcc72157f2e97562277b45531",
+      "bytes": 1050,
+      "executable": false
+    },
+    {
+      "path": "front/chat/RestartDraft.tsx",
+      "sha256": "7cfb3432d586da80d89a802be1160e9ee2847fcb9343eb744e1c8c1867746565",
+      "bytes": 1014,
+      "executable": false
+    },
+    {
+      "path": "front/chat/runtime-api.ts",
+      "sha256": "8081b72e19d8529bd0cdddf0d4f1f11fc3c352116634ee43c9abfe3da40c787f",
+      "bytes": 4910,
+      "executable": false
+    },
+    {
+      "path": "front/chat/runtime-reload.test.mjs",
+      "sha256": "1b7ab84b4eeb0debcb04d3c8699e82f9370481270eae58d90880686eeb72b79d",
+      "bytes": 1759,
+      "executable": false
+    },
+    {
+      "path": "front/chat/session-recovery.test.mjs",
+      "sha256": "5bf61eb3d687658f2cce1f779e1c081439903a9b69ea82117aeade963418a44a",
+      "bytes": 25602,
+      "executable": false
+    },
+    {
+      "path": "front/chat/sse.test.mjs",
+      "sha256": "46514dfd286b5f08b216823d23ad30d2ad4dd14c44542d7647f42065c7cb78f9",
+      "bytes": 1770,
+      "executable": false
+    },
+    {
+      "path": "front/chat/sse.ts",
+      "sha256": "f796e33fab6cebe4c6516a535379b862b97f8eb2d5853220396a963d188e2cc8",
+      "bytes": 2441,
+      "executable": false
+    },
+    {
+      "path": "front/chat/useSeedRuntime.ts",
+      "sha256": "b479e7f4450f91a6614f689acd512c48aaba1ec75e6f9013ec14cef312950743",
+      "bytes": 21260,
+      "executable": false
+    },
+    {
+      "path": "front/features/git-version/GitVersionPanel.tsx",
+      "sha256": "f4ac75365d69f079f41aca6ffba99dcce54eea01bca4f00c4c9744602f6d340d",
+      "bytes": 11583,
+      "executable": false
+    },
+    {
+      "path": "front/features/page-context/capture.ts",
+      "sha256": "ad1c136957bb27bba16c766bb021f18efb3fc9d61e1c036ea4feef59659f147b",
+      "bytes": 4433,
+      "executable": false
+    },
+    {
+      "path": "front/features/page-context/PageContextBridge.tsx",
+      "sha256": "27f3946adfe327a0774e4559270f5dcaf28bb5f8c5f08b5d1f577f1414ff9656",
+      "bytes": 2316,
+      "executable": false
+    },
+    {
+      "path": "front/features/runtime-control/restart-reload.ts",
+      "sha256": "9ea27078cf9247affa0f251f1849991729ede8e2764333eff5e454a17ecbfd5e",
+      "bytes": 721,
+      "executable": false
+    },
+    {
+      "path": "front/features/runtime-control/RestartServices.tsx",
+      "sha256": "e22f54ccf74b0956bd888411d2ea9aefa19af302356ba1099ee0ca1e420c1bc1",
+      "bytes": 5747,
+      "executable": false
+    },
+    {
+      "path": "front/features/runtime-control/runtime-control.css",
+      "sha256": "d3d1f33616c499cabf3f4dfcecc76de87f6f3986faf308a7e3587b5251c745ad",
+      "bytes": 1841,
+      "executable": false
+    },
+    {
+      "path": "front/features/version/VersionFooter.tsx",
+      "sha256": "a7d735a6ae41a174a2f833661f9dfb76e74f7e64453a6917dc57b05ba742ceff",
+      "bytes": 3511,
+      "executable": false
+    },
+    {
+      "path": "front/index.html",
+      "sha256": "84f1e17d5a903bb842a773926eece4e5ef12934d824b0443de08f2d4e5c43e97",
+      "bytes": 448,
+      "executable": false
+    },
+    {
+      "path": "front/main.tsx",
+      "sha256": "e06f6aa125e5fedfa7df7adbf649b2d22e3ab6611ae88bec929974cf3199cad8",
+      "bytes": 827,
+      "executable": false
+    },
+    {
+      "path": "front/package-lock.json",
+      "sha256": "ba550df17dfdcacd211a7387266c79550798bb5546cf0890ad962afe0084eae8",
+      "bytes": 178287,
+      "executable": false
+    },
+    {
+      "path": "front/package.json",
+      "sha256": "49eebe6920972e5be38422909f7c52ad74153ce29014a65290371c608e7264d5",
+      "bytes": 737,
+      "executable": false
+    },
+    {
+      "path": "front/styles.css",
+      "sha256": "3222f022eaafb230340582c7e8a2299ff17e3902f3f0cc8dfb22c6ca12754e84",
+      "bytes": 9532,
+      "executable": false
+    },
+    {
+      "path": "front/tsconfig.json",
+      "sha256": "84f8a1990a9d8e6235f85f251499e24e59c1adc6aad091ec6683bf1e5a3a4cb5",
+      "bytes": 496,
+      "executable": false
+    },
+    {
+      "path": "front/vite.config.ts",
+      "sha256": "66ea2249f44133fc0da858984911aa83ecfd72837cb0f0bd522ed62c70c38ce3",
+      "bytes": 922,
+      "executable": false
+    },
+    {
+      "path": "install.sh",
+      "sha256": "b0cc255232e7e122ceb98b56b57a78752229496c418405fdb149f252396146fa",
+      "bytes": 7140,
+      "executable": true
+    },
+    {
+      "path": "kernel/build-manifest.mjs",
+      "sha256": "6468504eb1e9e99dfd98f5f878adf804d2e1554236e865bdfd20d056ba9584f7",
+      "bytes": 2952,
+      "executable": false
+    },
+    {
+      "path": "kernel/cli.mjs",
+      "sha256": "06e37cefadbf23bcf91e6d7400c092f368004bc159bf4bb66421a181f3873024",
+      "bytes": 5263,
+      "executable": false
+    },
+    {
+      "path": "kernel/CONTRACT.md",
+      "sha256": "f9d9be48404292d054a3bbbf477534c0544a61291f33b8a4463f1780f8c8e0c6",
+      "bytes": 3531,
+      "executable": false
+    },
+    {
+      "path": "kernel/DEPLOY.md",
+      "sha256": "a29aa1fbfa4909e36ca4f2c94ec3871afa0a82f338272bab8c362f3f4a15e5f8",
+      "bytes": 2712,
+      "executable": false
+    },
+    {
+      "path": "kernel/manager.mjs",
+      "sha256": "535c3260193d4b1422ebc7a4975f10dc718f2c385117e42d16e48fe3e60c774a",
+      "bytes": 13427,
+      "executable": false
+    },
+    {
+      "path": "kernel/recover.mjs",
+      "sha256": "69eb7a06cae962f7f5791d7c878a249aaa46814b9a34d494b0814651bb7af456",
+      "bytes": 8270,
+      "executable": false
+    },
+    {
+      "path": "kernel/REFERENCES.md",
+      "sha256": "c0d9dc437c3b244e717e62a2aef3576841610f217b653195d580665ef8ca0b38",
+      "bytes": 1214,
+      "executable": false
+    },
+    {
+      "path": "kernel/SERVICE.md",
+      "sha256": "233e6ce11bb0c523e9fdcb1d56d240fff64f63c500f15930fd5f1f17bb1160eb",
+      "bytes": 932,
+      "executable": false
+    },
+    {
+      "path": "kernel/storage.mjs",
+      "sha256": "5447185ff2621975d410f0ca6c2ef0aa0df50b1b6615dd3642d4c505bfe23fb5",
+      "bytes": 3693,
+      "executable": false
+    },
+    {
+      "path": "kernel/test/updates.test.mjs",
+      "sha256": "76bd11914f0f8acbba15fe1e0c1ee7adf81a80ca078d0df321cccd12b0736283",
+      "bytes": 12646,
+      "executable": false
+    },
+    {
+      "path": "Saplingagent.sh",
+      "sha256": "d416685d31b3a5577ea7a0b59462d23a6f1e0edd1ff1798925c7a1a0cc3fd38d",
+      "bytes": 6566,
+      "executable": true
+    },
+    {
+      "path": "scripts/dev.mjs",
+      "sha256": "cb06af79a98cd104917ba2bea1965fe00ca1086acccbbfd0bf62b98cf460860f",
+      "bytes": 4684,
+      "executable": false
+    },
+    {
+      "path": "scripts/install.mjs",
+      "sha256": "4bdf61826a08db80d418130190375918875a3272da152e82356075ff2676e0ee",
+      "bytes": 1366,
+      "executable": false
+    },
+    {
+      "path": "scripts/launcher/cli.mjs",
+      "sha256": "581acd99518b41fd2c011d9b05cd660a225162c453e6e397d221cc0a3f6b3fcf",
+      "bytes": 26123,
+      "executable": false
+    },
+    {
+      "path": "scripts/launcher/git-storage.mjs",
+      "sha256": "360f8d18ed07f718e114c3f934224d6e46f5b82df6fc1404eb2a8f87e1bb4f1f",
+      "bytes": 18542,
+      "executable": false
+    },
+    {
+      "path": "scripts/launcher/README.md",
+      "sha256": "190500a0684ad99348d984ae1bd6af3f66ef9dafbee56d49b1644a15be87ccbd",
+      "bytes": 6601,
+      "executable": false
+    },
+    {
+      "path": "scripts/launcher/recipient-records.mjs",
+      "sha256": "dcd2e3613475764c5bdc000113b646d98ee3fcc4f48d2c9fa2b90825bafd7f6b",
+      "bytes": 7505,
+      "executable": false
+    },
+    {
+      "path": "scripts/launcher/source-update.mjs",
+      "sha256": "da47e464f2dbcede1498819760baadde9de5d07608a82dc1fff72d2147d69103",
+      "bytes": 7460,
+      "executable": false
+    },
+    {
+      "path": "scripts/login.mjs",
+      "sha256": "7d3f1b44468098a22e40c8258918f3cb9bc0d3c2ef06a477c36c19059248bbec",
+      "bytes": 613,
+      "executable": false
+    },
+    {
+      "path": "scripts/macos/bootstrap.sh",
+      "sha256": "1a26bd9483731b2b253a3d57a8910f7df42005f81bdd0791caa7068e1654efde",
+      "bytes": 5937,
+      "executable": true
+    },
+    {
+      "path": "scripts/macos/cli.mjs",
+      "sha256": "d3f5a39b4ae59c4760f8c3dfc57f53ae205c0ff18672cb9cf7b5b3e69f036b47",
+      "bytes": 111,
+      "executable": false
+    },
+    {
+      "path": "scripts/macos/codex.sh",
+      "sha256": "eb7e2f471ec5ae772b0c7295b1fc9e7347b28a472554a4eb28aac21cf28ea26b",
+      "bytes": 738,
+      "executable": true
+    },
+    {
+      "path": "scripts/macos/README.md",
+      "sha256": "ef6380e39f344341b1900bd564d71dd5caac50e06f0da86f0ceca9b9e4cf3a2b",
+      "bytes": 20548,
+      "executable": false
+    },
+    {
+      "path": "scripts/package-macos.mjs",
+      "sha256": "50ebf4fc891824d1942cec4f306e6bc20acc5411c9116c3db926b88ce79e11a2",
+      "bytes": 9158,
+      "executable": false
+    },
+    {
+      "path": "scripts/package-windows.mjs",
+      "sha256": "3af6d9dc9f0c3a71829e7230a16ed6a807a613dce74ae908030938b65106306d",
+      "bytes": 376,
+      "executable": false
+    },
+    {
+      "path": "scripts/README.md",
+      "sha256": "af26207e3cfdaa9d3f3f1982dfc837cf429a4f7da6868e1c9d98fe013136ff2e",
+      "bytes": 8945,
+      "executable": false
+    },
+    {
+      "path": "scripts/REFERENCES.md",
+      "sha256": "95221818c98626049921bb476dacf8e56d58ce987e7235706b41ee97e89de340",
+      "bytes": 1174,
+      "executable": false
+    },
+    {
+      "path": "scripts/setup.mjs",
+      "sha256": "d53a3a67e1a4d13bdb52c142efaa79ef8f1a137a1a67868c934b649b74b662e1",
+      "bytes": 3805,
+      "executable": false
+    },
+    {
+      "path": "scripts/test/curl-install.test.mjs",
+      "sha256": "d5132456c7d00a2444ac84950b527e8c986e9a80ffd02f2623d36f4622acf56a",
+      "bytes": 8344,
+      "executable": false
+    },
+    {
+      "path": "scripts/test/device-detection.test.mjs",
+      "sha256": "c3d4961a77de6e0f32635780037cd8ff2c452724e2283ef9528c54b6c64eb978",
+      "bytes": 4747,
+      "executable": false
+    },
+    {
+      "path": "scripts/test/git-storage.test.mjs",
+      "sha256": "ad89e88b2603cf8f370219940df4392269c36caf28faf3d315629fd4db6aeece",
+      "bytes": 21203,
+      "executable": false
+    },
+    {
+      "path": "scripts/test/launcher-menu.test.mjs",
+      "sha256": "fddf5dd9feb3997f085b1f038561b55348681b09ea449efde00339ccee11aca8",
+      "bytes": 12583,
+      "executable": false
+    },
+    {
+      "path": "scripts/test/macos.test.mjs",
+      "sha256": "106e1cb755640f896120b4a79bc40f21ee72f01299d3b32be56827081c64c49c",
+      "bytes": 24735,
+      "executable": false
+    },
+    {
+      "path": "scripts/test/runtime-ports.test.mjs",
+      "sha256": "985477abfa456c4c5fd44bfbf0dc74a39bf216ee0e0d9924a8240a0e68ba3c5d",
+      "bytes": 5869,
+      "executable": false
+    },
+    {
+      "path": "scripts/test/shell-routing.test.mjs",
+      "sha256": "b8d633c33aa23cbb2f896cc913f1630fa82884684e0bc00fc11d6a8e6f6ce06e",
+      "bytes": 6142,
+      "executable": false
+    },
+    {
+      "path": "scripts/test/source-update.test.mjs",
+      "sha256": "cb1d5f20558eb47720204b4cdff9225a05e2c57fd4fafb59fdaa6d2e7b227b39",
+      "bytes": 9874,
+      "executable": false
+    },
+    {
+      "path": "scripts/test/windows-terminal.test.mjs",
+      "sha256": "cf961b05045cbb2c8126f2594a972f3cfc39a62704b75cde8504456123f31f92",
+      "bytes": 7036,
+      "executable": false
+    },
+    {
+      "path": "scripts/test/windows.test.mjs",
+      "sha256": "1a2ff866633861e2ff24ad57b8e22a60db84bb903f9823e1b2d1bbb5a2149a5e",
+      "bytes": 6631,
+      "executable": false
+    },
+    {
+      "path": "scripts/windows/bootstrap.sh",
+      "sha256": "0c335ccff718f88ac45738dd5516ac4ed85deb180d763d62876934bf72099f9e",
+      "bytes": 11065,
+      "executable": true
+    },
+    {
+      "path": "scripts/windows/README.md",
+      "sha256": "f89e5ce738524b13aa79aa88b288ba2d6fdb02158cacca84732dfbcf6e223cf0",
+      "bytes": 16422,
+      "executable": false
+    }
+  ]
+}

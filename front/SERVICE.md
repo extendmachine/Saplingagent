@@ -62,7 +62,7 @@ Accessing the sessionStorage property can itself be denied. RestartDraft catches
 
 ## Kernel baseline version (2026-10-15)
 
-The page footer always displays Kernel version 0.90, a source-owned string in front/features/version/VersionFooter.tsx. It records the original kernel baseline independently of Git branches, commits and custom version names, including when Git is unavailable. Keep the trailing zero; update this value only for an explicit kernel release. Existing Git version polling/refresh behavior is unchanged.
+The page footer reads the installed package version from GET /api/kernel independently of Git history. The original baseline and fallback remain0.90, including when metadata is unavailable/invalid or the legacy package has no manifest. Managed packages display their own manifest version; do not change the fallback merely for application edits. Kernel metadata loads once per page; restart/reload after maintenance. Existing Git version polling/refresh behavior is unchanged.
 
 ## Right-side collapsible AI chat (2026-10-15)
 

@@ -37,7 +37,7 @@ try:
             except OSError: chunk=b''
             output+=chunk
             text=output.decode(errors='replace')
-            if not started and '[0-5, 9]' in text:
+            if not started and '[0-6, 9]' in text:
                 started=True;os.write(fd,sys.argv[3].encode())
             if not finished and sys.argv[2] in text:
                 finished=True;os.write(fd,b'0\n')

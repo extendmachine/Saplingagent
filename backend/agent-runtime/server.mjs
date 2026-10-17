@@ -1,3 +1,4 @@
+import { kernelStatus } from '../../contracts/kernel.mjs';
 import { readConnections,defaultSelection,codexConnection,codexCredentialStatus } from '../../contracts/ai-configuration.mjs';
 import { createDrainGate } from '../../contracts/runtime-drain.mjs';
 import { attachmentIds, attachmentSummary, ATTACHMENT_JSON_BYTES } from '../../contracts/attachments.mjs';
@@ -523,6 +524,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           return send(res, 200, { git: gitState, ...(['/api/git/switch', '/api/git/checkout'].includes(url.pathname) ? { reloadRecommended: true } : {}) });
         } finally { gitSwitching = false; }
       }
+      if (req.method === 'GET' && url.pathname === '/api/kernel') return send(res,200,{kernel:await kernelStatus(root)});
       if (req.method === 'GET' && url.pathname === '/api/sessions') return send(res, 200, await ws('/sessions'));
       const sessionId = url.pathname.match(/^\/api\/sessions\/([a-zA-Z0-9_-]+)$/)?.[1];
       if (req.method === 'GET' && sessionId) { const run = active.get(sessionId); if (run?.loaded) await run.loaded; const session = run?.session || dirtySessions.get(sessionId) || (await ws(`/sessions/${sessionId}`)).session; return send(res, 200, { session: publicSession(session) }); }

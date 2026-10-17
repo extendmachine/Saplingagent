@@ -37,6 +37,7 @@ async function requestVersion(): Promise<VersionState> {
 export function VersionFooter() {
   const [version, setVersion] = useState<VersionState | null>(null);
   const [unavailable, setUnavailable] = useState(false);
+  const [kernelVersion, setKernelVersion] = useState(KERNEL_VERSION);
   const baseline = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -51,6 +52,19 @@ export function VersionFooter() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    void fetch('/api/kernel', { cache: 'no-store', signal: AbortSignal.timeout(5000) })
+      .then(async response => {
+        if (!response.ok) return;
+        const value = await response.json();
+        if (active && value.kernel?.state === 'managed' && /^\d+\.\d+(?:\.\d+)?$/.test(value.kernel.version)) {
+          setKernelVersion(value.kernel.version);
+        }
+      }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
     void refresh();
     const timer = window.setInterval(() => { if (!document.hidden) void refresh(); }, 5000);
     const onVisible = () => { if (!document.hidden) void refresh(); };
@@ -62,7 +76,7 @@ export function VersionFooter() {
   const label = version ? `${version.branch || 'detached'} · ${version.version}` : unavailable ? 'Version unavailable' : 'Loading version…';
 
   return <footer className={`version-footer${hasUpdate ? ' has-update' : ''}`} aria-live="polite">
-    <span className="version-footer-label version-footer-kernel">Kernel version <code>{KERNEL_VERSION}</code></span>
+    <span className="version-footer-label version-footer-kernel">Kernel version <code>{kernelVersion}</code></span>
     <span className="version-footer-label"><span className="version-footer-dot" />Current version <code>{label}</code></span>
     {hasUpdate ? <button type="button" onClick={() => window.location.reload()}>
       <RefreshCw size={13} aria-hidden="true" />

@@ -7,8 +7,8 @@ say() {
 
 SEED_PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 case "${1:-}" in
-  install|login|configure|start|doctor|logout|opencode|git) ;;
-  *) say "Available actions: install / login / start / doctor / logout / configure / opencode / git." "可用操作：install / login / start / doctor / logout / configure / opencode / git。" >&2; exit 1 ;;
+  install|login|configure|start|doctor|logout|opencode|git|kernel) ;;
+  *) say "Available actions: install / login / start / doctor / logout / configure / opencode / git / kernel." "可用操作：install / login / start / doctor / logout / configure / opencode / git / kernel。" >&2; exit 1 ;;
 esac
 if [ "$(/usr/bin/uname -s)" != "Darwin" ]; then
   say "This installer currently supports macOS only." "此安装程序目前仅支持 macOS。" >&2
@@ -48,6 +48,11 @@ if [ ! -x "$SEED_NODE_BIN" ] || [ "$("$SEED_NODE_BIN" --version)" != "v${SEED_NO
   SEED_BOOTSTRAP_LOCK="$SEED_PROJECT_DIR/.runtime/node-install.lock"
   if ! mkdir "$SEED_BOOTSTRAP_LOCK" 2>/dev/null; then
     say "Another Node installation is in progress. Retry later; if its window has closed, remove .runtime/node-install.lock as documented." "另一个 Node 安装正在进行。请稍后重试；确认其窗口已关闭后，按文档清理 .runtime/node-install.lock。" >&2
+    exit 1
+  fi
+  if [ -e "$SEED_PROJECT_DIR/.runtime/kernel-operation.lock" ]; then
+    rmdir "$SEED_BOOTSTRAP_LOCK"
+    say 'Finish the active kernel/start operation before installing Node.' '请先完成正在进行的内核／启动操作，再安装 Node。' >&2
     exit 1
   fi
   SEED_BOOTSTRAP_STAGE=""

@@ -80,3 +80,7 @@ POST /api/attachments uploads files to workspace using opaque IDs; GET /api/atta
 Codex receives native localImage inputs. OpenCode receives native file parts with image data URLs; Claude receives structured SDKUserMessage image blocks through the pinned SDK streaming-input API. Generic files are referenced by canonical local paths in explicitly untrusted metadata for native file tools; uploading does not claim Office/PDF parsing or model image support. Unsupported models and missing/corrupt storage remain real errors. Existing text-only input and provider/session selection remain compatible. No inference is sent for initialization or upload.
 
 /api/page/heartbeat, /api/page/requests and /api/page/results proxy the current page bridge to app-builder with the existing same-origin and internal Bearer checks. No OS permission prompt, new service or token is introduced. page_read guidance tells native Agents to inspect fresh rendered results after UI changes.
+
+## Independent kernel metadata
+
+GET /api/kernel returns the safe installed kernel status from contracts/kernel.mjs independently of Git history/model readiness. Version0.90 remains the original baseline; a managed package displays its manifest version. No update/mutation HTTP endpoint is added. Launcher menu6 owns explicit offline maintenance; see ../../kernel/CONTRACT.md.
