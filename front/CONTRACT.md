@@ -91,3 +91,8 @@ An independent PageContextBridge stays mounted for the open project page, regist
 ## Independent kernel version (TASK-20261016-004)
 
 Footer keeps the original0.90 baseline fallback while displaying installed version from read-only GET /api/kernel separately from Git/application version. Network/legacy metadata does not hide the baseline. Kernel source update/check/restore belongs to the launcher; interface changes do not add an HTTP overwrite or permission gate.
+
+
+## Product release versus kernel and workspace (TASK-20261017-002)
+
+Footer reads additive GET /api/release (Agent contract) and shows Saplingagent product release independently from GET /api/kernel and GET /api/git. It validates schema1 and a three-part version; loading/404/503/malformed metadata stays explicitly unavailable without an old-version fallback. Chat and other version controls remain usable if an older backend lacks this route. Product version is not read from Git tags and survives local-only Git initialization. No new HTTP write or permission policy.
