@@ -16,11 +16,11 @@ test('distribution identity works without Git/login and never invents an old pro
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error.code, 'RELEASE_UNAVAILABLE');
   const metadata = path.join(root, 'config/release.json');
-  await fs.writeFile(metadata, JSON.stringify({ schemaVersion: 1, version: '0.9.2', privateValue: 'DO_NOT_EXPOSE' }));
+  await fs.writeFile(metadata, JSON.stringify({ schemaVersion: 1, version: '0.9.1', privateValue: 'DO_NOT_EXPOSE' }));
   response = await read();
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { release: { schemaVersion: 1, version: '0.9.2' } });
-  for (const value of [{ schemaVersion: 1, version: '0.90' }, { schemaVersion: 2, version: '0.9.2' }, '{broken', 'x'.repeat(5000)]) {
+  assert.deepEqual(await response.json(), { release: { schemaVersion: 1, version: '0.9.1' } });
+  for (const value of [{ schemaVersion: 1, version: '0.90' }, { schemaVersion: 2, version: '0.9.1' }, '{broken', 'x'.repeat(5000)]) {
     await fs.writeFile(metadata, typeof value === 'string' ? value : JSON.stringify(value));
     response = await read();
     assert.equal(response.status, 503);
