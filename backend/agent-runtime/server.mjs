@@ -1,3 +1,4 @@
+import { readReleaseMetadata } from '../../contracts/release.mjs';
 import { kernelStatus } from '../../contracts/kernel.mjs';
 import { readConnections,defaultSelection,codexConnection,codexCredentialStatus } from '../../contracts/ai-configuration.mjs';
 import { createDrainGate } from '../../contracts/runtime-drain.mjs';
@@ -523,6 +524,10 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           await log('git_version_operation', { operation: url.pathname.split('/').at(-1), branch: gitState.branch, sha: gitState.head.shortSha });
           return send(res, 200, { git: gitState, ...(['/api/git/switch', '/api/git/checkout'].includes(url.pathname) ? { reloadRecommended: true } : {}) });
         } finally { gitSwitching = false; }
+      }
+      if (req.method === 'GET' && url.pathname === '/api/release') {
+        try { return send(res, 200, { release: await readReleaseMetadata(root) }); }
+        catch { return send(res, 503, { error: { code: 'RELEASE_UNAVAILABLE', message: 'Installed release metadata is unavailable.' } }); }
       }
       if (req.method === 'GET' && url.pathname === '/api/kernel') return send(res,200,{kernel:await kernelStatus(root)});
       if (req.method === 'GET' && url.pathname === '/api/sessions') return send(res, 200, await ws('/sessions'));

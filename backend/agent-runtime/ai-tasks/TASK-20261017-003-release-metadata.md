@@ -1,0 +1,3 @@
+# TASK-20261017-003 handoff
+
+2026-10-17, Codex/root; detached .worktrees/release-versioning, authority original .worktrees/coordination. User requests product release completeness and code-first publication. Additive read-only /api/release metadata independent of Git/model, sanitized503 failure and focused HTTP regressions. No new dependency/process/credentials/permission change. Source main first under standing owner authorization, then requested release publication. Verification/frozen SHA/publication recorded in the authoritative index; no human acceptance claimed. Follow contracts/release.md.
