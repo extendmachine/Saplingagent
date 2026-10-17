@@ -6,24 +6,51 @@ import { createHash, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const idOk = (id) => typeof id === "string" && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(id);
+const KERNEL_FILE_PATHS = [
+	"Saplingagent.sh",
+	"install.sh",
+	"config/macos.json",
+	"config/windows.json",
+	"contracts/kernel.mjs",
+	"contracts/local-process.mjs",
+	"contracts/runtime-drain.mjs",
+	"contracts/ai-configuration.mjs",
+	"contracts/codex-rpc.mjs",
+	"backend/agent-runtime/git-versions.mjs",
+	"backend/agent-runtime/rpc.mjs",
+	"backend/agent-runtime/approval.mjs",
+	"backend/agent-runtime/permissions.mjs",
+	"backend/agent-runtime/turn-progress.mjs",
+	"backend/agent-runtime/package.json",
+	"backend/agent-runtime/package-lock.json",
+	"backend/agent-runtime/test/approval.test.mjs",
+	"backend/agent-runtime/test/claude.test.mjs",
+	"backend/agent-runtime/test/configured-engine.test.mjs",
+	"backend/agent-runtime/test/git-http.test.mjs",
+	"backend/agent-runtime/test/git-versions.test.mjs",
+	"backend/agent-runtime/test/kernel-http.test.mjs",
+	"backend/agent-runtime/test/opencode-messages.test.mjs",
+	"backend/agent-runtime/test/permissions.test.mjs",
+	"backend/agent-runtime/test/provider-contract.test.mjs",
+	"backend/agent-runtime/test/rpc.test.mjs",
+	"backend/agent-runtime/test/progress-clock.mjs",
+	"backend/agent-runtime/test/turn-progress.test.mjs",
+	"backend/agent-runtime/test/turn-progress-integration.test.mjs"
+];
+const KERNEL_DIRECTORY_PATHS = [
+	"kernel/",
+	"scripts/",
+	"backend/runtime-manager/",
+	"backend/ai-config/",
+	"backend/agent-runtime/providers/",
+	"front/ai-config/",
+	"front/features/git-version/",
+	"front/features/runtime-control/",
+	"front/features/version/"
+];
 function owned(file) {
-	if (typeof file !== "string" || /[\x00-\x1f\x7f:]/.test(file) || /(?:^|\/)(?:\.DS_Store|selfdata\.json|auth\.json|service-token)$/.test(file) || file.includes("\\") || file.startsWith("/") || file.split("/").some((x) => !x || x === "." || x === ".." || x.startsWith(".test-")) || /(^|\/)(?:node_modules|data|logs|local-secrets|secrets|\.secrets|snapshots|\.runtime|\.cache|\.git|\.worktrees|\.venv|__pycache__|dist|build|ai-tasks)(\/|$)/.test(file)) return false;
-	return [
-		"Saplingagent.sh",
-		"install.sh",
-		"config/macos.json",
-		"config/windows.json",
-		"front/main.tsx",
-		"front/index.html",
-		"front/styles.css",
-		"front/package.json",
-		"front/package-lock.json",
-		"front/tsconfig.json",
-		"front/tsconfig.app.json",
-		"front/tsconfig.node.json",
-		"front/vite.config.ts",
-		".agents/.claude-plugin/plugin.json"
-	].includes(file) || /^\.agents\/skills\/(?:seed-page-edit|seed-research|seed-skill-author)\//.test(file) || !/(?:\.tsbuildinfo|\.py[co]|\.log|\.env(?:\..*)?|\.key|\.pem|\.p12|\.pfx)$/.test(file) && /^(?:kernel\/|contracts\/|scripts\/|backend\/(?:agent-runtime|workspace|app-builder|mcp-runtime|runtime-manager|ai-config)\/|front\/(?:chat|ai-config|features\/(?:git-version|runtime-control|version|page-context))\/)/.test(file);
+	if (typeof file !== "string" || /[\x00-\x1f\x7f:]/.test(file) || /(?:^|\/)(?:\.DS_Store|selfdata\.json|auth\.json|service-token)$/.test(file) || file.includes("\\") || file.startsWith("/") || file.split("/").some((p) => !p || p === "." || p === ".." || p.startsWith(".test-")) || /(^|\/)(?:node_modules|data|logs|local-secrets|secrets|\.secrets|snapshots|\.runtime|\.cache|\.git|\.worktrees|\.venv|__pycache__|dist|build|ai-tasks)(\/|$)/.test(file)) return false;
+	return (KERNEL_FILE_PATHS.includes(file) || KERNEL_DIRECTORY_PATHS.some((prefix) => file.startsWith(prefix))) && !/(?:\.tsbuildinfo|\.py[co]|\.log|\.env(?:\..*)?|\.key|\.pem|\.p12|\.pfx)$/.test(file);
 }
 async function safe(root, file) {
 	if (/[\x00-\x1f\x7f:]/.test(file) || file.includes("\\") || file.startsWith("/") || file.split("/").some((x) => !x || x === "." || x === "..")) throw Error("Invalid recovery path.");
@@ -132,6 +159,7 @@ export async function restoreKernel(root, id) {
 			if (currentHash !== e.beforeHash && currentHash !== e.afterHash) throw Error("Recovery conflict; keep later edits and merge deliberately: " + e.path);
 			const original = e.beforeHash === null ? null : await bytesAt(root, prefix + "/original/" + e.originalIndex);
 			if (e.beforeHash !== null && (original === null || hash(original) !== e.beforeHash)) throw Error("Original backup digest mismatch.");
+			if (e.path === "kernel/manifest.json" && original !== null && JSON.parse(original.toString()).schemaVersion !== 2) throw Error("Backup uses obsolete broad kernel ownership. Reconcile it manually while retaining application modules.");
 			entries.push({
 				e,
 				original

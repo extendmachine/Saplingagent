@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
-import { isKernelPath, validateKernelManifest } from "../contracts/kernel.mjs";
+import { isKernelPath, validateKernelManifest, KERNEL_FILE_PATHS, KERNEL_DIRECTORY_PATHS } from "../contracts/kernel.mjs";
 export async function scanKernelFiles(root) {
 	const files = [];
 	async function walk(directory) {
@@ -39,23 +39,28 @@ export async function scanKernelFiles(root) {
 			}
 		}
 	}
-	for (const directory of [
-		"kernel",
-		"contracts",
-		"scripts",
-		"backend",
-		"front",
-		"config",
-		".agents"
-	]) await walk(directory);
-	for (const name of ["Saplingagent.sh", "install.sh"]) {
-		const bytes = await fs.readFile(path.join(root, name)), stat = await fs.stat(path.join(root, name));
-		files.push({
-			path: name,
-			sha256: createHash("sha256").update(bytes).digest("hex"),
-			bytes: bytes.length,
-			executable: !!(stat.mode & 0o111)
-		});
+	for (const prefix of KERNEL_DIRECTORY_PATHS) {
+		const directory = prefix.slice(0, -1);
+		try {
+			await walk(directory);
+		} catch (error) {
+			if (error.code !== "ENOENT") throw error;
+		}
+	}
+	for (const name of KERNEL_FILE_PATHS) {
+		try {
+			const file = path.join(root, name), stat = await fs.lstat(file);
+			if (!stat.isFile() || stat.isSymbolicLink()) throw Error("Kernel source must be a regular file: " + name);
+			const bytes = await fs.readFile(file);
+			files.push({
+				path: name,
+				sha256: createHash("sha256").update(bytes).digest("hex"),
+				bytes: bytes.length,
+				executable: !!(stat.mode & 0o111)
+			});
+		} catch (error) {
+			if (error.code !== "ENOENT") throw error;
+		}
 	}
 	files.sort((a, b) => a.path.localeCompare(b.path));
 	return files;
@@ -72,7 +77,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
 	}
 	const files = await scanKernelFiles(root);
 	const manifest = validateKernelManifest({
-		schemaVersion: 1,
+		schemaVersion: 2,
 		version: previous.version || "0.90",
 		appApi: previous.appApi || 1,
 		minNode: previous.minNode || "24.11.0",

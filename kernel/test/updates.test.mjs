@@ -18,7 +18,7 @@ const text = async (root, name, value) => {
 };
 function manifest(files, version = "0.90") {
 	return {
-		schemaVersion: 1,
+		schemaVersion: 2,
 		version,
 		appApi: 1,
 		minNode: "24.11.0",
@@ -31,6 +31,26 @@ function manifest(files, version = "0.90") {
 		})).sort((a, b) => a.path.localeCompare(b.path))
 	};
 }
+const applicationFiles = {
+	"front/chat/ChatPanel.tsx": "custom chat",
+	"backend/workspace/server.mjs": "custom workspace/context",
+	"backend/app-builder/server.mjs": "custom builder",
+	"front/features/page-context/capture.ts": "custom page reader",
+	"backend/mcp-runtime/server.mjs": "custom MCP",
+	".agents/skills/seed-page-edit/SKILL.md": "custom default Skill",
+	".agents/skills/seed-research/SKILL.md": "custom research Skill",
+	".agents/skills/seed-skill-author/SKILL.md": "custom Skill author",
+	".agents/.claude-plugin/plugin.json": "custom plugin registry",
+	"front/main.tsx": "custom application entry",
+	"front/styles.css": "custom application style",
+	"front/package.json": "custom application dependencies",
+	"front/package-lock.json": "custom application lock",
+	"front/vite.config.ts": "custom application build",
+	"backend/agent-runtime/server.mjs": "custom chat HTTP and page proxy",
+	"backend/agent-runtime/tasks.mjs": "custom application context registration",
+	"contracts/attachments.mjs": "custom attachment protocol",
+	"contracts/agent-tools.mjs": "custom app tools"
+};
 async function fixture(t) {
 	await fs.mkdir(parent, { recursive: true });
 	const root = await fs.mkdtemp(path.join(parent, "app-"));
@@ -48,7 +68,7 @@ async function fixture(t) {
 		"front/features/git-version/GitVersionPanel.tsx": "old Git"
 	};
 	for (const [name, value] of Object.entries(old)) await text(root, name, value);
-	await fs.chmod(path.join(root, "Saplingagent.sh"), 493);
+	await fs.chmod(path.join(root, "Saplingagent.sh"), 0o755);
 	for (const [name, value] of Object.entries({
 		"front/App.tsx": "customer app",
 		"front/features/invoices/Page.tsx": "customer feature",
@@ -59,6 +79,7 @@ async function fixture(t) {
 		"data/attachments/one/payload.txt": "private upload",
 		"local-secrets/key": "synthetic secret"
 	})) await text(root, name, value);
+	for (const [name, value] of Object.entries(applicationFiles)) await text(root, name, value);
 	const local = manifest(old);
 	await text(root, "kernel/manifest.json", JSON.stringify(local, null, 2) + "\n");
 	const files = {
@@ -253,10 +274,10 @@ test("unchanged local core is preserved while removed core and mode changes can 
 	const result = await applyKernel(f.root, plan.id, { acceptRisk: true });
 	assert.equal(await fs.access(path.join(f.root, "front/features/git-version/GitVersionPanel.tsx")).then(() => true, () => false), false);
 	assert.equal(await fs.readFile(path.join(f.root, "scripts/dev.mjs"), "utf8"), "customer startup");
-	if (process.platform !== "win32") assert.equal((await fs.stat(path.join(f.root, "Saplingagent.sh"))).mode & 73, 0);
+	if (process.platform !== "win32") assert.equal((await fs.stat(path.join(f.root, "Saplingagent.sh"))).mode & 0o111, 0);
 	await restoreKernel(f.root, result.backupId);
 	assert.equal(await fs.readFile(path.join(f.root, "front/features/git-version/GitVersionPanel.tsx"), "utf8"), "old Git");
-	if (process.platform !== "win32") assert.ok((await fs.stat(path.join(f.root, "Saplingagent.sh"))).mode & 73);
+	if (process.platform !== "win32") assert.ok((await fs.stat(path.join(f.root, "Saplingagent.sh"))).mode & 0o111);
 	await preserved(f.root);
 });
 test("accidental downgrades refuse source changes", async (t) => {
@@ -295,4 +316,63 @@ test("maintainer scanning excludes installed Python, caches and private files wi
 	}
 	assert.ok(files.some((file) => file.path === "kernel/manager.mjs"));
 	await preserved(f.root);
+});
+test("chat, workspace/context, builder/page reading, MCP and all Skills remain editable through update and restore", async (t) => {
+	const f = await fixture(t);
+	for (const name of Object.keys(applicationFiles)) assert.equal(isKernelPath(name), false, name);
+	const plan = await prepareKernel(f.root, { source: f.source });
+	assert.equal(plan.changes.some((e) => e.path in applicationFiles), false);
+	const result = await applyKernel(f.root, plan.id, { acceptRisk: true });
+	for (const name of Object.keys(applicationFiles)) assert.equal(await fs.readFile(path.join(f.root, name), "utf8"), applicationFiles[name]);
+	for (const name of Object.keys(applicationFiles)) await text(f.root, name, "owner edits after kernel update");
+	await restoreKernel(f.root, result.backupId);
+	for (const name of Object.keys(applicationFiles)) assert.equal(await fs.readFile(path.join(f.root, name), "utf8"), "owner edits after kernel update", name);
+	f.target.files.push({
+		path: "front/chat/ChatPanel.tsx",
+		sha256: sha(Buffer.from("upstream chat")),
+		bytes: 13,
+		executable: false
+	});
+	await assert.rejects(prepareKernel(f.root, { source: f.source }), { code: "INVALID_KERNEL" });
+	for (const name of Object.keys(applicationFiles)) assert.equal(await fs.readFile(path.join(f.root, name), "utf8"), "owner edits after kernel update", name);
+});
+test("obsolete broad manifests and saved plans refuse automatic migration before source writes", async (t) => {
+	const f = await fixture(t), plan = await prepareKernel(f.root, { source: f.source });
+	const legacy = manifest({
+		...f.old,
+		...applicationFiles
+	});
+	legacy.schemaVersion = 1;
+	await text(f.root, "kernel/manifest.json", JSON.stringify(legacy));
+	await assert.rejects(prepareKernel(f.root, { source: f.source }), { code: "INVALID_KERNEL" });
+	await assert.rejects(applyKernel(f.root, plan.id, { acceptRisk: true }), { code: "INVALID_KERNEL" });
+	assert.equal((await kernelStatus(f.root)).state, "invalid");
+	assert.equal(await fs.readFile(path.join(f.root, "kernel/manager.mjs"), "utf8"), "old manager");
+	await text(f.root, "kernel/manifest.json", JSON.stringify(manifest(f.old)));
+	f.target.schemaVersion = 1;
+	await assert.rejects(prepareKernel(f.root, { source: f.source }), { code: "INVALID_KERNEL" });
+	for (const [name, value] of Object.entries(applicationFiles)) assert.equal(await fs.readFile(path.join(f.root, name), "utf8"), value);
+});
+test("old broad backup entries and schema1 baseline restores cannot overwrite released application modules", async (t) => {
+	const f = await fixture(t), plan = await prepareKernel(f.root, { source: f.source }), result = await applyKernel(f.root, plan.id, { acceptRisk: true });
+	const prefix = path.join(f.root, ".runtime/kernel/backups", result.backupId), journalFile = path.join(prefix, "journal.json"), journal = JSON.parse(await fs.readFile(journalFile));
+	const malicious = {
+		...journal.files[0],
+		path: "backend/app-builder/server.mjs"
+	};
+	await fs.writeFile(journalFile, JSON.stringify({
+		...journal,
+		files: [...journal.files, malicious]
+	}));
+	await assert.rejects(restoreKernel(f.root, result.backupId), /Invalid recovery entry/);
+	const entry = journal.files.find((e) => e.path === "kernel/manifest.json"), original = path.join(prefix, "original", String(entry.originalIndex));
+	const legacy = JSON.parse(await fs.readFile(original));
+	legacy.schemaVersion = 1;
+	const bytes = Buffer.from(JSON.stringify(legacy));
+	entry.beforeHash = sha(bytes);
+	await fs.writeFile(original, bytes);
+	await fs.writeFile(journalFile, JSON.stringify(journal));
+	await assert.rejects(restoreKernel(f.root, result.backupId), /obsolete broad kernel ownership/);
+	assert.equal(await fs.readFile(path.join(f.root, "kernel/manager.mjs"), "utf8"), "new manager");
+	for (const [name, value] of Object.entries(applicationFiles)) assert.equal(await fs.readFile(path.join(f.root, name), "utf8"), value);
 });
