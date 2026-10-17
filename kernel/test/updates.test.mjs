@@ -1,3 +1,4 @@
+import { scanKernelFiles } from "../build-manifest.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
@@ -47,7 +48,7 @@ async function fixture(t) {
 		"front/features/git-version/GitVersionPanel.tsx": "old Git"
 	};
 	for (const [name, value] of Object.entries(old)) await text(root, name, value);
-	await fs.chmod(path.join(root, "Saplingagent.sh"), 0o755);
+	await fs.chmod(path.join(root, "Saplingagent.sh"), 493);
 	for (const [name, value] of Object.entries({
 		"front/App.tsx": "customer app",
 		"front/features/invoices/Page.tsx": "customer feature",
@@ -173,13 +174,18 @@ test("incompatible APIs, bad digests and missing release manifests cannot become
 	f.target.appApi = 1;
 	f.files["kernel/manager.mjs"] = "corrupt source";
 	let activeReads = 0;
-	const delayedSource = { resolve: f.source.resolve, async read(revision, name) {
-		activeReads++;
-		try {
-			if (name !== "kernel/manifest.json" && name !== "kernel/manager.mjs") await new Promise(resolve => setTimeout(resolve, 25));
-			return await f.source.read(revision, name);
-		} finally { activeReads--; }
-	} };
+	const delayedSource = {
+		resolve: f.source.resolve,
+		async read(revision, name) {
+			activeReads++;
+			try {
+				if (name !== "kernel/manifest.json" && name !== "kernel/manager.mjs") await new Promise((resolve) => setTimeout(resolve, 25));
+				return await f.source.read(revision, name);
+			} finally {
+				activeReads--;
+			}
+		}
+	};
 	await assert.rejects(prepareKernel(f.root, { source: delayedSource }), { code: "KERNEL_INTEGRITY" });
 	assert.equal(activeReads, 0, "failed preview must settle all outstanding downloads before returning");
 	const urls = [], source = githubSource({ fetchImpl: async (url) => {
@@ -247,15 +253,46 @@ test("unchanged local core is preserved while removed core and mode changes can 
 	const result = await applyKernel(f.root, plan.id, { acceptRisk: true });
 	assert.equal(await fs.access(path.join(f.root, "front/features/git-version/GitVersionPanel.tsx")).then(() => true, () => false), false);
 	assert.equal(await fs.readFile(path.join(f.root, "scripts/dev.mjs"), "utf8"), "customer startup");
-	if (process.platform !== "win32") assert.equal((await fs.stat(path.join(f.root, "Saplingagent.sh"))).mode & 0o111, 0);
+	if (process.platform !== "win32") assert.equal((await fs.stat(path.join(f.root, "Saplingagent.sh"))).mode & 73, 0);
 	await restoreKernel(f.root, result.backupId);
 	assert.equal(await fs.readFile(path.join(f.root, "front/features/git-version/GitVersionPanel.tsx"), "utf8"), "old Git");
-	if (process.platform !== "win32") assert.ok((await fs.stat(path.join(f.root, "Saplingagent.sh"))).mode & 0o111);
+	if (process.platform !== "win32") assert.ok((await fs.stat(path.join(f.root, "Saplingagent.sh"))).mode & 73);
 	await preserved(f.root);
 });
 test("accidental downgrades refuse source changes", async (t) => {
 	const f = await fixture(t);
 	f.target.version = "0.89";
 	await assert.rejects(prepareKernel(f.root, { source: f.source }), { code: "KERNEL_INCOMPATIBLE" });
+	await preserved(f.root);
+});
+test("maintainer scanning excludes installed Python, caches and private files without deleting them", async (t) => {
+	const f = await fixture(t);
+	for (const directory of [
+		"contracts",
+		"scripts",
+		"backend",
+		"front",
+		"config",
+		".agents"
+	]) await fs.mkdir(path.join(f.root, directory), { recursive: true });
+	await text(f.root, "install.sh", "installer");
+	const names = [
+		"backend/mcp-runtime/.venv/bin/python",
+		"backend/agent-runtime/__pycache__/temp.pyc",
+		"kernel/.DS_Store",
+		"kernel/auth.json",
+		"kernel/testdata.p12",
+		"kernel/build/generated.mjs"
+	];
+	for (const name of names) await text(f.root, name, "synthetic local artifact");
+	await fs.unlink(path.join(f.root, names[0]));
+	await fs.symlink(process.execPath, path.join(f.root, names[0]));
+	const files = await scanKernelFiles(f.root);
+	for (const name of names) {
+		assert.equal(isKernelPath(name), false, name);
+		assert.equal(files.some((file) => file.path === name), false, name);
+		assert.ok(await fs.lstat(path.join(f.root, name)));
+	}
+	assert.ok(files.some((file) => file.path === "kernel/manager.mjs"));
 	await preserved(f.root);
 });
