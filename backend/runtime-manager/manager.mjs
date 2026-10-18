@@ -26,7 +26,7 @@ export class RuntimeManager {
     this.controlAbort = new AbortController();
   }
   state() {
-    return { instanceId: this.instanceId, generation: this.generation, phase: this.phase, busy: !!this.operation, canRestart: !this.operation && !this.closed, jobId: this.jobId || null, scope: this.scope || 'all', error: this.error,
+    return { instanceId: this.instanceId, generation: this.generation, phase: this.phase, busy: !!this.operation || !!this.maintenance, canRestart: !this.operation && !this.maintenance && !this.closed, jobId: this.jobId || null, scope: this.scope || 'all', error: this.error,
       ports: this.config ? Object.fromEntries(portKeys.map(key => [key, this.config[key]])) : null,
       services: [...this.children].map(([name, child]) => {
         const definition = this.activeDefinitions.find(x => x.name === name);
@@ -207,6 +207,7 @@ export class RuntimeManager {
   }
   restart({ scope = 'all' } = {}) {
     if (this.closed) throw failure('MANAGER_STOPPED', 'Runtime manager is stopping.');
+    if (this.maintenance) throw failure('KERNEL_BUSY', 'Kernel maintenance is active.');
     if (this.operation) return this.jobId;
     this.scope = scope;
     return this.startOperation(async () => {
@@ -245,6 +246,29 @@ export class RuntimeManager {
       if (scope === 'all') await this.startFrontend(config);
       await this.ready();
     });
+  }
+  async prepareMaintenance() {
+    if (this.closed || this.operation || this.maintenance || this.gatewayWrites) throw Object.assign(failure('KERNEL_BUSY', 'Wait for active work before kernel maintenance.'), {status:409});
+    this.maintenance = true;
+    const previous = this.phase, prepared = [];
+    const undo = async () => {
+      let released = true;
+      for (const definition of prepared.reverse()) try { await this.json(definition.port, '/internal/runtime/release', 'POST'); } catch { released = false; }
+      this.maintenance = false; this.phase = released ? previous : 'failed';
+      if (!released) this.error = {code:'DRAIN_RELEASE_FAILED',message:'A service gate could not be released. Restart from runtime recovery.'};
+    };
+    try {
+      this.phase = 'preparing';
+      const gates = [...this.activeDefinitions.filter(x => x.name === 'agent'), ...this.activeDefinitions.filter(x => x.name !== 'agent').reverse()];
+      for (const definition of gates) {
+        if (!alive(this.children.get(definition.name))) continue;
+        if (definition.project && (!definition.drain || !definition.port)) continue;
+        prepared.push(definition);
+        try { await this.json(definition.port, '/internal/runtime/prepare', 'POST'); }
+        catch(error) { if(error.status === 404) { prepared.pop(); await this.prepareLegacy(definition); } else throw error; }
+      }
+      return undo;
+    } catch(error) { await undo(); error.status ||= 409; throw error; }
   }
   async close() {
     if (this.closing) return this.closing;

@@ -26,7 +26,7 @@ async function fixture(t,{bad=false,link=false,os='Darwin',invalidVersion=false}
 test('release-only bootstrap downloads a pinned snapshot into a Unicode/new folder without Git refs',async t=>{
  const f=await fixture(t);await f.run(['--download-only','--dir','new 客户 app']);const dest=path.join(f.root,'new 客户 app');const receipt=JSON.parse(await fs.readFile(path.join(dest,'delivery.json'),'utf8'));
  assert.equal(receipt.releaseVersion,JSON.parse(await fs.readFile(path.join(project,'config/release.json'),'utf8')).version);
- assert.equal(receipt.sourceCommit,sha);assert.equal(receipt.sourceRef,'release');assert.equal(receipt.git.initialBranch,'release');assert.equal(receipt.initializeRecords,true);
+ assert.equal(receipt.sourceCommit,sha);assert.equal(receipt.sourceRef,'release');assert.equal(receipt.distribution.gitIncluded,false);assert.equal(receipt.git,undefined);assert.equal(receipt.initializeRecords,true);
  const log=await fs.readFile(path.join(f.root,'curl.log'),'utf8');assert.doesNotMatch(log,/heads\/(main|testcode)/);assert.match(log,new RegExp(sha+'.tar.gz'));await assert.rejects(fs.access(path.join(dest,'.git')));
  for(const file of Object.keys(receipt.recordHashes))assert.equal(receipt.recordHashes[file],createHash('sha256').update(await fs.readFile(path.join(dest,file))).digest('hex'));
  assert.ok((await fs.readdir(f.root)).every(n=>!n.startsWith('.saplingagent-install.')));

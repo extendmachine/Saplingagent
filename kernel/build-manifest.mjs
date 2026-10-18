@@ -77,8 +77,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
 	}
 	const files = await scanKernelFiles(root);
 	const manifest = validateKernelManifest({
-		schemaVersion: 2,
-		version: previous.version || "0.90",
+		schemaVersion: 3,
+		version: previous.version || "0.91",
 		appApi: previous.appApi || 1,
 		minNode: previous.minNode || "24.11.0",
 		notes: "Independent platform kernel. Updates may invalidate custom applications; back up, inspect conflicts and verify after dependency repair.",

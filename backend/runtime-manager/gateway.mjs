@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { kernelControlPage } from '../../kernel/control-page.mjs';
 import { createControlHandler, localAccess, send } from './server.mjs';
 
 const recovery = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Saplingagent runtime</title><style>body{font:16px system-ui;background:#fafbf7;color:#303b2c;max-width:620px;margin:12vh auto;padding:24px}button,a{display:inline-block;padding:12px;margin:8px 8px 0 0}pre{white-space:pre-wrap}button{cursor:pointer}</style><h1>Saplingagent runtime</h1><p>This control stays available while the app restarts its frontend, backend and project services. Keep this page open; successful full restart returns to the app.</p><pre id="status" role="status">Checking services…</pre><button id="all">Restart app</button><button id="backend">Restart backend only</button><a href="/">Open app</a><script>
@@ -13,11 +14,12 @@ export function createGateway(options) {
   const server = http.createServer((req, res) => {
     try { localAccess(req, options); } catch (error) { return send(res, error.status, { error: { code: error.code, message: 'Local endpoint authentication failed.' } }); }
     const route = new URL(req.url, 'http://127.0.0.1').pathname;
+    if (route === '/__saplingagent/kernel' && req.method === 'GET') { res.writeHead(200, {'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"frame-ancestors 'self'"}); return res.end(kernelControlPage); }
     if (route.startsWith('/api/runtime/')) return void control(req, res);
     const page = () => { if (res.headersSent || res.destroyed) return; res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(recovery); };
     if (route === '/__saplingagent/runtime' && req.method === 'GET') return page();
     const mutation = !['GET', 'HEAD'].includes(req.method);
-    if (mutation && manager.operation) return send(res, 503, { error: { code: 'RUNTIME_RESTARTING', message: 'Services are restarting. Please wait.' } });
+    if (mutation && (manager.operation || manager.maintenance)) return send(res, 503, { error: { code: 'RUNTIME_RESTARTING', message: 'Services are restarting. Please wait.' } });
     if (mutation) manager.gatewayWrites++;
     let done = false;
     const finish = () => { if (done) return; done = true; if (mutation) manager.gatewayWrites--; };

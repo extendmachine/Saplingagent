@@ -18,3 +18,9 @@ The earlier broad prototype used schema1; both directions of automatic schema1/s
 
 
 Product distribution versions are declared separately in config/release.json and verified through contracts/release.md. Independent kernel updates preserve that declaration and do not claim the whole application was upgraded. The shared release metadata reader belongs to the kernel tooling; the application-owned Agent HTTP route is additive and may be unavailable in an older customized app. Kernel version/baseline remains0.90.
+
+## Web deployment v3
+
+Fresh0.9.2 installer installs kernel/package-lock.json into kernel/node_modules, independently from application dependency declarations. AI setup builds with kernel's Vite/React. No global install or customer Git change. Direct control URL /__saplingagent/kernel works while app Vite is down. Upgrade stages before shutdown, then a copied temporary worker survives runtime exit, repairs only kernel dependencies with project Node/npm and starts scripts/dev.mjs. Check actual runtime readiness and new selected URL. Source apply does not imply account/model readiness. Worker failures remain visible with manual restore/retry; no automatic rollback. A crashed worker lease must be inspected before manual cleanup.
+
+Schema2/0.9.1 cannot auto-transition: use a new complete0.9.2 folder and deliberate customer app/data/config migration; preserve the old folder. Do not regenerate its baseline. Native Windows process survival, install/login/restart still requires hardware acceptance; macOS tests are not Windows acceptance.

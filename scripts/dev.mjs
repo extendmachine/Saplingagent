@@ -92,13 +92,12 @@ async function launch() {
 				...ports
 			};
 			manager.config = config;
-			await fs.access(path.join(root, "front/node_modules/vite/bin/vite.js"));
-			await fs.access(path.join(root, "backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json"));
 			const options = {
 				manager,
 				token,
 				frontPort: config.frontPort,
-				managerPort: config.runtimeManagerPort
+				managerPort: config.runtimeManagerPort,
+				onMaintenance: () => stop(0)
 			};
 			control = createManagerServer(options);
 			gateway = createGateway(options);

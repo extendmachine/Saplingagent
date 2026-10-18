@@ -4,7 +4,9 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { createOpencodeClient } from '@opencode-ai/sdk';
+import { engineDependency } from '../../../contracts/engine-dependencies.mjs';
+import { fileURLToPath as engineURL } from 'node:url';
+const { createOpencodeClient } = await engineDependency(engineURL(new URL('../../../', import.meta.url)), '@opencode-ai/sdk');
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const sdkData = async (request, message) => {

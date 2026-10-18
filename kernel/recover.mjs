@@ -12,22 +12,19 @@ const KERNEL_FILE_PATHS = [
 	"config/macos.json",
 	"config/windows.json",
 	"contracts/kernel.mjs",
+	"contracts/release.mjs",
 	"contracts/local-process.mjs",
 	"contracts/runtime-drain.mjs",
+	"contracts/engine-dependencies.mjs",
 	"contracts/ai-configuration.mjs",
 	"contracts/codex-rpc.mjs",
-	"backend/agent-runtime/git-versions.mjs",
 	"backend/agent-runtime/rpc.mjs",
 	"backend/agent-runtime/approval.mjs",
 	"backend/agent-runtime/permissions.mjs",
 	"backend/agent-runtime/turn-progress.mjs",
-	"backend/agent-runtime/package.json",
-	"backend/agent-runtime/package-lock.json",
 	"backend/agent-runtime/test/approval.test.mjs",
 	"backend/agent-runtime/test/claude.test.mjs",
 	"backend/agent-runtime/test/configured-engine.test.mjs",
-	"backend/agent-runtime/test/git-http.test.mjs",
-	"backend/agent-runtime/test/git-versions.test.mjs",
 	"backend/agent-runtime/test/kernel-http.test.mjs",
 	"backend/agent-runtime/test/opencode-messages.test.mjs",
 	"backend/agent-runtime/test/permissions.test.mjs",
@@ -43,12 +40,10 @@ const KERNEL_DIRECTORY_PATHS = [
 	"backend/runtime-manager/",
 	"backend/ai-config/",
 	"backend/agent-runtime/providers/",
-	"front/ai-config/",
-	"front/features/git-version/",
-	"front/features/runtime-control/",
-	"front/features/version/"
+	"front/ai-config/"
 ];
 function owned(file) {
+	if (["scripts/launcher/git-storage.mjs", "scripts/launcher/source-update.mjs", "scripts/test/git-storage.test.mjs", "scripts/test/source-update.test.mjs"].includes(file)) return false;
 	if (typeof file !== "string" || /[\x00-\x1f\x7f:]/.test(file) || /(?:^|\/)(?:\.DS_Store|selfdata\.json|auth\.json|service-token)$/.test(file) || file.includes("\\") || file.startsWith("/") || file.split("/").some((p) => !p || p === "." || p === ".." || p.startsWith(".test-")) || /(^|\/)(?:node_modules|data|logs|local-secrets|secrets|\.secrets|snapshots|\.runtime|\.cache|\.git|\.worktrees|\.venv|__pycache__|dist|build|ai-tasks)(\/|$)/.test(file)) return false;
 	return (KERNEL_FILE_PATHS.includes(file) || KERNEL_DIRECTORY_PATHS.some((prefix) => file.startsWith(prefix))) && !/(?:\.tsbuildinfo|\.py[co]|\.log|\.env(?:\..*)?|\.key|\.pem|\.p12|\.pfx)$/.test(file);
 }
@@ -101,6 +96,9 @@ async function atomic(root, file, bytes, mode = 0o600) {
 export async function restoreKernel(root, id) {
 	root = await fs.realpath(root);
 	if (!idOk(id)) throw Error("Invalid kernel backup ID.");
+ let lease;
+ try {lease=JSON.parse(await fs.readFile(path.join(root,'.runtime/kernel/active-job.json'),'utf8'));}catch(error){if(error.code!=='ENOENT')throw Error('Invalid maintenance lease. Inspect it before recovery.');}
+ if(lease&&process.env.SAPLING_MAINTENANCE_JOB!==lease.jobId)throw Error('Maintenance is active. Use its explicit recovery page or inspect the exited worker first.');
 	await fs.mkdir(path.join(root, ".runtime"), { recursive: true });
 	const lock = path.join(root, ".runtime/kernel-operation.lock"), lockId = randomUUID();
 	let handle;
@@ -159,7 +157,7 @@ export async function restoreKernel(root, id) {
 			if (currentHash !== e.beforeHash && currentHash !== e.afterHash) throw Error("Recovery conflict; keep later edits and merge deliberately: " + e.path);
 			const original = e.beforeHash === null ? null : await bytesAt(root, prefix + "/original/" + e.originalIndex);
 			if (e.beforeHash !== null && (original === null || hash(original) !== e.beforeHash)) throw Error("Original backup digest mismatch.");
-			if (e.path === "kernel/manifest.json" && original !== null && JSON.parse(original.toString()).schemaVersion !== 2) throw Error("Backup uses obsolete broad kernel ownership. Reconcile it manually while retaining application modules.");
+			if (e.path === "kernel/manifest.json" && original !== null && JSON.parse(original.toString()).schemaVersion !== 3) throw Error("Backup uses obsolete broad kernel ownership. Reconcile it manually while retaining application modules.");
 			entries.push({
 				e,
 				original

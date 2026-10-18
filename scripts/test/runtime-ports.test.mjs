@@ -24,7 +24,7 @@ test('real launcher skips foreign ports, routes actual addresses, retains them a
     for (const server of [foreign, foreignBackend]) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
     await fs.rm(root, { recursive: true, force: true });
   });
-  for (const file of ['scripts/dev.mjs', 'scripts/setup.mjs', 'backend/runtime-manager/manager.mjs', 'backend/runtime-manager/services.mjs', 'backend/runtime-manager/ports.mjs', 'backend/runtime-manager/gateway.mjs', 'backend/runtime-manager/server.mjs', 'contracts/local-process.mjs', 'contracts/kernel.mjs']) {
+  for (const file of ['kernel/http.mjs','kernel/control-page.mjs','kernel/handoff.mjs','kernel/manager.mjs','kernel/storage.mjs','contracts/release.mjs', 'scripts/dev.mjs', 'scripts/setup.mjs', 'backend/runtime-manager/manager.mjs', 'backend/runtime-manager/services.mjs', 'backend/runtime-manager/ports.mjs', 'backend/runtime-manager/gateway.mjs', 'backend/runtime-manager/server.mjs', 'contracts/local-process.mjs', 'contracts/engine-dependencies.mjs', 'contracts/kernel.mjs']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const config = Object.fromEntries(portKeys.map((key, index) => [key, start + index]));
@@ -58,4 +58,17 @@ const s=http.createServer((req,res)=>{res.setHeader('Content-Type','application/
   child.kill('SIGTERM'); await until(() => child.exitCode !== null); assert.equal(child.exitCode, 0, output);
   assert.equal(await fs.access(file).then(() => true, () => false), false);
   assert.equal(foreign.listening, true); assert.equal(foreignBackend.listening, true);
+});
+
+test('startup publishes recovery controls even when the application frontend is missing', {timeout:15000}, async t=>{
+ const parent=path.join(project,'.cache/runtime-core-only');await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,'app-'));
+ for(const directory of ['kernel','contracts','backend/runtime-manager'])for(const name of await fs.readdir(path.join(project,directory)))if(name.endsWith('.mjs')){const target=path.join(root,directory,name);await fs.mkdir(path.dirname(target),{recursive:true});await fs.copyFile(path.join(project,directory,name),target);}
+ for(const file of ['scripts/dev.mjs','scripts/setup.mjs']){await fs.mkdir(path.dirname(path.join(root,file)),{recursive:true});await fs.copyFile(path.join(project,file),path.join(root,file));}
+ const control=http.createServer();const start=await listenAscending(control,35000);await new Promise(r=>control.close(r));await fs.mkdir(path.join(root,'config'));await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify(Object.fromEntries(portKeys.map((k,i)=>[k,start+i]))));
+ const child=spawn(process.execPath,[path.join(root,'scripts/dev.mjs')],{cwd:root,env:{...process.env,SEED_ROOT:root,SEED_IMPORT_EXISTING_AUTH:'0'},stdio:'ignore'});
+ t.after(async()=>{if(child.exitCode===null){child.kill('SIGTERM');await until(()=>child.exitCode!==null);}await fs.rm(root,{recursive:true,force:true});});
+ let address;await until(async()=>{try{address=JSON.parse(await fs.readFile(path.join(root,'.runtime/runtime-address.json'),'utf8'));return true;}catch{return false;}});
+ const r=await fetch(new URL('/__saplingagent/kernel',address.url));assert.equal(r.status,200);assert.match(await r.text(),/Upgrade kernel & restart/);
+ await until(async()=>{const s=await fetch(new URL('/api/runtime/status',address.url)).then(r=>r.json());return s.phase==='failed'&&!s.busy;});
+ assert.equal((await fetch(new URL('/__saplingagent/kernel',address.url))).status,200);
 });
