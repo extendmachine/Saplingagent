@@ -21,7 +21,7 @@ async function fixture(t) {
     const bytes = Buffer.from('Synthetic ' + name + '\n'); await write(name, bytes);
     files.push({ path: name, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), executable: false });
   }
-  await write('kernel/manifest.json', JSON.stringify({ schemaVersion: 2, version: '0.90', appApi: 1, minNode: '24.11.0', files }));
+  await write('kernel/manifest.json', JSON.stringify({ schemaVersion: 3, version: '0.90', appApi: 1, minNode: '24.11.0', files }));
   await write('config/release.json', JSON.stringify({ schemaVersion: 1, version: '0.9.1' }));
   git('add', '.'); git('commit', '-m', 'Freeze synthetic source');
   return { root, git, write, commit: git('rev-parse', 'HEAD'), verify: options => verifyRelease({ sourceRoot: root, ref: 'HEAD', version: '0.9.1', ...options }) };

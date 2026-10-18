@@ -86,3 +86,5 @@ Codex receives native localImage inputs. OpenCode receives native file parts wit
 GET /api/kernel returns the safe installed kernel status from contracts/kernel.mjs independently of Git history/model readiness. Version0.90 remains the original baseline; a managed package displays its manifest version. No update/mutation HTTP endpoint is added. Launcher menu6 owns explicit offline maintenance; see ../../kernel/CONTRACT.md.
 
 GET /api/release exposes only validated public distribution schema/version, independently of model readiness and Git; no source mutation. Its contract is separate from /api/kernel and /api/git.
+
+Product0.9.2: engine SDKs/native executables now install once in kernel/node_modules. The application Agent package/lock stay customer-owned and are not overwritten by kernel upgrades. Shared resolver supports their ESM exports. No model protocol or permission change; existing optional Git API remains application code with no default UI/installer invocation.

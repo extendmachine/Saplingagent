@@ -87,7 +87,7 @@ sapling_hash() {
   if [ "$sapling_hash_command" = sha256sum ]; then sha256sum "$1"; else shasum -a 256 "$1"; fi
 }
 {
-  printf '{"schemaVersion":2,"releaseVersion":"%s","sourceRef":"release","sourceCommit":"%s","platform":"%s","initializeRecords":true,"git":{"initialBranch":"release","upstreamBranch":"release","upstreamUrl":"https://github.com/extendmachine/Saplingagent.git"},"recordHashes":{' "$sapling_release_version" "$sapling_sha" "$sapling_platform"
+  printf '{"schemaVersion":2,"releaseVersion":"%s","sourceRef":"release","sourceCommit":"%s","platform":"%s","initializeRecords":true,"distribution":{"source":"release-archive","gitIncluded":false},"recordHashes":{' "$sapling_release_version" "$sapling_sha" "$sapling_platform"
   sapling_separator=''
   for sapling_file in AGENTS.md FINAL_GOAL.md TODO.md AI_TASKS.md; do
     sapling_hash_line="$(sapling_hash "$sapling_stage/app/$sapling_file")";sapling_digest="${sapling_hash_line%% *}"

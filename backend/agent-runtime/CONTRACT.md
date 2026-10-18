@@ -105,3 +105,7 @@ GET /api/kernel ->200 {kernel:{baselineVersion:'0.90',version,appApi,sourceCommi
 ## Distribution release identity (TASK-20261017-003)
 
 GET /api/release ->200 {release:{schemaVersion:1,version:"0.9.1"}}. No input/body/token required; same loopback/same-origin read policy as GET /api/kernel. Reads the complete folder's public config/release.json through contracts/release.mjs, independently of Git, kernel and authentication. Returns503 {error:{code:"RELEASE_UNAVAILABLE",message}} for missing/invalid/oversized/symlink metadata; no fallback product version, raw source/paths or extra JSON fields exposed. No model, network, task registration or write. Older backends may return404; frontend retains chat and labels release unavailable. No change to kernel or Git API shape.
+
+## Product0.9.2 engine dependency ownership
+
+Engine adapters resolve their ESM SDKs and native executables through contracts/engine-dependencies.mjs and contracts/local-process.mjs from kernel/node_modules. The default application Agent package has no duplicate engine dependencies; its own package/lock remain application-owned for future customer additions. Legacy source fixtures without a kernel package retain explicit backend dependency resolution. Codex stdio/provider/session/streaming and Full Access behavior are unchanged. Default Git UI is removed; existing Agent Git API remains optional application compatibility code, never invoked by installer.

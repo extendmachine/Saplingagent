@@ -1,10 +1,11 @@
 // Shared OS process contract; callers supply only their own ChildProcess.
 import path from 'node:path';
+import { engineModules } from './engine-dependencies.mjs';
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 
 export function openCodeBinary(root, platform = process.platform) {
-  return path.join(root, 'backend/agent-runtime/node_modules', platform === 'win32' ? 'opencode-ai/bin/opencode.exe' : '.bin/opencode');
+  return path.join(engineModules(root), platform === 'win32' ? 'opencode-ai/bin/opencode.exe' : '.bin/opencode');
 }
 export function codexBinary(root, platform = process.platform, arch = process.arch, runtime = '.runtime/codex') {
   if (platform !== 'win32') return path.join(root, runtime, 'node_modules/.bin/codex');
@@ -65,5 +66,5 @@ async function terminate(child, { platform = process.platform, graceMs = 750, ki
 
 export function claudeBinary(root, platform = process.platform, arch = process.arch) {
   if (!['darwin','win32','linux'].includes(platform) || !['x64','arm64'].includes(arch)) throw new Error('Unsupported Claude Agent platform');
-  return path.join(root, 'backend/agent-runtime/node_modules/@anthropic-ai', `claude-agent-sdk-${platform}-${arch}`, platform === 'win32' ? 'claude.exe' : 'claude');
+  return path.join(engineModules(root), '@anthropic-ai', `claude-agent-sdk-${platform}-${arch}`, platform === 'win32' ? 'claude.exe' : 'claude');
 }

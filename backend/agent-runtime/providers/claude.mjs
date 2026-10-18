@@ -1,4 +1,6 @@
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { engineDependency } from '../../../contracts/engine-dependencies.mjs';
+import { fileURLToPath as engineURL } from 'node:url';
+const { query } = await engineDependency(engineURL(new URL('../../../', import.meta.url)), '@anthropic-ai/claude-agent-sdk');
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';

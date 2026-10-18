@@ -32,7 +32,7 @@ The public project introduction, videos and application examples are maintained 
 
 
 - [Install, configure, start](#install-configure-start)
-- [Choose Git storage](#choose-where-your-application-lives)
+- [Application folder and kernel](#your-application-folder-without-git-setup)
 - [Switch versions and restart](#switch-versions-and-restart)
 - [Update or repair an existing installation](#what-menu-1-updates)
 - [Authentication and costs](#authentication-and-costs)
@@ -54,7 +54,7 @@ For a new installation, run one command in **macOS Terminal** or **Windows Git B
 bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/Saplingagent/release/install.sh | bash'
 ```
 
-The independent `install.sh` resolves the current **release** commit, downloads that exact source snapshot into `./Saplingagent`, runs the existing installer, then opens the configuration/start menu. It does not clone all repository branches or require Node before downloading. Git storage remains your choice: local-only, your own repository, or following release. Configure your own AI access and choose Start app after installation.
+The independent `install.sh` resolves the current **release** commit, downloads that exact source snapshot into `./Saplingagent`, runs the existing installer, then opens the configuration/start menu. It does not clone all repository branches or require Node before downloading. No Git repository is initialized or connected. Configure your own AI access and choose Start app after installation.
 
 The target folder must be new; existing applications are preserved. Add `--dir` and `--lang` for a different destination/language:
 
@@ -90,16 +90,15 @@ First choose **English** or **中文** (Enter defaults to English), then use the
 
 | Menu choice | Action |
 | --- | --- |
-| 1. Install / update | Available before a storage choice and in follow mode. Check source/dependencies and reload changed upstream source. Hidden after choosing local Git or your own repository. |
+| 1. Install / repair dependencies | Install project-local dependencies. Keep application source and existing Git. |
 | 2. Configure AI | Open the standalone local account/API configuration page. |
 | 3. Start app | Launch the local services and open the chat page. |
 | 4. Diagnostics | Check installation, saved AI access and runtime readiness. |
-| 5. Git / storage setup | Review or change repository ownership without reinstalling dependencies. |
-| 6. Kernel management | Inspect, check, update or restore the independent platform kernel in every Git storage mode. |
+| 6. Kernel management | Inspect, check, update or restore the independent platform kernel independently of application code and Git. |
 | 9. Change language | Switch English / Chinese. |
 | 0. Quit | Close the menu. |
 
-Choose **1. Install / update** if you downloaded the folder manually. The one-command installer already runs this step. Next choose **2. Configure AI**, finish setup, then **3. Start app**. Menu actions return to the menu when finished; an error leaves the menu available for retry. Stop an existing application before updating dependencies. While the app is running, keep the terminal open; Control+C stops the owned services and exits the launcher.
+Choose **1. Install / repair dependencies** if you downloaded the folder manually. The one-command installer already runs this step. Next choose **2. Configure AI**, finish setup, then **3. Start app**. Menu actions return to the menu when finished; an error leaves the menu available for retry. Stop an existing application before updating dependencies. While the app is running, keep the terminal open; Control+C stops the owned services and exits the launcher.
 
 Installation supports macOS 13.5+ on Apple Silicon or Intel, downloads official Node **24.21.0**, checks its official SHA-256 checksum, and installs project-local Codex **0.146.1**, OpenCode, Claude Agent SDK **0.3.296** and locked dependencies. No preinstalled Node, npm, Homebrew or Codex desktop app is required. Git is required for local version history; on Mac, install Apple Command Line Tools with `xcode-select --install` if Git is missing (full Xcode is unnecessary); Windows requires Git Bash and its bundled shell utilities. Windows10 must be version1809+; ARM64 and x64 are detected automatically. Internet access to official downloads, npm and your model provider is required. Versions are declared in [config/macos.json](config/macos.json) and dependency lockfiles.
 
@@ -139,64 +138,15 @@ bash Saplingagent.sh logout
 
 Device login depends on account/organization eligibility. Use `bash Saplingagent.sh` from Terminal; no executable-bit change is required for this command. `./Saplingagent.sh` also works when the executable bit is retained. Use Bash rather than `sh`: the script uses Bash syntax.
 
-## Choose where your application lives
+## Your application folder, without Git setup
 
-On first **Install / update**, choose one storage mode:
+Product0.9.2 downloads the release snapshot without `.git`. Installation does not initialize Git, ask for storage or connect an author remote. The default page has no branch, Save version or workspace Git controls. You can create your own repository later; reinstall and kernel maintenance preserve it.
 
-| Choice | Local history | Remote behavior |
-| --- | --- | --- |
-| 1. Local only | Clear previous Git metadata; initialize empty `main` with **zero commits** | Remove all remote configuration; no cloud links |
-| 2. My own repository | Local commits; fresh folder starts on `release`; existing selected version is retained | Add or update `origin` to your repository URL; nothing is pushed during installation |
-| 3. Follow Saplingagent release | Track the author's `upstream/release` | Fetch upstream history; menu 1 explicitly checks/merges compatible source; no push or PR |
+## Upgrade the kernel and restart
 
-Choosing **1. Local only** deletes this folder's previous Git history, branches, tags, version names, staged index and remote configuration, then initializes an empty `main`. Application files (including pending source), data and credentials remain in place. There is no automatic initial commit. The page shows only `main` and **No commits yet**; use **Save version** explicitly when you want your first local record. The launcher displays this reset notice and requires an explicit option number; Enter does not select a destructive default. Selecting local again through Git setup performs the reset again. Repeat/repair installation with a saved choice preserves later user history. For your own remote, create an empty repository in your preferred hosting service first, then paste its credential-free HTTPS/SSH URL. Installation does not create a GitHub repository, sign in to a Git host or publish changes. A nonempty remote may have unrelated history: inspect and reconcile it before your first manual push. Keep passwords/tokens out of URLs.
+Open **Kernel → Check for kernel update → Upgrade kernel & restart**. Review the verified release SHA, paths and conflicts, then accept the compatibility warning. A copied temporary progress process stops owned services, backs up/applies core, repairs its own dependencies and restarts the complete application at its actual selected port. App/chat pages, MCP, Skills, demos, business code, application dependency manifests, configuration, data and customer Git are retained. Restart app/backend remains available without an upgrade. Recovery is explicit; no automatic rollback. Direct control: `/__saplingagent/kernel`.
 
-Use **5. Git / storage setup** or `bash Saplingagent.sh git` to reconfigure. Installation remembers its choice in `.git/config` (`saplingagent.storageMode`); repeat/repair installations preserve your current branch; historical/untracked versions do not receive automatic source merges. Follow mode checks its tracked branch only when Install / update is selected; repair does not change source. A linked development worktree keeps its shared configuration. Choosing **2** explicitly adds or updates origin to the supplied URL; unrelated non-author remotes remain. Existing versions stay selected for own storage unless a branch is explicitly configured. The storage submenu contains only 1, 2 and 3; the main launcher still has Diagnostics and Quit. Older saved keep-existing choices remain valid on reinstall. Save pending changes before configuring another branch.
-
-For unattended first installation, set `SAPLING_GIT_MODE=local`, `own` or `upstream`; `own` also needs `SAPLING_GIT_REMOTE`. `SAPLING_GIT_BRANCH` overrides the branch for own/follow modes; local reset always starts empty `main`, regardless of delivery or branch defaults. Explicit `SAPLING_GIT_MODE=local` requests the same reset and prints its notice. To change a saved choice, use the Git setup action. Your environment and Git global configuration remain unchanged.
-
-Follow mode imports the package's actual source ancestor and saves the delivered folder as a local initialization commit. This keeps recipient records and any existing files. Raw GitHub ZIPs must match a commit in fetched release history; an edited/unidentifiable ZIP can use local/own mode or a fresh Git clone. Follow mode is opt-in and requires network/repository access. Failed initialization can be retried; it is not marked configured until complete.
-
-Updating dependencies is separate from updating source. To inspect upstream changes:
-
-```bash
-git fetch upstream
-git log --oneline HEAD..upstream/release
-```
-
-Stop the running app and save local changes, then select Install / update. In follow mode it fetches only the tracked upstream branch and merges compatible committed history, reloading the updated launcher before checking dependencies. Dirty files, active ports, conflicts, unrelated histories or an older Git pause source updates with a clear message. Conflicts are detected using Git 2.38+ merge-tree before touching the working tree. For deliberate manual reconciliation use `git merge upstream/release`, resolve conflicts and inspect goal/task records, then run Install / update and restart. Do not reset customer data or replace source files over a working application. `git pull` defaults to fast-forward only in follow mode and stops on diverged history; a deliberate merge may be needed. If you add follow mode to an independent local repository, histories can be unrelated: reconcile them deliberately (`git merge --allow-unrelated-histories upstream/release`) after saving and inspecting both sides; setup does not rewrite that history. The chat's Save version stays local in every mode. Pushes or pull requests require your explicit action/authorization; the installer and version panel never submit them. Full Access remains enabled. See [Git storage guide](docs/git-versions.html) and [Git remote documentation](https://git-scm.com/docs/git-remote).
-
-## Switch versions and restart
-
-Local management starts empty `main`; own/follow modes start on `release` unless explicitly configured. The top-right Versions control shows the actual checked-out branch and can select available local branches or historical commits. Maintainer checkouts can also use `main` and `adobe-replica`; local-only repositories start with just `main` and no committed versions. Pending source changes are saved locally first. Version names remain editable and do not rewrite commit hashes.
-
-After switching, click **Restart app** to load that version's frontend, backend, Codex App Server and MCP. The main page has one **Restart app** button. It stops and relaunches the frontend, backends and registered project services, then refreshes only after readiness checks pass. Wait for running AI/file work to finish or stop it yourself; restart refuses busy work.
-
-The recovery page is at **`<actual app URL>/__saplingagent/runtime`**. For example, if the launcher prints `http://127.0.0.1:5175/`, use `http://127.0.0.1:5175/__saplingagent/runtime`. It survives frontend/backend failure while the runtime manager remains running, and works when an older version lacks the restart button. Repair the source/dependencies/login and retry there. Current UI recovers an unsent draft; older UIs may not. Conversations and login files remain in the application folder. No automatic resend or code rollback.
-
-On first upgrade to this launcher, stop the existing launch window with Control+C and run `bash Saplingagent.sh start` again. The public gateway starts from port5173 and internal Vite from5174. Manager4314 controls Agent4310, workspace4311, builder4312 and optional PDF4313 when its source exists; all are configured starting values and are automatically advanced when occupied. Actual per-instance ports stay fixed across service restarts unless an internal preference is deliberately changed. If a branch adds dependencies, install them first. See [project service startup](docs/project-services.html). Restart app discovers new conventional Node backends and reloads registered project frontends/workers from `config/services.json`; the AI adding the feature configures its startup and readiness. Internal port edits apply in-page, while public/control address preferences take effect on a later cold launch. The controller itself is loaded by the launcher. Legacy direct service callers cannot be tracked by the gateway; finish their work before restarting old versions.
-
-## Manage the kernel independently
-
-Install/update tooling, Git management, complete restart, AI configuration and engine adapters form the **Kernel**, currently **0.90**. Chat UI, workspace/context, page building/reading, MCP and all default/custom Skills remain freely editable application capabilities outside kernel updates and recovery. Application pages and new business services remain independently maintained. The footer shows installed kernel and application Git versions separately.
-
-Choose **6. Kernel management** or `bash Saplingagent.sh kernel` for status/backups, update preview, explicit update or manual restore. Local/own Git users can receive official release kernel features without merging application history or changing remotes. Application entries, styles, build settings/dependencies, mixed chat HTTP entry, business features/services, runtime configuration, conversations, attachments and credentials stay outside the update package. The complete installation still includes the application capabilities.
-
-**Updating can invalidate existing applications, dependencies or integrations.** Check conflicts, stop the app and back up important business data first. Applying source requires risk acknowledgement and saves a local kernel backup; conflicting local core edits are refused. Then run `bash Saplingagent.sh install --repair`, start and verify. Use `kernel restore <backup-id>` for explicit source recovery, including the saved standalone helper if the new launcher fails. Source restoration cannot undo business data changes or guarantee compatibility.
-
-The current schema2 manifest rejects the earlier broad prototype; old managers reject it before treating application files as deletions. Use current complete management tooling with a reviewed schema2 baseline once; obsolete plans/backups require deliberate reconciliation.
-
-See [kernel update and recovery](docs/kernel-management.html). A new kernel becomes available only after the maintainer publishes its manifest/files to release; older releases without a manifest report unavailable.
-
-## What menu 1 updates
-
-Selecting **1. Install / update** prints progress immediately and reports source separately from dependencies. **Follow release** checks the tracked upstream branch, fetches without tags or author main/adobe-replica refs, and merges compatible saved local commits. It does not reset or force a checkout. After a source change the launcher runs again with updated runtime settings before dependency checks. An already-current installation reports that fact clearly.
-
-**Local only / own repository** are independent applications. Once either choice is saved, subsequent menus hide **1. Install / update**, and **5. Git / storage setup** offers only local Git or your own repository. The menu rereads this folder’s `.git/config` after each action; viewing it never changes history or remotes. Configure AI, Start app, Diagnostics, Git setup, language selection and Quit remain available. First installation and follow mode keep all three storage choices.
-
-For missing or changed dependencies, run `bash Saplingagent.sh install --repair`; this repairs the local environment without fetching application source and retains saved Git configuration. Explicit `install` remains available as well. To deliberately reconnect to author release after independence, stop the app, save your work and explicitly run `SAPLING_GIT_MODE=upstream SAPLING_GIT_BRANCH=release bash Saplingagent.sh git`. Existing history/branch conflicts may need manual reconciliation; no automatic reset or publication is performed. Historical detached/untracked versions are retained. Menu visibility is guidance, not an Agent permission limit.
-
-Before updating follow mode, stop the running app with Control+C and save pending source changes. The updater checks for Git conflicts before merging; if it pauses, read the reason and reconcile deliberately. It never creates a PR, pushes customer changes or automatically rolls back. On old installations menu1 still updates dependencies only: use the existing manual `git fetch upstream` / `git merge upstream/release` workflow to obtain this updated launcher first. Do not rerun the fresh-folder curl bootstrap over an existing app. See [macOS installation](docs/macos-install.html).
+Product release is **0.9.2**; independent kernel is **0.91 / schema3**. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
 
 ## Import existing local credentials
 
@@ -227,7 +177,7 @@ Codex is the initial default when no scheme is saved. Use **Configure AI → API
 
 Claude can also run through the official **Claude Agent SDK** as its own local agent engine. It embeds the Claude Code agent loop with native shell/file tools, MCP, project Skills, streaming and resumable sessions. This is an embedded SDK integration, with no separate public App Server port.
 
-Run `bash Saplingagent.sh`, choose **Install / update**, then **Configure AI** → **API / custom provider** → **Anthropic · Messages**. The preset selects **Claude Agent**. Enter your own API key, exact model ID and API Base URL (`https://api.anthropic.com/v1`, or your compatible gateway URL). **Save & use** → **Finish setup** → **Start app**. If already running, restart and create a new conversation. Model discovery is optional; gateways must support Anthropic Messages streaming and tool calls. Claude schemes do not require Codex login.
+Run `bash Saplingagent.sh`, choose **Install / repair dependencies**, then **Configure AI** → **API / custom provider** → **Anthropic · Messages**. The preset selects **Claude Agent**. Enter your own API key, exact model ID and API Base URL (`https://api.anthropic.com/v1`, or your compatible gateway URL). **Save & use** → **Finish setup** → **Start app**. If already running, restart and create a new conversation. Model discovery is optional; gateways must support Anthropic Messages streaming and tool calls. Claude schemes do not require Codex login.
 
 The SDK is pinned to `0.3.296` and installs its native binary inside the application folder; a separate global Claude Code installation is unnecessary. API keys stay in `local-secrets/api-keys/`, and SDK state/transcripts in `local-secrets/claude/`. Project `CLAUDE.md` imports `AGENTS.md`; `.agents/` loads the existing Skills as the `saplingagent` local plugin. Full Access remains enabled as the current OS user. There is no default whole-turn deadline, automatic fallback, automatic resend or silent replacement of missing sessions.
 
@@ -319,7 +269,7 @@ Doctor reports installation, versions, saved AI configuration and configured-por
 | Local service connection failed | Keep the startup terminal running, run Diagnostics, and use the actual runtime address/ports from `.runtime/runtime-address.json`; configured ports are starting values |
 | Session does not exist | The UI retains unsent/retry input and starts a new session; do not delete `data/` to resolve it |
 | No recent progress | Check whether a tool or user decision is pending; continue waiting or stop manually. The reminder does not impose a default turn deadline |
-| OpenCode shows `Current permissions: full-access` or internal instructions as a reply | Update source to a version containing the OpenCode message-attribution fix (TASK-20261012-017), then restart the backend/app and create a new conversation. Preserve `data/` and `local-secrets/`; older saved bubbles are not deleted. In follow mode Install / update checks source and dependencies; local/own modes retain source. Check the actual branch/version because release may lag main |
+| OpenCode shows `Current permissions: full-access` or internal instructions as a reply | Update source to a version containing the OpenCode message-attribution fix (TASK-20261012-017), then restart the backend/app and create a new conversation. Preserve `data/` and `local-secrets/`; older saved bubbles are not deleted. In follow mode Install / repair dependencies checks source and dependencies; local/own modes retain source. Check the actual branch/version because release may lag main |
 | Quota/model authorization error | Check the actual account error and official usage limits; reinstalling cannot grant model access |
 
 Stop services before moving the application. Move the whole folder. On the same architecture, launchers resolve the new location; reinstall after changing architecture or lockfiles.
@@ -349,7 +299,7 @@ Saplingagent/
 └── AGENTS.md / FINAL_GOAL.md / TODO.md / AI_TASKS.md
 ```
 
-Git controls can save tracked/nonignored changes into a local commit and switch local branches, automatically committing pending changes first. These actions do not publish to GitHub. A ZIP contains no `.git/`; the first installation initializes Git after your storage selection: local starts empty main, own/follow create their initial source snapshot. A child folder never borrows its parent repository for the version panel.
+Fresh ZIPs have no Git metadata. Installation does not initialize Git, connect remotes or merge source. Optional legacy Git modules remain freely editable application code; the default page does not mount them. Customer-created repositories and application files are preserved by reinstall and kernel maintenance.
 
 AI development starts with [AGENTS.md](AGENTS.md) and [rules/README.md](rules/README.md). Services maintain `SERVICE.md`, `CONTRACT.md`, `DEPLOY.md` and `REFERENCES.md`. Technical paths and protocol identifiers retain compatibility; existing user conversations are never translated by this release.
 
@@ -406,11 +356,11 @@ The user's project rules ship under `rules/`. Translating their prose does not r
 
 ## Windows operation and delivery
 
-Run `bash Saplingagent.sh --lang zh` in Git Bash. The single English/Chinese menu provides Install / update, Configure AI (independent account/API web page), Start app and Diagnostics. Explicit actions/flags are identical to Mac: `install --repair`, `configure --no-open`, `login --device-auth`, `opencode`, `start --no-open`, `doctor`, `logout`. See [Windows guide](docs/windows-install.html) / [中文 Windows 说明](docs/windows-install.zh.html).
+Run `bash Saplingagent.sh --lang zh` in Git Bash. The single English/Chinese menu provides Install / repair dependencies, Configure AI (independent account/API web page), Start app and Diagnostics. Explicit actions/flags are identical to Mac: `install --repair`, `configure --no-open`, `login --device-auth`, `opencode`, `start --no-open`, `doctor`, `logout`. See [Windows guide](docs/windows-install.html) / [中文 Windows 说明](docs/windows-install.zh.html).
 
 Windows system detection/download/extraction uses its built-in PowerShell internally, embedded in scripts/windows/bootstrap.sh; there is no separate .ps1 file or user PowerShell command. UTF16 encoded command arguments preserve Unicode paths and leave stdin available for provider authentication. Windows menu actions run in the foreground. Diagnostics/web configuration use PowerShell directly; Git Bash's winpty is used when available for interactive install/Git setup/login/OpenCode/start console compatibility. Windows terminal shutdown/model interactions still require native-system testing. No WSL, global Node/Codex, registry/global PATH/permanent execution-policy modification is required.
 
-The App Server is a project-owned native stdio subprocess. Credentials and agent state remain in local-secrets/codex/, local-secrets/opencode/, local-secrets/claude/ and shared local-secrets/api-keys/; dependencies/cache/state stay in the folder. The UI remains English; menu language does not change conversation data. Full Access remains current-user access. Git is required to supply Bash on Windows; branch/version controls additionally require an actual Git repository, initialized after the installer storage choice for source ZIPs.
+The App Server is a project-owned native stdio subprocess. Credentials and agent state remain in local-secrets/codex/, local-secrets/opencode/, local-secrets/claude/ and shared local-secrets/api-keys/; dependencies/cache/state stay in the folder. The UI remains English; menu language does not change conversation data. Full Access remains current-user access. Git is required to supply Bash on Windows; fresh snapshots have no Git metadata or storage selection. Existing customer Git is preserved.
 
 Restart app uses the existing persistent gateway and owned live PID-tree shutdown. Finish work before restarting. Forced parent/window termination, power loss and separately detached programs cannot guarantee cleanup; active command side effects are not undone. Ports/manager/launcher changes require normal stop and reopening the same Bash entry. No process-name/port kill, root elevation, automatic rollback or prompt resend is added.
 
@@ -418,7 +368,7 @@ To create a committed clean Windows source ZIP, use `<project-node> scripts/pack
 
 ## Automatic device selection
 
-The common Bash entry detects macOS or native Windows Bash environments and routes automatically. Mac chooses Intelx64 or AppleSiliconarm64 (including Rosetta). Windows verifies build17763+, selects native x64/ARM64 ahead of emulated-terminal architecture, checks official Node24.21.0 checksums and actual runtime architecture, then installs pinned Codex0.146.1/OpenCode1.19.0 native binaries. No manual CPU selection. Linux/WSL and32-bit devices fail before download. Re-run Install / update after moving the source folder to another device; installed dependencies are OS-specific. Native Windows login/model/MCP/restart and ARM hardware tests remain unverified on the current Mac host.
+The common Bash entry detects macOS or native Windows Bash environments and routes automatically. Mac chooses Intelx64 or AppleSiliconarm64 (including Rosetta). Windows verifies build17763+, selects native x64/ARM64 ahead of emulated-terminal architecture, checks official Node24.21.0 checksums and actual runtime architecture, then installs pinned Codex0.146.1/OpenCode1.19.0 native binaries. No manual CPU selection. Linux/WSL and32-bit devices fail before download. Re-run Install / repair dependencies after moving the source folder to another device; installed dependencies are OS-specific. Native Windows login/model/MCP/restart and ARM hardware tests remain unverified on the current Mac host.
 
 
 ## Automatic local ports
@@ -433,6 +383,6 @@ Use the paperclip, drop files into AI chat or paste an image. Attachments stay i
 
 ## Release identity
 
-The product distribution is **Saplingagent 0.9.1** (`config/release.json`). The footer and Bash menu display this release separately from **Kernel 0.90** and your **Workspace Git version**. Missing release metadata is shown as unavailable. A local Git reset does not erase product identity. Kernel-only updates preserve the complete distribution version.
+The product distribution is **Saplingagent 0.9.2** (`config/release.json`). The footer and Bash menu display this release separately from **Kernel 0.91**; the default page has no Workspace Git control. Missing release metadata is shown as unavailable. A local Git reset does not erase product identity. Kernel-only updates preserve the complete distribution version.
 
-Downloadable source ZIPs record `releaseVersion` and the exact `sourceCommit` in `delivery.json`; their filenames contain both. The owner-designated release is `v0.9.1`; its tag, release page, product declaration and download receipts must identify the same checked source. Do not increment that version without the owner’s instruction. See the [release checklist](docs/release-checklist.html) for code-first verification and the [published releases](https://github.com/extendmachine/Saplingagent/releases) for the actual publication status. Source tags, published Releases and real-device/model acceptance are separate facts.
+Downloadable source ZIPs record `releaseVersion` and the exact `sourceCommit` in `delivery.json`; their filenames contain both. The owner-designated release is `v0.9.2`; its tag, release page, product declaration and download receipts must identify the same checked source. Do not increment that version without the owner’s instruction. See the [release checklist](docs/release-checklist.html) for code-first verification and the [published releases](https://github.com/extendmachine/Saplingagent/releases) for the actual publication status. Source tags, published Releases and real-device/model acceptance are separate facts.

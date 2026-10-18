@@ -18,7 +18,7 @@ const text = async (root, name, value) => {
 };
 function manifest(files, version = "0.90") {
 	return {
-		schemaVersion: 2,
+		schemaVersion: 3,
 		version,
 		appApi: 1,
 		minNode: "24.11.0",
@@ -66,7 +66,7 @@ async function fixture(t) {
 		"contracts/kernel.mjs": "old contract",
 		"Saplingagent.sh": "old launcher",
 		"scripts/dev.mjs": "old startup",
-		"front/features/git-version/GitVersionPanel.tsx": "old Git"
+		"kernel/control-page.mjs": "old control"
 	};
 	for (const [name, value] of Object.entries(old)) await text(root, name, value);
 	await fs.chmod(path.join(root, "Saplingagent.sh"), 0o755);
@@ -86,7 +86,7 @@ async function fixture(t) {
 	const files = {
 		...old,
 		"kernel/manager.mjs": "new manager",
-		"front/features/git-version/GitVersionPanel.tsx": "new Git",
+		"kernel/control-page.mjs": "new control",
 		"kernel/new-tool.mjs": "new core"
 	};
 	const target = manifest(files, "0.91");
@@ -119,13 +119,19 @@ async function preserved(root) {
 }
 test("kernel ownership separates business/data/Git paths and validates complete package declarations", async () => {
 	for (const file of [
-		"scripts/launcher/source-update.mjs",
-		"backend/agent-runtime/git-versions.mjs",
+		"kernel/control-page.mjs",
+		"kernel/worker.mjs",
 		"backend/runtime-manager/manager.mjs",
-		"front/features/runtime-control/RestartServices.tsx"
+		"kernel/package-lock.json"
 	]) assert.equal(isKernelPath(file), true, file);
 	for (const file of [
 		"front/App.tsx",
+		"scripts/launcher/source-update.mjs",
+		"scripts/launcher/git-storage.mjs",
+		"backend/agent-runtime/package-lock.json",
+		"backend/agent-runtime/git-versions.mjs",
+		"front/features/git-version/GitVersionPanel.tsx",
+		"front/features/runtime-control/RestartServices.tsx",
 		"front/features/invoices/Page.tsx",
 		"backend/invoices/server.mjs",
 		"config/runtime.json",
@@ -254,11 +260,11 @@ test("partial apply is reported and backed up without auto rollback; recovery re
 	assert.equal(backups.length, 1);
 	const id = backups[0], journal = JSON.parse(await fs.readFile(path.join(f.root, ".runtime/kernel/backups", id, "journal.json")));
 	assert.equal(journal.phase, "partial");
-	const changed = journal.files.find((e) => e.path === "front/features/git-version/GitVersionPanel.tsx");
-	assert.equal(await fs.readFile(path.join(f.root, changed.path), "utf8"), "new Git");
+	const changed = journal.files.find((e) => e.path === "kernel/control-page.mjs");
+	assert.equal(await fs.readFile(path.join(f.root, changed.path), "utf8"), "new control");
 	await text(f.root, changed.path, "later customer edit");
 	await assert.rejects(restoreKernel(f.root, id), /conflict/);
-	await text(f.root, changed.path, "new Git");
+	await text(f.root, changed.path, "new control");
 	await restoreKernel(f.root, id);
 	for (const [name, value] of Object.entries(f.old)) assert.equal(await fs.readFile(path.join(f.root, name), "utf8"), value);
 	await preserved(f.root);
@@ -266,18 +272,18 @@ test("partial apply is reported and backed up without auto rollback; recovery re
 test("unchanged local core is preserved while removed core and mode changes can be restored", async (t) => {
 	const f = await fixture(t);
 	await text(f.root, "scripts/dev.mjs", "customer startup");
-	delete f.files["front/features/git-version/GitVersionPanel.tsx"];
-	f.target.files = f.target.files.filter((x) => x.path !== "front/features/git-version/GitVersionPanel.tsx");
+	delete f.files["kernel/control-page.mjs"];
+	f.target.files = f.target.files.filter((x) => x.path !== "kernel/control-page.mjs");
 	f.target.files.find((x) => x.path === "Saplingagent.sh").executable = false;
 	const plan = await prepareKernel(f.root, { source: f.source });
 	assert.ok(plan.preservedLocal.includes("scripts/dev.mjs"));
 	assert.equal(plan.conflicts.length, 0);
 	const result = await applyKernel(f.root, plan.id, { acceptRisk: true });
-	assert.equal(await fs.access(path.join(f.root, "front/features/git-version/GitVersionPanel.tsx")).then(() => true, () => false), false);
+	assert.equal(await fs.access(path.join(f.root, "kernel/control-page.mjs")).then(() => true, () => false), false);
 	assert.equal(await fs.readFile(path.join(f.root, "scripts/dev.mjs"), "utf8"), "customer startup");
 	if (process.platform !== "win32") assert.equal((await fs.stat(path.join(f.root, "Saplingagent.sh"))).mode & 0o111, 0);
 	await restoreKernel(f.root, result.backupId);
-	assert.equal(await fs.readFile(path.join(f.root, "front/features/git-version/GitVersionPanel.tsx"), "utf8"), "old Git");
+	assert.equal(await fs.readFile(path.join(f.root, "kernel/control-page.mjs"), "utf8"), "old control");
 	if (process.platform !== "win32") assert.ok((await fs.stat(path.join(f.root, "Saplingagent.sh"))).mode & 0o111);
 	await preserved(f.root);
 });
@@ -343,14 +349,14 @@ test("obsolete broad manifests and saved plans refuse automatic migration before
 		...f.old,
 		...applicationFiles
 	});
-	legacy.schemaVersion = 1;
+	legacy.schemaVersion = 2;
 	await text(f.root, "kernel/manifest.json", JSON.stringify(legacy));
 	await assert.rejects(prepareKernel(f.root, { source: f.source }), { code: "INVALID_KERNEL" });
 	await assert.rejects(applyKernel(f.root, plan.id, { acceptRisk: true }), { code: "INVALID_KERNEL" });
 	assert.equal((await kernelStatus(f.root)).state, "invalid");
 	assert.equal(await fs.readFile(path.join(f.root, "kernel/manager.mjs"), "utf8"), "old manager");
 	await text(f.root, "kernel/manifest.json", JSON.stringify(manifest(f.old)));
-	f.target.schemaVersion = 1;
+	f.target.schemaVersion = 2;
 	await assert.rejects(prepareKernel(f.root, { source: f.source }), { code: "INVALID_KERNEL" });
 	for (const [name, value] of Object.entries(applicationFiles)) assert.equal(await fs.readFile(path.join(f.root, name), "utf8"), value);
 });
@@ -368,7 +374,7 @@ test("old broad backup entries and schema1 baseline restores cannot overwrite re
 	await assert.rejects(restoreKernel(f.root, result.backupId), /Invalid recovery entry/);
 	const entry = journal.files.find((e) => e.path === "kernel/manifest.json"), original = path.join(prefix, "original", String(entry.originalIndex));
 	const legacy = JSON.parse(await fs.readFile(original));
-	legacy.schemaVersion = 1;
+	legacy.schemaVersion = 2;
 	const bytes = Buffer.from(JSON.stringify(legacy));
 	entry.beforeHash = sha(bytes);
 	await fs.writeFile(original, bytes);
