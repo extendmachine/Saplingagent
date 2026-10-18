@@ -92,8 +92,6 @@ async function launch() {
 				...ports
 			};
 			manager.config = config;
-			await fs.access(path.join(root, "front/node_modules/vite/bin/vite.js"));
-			await fs.access(path.join(root, "backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json"));
 			const options = {
 				manager,
 				token,

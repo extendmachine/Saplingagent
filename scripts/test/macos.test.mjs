@@ -222,3 +222,12 @@ test('actual macOS terminal install preserves an existing customer repository an
  const result=await menuPty(root);assert.equal(result.code,0,result.text);assert.equal(result.quit,true);
  assert.deepEqual(await fs.readFile(path.join(root,'.git/config')),before);assert.equal(await fs.readFile(path.join(root,'feature.txt'),'utf8'),'my page');
 });
+
+test('AI setup remains available with kernel dependencies when app frontend and lock are broken',async t=>{
+ const root=await fixture(t);await fs.mkdir(path.join(root,'kernel'),{recursive:true});await fs.writeFile(path.join(root,'kernel/package.json'),'{}');
+ for(const relative of ['.bin/opencode',`@anthropic-ai/claude-agent-sdk-darwin-${process.arch}/claude`]){const target=path.join(root,'kernel/node_modules',relative);await fs.mkdir(path.dirname(target),{recursive:true});await fs.copyFile(path.join(root,'backend/agent-runtime/node_modules',relative),target);}
+ await fs.mkdir(path.join(root,'kernel/node_modules/vite/bin'),{recursive:true});await fs.writeFile(path.join(root,'kernel/node_modules/vite/bin/vite.js'),"import fs from 'node:fs';fs.writeFileSync('core-ui-built','yes')");
+ await fs.mkdir(path.join(root,'backend/ai-config'),{recursive:true});await fs.writeFile(path.join(root,'backend/ai-config/server.mjs'),"import fs from 'node:fs';fs.writeFileSync('core-setup-started','yes')");
+ await fs.rm(path.join(root,'front/node_modules'),{recursive:true,force:true});await fs.writeFile(path.join(root,'front/package-lock.json'),'CUSTOMER APP LOCK');
+ const result=await runCli(root,['configure','--no-open']);assert.equal(result.code,0,result.output);assert.equal(await fs.readFile(path.join(root,'core-ui-built'),'utf8'),'yes');assert.equal(await fs.readFile(path.join(root,'core-setup-started'),'utf8'),'yes');assert.equal(await fs.readFile(path.join(root,'front/package-lock.json'),'utf8'),'CUSTOMER APP LOCK');
+});

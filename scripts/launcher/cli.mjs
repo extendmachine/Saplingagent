@@ -64,6 +64,10 @@ async function installed() {
       && await exists(opencode) && await exists(claudeBinary(root));
   } catch { return false; }
 }
+async function coreInstalled() {
+  if (!await exists(path.join(root,'kernel/package.json'))) return installed();
+  return await exists(cli) && await exists(opencode) && await exists(claudeBinary(root)) && await exists(path.join(root,'kernel/node_modules/vite/bin/vite.js'));
+}
 async function localSetup() {
   await setup({ importExistingAuth: false, projectRoot: root });
   const configFile = path.join(env.CODEX_HOME, 'config.toml');
@@ -157,7 +161,7 @@ async function configureOpenCode() {
   console.log(t('OpenCode provider saved. Restart Saplingagent, start a new conversation, then choose OpenCode.', "OpenCode 服务商已保存。请重启 Saplingagent，新建会话后选择 OpenCode。"));
 }
 async function configureAI(noOpen) {
-  if (!await installed()) throw new Error(t('Install dependencies before opening AI setup: bash Saplingagent.sh install --repair', '请先运行 bash Saplingagent.sh install --repair 安装依赖，再打开 AI 配置网页。'));
+  if (!await coreInstalled()) throw new Error(t('Install dependencies before opening AI setup: bash Saplingagent.sh install --repair', '请先运行 bash Saplingagent.sh install --repair 安装依赖，再打开 AI 配置网页。'));
   await localSetup();
   console.log(t('Preparing the independent AI configuration page…','正在准备独立的 AI 配置网页…'));
   await required(process.execPath,[path.join(root,'kernel/node_modules/vite/bin/vite.js'),'build','--config',path.join(root,'front/ai-config/vite.config.mjs')]);
