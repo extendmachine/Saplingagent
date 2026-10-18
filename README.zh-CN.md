@@ -48,6 +48,18 @@
 
 <a id="quick-start"></a>
 
+## 0.9.3 开发版：网页配置与本机编译启动器
+
+当前 main 为 **0.9.3 / Kernel 0.92**，本次不更新公开 release；下方一行安装命令仍下载已发布的 release。
+
+1. 运行 `bash Saplingagent.sh`，检测设备、安装最小管理内核后直接打开配置网页。
+2. 在网页设置项目名称、文件夹名称、图标和 AI 接口。独立客户文件夹可在编译前改名；不覆盖同名目录，开发工作树保留原位置。
+3. 点击安装应用并编译启动器：业务依赖和校验后的 Go 工具链在本地项目目录内准备，不安装到系统全局。
+4. 双击生成的“项目名称.app”（Mac）或“项目名称.exe”（Windows），进入开发。源码和数据仍留在完整文件夹内。
+5. 管理页提供打开、重启、停止和重新构建。未变化的启动器复用；变化时先编译验证再替换，失败保留原产物。
+
+通过 `bash Saplingagent.sh configure --no-open` 可重新打开管理；`SAPLING_LEGACY_MENU=1 bash Saplingagent.sh` 保留旧终端菜单。原生 Windows 图标、目录改名和替换需要真机验收。详见[启动器说明](docs/project-launcher.html)。下方旧版菜单步骤仅适用于既有 release。
+
 ## 安装、配置与启动
 
 ### 1. 获取完整应用
@@ -160,7 +172,7 @@ bash Saplingagent.sh logout
 
 网页右上角 **Kernel → Check for kernel update → Upgrade kernel & restart**。升级器固定 release 提交并校验清单，显示变更和冲突，再停止当前应用、备份和替换内核、修复内核自己的依赖、完整重启并跳转到实际端口。页面、聊天、MCP、Skills、自定义业务和应用依赖声明保留。独立进度网页在原服务停止后继续工作，失败时可重试或手动恢复；不自动回退。
 
-产品版本为 **0.9.2**，独立内核为 **0.91 / schema3**。0.9.1 的 schema2 原型不能直接跨边界升级：请下载0.9.2到新目录，保留原目录，再人工迁移自己的应用/数据/配置；不要覆盖真实凭据或重新生成旧目录基线。之后同 schema3 内核可在网页升级。完整说明：[内核管理](docs/kernel-management.html)。
+当前 main 产品版本为 **0.9.3**，独立内核为 **0.92 / schema3**；公开 release 仍为0.9.2。0.9.1 的 schema2 原型不能直接跨边界升级：请下载0.9.2到新目录，保留原目录，再人工迁移自己的应用/数据/配置；不要覆盖真实凭据或重新生成旧目录基线。之后同 schema3 内核可在网页升级。完整说明：[内核管理](docs/kernel-management.html)。
 
 
 ## 导入已有的本地凭据
@@ -360,6 +372,6 @@ Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍
 
 ## 发布版本识别
 
-本发行源码的产品版本为 **Saplingagent 0.9.2**，唯一声明在 `config/release.json`。网页页脚和 Bash 菜单展示产品发布版本和独立的 **Kernel 0.91**；默认页面不再展示 Workspace Git 版本；信息缺失时明确显示不可用。重建本地 Git 不会清除产品标识，单独更新内核也不代表升级了整个应用。
+当前 main 源码的产品版本为 **Saplingagent 0.9.3**，唯一声明在 `config/release.json`。网页页脚和 Bash 菜单展示产品发布版本和独立的 **Kernel 0.92**；默认页面不再展示 Workspace Git 版本；信息缺失时明确显示不可用。重建本地 Git 不会清除产品标识，单独更新内核也不代表升级了整个应用。
 
-源码 ZIP 的 `delivery.json` 同时记录 `releaseVersion` 和精确的 `sourceCommit`，文件名也包含二者。维护者明确指定本次发布为 `v0.9.2`，标签、发布页面、产品声明和下载回执必须对应同一份已核对源码；不得自行递增用户指定的版本号。维护者先核对并冻结代码，再核对版本声明、release 提交、不可移动的标签及下载包校验值。参见[发布检查表](docs/release-checklist.html)和[实际发布记录](https://github.com/extendmachine/Saplingagent/releases)；源码标签、GitHub Release、真机和真实模型验收分别记录。
+源码 ZIP 的 `delivery.json` 同时记录 `releaseVersion` 和精确的 `sourceCommit`，文件名也包含二者。既有公开发布为 `v0.9.2`，本次0.9.3只修改 main，不移动旧标签或发布新 release。后续发布时，标签、发布页面、产品声明和下载回执必须对应同一份已核对源码；不得自行递增用户指定的版本号。维护者先核对并冻结代码，再核对版本声明、release 提交、不可移动的标签及下载包校验值。参见[发布检查表](docs/release-checklist.html)和[实际发布记录](https://github.com/extendmachine/Saplingagent/releases)；源码标签、GitHub Release、真机和真实模型验收分别记录。

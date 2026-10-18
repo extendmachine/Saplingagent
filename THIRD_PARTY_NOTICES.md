@@ -25,3 +25,7 @@ Node.js and official Codex CLI retain their upstream licenses. Saplingagent does
 User-generated code and applications are not automatically relicensed by this project notice. Their ownership, external dependencies and distribution terms must be reviewed independently.
 
 - **Claude Agent SDK 0.3.296 and its native platform packages** (`@anthropic-ai/claude-agent-sdk`): Anthropic. SDK use is governed by Anthropic Commercial Terms, with individual dependency licensing as supplied by the packages. This project's PolyForm Noncommercial license does not replace those terms or grant authentication rights. Official overview/terms entry: https://code.claude.com/docs/en/agent-sdk/overview ; package: https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk . Native binaries are installed locally by npm and are not bundled into the source ZIP.
+
+## Project-local Go toolchain
+
+Customer launcher compilation downloads official Go1.27.2 archives from https://go.dev/dl/ with pinned SHA256 verification. Go uses its BSD-style license; the downloaded distribution includes its LICENSE/PATENTS and remains in the customer's .runtime directory. The source package ships launcher source and checksum metadata, not a Go distribution or customer-generated executable. See kernel/launcher/REFERENCES.md.
