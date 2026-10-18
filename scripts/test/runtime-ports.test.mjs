@@ -24,7 +24,7 @@ test('real launcher skips foreign ports, routes actual addresses, retains them a
     for (const server of [foreign, foreignBackend]) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
     await fs.rm(root, { recursive: true, force: true });
   });
-  for (const file of ['scripts/dev.mjs', 'scripts/setup.mjs', 'backend/runtime-manager/manager.mjs', 'backend/runtime-manager/services.mjs', 'backend/runtime-manager/ports.mjs', 'backend/runtime-manager/gateway.mjs', 'backend/runtime-manager/server.mjs', 'contracts/local-process.mjs', 'contracts/kernel.mjs']) {
+  for (const file of ['kernel/http.mjs','kernel/control-page.mjs','kernel/handoff.mjs','kernel/manager.mjs','kernel/storage.mjs','contracts/release.mjs', 'scripts/dev.mjs', 'scripts/setup.mjs', 'backend/runtime-manager/manager.mjs', 'backend/runtime-manager/services.mjs', 'backend/runtime-manager/ports.mjs', 'backend/runtime-manager/gateway.mjs', 'backend/runtime-manager/server.mjs', 'contracts/local-process.mjs', 'contracts/engine-dependencies.mjs', 'contracts/kernel.mjs']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const config = Object.fromEntries(portKeys.map((key, index) => [key, start + index]));

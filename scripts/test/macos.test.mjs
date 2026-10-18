@@ -14,7 +14,7 @@ async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   const parent = path.join(project, '.cache/macos-tests'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "\u6d4b\u8bd5 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['contracts/ai-configuration.mjs', 'contracts/local-process.mjs', 'scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'scripts/launcher/recipient-records.mjs', 'scripts/setup.mjs', 'scripts/macos/cli.mjs', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'Saplingagent.sh', 'config/macos.json', 'config/runtime.json']) {
+  for (const file of ['contracts/ai-configuration.mjs', 'contracts/local-process.mjs', 'contracts/engine-dependencies.mjs', 'scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'scripts/launcher/recipient-records.mjs', 'scripts/setup.mjs', 'scripts/macos/cli.mjs', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'Saplingagent.sh', 'config/macos.json', 'config/runtime.json']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const settings = JSON.parse(await fs.readFile(path.join(root, 'config/macos.json'), 'utf8'));
@@ -167,7 +167,8 @@ test('Chinese login failures preserve error meaning and do not expose raw creden
 test('web configuration builds and launches its independent page without Codex login or chat startup',async t=>{
  const root=await fixture(t,{auth:'broken'});
  await fs.mkdir(path.join(root,'front/ai-config'),{recursive:true});await fs.writeFile(path.join(root,'front/ai-config/vite.config.mjs'),'export default {}');
- await fs.writeFile(path.join(root,'front/node_modules/vite/bin/vite.js'),"import fs from 'node:fs';fs.writeFileSync('build-args.json',JSON.stringify(process.argv.slice(2)));");
+ await fs.mkdir(path.join(root,'kernel/node_modules/vite/bin'),{recursive:true});
+ await fs.writeFile(path.join(root,'kernel/node_modules/vite/bin/vite.js'),"import fs from 'node:fs';fs.writeFileSync('build-args.json',JSON.stringify(process.argv.slice(2)));");
  await fs.mkdir(path.join(root,'backend/ai-config'),{recursive:true});await fs.writeFile(path.join(root,'backend/ai-config/server.mjs'),"import fs from 'node:fs';fs.writeFileSync('configuration-start.json',JSON.stringify({args:process.argv.slice(2),root:process.env.SEED_ROOT,home:process.env.CODEX_HOME}));");
  const result=await runCli(root,['configure','--no-open']);assert.equal(result.code,0,result.output);assert.match(result.output,/independent AI configuration/);
  assert.deepEqual(JSON.parse(await fs.readFile(path.join(root,'build-args.json'),'utf8')),['build','--config',path.join(root,'front/ai-config/vite.config.mjs')]);
@@ -192,9 +193,9 @@ try:
    except OSError:break
    decoded=text.decode('utf8',errors='replace')
    if sys.argv[3]=='yes' and '请选择 [0, 2-6, 9]' in decoded and not quit:os.write(fd,b'0\\n');quit=True
-   if '请选择 [0-6, 9]' in decoded and not menu:os.write(fd,b'1\\n');menu=True
+   if '请选择 [0-4, 6, 9]' in decoded and not menu:os.write(fd,b'1\\n');menu=True
    if sys.argv[2]=='yes' and '请选择 [1-3]' in decoded and not storage:os.write(fd,b'1\\n');storage=True
-   if '安装 / 更新执行完成' in decoded and not quit:os.write(fd,b'0\\n');quit=True
+   if '安装 / 修复执行完成' in decoded and not quit:os.write(fd,b'0\\n');quit=True
   done,value=os.waitpid(pid,os.WNOHANG)
   if done:status=value;break
  if status is None:
@@ -209,27 +210,15 @@ finally:os.close(fd)
 async function nativeNode(root) {
  const settings=JSON.parse(await fs.readFile(path.join(root,'config/macos.json'))),folder=path.join(root,'.runtime',`node-v${settings.nodeVersion}-darwin-${process.arch}`,'bin');await fs.mkdir(folder,{recursive:true});await fs.symlink(process.execPath,path.join(folder,'node'));
 }
-test('actual macOS terminal menu1 reports progress and first Git prompt receives foreground input',{skip:process.platform!=='darwin',timeout:25000},async t=>{
- const root=await fixture(t);await nativeNode(root);const result=await menuPty(root,{storageChoice:true});assert.equal(result.code,0,result.text);assert.equal(result.storage,true);assert.equal(result.quit,true);assert.match(result.text,/正在启动安装 \/ 更新/);assert.match(result.text,/依赖检查完成/);assert.match(result.text,/只检查本地依赖/);
+test('actual macOS terminal installs existing dependencies without a Git prompt or initialization',{skip:process.platform!=='darwin',timeout:25000},async t=>{
+ const root=await fixture(t);await nativeNode(root);const result=await menuPty(root);
+ assert.equal(result.code,0,result.text);assert.equal(result.quit,true);assert.equal(result.storage,false);
+ assert.match(result.text,/正在启动安装 \/ 修复/);assert.match(result.text,/依赖检查完成/);assert.doesNotMatch(result.text,/请选择 \[1-3\]|Git \/ 存放/);
+ assert.equal(await fs.access(path.join(root,'.git')).then(()=>true,()=>false),false);
 });
-test('actual macOS terminal hides install for saved local/own storage without bootstrapping',{skip:process.platform!=='darwin',timeout:25000},async t=>{
- for(const mode of ['local','own']){
-  const root=await fixture(t);
-  await promisify(execFile)('git',['-C',root,'init','-b','main']);
-  await promisify(execFile)('git',['-C',root,'config','--local','saplingagent.storageMode',mode]);
-  const result=await menuPty(root,{independent:true});
-  assert.equal(result.code,0,result.text);assert.equal(result.quit,true);assert.equal(result.menu,false);
-  assert.doesNotMatch(result.text,/1\. 安装|检测到设备|正在启动安装/);
-  assert.match(result.text,/独立于 Saplingagent 上游/);
- }
+test('actual macOS terminal install preserves an existing customer repository and source',{skip:process.platform!=='darwin',timeout:25000},async t=>{
+ const root=await fixture(t);await nativeNode(root);const exec=promisify(execFile);
+ await exec('git',['init','-b','custom',root]);await exec('git',['-C',root,'remote','add','origin','https://example.invalid/my.git']);await fs.writeFile(path.join(root,'feature.txt'),'my page');const before=await fs.readFile(path.join(root,'.git/config'));
+ const result=await menuPty(root);assert.equal(result.code,0,result.text);assert.equal(result.quit,true);
+ assert.deepEqual(await fs.readFile(path.join(root,'.git/config')),before);assert.equal(await fs.readFile(path.join(root,'feature.txt'),'utf8'),'my page');
 });
-test('actual macOS terminal menu1 updates source and reloads fresh launcher without reinstalling unchanged dependencies',{skip:process.platform!=='darwin',timeout:25000},async t=>{
- const source=await fixture(t),app=source+'-recipient';t.after(()=>fs.rm(app,{recursive:true,force:true}));const exec=promisify(execFile),git=async(root,...args)=>(await exec('git',['-C',root,...args],{env:{...process.env,GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:path.join(root,'absent-global')},encoding:'utf8'})).stdout.trim();
- await fs.copyFile(path.join(project,'.gitignore'),path.join(source,'.gitignore'));await fs.writeFile(path.join(source,'config/runtime.json'),'{}');await fs.writeFile(path.join(source,'feature.txt'),'old-source');await git(source,'init','-b','release');await git(source,'config','user.name','Test');await git(source,'config','user.email','test@localhost');await git(source,'add','.');await git(source,'commit','-m','old source');
- await git(path.dirname(source),'clone','--single-branch','--branch','release',source,app);await git(app,'remote','rename','origin','upstream');await git(app,'config','user.name','Test');await git(app,'config','user.email','test@localhost');await git(app,'config','saplingagent.storageMode','upstream');
- for(const folder of ['.runtime','front/node_modules','backend/mcp-runtime/node_modules','backend/agent-runtime/node_modules'])await fs.cp(path.join(source,folder),path.join(app,folder),{recursive:true});await nativeNode(app);
- await fs.writeFile(path.join(source,'feature.txt'),'new-source');const cli=path.join(source,'scripts/launcher/cli.mjs');await fs.writeFile(cli,"console.log('UPDATED_LAUNCHER_LOADED');\n"+await fs.readFile(cli,'utf8'));await git(source,'commit','-am','new release');const latest=await git(source,'rev-parse','HEAD');
- const result=await menuPty(app);assert.equal(result.code,0,result.text);assert.equal(result.quit,true);assert.match(result.text,/源码已更新/);assert.match(result.text,/UPDATED_LAUNCHER_LOADED/);assert.match(result.text,/依赖检查完成/);assert.equal(await fs.readFile(path.join(app,'feature.txt'),'utf8'),'new-source');assert.equal(await git(app,'rev-parse','HEAD'),latest);assert.equal(await fs.access(path.join(app,'.runtime/macos-install.lock')).then(()=>true,()=>false),false);
-});
-
-test('actual macOS bootstrap dispatches independent kernel status without install or model setup',{skip:process.platform!=='darwin'},async t=>{const root=await fixture(t);await nativeNode(root);await fs.cp(path.join(project,'kernel'),path.join(root,'kernel'),{recursive:true});await fs.copyFile(path.join(project,'contracts/kernel.mjs'),path.join(root,'contracts/kernel.mjs'));const result=await promisify(execFile)('/bin/bash',[path.join(root,'Saplingagent.sh'),'--lang','en','kernel','status'],{cwd:root,env:{...process.env,SEED_ROOT:root}});assert.match(result.stdout,/"version": "0.90"/);assert.match(result.stdout,/Local kernel backups/);assert.equal(await fs.access(path.join(root,'UNEXPECTED_LAUNCH')).then(()=>true,()=>false),false);});

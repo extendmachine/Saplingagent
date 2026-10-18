@@ -98,7 +98,8 @@ async function launch() {
 				manager,
 				token,
 				frontPort: config.frontPort,
-				managerPort: config.runtimeManagerPort
+				managerPort: config.runtimeManagerPort,
+				onMaintenance: () => stop(0)
 			};
 			control = createManagerServer(options);
 			gateway = createGateway(options);

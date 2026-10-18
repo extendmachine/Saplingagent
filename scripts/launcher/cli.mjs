@@ -5,9 +5,7 @@ import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { readConnections,defaultSelection,codexConnection,claudeConnections,openCodeConnections } from '../../contracts/ai-configuration.mjs';
-import { configureGitStorage } from './git-storage.mjs';
 import { initializeDownloadedRecords } from './recipient-records.mjs';
-import { updateSource } from './source-update.mjs';
 import { setup } from '../setup.mjs';
 import { codexBinary, claudeBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
@@ -25,7 +23,7 @@ const cli = codexBinary(root);
 const npm = npmCommand();
 const opencode = openCodeBinary(root);
 const stampFile = path.join(root, `.runtime/${platformName}-install.json`);
-const services = ['front', 'backend/app-builder', 'backend/mcp-runtime', 'backend/agent-runtime'];
+const services = [...(await fs.access(path.join(root,'kernel/package.json')).then(()=>['kernel'],()=>[])), 'front', 'backend/app-builder', 'backend/mcp-runtime', 'backend/agent-runtime'];
 const authArgs = ['-c', 'cli_auth_credentials_store="file"'];
 const env = { ...process.env, SEED_ROOT: root, SEED_CODEX_BIN: windows ? cli : path.join(root, 'scripts/macos/codex.sh'), SEED_IMPORT_EXISTING_AUTH: '0', CODEX_HOME: path.join(root, 'local-secrets/codex'), npm_config_cache: path.join(root, '.cache/npm') };
 for (const key of ['OPENAI_API_KEY', 'CODEX_API_KEY', 'CODEX_ACCESS_TOKEN']) delete env[key];
@@ -54,7 +52,7 @@ async function required(command, args, options) {
 async function exists(file) { return fs.access(file).then(() => true, () => false); }
 async function signature() {
   const hash = createHash('sha256').update(JSON.stringify(settings));
-  for (const service of services) hash.update(await fs.readFile(path.join(root, service, 'package-lock.json')));
+  for (const service of services.filter(s=>s!=='kernel')) hash.update(await fs.readFile(path.join(root, service, 'package-lock.json')));
   return hash.digest('hex');
 }
 async function installed() {
@@ -79,7 +77,7 @@ async function loggedIn() {
   throw new Error(t('Unable to read project login status. Check the Codex installation, architecture and local-secrets/codex/config.toml; this error does not mean the project is not logged in.', "无法读取项目登录状态。请检查 Codex 安装、架构和 local-secrets/codex/config.toml；此错误不代表未登录。"));
 }
 async function install(repair = false) {
-  console.log(t('Install / update started. Checking storage, source and project dependencies…','安装 / 更新已启动。正在检查存放配置、源码和项目依赖…'));
+  console.log(t('Install / repair started. Checking project-local dependencies…','安装 / 修复已启动。正在检查项目内依赖…'));
   const lock = path.join(root, `.runtime/${platformName}-install.lock`);
   let ownsLock=true;
   try { await fs.mkdir(lock); }
@@ -89,20 +87,10 @@ async function install(repair = false) {
   }
   const stage = path.join(root, '.runtime', `codex-install-${randomUUID()}`);
   try {
+    if(await exists(path.join(root,'.runtime/kernel/active-job.json')))throw new Error('Kernel maintenance is active. Use its recovery page before installing.');
     if(await exists(path.join(root,'.runtime/kernel-operation.lock')))throw new Error('A kernel/start operation is active. Finish it before installing dependencies.');
     await initializeDownloadedRecords(root);
-    const storage=await configureGitStorage(root);
-    if(!repair&&process.env.SAPLING_SOURCE_UPDATE_DONE!=='1'){
-      const source=await updateSource(root,{mode:storage.mode});
-      if(source.changed){
-        console.log(t('Loading the updated launcher and runtime settings to finish installation…','正在重新加载更新后的启动器和运行环境配置，继续安装…'));
-        await fs.rm(lock,{recursive:true,force:true});ownsLock=false;
-        const bash=windows?process.env.SAPLING_GIT_BASH:'/bin/bash';
-        if(windows&&!bash)throw new Error(t('Source updated. Reopen bash Saplingagent.sh and choose Install / update to load new dependencies.','源码已更新。请重新打开 bash Saplingagent.sh，选择安装 / 更新，以加载新依赖。'));
-        await required(bash.trim(),[path.join(root,'Saplingagent.sh'),'--lang',process.env.SAPLING_LANG||'en','install'],{childEnv:{...process.env,SAPLING_SOURCE_UPDATE_DONE:'1'}});
-        return;
-      }
-    }else console.log(t('Source check skipped for this dependency repair / updated-launcher continuation.','本次依赖修复／新启动器继续安装不重复更新源码。'));
+    console.log(t('Release snapshot installed locally. Git and application source are not changed; upgrade only the kernel from the web control.', 'release 快照安装在本地。不修改 Git 或应用源码；请在网页内升级内核。'));
     if (!windows) for (const file of ['Saplingagent.sh', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
     if (!repair && await installed()) {
       await localSetup();
@@ -129,7 +117,7 @@ async function install(repair = false) {
     await fs.rm(stampFile, { force: true });
     for (const service of services) {
       console.log(t(`Installing locked dependencies for ${service}…`, `正在安装 ${service} 的锁定依赖…`));
-      const installArgs = ['ci', '--include=optional', ...(service === 'backend/agent-runtime' ? [] : ['--ignore-scripts']), '--no-audit', '--no-fund'];
+      const installArgs = ['ci', '--include=optional', ...(['kernel', 'backend/agent-runtime'].includes(service) ? [] : ['--ignore-scripts']), '--no-audit', '--no-fund'];
       await required(npm.command, [...npm.args, ...installArgs], { cwd: path.join(root, service) });
     }
     await required(opencode, ['--version'], { capture: true });
@@ -172,7 +160,7 @@ async function configureAI(noOpen) {
   if (!await installed()) throw new Error(t('Install dependencies before opening AI setup: bash Saplingagent.sh install --repair', '请先运行 bash Saplingagent.sh install --repair 安装依赖，再打开 AI 配置网页。'));
   await localSetup();
   console.log(t('Preparing the independent AI configuration page…','正在准备独立的 AI 配置网页…'));
-  await required(process.execPath,[path.join(root,'front/node_modules/vite/bin/vite.js'),'build','--config',path.join(root,'front/ai-config/vite.config.mjs')]);
+  await required(process.execPath,[path.join(root,'kernel/node_modules/vite/bin/vite.js'),'build','--config',path.join(root,'front/ai-config/vite.config.mjs')]);
   const setupEnv={...env};
   // Discovery uses the caller's Codex home; owned login/runtime still override it
   // with project-private storage. An absent override means the user's ~/.codex.
@@ -292,11 +280,10 @@ try {
   if (action === 'install' && args.every(x => x === '--repair')) await install(args.includes('--repair'));
   else if (action === 'login' && args.every(x => x === '--device-auth')) await login(args.includes('--device-auth'));
   else if (action === 'start' && args.every(x => x === '--no-open')) await start(args.includes('--no-open'));
-  else if (action === 'git' && !args.length) await configureGitStorage(root, { force: true });
   else if (action === 'kernel') await required(process.execPath,[path.join(root,'kernel/cli.mjs'),...args]);
   else if (action === 'doctor' && !args.length) await doctor();
   else if (action === 'logout' && !args.length) await logout();
   else if (action === 'configure' && args.every(x=>x==='--no-open')) await configureAI(args.includes('--no-open'));
   else if (action === 'opencode' && !args.length) await configureOpenCode();
-  else throw new Error(t('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode / git / kernel.', "可用操作：install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode / git / kernel。"));
+  else throw new Error(t('Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode / kernel.', "可用操作：install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode / kernel。"));
 } catch (error) { console.error(error.message); process.exitCode = 1; }

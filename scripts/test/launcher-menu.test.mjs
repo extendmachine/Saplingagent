@@ -46,7 +46,7 @@ test('menu opens without installed Node; quit and EOF do not run actions', async
   for (const input of ['0\n', '']) {
     const result = await execute(root, input);
     assert.equal(result.code, 0);
-    assert.match(result.output, /Install \/ update/);
+    assert.match(result.output, /Install \/ repair/);
     assert.match(result.output, /Configure AI/);
     assert.equal(await fs.access(path.join(root, 'actions.txt')).then(() => true, () => false), false);
   }
@@ -107,11 +107,11 @@ test('first launch chooses English or Chinese without Node; default, invalid cho
   assert.equal(zh.code, 0, zh.output);
   assert.match(zh.output, /Language \/ 语言/);
   assert.match(zh.output, /请输入 0、1 或 2/);
-  assert.match(zh.output, /安装 \/ 更新/);
+  assert.match(zh.output, /安装 \/ 修复/);
   assert.match(zh.output, /配置 AI 接口/);
   const en = await execute(root, '\n0\n', [], null);
   assert.equal(en.code, 0);
-  assert.match(en.output, /Install \/ update/);
+  assert.match(en.output, /Install \/ repair/);
   for (const input of ['', '0\n']) assert.equal((await execute(root, input, [], null)).code, 0);
   assert.equal(await fs.access(path.join(root, 'actions.txt')).then(() => true, () => false), false);
 });
@@ -120,7 +120,7 @@ test('Chinese failed operation returns to the menu and language switching propag
   const result = await execute(root, 'invalid\n1\n9\n1\n4\n0\n', [], 'zh');
   assert.equal(result.code, 0, result.output);
   assert.match(result.output, /操作未完成（退出码 7）/);
-  assert.match(result.output, /请输入 0、1、2、3、4、5、6 或 9/);
+  assert.match(result.output, /请输入 0、1、2、3、4、6 或 9/);
   assert.match(result.output, /Operation incomplete \(exit 7\)/);
   assert.equal(await actions(root), 'install\ndoctor\n');
   assert.equal(await fs.readFile(path.join(root, 'languages.txt'), 'utf8'), 'zh\nen\n');
@@ -142,79 +142,24 @@ test('explicit Chinese actions retain flags and status; malformed language never
 });
 
 
-test('Git storage setup is reachable in both languages from the same launcher', async t => {
-  const root = await fixture(t);
-  for (const language of ['en', 'zh']) {
-    const result = await execute(root, '5\n0\n', [], language);
-    assert.equal(result.code, 0);
-    assert.match(result.output, language === 'en' ? /Git \/ storage setup/ : /Git \/ 存放配置/);
-  }
-  assert.equal(await actions(root), 'git\ngit\n');
-});
 
-test('saved local/own menus hide install and reject its number without changing Git or losing other actions', async t => {
-  for (const mode of ['local', 'own']) for (const language of ['en', 'zh']) {
-    const root = await fixture(t);
-    await git(root, 'init', '-b', 'main');
-    await git(root, 'config', '--local', 'saplingagent.storageMode', mode);
-    if (mode === 'own') await git(root, 'remote', 'add', 'origin', 'https://example.invalid/customer.git');
-    const before = await fs.readFile(path.join(root, '.git/config'), 'utf8');
-    const result = await execute(root, '1\ninvalid\n2\n3\n4\n5\n0\n', [], language);
-    assert.equal(result.code, 0, result.output);
-    assert.doesNotMatch(result.output, /1\. Install|1\. 安装|Starting install|正在启动安装/);
-    assert.match(result.output, /\[0, 2-6, 9\]/);
-    assert.match(result.output, /bash Saplingagent.sh install --repair/);
-    assert.equal(await actions(root), 'configure\nstart\ndoctor\ngit\n');
-    assert.equal(await fs.readFile(path.join(root, '.git/config'), 'utf8'), before);
-    assert.equal(await git(root, 'for-each-ref'), '');
-  }
+test('all fresh and existing modes offer dependency install but no Git storage action',async t=>{
+ for(const mode of ['fresh','local','own','upstream']){
+  const root=await fixture(t);
+  if(mode!=='fresh'){await git(root,'init','-b','main');await git(root,'config','saplingagent.storageMode',mode);await git(root,'remote','add','origin','https://example.invalid/own.git');}
+  const before=await fs.readFile(path.join(root,'.git/config')).catch(()=>null);
+  const result=await execute(root,'5\n1\n6\n0\n');
+  assert.equal(result.code,0);assert.match(result.output,/1\. Install \/ repair dependencies/);
+  assert.doesNotMatch(result.output,/Git \/ storage|Storage:|follow.*release/i);
+  assert.equal(await actions(root),'install\nkernel\n');
+  assert.deepEqual(await fs.readFile(path.join(root,'.git/config')).catch(()=>null),before);
+ }
 });
-
-test('upstream and legacy menus keep install available', async t => {
-  for (const mode of ['upstream', 'existing']) {
-    const root = await fixture(t); await git(root, 'init', '-b', 'release');
-    await git(root, 'config', '--local', 'saplingagent.storageMode', mode);
-    const result = await execute(root, '1\n0\n');
-    assert.match(result.output, /1\. Install \/ update/);
-    assert.equal(await actions(root), 'install\n');
-  }
+test('removed Git CLI action is rejected without running a child',async t=>{
+ const root=await fixture(t);assert.equal((await execute(root,'',['git'])).code,2);
+ assert.equal(await fs.access(path.join(root,'actions.txt')).then(()=>true,()=>false),false);
 });
-
-test('menu refreshes a newly saved storage choice immediately after a Git action', async t => {
-  const root = await fixture(t); await git(root, 'init', '-b', 'main');
-  await fs.appendFile(path.join(root, 'scripts/macos/bootstrap.sh'), "if [ \"$1\" = git ]; then git config --local saplingagent.storageMode own; fi\n");
-  // Replace the fixture's successful early exit so its Git action can save the choice.
-  const boot = path.join(root, 'scripts/macos/bootstrap.sh');
-  await fs.writeFile(boot, (await fs.readFile(boot, 'utf8')).replace('exit 0\n', ''));
-  const result = await execute(root, '5\n1\n0\n');
-  assert.equal(result.code, 0, result.output);
-  assert.equal((result.output.match(/1\. Install \/ update/g) || []).length, 1);
-  assert.match(result.output, /Storage: your repository/);
-  assert.equal(await actions(root), 'git\n');
-});
-
-test('menu reads its own local mode despite inherited Git routing and ignores a parent repository', async t => {
-  const parent = await fixture(t), root = path.join(parent, 'nested');
-  await git(parent, 'init', '-b', 'main');
-  await git(parent, 'config', '--local', 'saplingagent.storageMode', 'own');
-  await fs.mkdir(root); await fs.copyFile(path.join(project, 'Saplingagent.sh'), path.join(root, 'Saplingagent.sh'));
-  assert.match((await execute(root, '0\n')).output, /1\. Install/);
-  await git(root, 'init', '-b', 'main'); await git(root, 'config', '--local', 'saplingagent.storageMode', 'local');
-  const result = await execute(root, '0\n', [], 'en', { GIT_DIR: path.join(parent, '.git'), GIT_WORK_TREE: parent, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'saplingagent.storageMode', GIT_CONFIG_VALUE_0: 'upstream' });
-  assert.doesNotMatch(result.output, /1\. Install/);
-  assert.match(result.output, /Storage: local Git/);
-  assert.equal(await git(parent, 'config', '--local', '--get', 'saplingagent.storageMode'), 'own');
-});
-
-test('explicit dependency repair remains available for independent storage', async t => {
-  const root = await fixture(t); await git(root, 'init', '-b', 'main');
-  await git(root, 'config', '--local', 'saplingagent.storageMode', 'local');
-  assert.equal((await execute(root, '', ['install', '--repair'])).code, 0);
-  assert.equal(await actions(root), 'install --repair\n');
-});
-
-test('independent Git users retain the separate kernel menu and direct kernel actions',async t=>{
- const root=await fixture(t);await exec('git',['init','-b','main',root]);await exec('git',['-C',root,'config','saplingagent.storageMode','local']);
- const result=await execute(root,'6\n0\n');assert.equal(result.code,0);assert.match(result.output,/Kernel management/);assert.doesNotMatch(result.output,/1\. Install \/ update/);assert.equal(await actions(root),'kernel\n');
- assert.equal((await execute(root,'',['kernel','status'])).code,0);assert.equal(await actions(root),'kernel\nkernel status\n');
+test('Chinese menu has install, AI setup and kernel management with no storage selection',async t=>{
+ const root=await fixture(t);const result=await execute(root,'0\n',[],'zh');
+ assert.match(result.output,/安装 \/ 修复依赖/);assert.match(result.output,/内核管理/);assert.doesNotMatch(result.output,/存放配置|存储设置|跟随/);
 });

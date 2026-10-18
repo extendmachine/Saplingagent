@@ -32,9 +32,9 @@ async function run({ root, env }, args, input = '') {
 const records = async root => (await fs.readFile(path.join(root, 'capture.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
 test('Windows Bash routes explicit actions with converted Unicode root and encoded program, preserving flags/exit', async t => {
   const f = await fixture(t);
-  for (const args of [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode'], ['configure','--no-open'], ['git']]) assert.equal((await run(f, ['--lang', 'zh', ...args])).code, 7);
+  for (const args of [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode'], ['configure','--no-open']]) assert.equal((await run(f, ['--lang', 'zh', ...args])).code, 7);
   const capture = await records(f.root);
-  assert.deepEqual(capture.map(x => [x.action, x.flag]), [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode', ''],['configure','--no-open'], ['git','']]);
+  assert.deepEqual(capture.map(x => [x.action, x.flag]), [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode', ''],['configure','--no-open']]);
   for (const row of capture) {
     assert.equal(row.root, "C:\\test\\中文 app's folder"); assert.equal(row.language, 'zh');
     assert.match(row.program, /检测到设备/); assert.match(row.program, /function Get-WindowsDevice/);
@@ -53,9 +53,9 @@ test('Windows routing respects independent storage and retains configure/diagnos
   await git('init', '-b', 'main'); await git('config', '--local', 'saplingagent.storageMode', 'own');
   const result = await run(f, ['--lang', 'zh'], '1\n2\n4\n0\n');
   assert.equal(result.code, 0, result.output);
-  assert.doesNotMatch(result.output, /1\. 安装|正在启动安装/);
-  assert.match(result.output, /\[0, 2-6, 9\]/);
-  assert.deepEqual((await records(f.root)).map(x => x.action), ['configure', 'doctor']);
+  assert.match(result.output, /1\. 安装 \/ 修复依赖/);
+  assert.match(result.output, /\[0-4, 6, 9\]/);
+  assert.deepEqual((await records(f.root)).map(x => x.action), ['install', 'configure', 'doctor']);
 });
 test('Linux/WSL installation refuses without invoking Windows tools; help/menu quit remain available', async t => {
   const f = await fixture(t, 'Linux');
