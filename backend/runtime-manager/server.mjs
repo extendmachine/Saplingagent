@@ -26,6 +26,11 @@ export function createControlHandler(options) {
       if (await kernelRequest(req,res,options,route,send)) return;
       if (req.method === 'GET' && route === '/health') return send(res, 200, { ready: true, service: 'runtime-manager' });
       if (req.method === 'GET' && route === '/api/runtime/status') return send(res, 200, manager.state());
+      if (req.method === 'POST' && route === '/api/runtime/stop') {
+        if(!options.onMaintenance)return send(res,503,{error:{code:'STOP_UNAVAILABLE',message:'Stop this legacy runtime from its launcher.'}});
+        await manager.prepareMaintenance();
+        send(res,202,{stopping:true});setTimeout(()=>void options.onMaintenance(),30);return;
+      }
       if (req.method === 'POST' && route === '/api/runtime/restart') {
         let bytes = 0; const chunks = [];
         for await (const chunk of req) { bytes += chunk.length; if (bytes > 1024) return send(res, 413, { error: { code: 'PAYLOAD_TOO_LARGE', message: 'Restart request is too large.' } }); chunks.push(chunk); }

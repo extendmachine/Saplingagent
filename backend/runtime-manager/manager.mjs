@@ -4,7 +4,7 @@ import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { terminateOwned } from '../../contracts/local-process.mjs';
 import { randomUUID } from 'node:crypto';
-import { portKeys } from './ports.mjs';
+import { portKeys,selectRuntimePorts } from './ports.mjs';
 import { loadProjectServices, assignProjectPorts, serviceCommand, servicePortEnv } from './services.mjs';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -26,7 +26,7 @@ export class RuntimeManager {
     this.controlAbort = new AbortController();
   }
   state() {
-    return { instanceId: this.instanceId, generation: this.generation, phase: this.phase, busy: !!this.operation || !!this.maintenance, canRestart: !this.operation && !this.maintenance && !this.closed, jobId: this.jobId || null, scope: this.scope || 'all', error: this.error,
+    return { applicationRoot:path.resolve(this.root),instanceId: this.instanceId, generation: this.generation, phase: this.phase, busy: !!this.operation || !!this.maintenance, canRestart: !this.operation && !this.maintenance && !this.closed, jobId: this.jobId || null, scope: this.scope || 'all', error: this.error,
       ports: this.config ? Object.fromEntries(portKeys.map(key => [key, this.config[key]])) : null,
       services: [...this.children].map(([name, child]) => {
         const definition = this.activeDefinitions.find(x => x.name === name);
@@ -52,7 +52,7 @@ export class RuntimeManager {
     const child = spawn(spec?.command || process.execPath, spec?.args || [path.join(this.root, definition.file), ...(definition.args || [])], { cwd: spec?.cwd || this.root, env, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
     this.children.set(definition.name, child);
     child.stdout.on('data', chunk => { if (this.output) process.stdout.write(`[${definition.name}] ${chunk}`); });
-    child.stderr.on('data', chunk => { if (this.output) process.stderr.write(`[${definition.name}] ${chunk}`); });
+    child.stderr.on('data', chunk => { if(/EADDRINUSE|Port \d+ is already in use/.test(String(chunk)))child.bindConflict=true;if (this.output) process.stderr.write(`[${definition.name}] ${chunk}`); });
     const failed = () => {
       if (this.closed || this.intentional.has(child)) return;
       this.error = { code: 'SERVICE_EXITED', message: `${definition.name} stopped. Check its local terminal diagnostics and retry.`, service: definition.name };
@@ -70,12 +70,12 @@ export class RuntimeManager {
   async waitHealth(definition, timeout, agent = false) {
     if (definition.project && definition.healthCheck === 'process') {
       await delay(100);
-      if (!alive(this.children.get(definition.name))) throw failure('SERVICE_EXITED', `${definition.name} could not start. Check its local terminal diagnostics.`, definition.name);
+      if (!alive(this.children.get(definition.name))) throw failure(this.children.get(definition.name)?.bindConflict?'PORT_OCCUPIED':'SERVICE_EXITED', `${definition.name} could not start. Check its local terminal diagnostics.`, definition.name);
       return;
     }
     const end = Date.now() + timeout;
     while (!this.closed && Date.now() < end) {
-      if (!alive(this.children.get(definition.name))) throw failure('SERVICE_EXITED', `${definition.name} could not start. Check its local terminal diagnostics.`, definition.name);
+      if (!alive(this.children.get(definition.name))) throw failure(this.children.get(definition.name)?.bindConflict?'PORT_OCCUPIED':'SERVICE_EXITED', `${definition.name} could not start. Check its local terminal diagnostics.`, definition.name);
       try {
         if (definition.project) {
           if (definition.healthCheck === 'tcp') {
@@ -165,7 +165,18 @@ export class RuntimeManager {
   async start() {
     const config = await this.loadConfig(); this.config = config;
     this.scope = 'all';
-    this.startOperation(async () => { const plan = await this.servicePlan(config); this.activatePlan(plan); await this.startFrontend(config); await this.startBackends(config, plan); await this.ready(); });
+    this.startOperation(async () => {
+      for(let attempt=0;attempt<8;attempt++){
+        const current=this.config;const plan=await this.servicePlan(current);this.activatePlan(plan);
+        try{await this.startFrontend(current);await this.startBackends(current,plan);await this.ready();return;}
+        catch(error){if(error.code!=='PORT_OCCUPIED'||attempt===7)throw error;
+          await this.stopBackends();await this.stopChild('front');
+          const ports=await selectRuntimePorts(current,{fixed:{frontPort:current.frontPort,runtimeManagerPort:current.runtimeManagerPort}});
+          this.config={...current,...ports};this.portOverrides=ports;this.error=null;
+          await this.log('startup_port_retry',{attempt:attempt+1,ports});
+        }
+      }
+    });
   }
   async startFrontend(config) {
     if (!this.frontDefinition) return;
@@ -175,7 +186,7 @@ export class RuntimeManager {
     this.launch(definition, config);
     const end = Date.now() + this.healthTimeout;
     while (!this.closed && Date.now() < end) {
-      if (!alive(this.children.get('front'))) throw failure('SERVICE_EXITED', 'Frontend could not start. Check its local diagnostics.', 'front');
+      if (!alive(this.children.get('front'))) throw failure(this.children.get('front')?.bindConflict?'PORT_OCCUPIED':'SERVICE_EXITED', 'Frontend could not start. Check its local diagnostics.', 'front');
       try { if ((await fetch(`http://127.0.0.1:${port}/`, {signal: AbortSignal.timeout(1000)})).ok) return; } catch {}
       await delay(100);
     }

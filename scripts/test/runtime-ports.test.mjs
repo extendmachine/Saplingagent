@@ -55,7 +55,10 @@ const s=http.createServer((req,res)=>{res.setHeader('Content-Type','application/
   const after = await status(); assert.deepEqual(after.ports, before.ports); assert.equal(after.instanceId, address.instanceId);
   for (const service of before.services) assert.notEqual(after.services.find(x => x.name === service.name).pid, service.pid);
   assert.equal((await fetch(base + '/api/runtime/restart', { method: 'POST', headers: { Origin: 'https://example.invalid' }, body: '{}' })).status, 403);
-  child.kill('SIGTERM'); await until(() => child.exitCode !== null); assert.equal(child.exitCode, 0, output);
+  assert.equal((await status()).applicationRoot,path.resolve(root));
+  const token=await fs.readFile(path.join(root,'local-secrets/runtime/service-token'),'utf8');
+  assert.equal((await fetch(`http://127.0.0.1:${address.ports.runtimeManagerPort}/api/runtime/stop`,{method:'POST',headers:{Authorization:'Bearer '+token.trim()},body:'{}'})).status,202);
+  await until(() => child.exitCode !== null); assert.equal(child.exitCode, 0, output);
   assert.equal(await fs.access(file).then(() => true, () => false), false);
   assert.equal(foreign.listening, true); assert.equal(foreignBackend.listening, true);
 });
