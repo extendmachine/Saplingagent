@@ -84,6 +84,7 @@ run_action() {
     result=$?
     SAPLING_CHILD_PID=''
   fi
+  SAPLING_ACTION_STATUS="$result"
   if [ "${result}" -ne 0 ]; then
     printf '\n'
     say "Operation incomplete (exit ${result}). You can retry or choose Diagnostics." "操作未完成（退出码 ${result}）。可以重试或选择服务诊断。"
@@ -94,6 +95,10 @@ run_action() {
 }
 
 if [ "$SAPLING_LANG_CHOSEN" -eq 0 ]; then choose_language || exit 0; fi
+if [ -f "$SAPLING_ROOT/kernel/launcher/entry.mjs" ] && [ "${SAPLING_LEGACY_MENU:-0}" != 1 ]; then
+  run_action install
+  exit "${SAPLING_ACTION_STATUS:-1}"
+fi
 while true; do
   printf '\n%s\n' 'Saplingagent'
   SAPLING_PRODUCT_VERSION=''

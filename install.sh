@@ -9,7 +9,7 @@ say() { if [ "$sapling_lang" = zh ]; then printf '%s\n' "$2"; else printf '%s\n'
 fail() { say "$1" "$2" >&2; exit 1; }
 usage() {
   printf '%s\n' 'Usage: bash install.sh [--dir PATH] [--lang en|zh] [--download-only]'
-  printf '%s\n' 'Downloads only Saplingagent release into a NEW folder; then installs and opens the menu.'
+  printf '%s\n' 'Downloads Saplingagent release into a NEW folder; installs its kernel and opens web setup.'
 }
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -111,4 +111,4 @@ export SAPLING_LANG="$sapling_lang"
 cd "$sapling_destination"
 # Keep native Windows interactive bootstrap in the foreground (no background bridge).
 bash ./Saplingagent.sh --lang "$sapling_lang" install <&3
-exec bash ./Saplingagent.sh --lang "$sapling_lang" <&3
+say 'Continue project setup and launcher compilation in your browser.' '请在浏览器继续项目配置并编译启动器。'

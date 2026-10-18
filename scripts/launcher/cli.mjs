@@ -14,7 +14,7 @@ const t = (en, zh) => {
   return process.platform === 'win32' ? text.replaceAll('.runtime/macos-install.lock', '.runtime/windows-install.lock') : text;
 };
 
-const root = fileURLToPath(new URL('../../', import.meta.url));
+const root = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const windows = process.platform === 'win32';
 const platformName = windows ? 'windows' : 'macos';
 const launcher = 'Saplingagent.sh';
@@ -25,7 +25,7 @@ const opencode = openCodeBinary(root);
 const stampFile = path.join(root, `.runtime/${platformName}-install.json`);
 const services = [...(await fs.access(path.join(root,'kernel/package.json')).then(()=>['kernel'],()=>[])), 'front', 'backend/app-builder', 'backend/mcp-runtime', 'backend/agent-runtime'];
 const authArgs = ['-c', 'cli_auth_credentials_store="file"'];
-const env = { ...process.env, SEED_ROOT: root, SEED_CODEX_BIN: windows ? cli : path.join(root, 'scripts/macos/codex.sh'), SEED_IMPORT_EXISTING_AUTH: '0', CODEX_HOME: path.join(root, 'local-secrets/codex'), npm_config_cache: path.join(root, '.cache/npm') };
+const env = { ...process.env, PATH:path.dirname(process.execPath)+path.delimiter+(process.env.PATH||''),SEED_ROOT: root, SEED_CODEX_BIN: windows ? cli : path.join(root, 'scripts/macos/codex.sh'), SEED_IMPORT_EXISTING_AUTH: '0', CODEX_HOME: path.join(root, 'local-secrets/codex'), npm_config_cache: path.join(root, '.cache/npm') };
 for (const key of ['OPENAI_API_KEY', 'CODEX_API_KEY', 'CODEX_ACCESS_TOKEN']) delete env[key];
 
 function run(command, args, { cwd = root, capture = false, childEnv = env } = {}) {
@@ -80,7 +80,7 @@ async function loggedIn() {
   if (/not logged in/i.test(result.output + result.errorOutput)) return false;
   throw new Error(t('Unable to read project login status. Check the Codex installation, architecture and local-secrets/codex/config.toml; this error does not mean the project is not logged in.', "无法读取项目登录状态。请检查 Codex 安装、架构和 local-secrets/codex/config.toml；此错误不代表未登录。"));
 }
-async function install(repair = false) {
+async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
   console.log(t('Install / repair started. Checking project-local dependencies…','安装 / 修复已启动。正在检查项目内依赖…'));
   const lock = path.join(root, `.runtime/${platformName}-install.lock`);
   let ownsLock=true;
@@ -96,11 +96,12 @@ async function install(repair = false) {
     await initializeDownloadedRecords(root);
     console.log(t('Release snapshot installed locally. Git and application source are not changed; upgrade only the kernel from the web control.', 'release 快照安装在本地。不修改 Git 或应用源码；请在网页内升级内核。'));
     if (!windows) for (const file of ['Saplingagent.sh', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
-    if (!repair && await installed()) {
+    if (!repair && !coreOnly && await installed()) {
       await localSetup();
       console.log(t('Dependency check complete: installed versions match this local source. See the source result above. Configure AI or start; use install --repair for damaged dependencies.', "依赖检查完成：已安装版本与当前本地源码配置一致。源码更新结果见上方。可以配置接口或启动；依赖损坏时使用 install --repair。"));
       return;
     }
+    if(!appOnly){
     const packageFile = path.join(stage, 'package.json');
     await fs.mkdir(path.dirname(packageFile), { recursive: true });
     await fs.writeFile(packageFile, JSON.stringify({ name: 'saplingagent-local-codex', private: true, dependencies: { '@openai/codex': settings.codexVersion } }, null, 2) + '\n');
@@ -116,10 +117,11 @@ async function install(repair = false) {
     try { await fs.rename(stage, destination); }
     catch (error) { if (hasPrevious) await fs.rename(previous, destination); throw error; }
     if (hasPrevious) await fs.rm(previous, { recursive: true, force: true });
+    }
     // A failed staging download leaves a previously complete installation usable.
     // Once npm ci can replace business dependencies, the old marker is no longer valid.
     await fs.rm(stampFile, { force: true });
-    for (const service of services) {
+    for (const service of coreOnly?['kernel']:appOnly?services.filter(s=>s!=='kernel'):services) {
       console.log(t(`Installing locked dependencies for ${service}…`, `正在安装 ${service} 的锁定依赖…`));
       const installArgs = ['ci', '--include=optional', ...(['kernel', 'backend/agent-runtime'].includes(service) ? [] : ['--ignore-scripts']), '--no-audit', '--no-fund'];
       await required(npm.command, [...npm.args, ...installArgs], { cwd: path.join(root, service) });
@@ -127,8 +129,8 @@ async function install(repair = false) {
     await required(opencode, ['--version'], { capture: true });
     await required(claudeBinary(root), ['--version'], { capture: true });
     await localSetup();
-    await fs.writeFile(stampFile, JSON.stringify({ schemaVersion: 1, nodeVersion: process.versions.node, codexVersion: settings.codexVersion, arch: process.arch, signature: await signature(), installedAt: new Date().toISOString() }, null, 2) + '\n');
-    console.log(t('Installation complete. Choose Configure AI to connect your account or API provider, then Start app.', "安装完成。请选择配置 AI 接口，连接自己的账号或 API 服务商，然后启动应用。"));
+    if(!coreOnly)await fs.writeFile(stampFile, JSON.stringify({ schemaVersion: 1, nodeVersion: process.versions.node, codexVersion: settings.codexVersion, arch: process.arch, signature: await signature(), installedAt: new Date().toISOString() }, null, 2) + '\n');
+    console.log(coreOnly?t('Local kernel installed. Continuing to browser setup.','本地内核安装完成，即将打开配置网页。'):appOnly?t('Application dependencies are ready. Continuing the build.','应用依赖已就绪，继续构建。'):t('Installation complete. Choose Configure AI to connect your account or API provider, then Start app.','安装完成。请选择配置 AI 接口，连接自己的账号或 API 服务商，然后启动应用。'));
   } finally { await fs.rm(stage, { recursive: true, force: true }); if(ownsLock)await fs.rm(lock, { recursive: true, force: true }); }
 }
 async function login(deviceAuth) {
@@ -160,17 +162,34 @@ async function configureOpenCode() {
   if (result.code !== 0) throw new Error(t(`OpenCode provider setup failed (exit code ${result.code}).`, `OpenCode 服务商配置失败（退出码 ${result.code}）。`));
   console.log(t('OpenCode provider saved. Restart Saplingagent, start a new conversation, then choose OpenCode.', "OpenCode 服务商已保存。请重启 Saplingagent，新建会话后选择 OpenCode。"));
 }
-async function configureAI(noOpen) {
-  if (!await coreInstalled()) throw new Error(t('Install dependencies before opening AI setup: bash Saplingagent.sh install --repair', '请先运行 bash Saplingagent.sh install --repair 安装依赖，再打开 AI 配置网页。'));
+async function configureAI(noOpen,launch=false) {
+  if (!await coreInstalled()) throw new Error(t('Install the local kernel first: bash Saplingagent.sh install','请先安装本地内核：bash Saplingagent.sh install'));
   await localSetup();
-  console.log(t('Preparing the independent AI configuration page…','正在准备独立的 AI 配置网页…'));
+  console.log(t('Preparing independent AI configuration and project setup…','正在准备独立 AI 与项目配置网页…'));
   await required(process.execPath,[path.join(root,'kernel/node_modules/vite/bin/vite.js'),'build','--config',path.join(root,'front/ai-config/vite.config.mjs')]);
-  const setupEnv={...env};
-  // Discovery uses the caller's Codex home; owned login/runtime still override it
-  // with project-private storage. An absent override means the user's ~/.codex.
-  if(process.env.CODEX_HOME)setupEnv.CODEX_HOME=process.env.CODEX_HOME;
-  else delete setupEnv.CODEX_HOME;
-  await required(process.execPath,[path.join(root,'backend/ai-config/server.mjs'),...(noOpen?['--no-open']:[])],{childEnv:setupEnv});
+  const setupEnv={...env};if(process.env.CODEX_HOME)setupEnv.CODEX_HOME=process.env.CODEX_HOME;else delete setupEnv.CODEX_HOME;
+  if(!await exists(path.join(root,'kernel/launcher/entry.mjs'))){await required(process.execPath,[path.join(root,'backend/ai-config/server.mjs'),...(noOpen?['--no-open']:[])],{childEnv:setupEnv});return;}
+  const {managementFingerprint}=await import('../../contracts/project-launcher.mjs');const expectedFingerprint=await managementFingerprint(root);
+  const dir=path.join(root,'logs/project-launcher');await fs.mkdir(dir,{recursive:true});
+  const handle=await fs.open(path.join(dir,`project-launcher-${new Date().toISOString().slice(0,10)}.log`),'a');
+  const child=spawn(process.execPath,[path.join(root,'kernel/launcher/entry.mjs'),...(noOpen?['--no-open']:[]),...(launch?['--launch']:[])],{cwd:path.dirname(root),env:setupEnv,detached:!windows,windowsHide:true,stdio:['ignore',handle.fd,handle.fd]});
+  await handle.close();child.once('error',()=>{});child.unref();
+  for(let i=0;i<100;i++){try{const address=JSON.parse(await fs.readFile(path.join(root,'.runtime/management-address.json'),'utf8'));const health=await fetch(`http://127.0.0.1:${address.port}/health/project-launcher`,{signal:AbortSignal.timeout(500)}).then(r=>r.json());if(health.instanceId===address.instanceId&&health.root===root&&(address.fingerprint===expectedFingerprint||health.busy)){console.log(t(`Project setup: http://127.0.0.1:${address.port}/. Continue in your browser. You can close this script.`,`项目配置：http://127.0.0.1:${address.port}/。请在网页继续配置，可以关闭此脚本。`));return;}}catch{}await delay(100);}
+  throw new Error(t('Project setup could not open. Check logs/project-launcher/.','项目配置网页未能启动，请检查 logs/project-launcher/。'));
+}
+async function installKernelAndConfigure(repair=false){
+ if(!await exists(path.join(root,'kernel/package.json')))return install(repair);
+ const {ProjectLauncher}=await import('../../contracts/project-launcher.mjs');
+ const runtime=await new ProjectLauncher(root).runtime();
+ const signatureFile=path.join(root,'.runtime/core-install.json');
+ const coreSignature=createHash('sha256').update(await fs.readFile(path.join(root,'kernel/package-lock.json'))).update(JSON.stringify(settings)).update(process.platform+process.arch).digest('hex');
+ const previous=await fs.readFile(signatureFile,'utf8').then(JSON.parse,()=>null);
+ if(repair||!await coreInstalled()||previous?.signature!==coreSignature){
+  if(runtime.phase!=='stopped')throw new Error(t('Stop this project before repairing its kernel dependencies. Other project folders can keep running.','修复内核依赖前请停止当前项目，其他文件夹的项目可以继续运行。'));
+  await install(true,{coreOnly:true});
+  await fs.writeFile(signatureFile,JSON.stringify({signature:coreSignature,arch:process.arch})+'\n');
+ }
+ await configureAI(process.env.SAPLING_NO_OPEN==='1');
 }
 async function configuredAccess() {
   const connections = await readConnections(root);
@@ -281,7 +300,7 @@ async function doctor() {
 try {
   if (!['darwin', 'win32'].includes(process.platform)) throw new Error(t('This entry point supports macOS and Windows only.', "此入口支持 macOS 和 Windows。"));
   const [action, ...args] = process.argv.slice(2);
-  if (action === 'install' && args.every(x => x === '--repair')) await install(args.includes('--repair'));
+  if (action === 'install' && args.every(x => ['--repair','--app-only'].includes(x))) {if(args.includes('--app-only'))await install(args.includes('--repair'),{appOnly:true});else await installKernelAndConfigure(args.includes('--repair'));}
   else if (action === 'login' && args.every(x => x === '--device-auth')) await login(args.includes('--device-auth'));
   else if (action === 'start' && args.every(x => x === '--no-open')) await start(args.includes('--no-open'));
   else if (action === 'kernel') await required(process.execPath,[path.join(root,'kernel/cli.mjs'),...args]);

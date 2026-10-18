@@ -46,7 +46,7 @@ test('fresh recipient documents are initialized once, keeping source provenance 
 });
 test('user-changed project records before first install are preserved with a warning',async t=>{const f=await fixture(t);await f.run(['--download-only']);const root=path.join(f.root,'Saplingagent');await fs.writeFile(path.join(root,'FINAL_GOAL.md'),'My application');const warnings=[];assert.equal(await initializeDownloadedRecords(root,msg=>warnings.push(msg)),false);assert.equal(await fs.readFile(path.join(root,'FINAL_GOAL.md'),'utf8'),'My application');assert.match(warnings[0],/keeping/);});
 
-test('piped bootstrap restores foreground terminal input for installation and opens the existing menu', {skip:process.platform!=='darwin',timeout:15000},async t=>{
+test('piped bootstrap restores installation terminal input then hands off to web setup', {skip:process.platform!=='darwin',timeout:15000},async t=>{
   const f=await fixture(t);
   const python=`import os,pty,select,time,sys,signal,json
 pid,fd=pty.fork()
@@ -69,7 +69,7 @@ try:
 finally:os.close(fd)
 `;
   const {stdout}=await exec('python3',['-c',python,path.join(project,'install.sh'),f.root],{env:f.env});const result=JSON.parse(stdout);assert.equal(result.status,0,result.text);assert.equal(result.sent,true);
-  const actions=await fs.readFile(path.join(f.root,'actions.txt'),'utf8');assert.match(actions,/--lang en install\n3\n--lang en/);
+  const actions=await fs.readFile(path.join(f.root,'actions.txt'),'utf8');assert.equal(actions,'--lang en install\n3\n');assert.match(result.text,/Continue project setup/);
 });
 
 test('invalid distribution version is refused before reserving the customer destination',async t=>{
