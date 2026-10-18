@@ -19,6 +19,7 @@ export const KERNEL_FILE_PATHS = [
 	"config/windows.json",
 	"contracts/kernel.mjs",
 	"contracts/release.mjs",
+	"contracts/project-launcher.mjs",
 	"contracts/local-process.mjs",
 	"contracts/runtime-drain.mjs",
 	"contracts/engine-dependencies.mjs",
@@ -150,6 +151,7 @@ export async function assertKernelOffline(root) {
 	} catch (error) {
 		if (error.code !== "ENOENT") throw new KernelError("KERNEL_BUSY", "Runtime discovery is invalid. Inspect it before updating or starting.");
 	}
+	if(address?.root && path.resolve(address.root)!==path.resolve(root))address=null;
 	if (address) {
 		if (!Number.isSafeInteger(address.pid) || address.pid <= 0 || typeof address.instanceId !== "string") throw new KernelError("KERNEL_BUSY", "Runtime ownership could not be verified.");
 		let active = true;

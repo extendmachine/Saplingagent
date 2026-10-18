@@ -1,0 +1,87 @@
+// Saplingagent customer-compiled bootstrap. Application source stays editable.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"time"
+)
+
+func problem(message string) {
+	if runtime.GOOS == "darwin" {
+		exec.Command("/usr/bin/osascript", "-e", `display alert "Project launcher" message "The local runtime could not start. Open Saplingagent.sh and repair the project installation."`).Run()
+	} else {
+		c := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", `Add-Type -AssemblyName PresentationFramework;[System.Windows.MessageBox]::Show($env.SAPLING_ERROR,'Project launcher')`)
+		c.Env = append(os.Environ(), "SAPLING_ERROR="+message)
+		c.Run()
+	}
+}
+func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--verify" {
+		return
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		problem("Cannot locate this launcher.")
+		return
+	}
+	exe, _ = filepath.EvalSymlinks(exe)
+	root := filepath.Dir(exe)
+	if runtime.GOOS == "darwin" {
+		root = filepath.Clean(filepath.Join(root, "../../.."))
+	}
+	if len(os.Args) > 1 && os.Args[1] == "--root" {
+		fmt.Println(root)
+		return
+	}
+	var cfg struct {
+		NodeVersion string `json:"nodeVersion"`
+	}
+	platform := "macos"
+	if runtime.GOOS == "windows" {
+		platform = "windows"
+	}
+	b, err := os.ReadFile(filepath.Join(root, "config", platform+".json"))
+	if err != nil || json.Unmarshal(b, &cfg) != nil {
+		problem("Project configuration is missing. Restore the complete project folder.")
+		return
+	}
+	arch := runtime.GOARCH
+	if arch == "amd64" {
+		arch = "x64"
+	}
+	dir := "node-v" + cfg.NodeVersion + "-darwin-" + arch
+	node := filepath.Join(root, ".runtime", dir, "bin", "node")
+	if runtime.GOOS == "windows" {
+		dir = "node-v" + cfg.NodeVersion + "-win-" + arch
+		node = filepath.Join(root, ".runtime", dir, "node.exe")
+	}
+	if _, err = os.Stat(node); err != nil {
+		problem("Project-local Node is missing. Open Saplingagent.sh and install or repair this project.")
+		return
+	}
+	logs := filepath.Join(root, "logs", "project-launcher")
+	os.MkdirAll(logs, 0700)
+	f, err := os.OpenFile(filepath.Join(logs, "project-launcher-"+time.Now().UTC().Format("2006-01-02")+".log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		problem("The project folder is not writable.")
+		return
+	}
+	defer f.Close()
+	cmd := exec.Command(node, filepath.Join(root, "kernel", "launcher", "entry.mjs"), "--launch")
+	cmd.Dir = filepath.Dir(root)
+	cmd.Stdout = f
+	cmd.Stderr = f
+	cmd.Env = append(os.Environ(), "SEED_ROOT="+root)
+	background(cmd)
+	if err = cmd.Start(); err != nil {
+		f.WriteString("Launcher could not start the project-local Node runtime. Repair using Saplingagent.sh.\n")
+		problem("The project-local runtime could not start.")
+		return
+	}
+	cmd.Process.Release()
+}
