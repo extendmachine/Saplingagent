@@ -9,3 +9,7 @@ TASK-20261013-003: Codex account panel offers explicit Use local Codex login and
 ## 0.9.3 project setup
 
 Three steps: name/folder/icon; AI schemes; local build and runtime management. ProjectSetup.tsx consumes /api/config/project, normalizes image uploads to a256×256PNG, displays actual OS/arch/root/version, polls bounded async progress, and offers open/restart/stop/rebuild/reveal. The independent host builds with kernel/node_modules Vite/React, without business dependencies. Project inputs stay separate from account/API secrets; save/rebuild does not send prompts. Generated icon is served only from the known PNG path with no credential token in image URLs. Development worktrees are not renamed; independent customer roots may be renamed explicitly before compilation. Failed builds show an actionable error and retain the previous artifact.
+
+## Credential import feedback (TASK-20261018-007)
+
+Local and uploaded credential imports show pending text on the clicked button and a live status directly inside that engine's import panel. Success and errors stay beside the controls, including on the longer project-setup page, rather than above step1 outside the viewport. Existing Codex credentials offer Use saved account or an explicit replacement retry. Other actions clear the scoped result; no credential contents enter feedback. The HTTP and replacement contracts are unchanged; a successful import confirms storage/selection only, not provider access.
