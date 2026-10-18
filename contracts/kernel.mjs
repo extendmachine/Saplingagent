@@ -49,6 +49,7 @@ export const KERNEL_DIRECTORY_PATHS = [
 	"front/ai-config/"
 ];
 export function isKernelPath(file) {
+	if (["scripts/launcher/git-storage.mjs", "scripts/launcher/source-update.mjs", "scripts/test/git-storage.test.mjs", "scripts/test/source-update.test.mjs"].includes(file)) return false;
 	if (typeof file !== "string" || /[\x00-\x1f\x7f:]/.test(file) || /(?:^|\/)(?:\.DS_Store|selfdata\.json|auth\.json|service-token)$/.test(file) || file.includes("\\") || file.startsWith("/") || file.split("/").some((p) => !p || p === "." || p === ".." || p.startsWith(".test-")) || /(^|\/)(?:node_modules|data|logs|local-secrets|secrets|\.secrets|snapshots|\.runtime|\.cache|\.git|\.worktrees|\.venv|__pycache__|dist|build|ai-tasks)(\/|$)/.test(file)) return false;
 	return (KERNEL_FILE_PATHS.includes(file) || KERNEL_DIRECTORY_PATHS.some((prefix) => file.startsWith(prefix))) && !/(?:\.tsbuildinfo|\.py[co]|\.log|\.env(?:\..*)?|\.key|\.pem|\.p12|\.pfx)$/.test(file);
 }

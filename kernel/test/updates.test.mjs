@@ -119,13 +119,15 @@ async function preserved(root) {
 }
 test("kernel ownership separates business/data/Git paths and validates complete package declarations", async () => {
 	for (const file of [
-		"scripts/launcher/source-update.mjs",
+		"kernel/control-page.mjs",
 		"kernel/worker.mjs",
 		"backend/runtime-manager/manager.mjs",
 		"kernel/package-lock.json"
 	]) assert.equal(isKernelPath(file), true, file);
 	for (const file of [
 		"front/App.tsx",
+		"scripts/launcher/source-update.mjs",
+		"scripts/launcher/git-storage.mjs",
 		"backend/agent-runtime/package-lock.json",
 		"backend/agent-runtime/git-versions.mjs",
 		"front/features/git-version/GitVersionPanel.tsx",
