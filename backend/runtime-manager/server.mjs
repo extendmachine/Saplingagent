@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { kernelRequest } from '../../kernel/http.mjs';
 import { timingSafeEqual } from 'node:crypto';
 
 export function localAccess(req, { token, frontPort, managerPort }) {
@@ -22,6 +23,7 @@ export function createControlHandler(options) {
     try {
       localAccess(req, options);
       const route = new URL(req.url, 'http://127.0.0.1').pathname;
+      if (await kernelRequest(req,res,options,route,send)) return;
       if (req.method === 'GET' && route === '/health') return send(res, 200, { ready: true, service: 'runtime-manager' });
       if (req.method === 'GET' && route === '/api/runtime/status') return send(res, 200, manager.state());
       if (req.method === 'POST' && route === '/api/runtime/restart') {

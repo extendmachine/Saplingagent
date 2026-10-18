@@ -230,3 +230,24 @@ test('internal port edits apply on full restart without changing the browser ori
  const saved=JSON.parse(await fs.readFile(path.join(root,'.runtime/runtime-address.json')));assert.equal(saved.ports.workspacePort,workspacePort);assert.equal(saved.url,`http://127.0.0.1:${config.frontPort}/`);
  manager.restart();await manager.operation;assert.equal(manager.phase,'ready');assert.equal(manager.config.workspacePort,workspacePort);
 });
+
+test('maintenance drains atomically, blocks restart and releases all gates on failure',async t=>{
+ const {root,manager,config}=await fixture(t);const before=manager.state().services;
+ await fs.writeFile(path.join(root,'builder.busy'),'busy');
+ await assert.rejects(manager.prepareMaintenance(),{code:'RUNTIME_BUSY'});
+ assert.equal(manager.maintenance,false);assert.deepEqual(manager.state().services,before);
+ assert.equal((await fetch(`http://127.0.0.1:${config.agentPort}/mutate`,{method:'POST'})).status,200);
+ await fs.unlink(path.join(root,'builder.busy'));const undo=await manager.prepareMaintenance();
+ assert.equal(manager.state().busy,true);assert.equal(manager.state().canRestart,false);
+ assert.throws(()=>manager.restart(),{code:'KERNEL_BUSY'});
+ assert.equal((await fetch(`http://127.0.0.1:${config.agentPort}/mutate`,{method:'POST'})).status,503);
+ await undo();assert.equal(manager.state().canRestart,true);
+ assert.equal((await fetch(`http://127.0.0.1:${config.agentPort}/mutate`,{method:'POST'})).status,200);
+});
+test('standalone kernel control works without an application frontend or Git',async t=>{
+ const {config,manager}=await fixture(t,{gateway:true});await manager.stopChild('front');
+ const response=await fetch(`http://127.0.0.1:${config.frontPort}/__saplingagent/kernel`);
+ assert.equal(response.status,200);assert.match(await response.text(),/Upgrade kernel & restart/);
+ const unauthorized=await fetch(`http://127.0.0.1:${config.frontPort}/api/runtime/kernel/check`,{method:'POST',body:'{}'});
+ assert.equal(unauthorized.status,401);
+});
