@@ -25,10 +25,11 @@ const opencode = openCodeBinary(root);
 const stampFile = path.join(root, `.runtime/${platformName}-install.json`);
 const services = [...(await fs.access(path.join(root,'kernel/package.json')).then(()=>['kernel'],()=>[])), 'front', 'backend/app-builder', 'backend/mcp-runtime', 'backend/agent-runtime'];
 const authArgs = ['-c', 'cli_auth_credentials_store="file"'];
-const env = { ...process.env, PATH:path.dirname(process.execPath)+path.delimiter+(process.env.PATH||''),SEED_ROOT: root, SEED_CODEX_BIN: windows ? cli : path.join(root, 'scripts/macos/codex.sh'), SEED_IMPORT_EXISTING_AUTH: '0', CODEX_HOME: path.join(root, 'local-secrets/codex'), npm_config_cache: path.join(root, '.cache/npm') };
+const env = { ...process.env, TMPDIR:path.join(root,'.runtime/tmp'),TMP:path.join(root,'.runtime/tmp'),TEMP:path.join(root,'.runtime/tmp'),PATH:path.dirname(process.execPath)+path.delimiter+(process.env.PATH||''),SEED_ROOT: root, SEED_CODEX_BIN: windows ? cli : path.join(root, 'scripts/macos/codex.sh'), SEED_IMPORT_EXISTING_AUTH: '0', CODEX_HOME: path.join(root, 'local-secrets/codex'), npm_config_cache: path.join(root, '.cache/npm') };
 for (const key of ['OPENAI_API_KEY', 'CODEX_API_KEY', 'CODEX_ACCESS_TOKEN']) delete env[key];
 
-function run(command, args, { cwd = root, capture = false, childEnv = env } = {}) {
+async function run(command, args, { cwd = root, capture = false, childEnv = env } = {}) {
+  await fs.mkdir(path.join(root,'.runtime/tmp'),{recursive:true});
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { cwd, env: childEnv, detached: false, windowsHide: capture, stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit' });
     let output = '', errorOutput = '', interrupted = false;
