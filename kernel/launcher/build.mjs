@@ -30,6 +30,10 @@ export function buildEnv(root) {
     CGO_ENABLED: "0",
     GO111MODULE: "off",
     GOMAXPROCS: "2",
+    TMPDIR: path.join(root, ".runtime/launcher-tmp"),
+    TMP: path.join(root, ".runtime/launcher-tmp"),
+    TEMP: path.join(root, ".runtime/launcher-tmp"),
+    GOTMPDIR: path.join(root, ".runtime/launcher-tmp"),
   };
   for (const k of Object.keys(env))
     if (
@@ -53,6 +57,7 @@ export async function command(
   } = {},
 ) {
   await fs.mkdir(cwd, { recursive: true });
+  await fs.mkdir(path.join(root, ".runtime/launcher-tmp"), { recursive: true });
   return new Promise((resolve, reject) => {
     let output = "",
       finished = false,
@@ -128,18 +133,26 @@ export async function command(
     });
   });
 }
-export async function ensureGo(root, onProgress = () => {}) {
-  const pin = await json(path.join(root, "kernel/launcher/toolchain.json"));
-  const arch = process.arch === "x64" ? "amd64" : process.arch;
-  const file = pin.files.find(
-    (x) => x.os === process.platform && x.arch === arch,
-  );
+export function toolchainForDevice(
+  pin,
+  platform = process.platform,
+  architecture = process.arch,
+) {
+  const os = platform === "win32" ? "windows" : platform;
+  const arch = architecture === "x64" ? "amd64" : architecture;
+  const file = pin.files.find((x) => x.os === os && x.arch === arch);
   if (!file)
     throw issue(
       "UNSUPPORTED_DEVICE",
       "Local launcher compilation supports macOS and Windows x64/ARM64.",
       400,
     );
+  return file;
+}
+export async function ensureGo(root, onProgress = () => {}) {
+  const pin = await json(path.join(root, "kernel/launcher/toolchain.json"));
+  const file = toolchainForDevice(pin),
+    arch = file.arch;
   const destination = path.join(
       root,
       ".runtime",

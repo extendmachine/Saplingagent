@@ -403,6 +403,9 @@ export class ProjectLauncher {
             "Finish project setup and compile the launcher first.",
           );
         this.progress("Starting this project…");
+        await fs.mkdir(path.join(this.root, ".runtime/launcher-tmp"), {
+          recursive: true,
+        });
         await dailyLog(this.root, "app_start");
         const logDir = path.join(this.root, "logs/project-launcher");
         const handle = await fs.open(

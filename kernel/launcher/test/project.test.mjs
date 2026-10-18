@@ -50,3 +50,6 @@ test('case-only launcher renaming never deletes the new output',async t=>{
  await publishArtifact(root,stage,'app.exe',{oldRelative:'App.exe'});
  assert.equal(await fs.readFile(path.join(root,'app.exe'),'utf8'),'new');assert.equal((await fs.readdir(root)).filter(f=>f.toLowerCase()==='app.exe').length,1);
 });
+
+for(const [platform,arch,expected] of [['darwin','x64','go1.27.2.darwin-amd64.tar.gz'],['darwin','arm64','go1.27.2.darwin-arm64.tar.gz'],['win32','x64','go1.27.2.windows-amd64.zip'],['win32','arm64','go1.27.2.windows-arm64.zip']])test('official compiler archive for '+platform+'/'+arch,async()=>{const {toolchainForDevice}=await import('../build.mjs');const pin=JSON.parse(await fs.readFile(path.join(project,'kernel/launcher/toolchain.json')));const file=toolchainForDevice(pin,platform,arch);assert.equal(file.filename,expected);assert.match(file.sha256,/^[a-f0-9]{64}$/);assert.ok(file.size>1000000);});
+test('compiler selection rejects unsupported OS/architecture before download',async()=>{const {toolchainForDevice}=await import('../build.mjs');const pin=JSON.parse(await fs.readFile(path.join(project,'kernel/launcher/toolchain.json')));for(const pair of [['linux','x64'],['win32','ia32'],['darwin','riscv64']])assert.throws(()=>toolchainForDevice(pin,...pair),e=>e.code==='UNSUPPORTED_DEVICE');});
