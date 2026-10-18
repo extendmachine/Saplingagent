@@ -1,3 +1,14 @@
+# Saplingagent changelog
+
+## 0.9.2 — Git-free application and independent web kernel maintenance
+
+- Fresh release snapshots do not initialize Git, select storage, connect remotes or merge application source. Existing customer Git is retained.
+- Default page replaces Git/workspace controls with independent kernel/restart controls. User application pages, chat, MCP, Skills, demos and app dependency manifests remain editable and outside updates.
+- Kernel0.91/schema3 has its own locked engine/setup dependencies and a built-in control independent of application frontend builds.
+- Upgrade stages and verifies an immutable official release, drains tasks, hands off to a copied temporary worker, backs up/applies core, repairs core dependencies and restarts the complete app. Progress, retry and explicit manual recovery survive old runtime shutdown; no automatic rollback.
+- Schema3 refuses obsolete baselines/plans/backups.0.9.1/schema2 users transition deliberately with a complete new0.9.2 folder; retain originals and reconcile app/data/configuration.
+- Product release, independently installed kernel and user Git remain separate identities. Native Windows/model acceptance is not implied by synthetic/macOS checks.
+
 # Changelog
 
 ## 0.9.1 — Explicit release identity (2026-10-17)
