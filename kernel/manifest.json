@@ -331,8 +331,8 @@
     },
     {
       "path": "front/ai-config/main.tsx",
-      "sha256": "b6d53ae6695b374446976c73c10743e19e6d1cb38b43b4b2c42270c8e370d3ca",
-      "bytes": 22413,
+      "sha256": "faca639f06a977af41d37080a35babb5a201b437b14735533902a5e20232fc9d",
+      "bytes": 24139,
       "executable": false
     },
     {
@@ -343,14 +343,14 @@
     },
     {
       "path": "front/ai-config/README.md",
-      "sha256": "5255a6abf4095975966321367369f7410292be5884c22cf4cdd2755c3058b37b",
-      "bytes": 2788,
+      "sha256": "0d37640186974ee473bca94bb450a331e82a5a27db26a8585f8cb53a34c30bf4",
+      "bytes": 3402,
       "executable": false
     },
     {
       "path": "front/ai-config/styles.css",
-      "sha256": "cf31fa6240927e3c1495352e73245d86bb48b0f1ba2e5504e27343d169d0a718",
-      "bytes": 7089,
+      "sha256": "60c7abe821d0471eadc493fed0c043c0a656e0ce77d4bcd051508ce61fdf3449",
+      "bytes": 7213,
       "executable": false
     },
     {
