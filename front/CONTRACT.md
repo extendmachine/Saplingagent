@@ -96,3 +96,7 @@ Footer keeps the original0.90 baseline fallback while displaying installed versi
 ## Product release versus kernel and workspace (TASK-20261017-002)
 
 Footer reads additive GET /api/release (Agent contract) and shows Saplingagent product release independently from GET /api/kernel and GET /api/git. It validates schema1 and a three-part version; loading/404/503/malformed metadata stays explicitly unavailable without an old-version fallback. Chat and other version controls remain usable if an older backend lacks this route. Product version is not read from Git tags and survives local-only Git initialization. No new HTTP write or permission policy.
+
+## Product0.9.2 kernel host
+
+Default App no longer mounts optional legacy GitVersionPanel, Save version or workspace Git footer. It embeds application-owned iframes to the gateway's standalone kernel control/footer. Core UI/dependencies are independent of front's React/Vite/package manifests. Same-origin/source-checked postMessage handles panel sizing, before-restart draft save, successful reload and validated loopback maintenance navigation. The application can replace this host; direct /__saplingagent/kernel remains available. Current version control supersedes earlier default Git controls; legacy components remain optional app source, not kernel ownership.
