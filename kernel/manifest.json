@@ -415,8 +415,8 @@
     },
     {
       "path": "kernel/launcher/build.mjs",
-      "sha256": "04746552a79a16cf3a3bc46fc2f1e99caa9824c13aeb8158da510b7973b88130",
-      "bytes": 14206,
+      "sha256": "138eb26fe9d51611adb43a47851844f1ef9d49a943eba42cded96be458070572",
+      "bytes": 14723,
       "executable": false
     },
     {
@@ -439,8 +439,8 @@
     },
     {
       "path": "kernel/launcher/manager.mjs",
-      "sha256": "30425245ad6a01c1cd9eed7682915795c6ed33102d872c8b61004149e70cc4e1",
-      "bytes": 17005,
+      "sha256": "5a66ee826cb2341551d94f3d0c5d245de8fbd6cc3c6793e322e2f28722e7d73a",
+      "bytes": 17116,
       "executable": false
     },
     {
@@ -475,8 +475,8 @@
     },
     {
       "path": "kernel/launcher/test/project.test.mjs",
-      "sha256": "1a8648ddcc60ee8f949b0b2dfc17fe2c98f4b1cb0cbc08682f1ca857d4a310ae",
-      "bytes": 9757,
+      "sha256": "7e79b684d4a6b9d027c7ecc792ed9a87e96a8b50c7145e3ce30b476335de32f5",
+      "bytes": 10764,
       "executable": false
     },
     {
@@ -571,8 +571,8 @@
     },
     {
       "path": "scripts/launcher/cli.mjs",
-      "sha256": "38175bafc252b6c5b93bb7dd46cf928b51b812e6da108c01153e34ef24e4401a",
-      "bytes": 28614,
+      "sha256": "f5235e8ad6ee5d839958399af0751d678e49a9bff2f4749e55e95181c711ab78",
+      "bytes": 28796,
       "executable": false
     },
     {
