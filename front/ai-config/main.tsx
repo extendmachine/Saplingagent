@@ -2,6 +2,7 @@ import React, {useEffect,useState,useRef} from 'react';
 import {createRoot} from 'react-dom/client';
 import {readCredentialFile} from './import-file';
 import './styles.css';
+import {ProjectSetup} from './ProjectSetup';
 type Profile={id?:string;label:string;engine:'codex'|'opencode'|'claude';kind:'api'|'chatgpt';protocol:'chat'|'responses'|'anthropic';baseUrl:string;model:string;noAuth:boolean;contextWindow:number;maxOutput:number;hasKey?:boolean};
 type Login={phase:string;mode?:string;authUrl?:string;userCode?:string;message?:string};
 type State={revision:number;activeId:string|null;profiles:Profile[];codex:{saved:boolean;chatgpt:boolean;type:string|null};login:Login};
@@ -49,11 +50,13 @@ function App(){
   if(engine==='claude'){const selected=value.profiles.find((p:Profile)=>p.id===value.activeId);if(selected)setDraft({...blank(),...selected});}
   setNotice(t('Credentials imported and selected. Network, expiry and quota are not verified. Restart a running app and start a new conversation.','凭据已导入并设为默认；尚未验证网络、有效期或额度。正在运行的应用请重启，并新建对话。'));
  });
- if(done)return <main className="finished"><span className="brand">Saplingagent</span><h1>{t('Setup closed','配置页面已关闭')}</h1><p>{t('Return to your terminal and choose Start app. Reopen Configure AI whenever you want to change a scheme.','返回终端，选择“启动应用”。以后可再次选择“配置 AI 接口”修改方案。')}</p></main>;
+ if(done)return <main className="finished"><span className="brand">Saplingagent</span><h1>{t('Setup closed','配置页面已关闭')}</h1><p>{t('Double-click your compiled launcher to open the project again. The script can reopen setup when needed.','双击已编译的启动器重新打开项目；也可通过脚本再次打开配置页面。')}</p></main>;
  return <main className="setup">
   <header><a className="brand" href="/">Saplingagent <span>/ {t('AI setup','AI 配置')}</span></a><div className="header-actions"><button className="quiet" onClick={()=>setLang(lang==='en'?'zh':'en')}>{lang==='en'?'中文':'English'}</button><button className="quiet" onClick={()=>void refresh()} disabled={busy}>{t('Refresh status','刷新状态')}</button><button onClick={finish} disabled={busy||pending}>{t('Finish setup','完成配置')}</button></div></header>
-  <section className="intro"><div className="eyebrow">{t('YOUR PROJECT · YOUR AI','你的项目 · 你的 AI')}</div><h1>{t('Connect your AI','连接你的 AI')}</h1><p>{t('Use your own account or API endpoint. Everything you save stays in this project folder.','使用自己的账号或 API 接口。配置仅保存在当前项目文件夹。')}</p></section>
+  <section className="intro"><div className="eyebrow">{t('YOUR PROJECT · YOUR AI','你的项目 · 你的 AI')}</div><h1>{t('Set up your project','配置你的项目')}</h1><p>{t('Use your own account or API endpoint. Everything you save stays in this project folder.','使用自己的账号或 API 接口。配置仅保存在当前项目文件夹。')}</p></section>
   {error&&<div className="message error" role="alert">{error}</div>}{notice&&<div className="message success" role="status">{notice}</div>}
+  <ProjectSetup request={request} t={t} aiReady={!!state?.activeId}>
+  <div className="eyebrow">{t('2 · CONNECT YOUR AI','2 · 连接你的 AI')}</div>
   {!state?<section className="card"><p>{t('Reading local configuration…','正在读取本地配置…')}</p><button onClick={()=>void refresh()}>{t('Retry','重试')}</button></section>:<div className="layout">
    <aside className="card schemes"><div className="section-heading"><h2>{t('Saved schemes','已保存方案')}</h2><span>{state.profiles.length}</span></div>
     {!state.profiles.length&&<p className="muted">{t('Save a configuration to start. You can keep more than one.','保存一个方案即可开始，也可以保留多个方案。')}</p>}
@@ -84,7 +87,8 @@ function App(){
     </form>}
    </section>
   </div>}
-  <footer>{t('Project-local configuration · Close this page with Finish setup, then start the app from your terminal.','项目内配置 · 点击“完成配置”关闭服务，再从终端启动应用。')}</footer>
+  </ProjectSetup>
+  <footer>{t('Project-local setup · Compile your launcher here, then double-click it to develop your app.','项目内配置 · 在这里编译启动器，之后双击即可开发应用。')}</footer>
  </main>;
 }
 createRoot(document.getElementById('root')!).render(<App/>);
