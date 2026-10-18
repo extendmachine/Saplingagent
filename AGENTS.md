@@ -19,7 +19,7 @@ For parallel tasks, locate the authoritative index under rule 14. A worktree sna
 
 Maintain only concise project guidance here. Do not remove the import, required reading or public-rule priority. Put detailed requirements in `rules/` and progress in `TODO.md`/`AI_TASKS.md`.
 
-- Project name: Saplingagent. Local Agent, workspace, app-builder, MCP and Skills are implemented. The starting point is a single chat page; current Git controls and any user-requested features are retained. Check goal/status files for actual validation and limits.
+- Project name: Saplingagent. Local Agent, workspace, app-builder, MCP and Skills are implemented. The starting point is a single chat page; default controls are independent kernel/restart controls; optional legacy Git modules remain application-owned. Check goal/status files for actual validation and limits.
 - New persistent project processes must participate in Restart app: use conventional backend discovery or config/services.json, including dependencies and readiness. See backend/runtime-manager/CONTRACT.md and docs/project-services.html; the AI creating the feature completes this integration.
 - Source directories: frontend `front/`, backend services `backend/`, human HTML documentation `docs/`. `services/` is an index only; public-rule service path examples map to actual backend directories.
 - Full Access is the user's explicit decision: frontend/chat/main/backend/MCP/Skills/dependencies/configuration may be edited as the current OS user, with no MCP directory allowlist or mandatory compilation/per-operation confirmation. This does not elevate to root. Restore only on explicit user request; see `backend/app-builder/`.
