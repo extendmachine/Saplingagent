@@ -1,5 +1,13 @@
 # Saplingagent changelog
 
+## 0.9.3 — Customer-local project setup and launcher (main, unreleased)
+
+- Install a local management kernel first and continue project name/icon/AI setup in the browser.
+- Compile named macOS/Windows launchers locally with a pinned checksum-verified project-local Go toolchain.
+- Explicit independent-folder rename, async progress, staged artifact replacement and unchanged-launcher reuse; preserve app/data/Git and previous usable output on failure.
+- Root/instance-aware management, app open/restart/stop, and bounded startup port-conflict retry.
+- Kernel0.92/schema3; product and customer identities remain separate. No release/tag promotion in this change. Windows native acceptance remains pending.
+
 ## 0.9.2 — Git-free application and independent web kernel maintenance
 
 - Fresh release snapshots do not initialize Git, select storage, connect remotes or merge application source. Existing customer Git is retained.

@@ -21,9 +21,10 @@ export async function listenAscending(server, start, excluded = new Set()) {
   throw exhausted();
 }
 
-export async function selectRuntimePorts(config) {
-  const selected = {}, used = new Set();
+export async function selectRuntimePorts(config, {fixed={}}={}) {
+  const selected = {}, used = new Set(Object.values(fixed));
   for (const key of portKeys) {
+    if(fixed[key]){selected[key]=fixed[key];continue;}
     const probe = net.createServer();
     try { selected[key] = await listenAscending(probe, config[key], used); used.add(selected[key]); }
     finally { if (probe.listening) await new Promise(resolve => probe.close(resolve)); }

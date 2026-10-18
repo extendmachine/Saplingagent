@@ -25,3 +25,9 @@ build/
 data/
 snapshots/
 .runtime/
+
+# Customer-generated project identity and native launchers
+config/project.json
+config/project-icon.png
+/*.app/
+/*.exe

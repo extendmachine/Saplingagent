@@ -23,6 +23,8 @@
 
 <p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 & ARM64 · Source available for noncommercial use</sub></p>
 
+**Saplingagent 0.9.3 · Kernel 0.92.** Install the local kernel, configure your project and AI in the browser, then compile a small native launcher on your own device. See [project setup and local compilation](docs/project-launcher.html).
+
 <a id="demo"></a>
 
 https://github.com/user-attachments/assets/6f43f15f-38c4-4650-9383-669caa635dc8
@@ -102,7 +104,7 @@ For a new installation, run one command in **macOS Terminal** or **Windows Git B
 bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/Saplingagent/release/install.sh | bash'
 ```
 
-The independent `install.sh` resolves the current **release** commit, downloads that exact source snapshot into `./Saplingagent`, runs the existing installer, then opens the configuration/start menu. It does not clone all repository branches or require Node before downloading. No Git repository is initialized or connected. Configure your own AI access and choose Start app after installation.
+The independent `install.sh` resolves the current **release** commit, downloads that exact source snapshot into `./Saplingagent`, installs the local kernel, then opens web project setup. It does not clone all repository branches or require Node before downloading. No Git repository is initialized or connected. Configure the project name/icon and your AI access, then compile the native launcher in the setup page.
 
 The target folder must be new; existing applications are preserved. Add `--dir` and `--lang` for a different destination/language:
 
@@ -112,7 +114,7 @@ bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/
 
 Use `--download-only` to fetch source without installing or opening a menu; then run `bash Saplingagent.sh` inside the downloaded folder. First Install initializes recipient goal/task records; edits made before installation are preserved with a warning. The script needs HTTPS access to GitHub API/archive endpoints and standard curl/tar/SHA256 tools (macOS and Git Bash supply them). API/rate-limit/download failures are reported; retry in a new folder if a completed source folder already exists. All dependencies and configuration install locally. This command is for fresh installation, not automatic source updates.
 
-Only release is downloaded. Follow mode stores a single selected-branch fetch mapping and skips tags, so normal subsequent fetches do not bring author main/adobe-replica into the local branch list. Local mode's empty main is your own independent history. An explicitly configured branch remains supported; existing local branches are preserved. The public repository remains manually accessible; this is a default delivery workflow, not a permission restriction.
+Only release is downloaded, without Git metadata or author branch refs. Existing customer Git is preserved, and users can independently create their own repository. The public repository remains manually accessible; this is a default delivery workflow, not a permission restriction.
 
 Alternatively get the complete application folder manually:
 
@@ -134,19 +136,17 @@ Use the same **Saplingagent.sh** entry from the application folder on both platf
 bash Saplingagent.sh
 ```
 
-First choose **English** or **中文** (Enter defaults to English), then use the same menu for every step. For Chinese directly, run `bash Saplingagent.sh --lang zh`. See the [中文安装说明](docs/macos-install.zh.html). Run the `.sh` entry in macOS Terminal or Windows Git Bash; double-click is not the supported launch method.
+Choose **English** or **中文** (Enter defaults to English). The script installs only the management kernel and opens the configuration webpage. For Chinese directly, use `bash Saplingagent.sh --lang zh`.
 
-| Menu choice | Action |
-| --- | --- |
-| 1. Install / repair dependencies | Install project-local dependencies. Keep application source and existing Git. |
-| 2. Configure AI | Open the standalone local account/API configuration page. |
-| 3. Start app | Launch the local services and open the chat page. |
-| 4. Diagnostics | Check installation, saved AI access and runtime readiness. |
-| 6. Kernel management | Inspect, check, update or restore the independent platform kernel independently of application code and Git. |
-| 9. Change language | Switch English / Chinese. |
-| 0. Quit | Close the menu. |
+1. Set the project name, folder name and optional icon in the webpage.
+2. Save and select your AI account/API scheme.
+3. Click **Install app & compile launcher**. Application dependencies and the local Go toolchain are installed on demand. An independent customer folder may be renamed before building; existing folders are never replaced, and development worktrees remain in place.
+4. Double-click the generated **Your project.app** (macOS) or **Your project.exe** (Windows) to develop your app.
+5. Use the management page to **Open app**, **Restart app**, **Stop app**, or **Rebuild app & launcher**. An unchanged native executable is reused; changed launchers are staged and verified before replacement. Failed builds retain the previous output.
 
-Choose **1. Install / repair dependencies** if you downloaded the folder manually. The one-command installer already runs this step. Next choose **2. Configure AI**, finish setup, then **3. Start app**. Menu actions return to the menu when finished; an error leaves the menu available for retry. Stop an existing application before updating dependencies. While the app is running, keep the terminal open; Control+C stops the owned services and exits the launcher.
+Keep the complete folder. Source, local runtimes, compiler and data remain inside it. Renaming the customer project does not change Saplingagent's product/kernel identity. Native Windows icon/folder replacement still requires real-device acceptance; local Mac compilation is not Developer ID notarization. See the [launcher guide](docs/project-launcher.html).
+
+Explicit fallback commands remain: `bash Saplingagent.sh configure --no-open`, `install --repair`, `start`, `doctor`, and `kernel`. `SAPLING_LEGACY_MENU=1 bash Saplingagent.sh` opens the previous terminal menu. Script installation opens web setup; it does not initialize or erase customer Git.
 
 Installation supports macOS 13.5+ on Apple Silicon or Intel, downloads official Node **24.21.0**, checks its official SHA-256 checksum, and installs project-local Codex **0.146.1**, OpenCode, Claude Agent SDK **0.3.296** and locked dependencies. No preinstalled Node, npm, Homebrew or Codex desktop app is required. Git is required for local version history; on Mac, install Apple Command Line Tools with `xcode-select --install` if Git is missing (full Xcode is unnecessary); Windows requires Git Bash and its bundled shell utilities. Windows10 must be version1809+; ARM64 and x64 are detected automatically. Internet access to official downloads, npm and your model provider is required. Versions are declared in [config/macos.json](config/macos.json) and dependency lockfiles.
 
@@ -159,7 +159,7 @@ Runtimes stay in `.runtime/`, dependencies in their modules' `node_modules/`, an
 - **ChatGPT account:** open the official Codex sign-in page, or use a device code. On completion the account becomes the default scheme. Existing project-local ChatGPT credentials can be selected without signing in again.
 - **API / custom provider:** name a scheme, select Codex, OpenCode or Claude Agent, choose the API protocol, enter the provider's **API Base URL**, API key and exact model ID, then **Save & use**. Use the API URL rather than a website homepage. Codex custom endpoints require Responses; Claude Agent requires Anthropic Messages with an API scheme; OpenCode supports Chat Completions, Responses and Anthropic Messages. Presets help fill OpenAI, OpenRouter, Anthropic and local Ollama-compatible endpoints. Providers requiring other protocols, arbitrary headers or separate subscription OAuth need their own adapter.
 - **Fetch models** is optional and performs a catalog GET only. If discovery is unavailable, enter the model ID manually. Use a model with streaming/tool-calling support for application development; saving a scheme does not validate compatibility or quota.
-- Keep multiple schemes and select **Use** to change the default. **Finish setup** closes only this configuration service and returns to the script menu; then choose **Start app**. Closing the browser tab alone does not stop the service; Control+C stops the launcher if needed. If browser opening fails, use the loopback URL printed in the terminal.
+- Keep multiple schemes and select **Use** to change the default. Compile the launcher in step3, then use **Open app** or double-click the generated native entry. **Finish setup** closes only management; **Stop app** stops owned application services. Closing a browser tab does not stop the service. If browser opening fails, use the loopback URL printed in the terminal.
 
 Scheme metadata stays in `local-secrets/ai-config/connections.json`, API keys in `local-secrets/api-keys/`, and Codex sign-in credentials in `local-secrets/codex/`. The credential ledger stores file references. The page never reads saved keys back into fields; leave a key blank when editing to retain it. No global credentials are imported. OpenCode's legacy native provider selector remains available as an explicit recovery command and stores its credentials in `local-secrets/opencode/`.
 
@@ -188,13 +188,13 @@ Device login depends on account/organization eligibility. Use `bash Saplingagent
 
 ## Your application folder, without Git setup
 
-Product0.9.2 downloads the release snapshot without `.git`. Installation does not initialize Git, ask for storage or connect an author remote. The default page has no branch, Save version or workspace Git controls. You can create your own repository later; reinstall and kernel maintenance preserve it.
+Product0.9.3 downloads the release snapshot without `.git`. Installation does not initialize Git, ask for storage or connect an author remote. The default page has no branch, Save version or workspace Git controls. You can create your own repository later; reinstall and kernel maintenance preserve it.
 
 ## Upgrade the kernel and restart
 
 Open **Kernel → Check for kernel update → Upgrade kernel & restart**. Review the verified release SHA, paths and conflicts, then accept the compatibility warning. A copied temporary progress process stops owned services, backs up/applies core, repairs its own dependencies and restarts the complete application at its actual selected port. App/chat pages, MCP, Skills, demos, business code, application dependency manifests, configuration, data and customer Git are retained. Restart app/backend remains available without an upgrade. Recovery is explicit; no automatic rollback. Direct control: `/__saplingagent/kernel`.
 
-Product release is **0.9.2**; independent kernel is **0.91 / schema3**. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
+This release-branch source declares product **0.9.3**, with independent kernel **0.92 / schema3**. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.3 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
 
 ## Import existing local credentials
 
@@ -225,7 +225,7 @@ Codex is the initial default when no scheme is saved. Use **Configure AI → API
 
 Claude can also run through the official **Claude Agent SDK** as its own local agent engine. It embeds the Claude Code agent loop with native shell/file tools, MCP, project Skills, streaming and resumable sessions. This is an embedded SDK integration, with no separate public App Server port.
 
-Run `bash Saplingagent.sh`, choose **Install / repair dependencies**, then **Configure AI** → **API / custom provider** → **Anthropic · Messages**. The preset selects **Claude Agent**. Enter your own API key, exact model ID and API Base URL (`https://api.anthropic.com/v1`, or your compatible gateway URL). **Save & use** → **Finish setup** → **Start app**. If already running, restart and create a new conversation. Model discovery is optional; gateways must support Anthropic Messages streaming and tool calls. Claude schemes do not require Codex login.
+Run `bash Saplingagent.sh` to open web setup, then choose **API / custom provider** → **Anthropic · Messages**. The preset selects **Claude Agent**. Enter your own API key, exact model ID and API Base URL (`https://api.anthropic.com/v1`, or your compatible gateway URL). **Save & use** → **Install app & compile launcher** → **Open app**. If already running, restart and create a new conversation. Model discovery is optional; gateways must support Anthropic Messages streaming and tool calls. Claude schemes do not require Codex login.
 
 The SDK is pinned to `0.3.296` and installs its native binary inside the application folder; a separate global Claude Code installation is unnecessary. API keys stay in `local-secrets/api-keys/`, and SDK state/transcripts in `local-secrets/claude/`. Project `CLAUDE.md` imports `AGENTS.md`; `.agents/` loads the existing Skills as the `saplingagent` local plugin. Full Access remains enabled as the current OS user. There is no default whole-turn deadline, automatic fallback, automatic resend or silent replacement of missing sessions.
 
@@ -404,7 +404,7 @@ The user's project rules ship under `rules/`. Translating their prose does not r
 
 ## Windows operation and delivery
 
-Run `bash Saplingagent.sh --lang zh` in Git Bash. The single English/Chinese menu provides Install / repair dependencies, Configure AI (independent account/API web page), Start app and Diagnostics. Explicit actions/flags are identical to Mac: `install --repair`, `configure --no-open`, `login --device-auth`, `opencode`, `start --no-open`, `doctor`, `logout`. See [Windows guide](docs/windows-install.html) / [中文 Windows 说明](docs/windows-install.zh.html).
+Run `bash Saplingagent.sh --lang zh` in Git Bash. The script opens bilingual project/AI setup, followed by local launcher compilation. The legacy terminal menu is available with `SAPLING_LEGACY_MENU=1`. Explicit actions/flags are identical to Mac: `install --repair`, `configure --no-open`, `login --device-auth`, `opencode`, `start --no-open`, `doctor`, `logout`. See [Windows guide](docs/windows-install.html) / [中文 Windows 说明](docs/windows-install.zh.html).
 
 Windows system detection/download/extraction uses its built-in PowerShell internally, embedded in scripts/windows/bootstrap.sh; there is no separate .ps1 file or user PowerShell command. UTF16 encoded command arguments preserve Unicode paths and leave stdin available for provider authentication. Windows menu actions run in the foreground. Diagnostics/web configuration use PowerShell directly; Git Bash's winpty is used when available for interactive install/Git setup/login/OpenCode/start console compatibility. Windows terminal shutdown/model interactions still require native-system testing. No WSL, global Node/Codex, registry/global PATH/permanent execution-policy modification is required.
 
@@ -431,6 +431,6 @@ Use the paperclip, drop files into AI chat or paste an image. Attachments stay i
 
 ## Release identity
 
-The product distribution is **Saplingagent 0.9.2** (`config/release.json`). The footer and Bash menu display this release separately from **Kernel 0.91**; the default page has no Workspace Git control. Missing release metadata is shown as unavailable. A local Git reset does not erase product identity. Kernel-only updates preserve the complete distribution version.
+This release-branch source declares **Saplingagent 0.9.3** (`config/release.json`). The footer and Bash menu display this release separately from **Kernel 0.92**; the default page has no Workspace Git control. Missing release metadata is shown as unavailable. A local Git reset does not erase product identity. Kernel-only updates preserve the complete distribution version.
 
-Downloadable source ZIPs record `releaseVersion` and the exact `sourceCommit` in `delivery.json`; their filenames contain both. The owner-designated release is `v0.9.2`; its tag, release page, product declaration and download receipts must identify the same checked source. Do not increment that version without the owner’s instruction. See the [release checklist](docs/release-checklist.html) for code-first verification and the [published releases](https://github.com/extendmachine/Saplingagent/releases) for the actual publication status. Source tags, published Releases and real-device/model acceptance are separate facts.
+Downloadable source ZIPs record `releaseVersion` and the exact `sourceCommit` in `delivery.json`; their filenames contain both. The release branch now contains0.9.3. Existing GitHub Release/tag downloads remain separately versioned; this branch promotion does not move old tags or create a new GitHub Release. The one-command installer resolves the release branch. Any later GitHub Release publication must align its tag, release page and download receipts with the checked source. Do not increment that version without the owner’s instruction. See the [release checklist](docs/release-checklist.html) for code-first verification and the [published releases](https://github.com/extendmachine/Saplingagent/releases) for the actual publication status. Source tags, published Releases and real-device/model acceptance are separate facts.

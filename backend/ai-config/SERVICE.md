@@ -9,3 +9,5 @@ Claude Agent engine support: see CONTRACT.md and DEPLOY.md for the shared API pr
 ## Explicit local credential import (TASK-20261013-002)
 
 credentials.mjs parses bounded, explicitly selected local/upload documents without executing shell helpers or reading the OS keychain. store.mjs publishes only project-private credentials, schemes and ledger references with its existing exclusive writer. server.mjs coordinates imports with owned OAuth and scheme changes. No new dependency, log or persistent process. Codex imports ChatGPT auth.json; Claude imports API keys only. Full Access is unchanged. See CONTRACT/DEPLOY/REFERENCES for formats, replacement, expiry and provider-policy limits.
+
+0.9.3: also hosts project name/icon/build progress and launcher controls through the public project-launcher contract. Demand-started management survives business restarts and can be reopened from the native bootstrap. It binds an OS-assigned loopback port and verifies root/instance ownership; no global supervisor or new business-service registration. Build and lifecycle logs use logs/project-launcher/,30-day retention. Close setup and Stop app are separate actions.

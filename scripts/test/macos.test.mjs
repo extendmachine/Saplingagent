@@ -31,9 +31,9 @@ async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   await fs.writeFile(path.join(root, 'scripts/dev.mjs'), badDev ? "console.error('Port occupied'); process.exit(1);" : "await import('node:fs/promises').then(f=>f.writeFile(new URL('../UNEXPECTED_LAUNCH',import.meta.url),'bad'));process.exit(7);");
   return root;
 }
-function runCli(root, action, extraEnv = {}) {
+function runCli(root, action, extraEnv = {},nodeExecutable=process.execPath) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [path.join(root, 'scripts/macos/cli.mjs'), ...action], { cwd: root, env: { ...process.env, SEED_ROOT: '/invalid-root', CODEX_HOME: '/invalid-codex-home', ...(action[0] === 'install' ? { SAPLING_GIT_MODE: 'local' } : {}), ...extraEnv }, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(nodeExecutable, [path.join(root, 'scripts/macos/cli.mjs'), ...action], { cwd: root, env: { ...process.env, SEED_ROOT: '/invalid-root', CODEX_HOME: '/invalid-codex-home', ...(action[0] === 'install' ? { SAPLING_GIT_MODE: 'local' } : {}), ...extraEnv }, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = ''; child.stdout.on('data', x => output += x); child.stderr.on('data', x => output += x); child.once('error', reject); child.once('exit', code => resolve({ code, output }));
   });
 }
@@ -103,7 +103,9 @@ test('failed staging preserves a complete old installation and repairs stripped 
   const before = await fs.readFile(marker, 'utf8'); await fs.chmod(wrapper, 0o644);
   const bin = path.join(root, 'fake-bin'); await fs.mkdir(bin);
   await fs.writeFile(path.join(bin, 'npm'), '#!/bin/sh\necho "Synthetic network failure" >&2\nexit 42\n', { mode: 0o755 });
-  const result = await runCli(root, ['install', '--repair'], { PATH: bin + path.delimiter + process.env.PATH });
+  // Simulate failure of this project's own npm, rather than overriding it globally.
+  const localNode=path.join(bin,'node');await fs.copyFile(process.execPath,localNode,fs.constants.COPYFILE_FICLONE);
+  const result = await runCli(root, ['install', '--repair'], { PATH: bin + path.delimiter + process.env.PATH },localNode);
   assert.equal(result.code, 1); assert.match(result.output, /exit code 42/);
   assert.equal(await fs.readFile(marker, 'utf8'), before);
   assert.equal((await fs.stat(wrapper)).mode & 0o777, 0o755);

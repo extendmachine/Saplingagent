@@ -111,6 +111,7 @@ async function launch() {
 			const temporary = `${addressFile}.${manager.instanceId}.tmp`;
 			await fs.writeFile(temporary, JSON.stringify({
 				instanceId: manager.instanceId,
+				root:path.resolve(root),
 				pid: process.pid,
 				ports: manager.portOverrides,
 				url: `http://127.0.0.1:${config.frontPort}/`
