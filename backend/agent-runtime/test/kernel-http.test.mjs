@@ -28,7 +28,7 @@ test("read-only kernel metadata is independent of Git/model and does not expose 
 	];
 	await fs.mkdir(path.join(root, "kernel"));
 	await fs.writeFile(path.join(root, "kernel/manifest.json"), JSON.stringify({
-		schemaVersion: 2,
+		schemaVersion: 3,
 		version: "0.91",
 		appApi: 1,
 		minNode: "24.11.0",
