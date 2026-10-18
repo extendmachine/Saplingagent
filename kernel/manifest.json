@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 2,
-  "version": "0.90",
+  "schemaVersion": 3,
+  "version": "0.91",
   "appApi": 1,
   "minNode": "24.11.0",
   "notes": "Independent platform kernel. Updates may invalidate custom applications; back up, inspect conflicts and verify after dependency repair.",
@@ -12,24 +12,6 @@
       "executable": false
     },
     {
-      "path": "backend/agent-runtime/git-versions.mjs",
-      "sha256": "22f83d2471da4cfbced3581c381a5a274098dd12b70c987a818fb4409d1cd86a",
-      "bytes": 12522,
-      "executable": false
-    },
-    {
-      "path": "backend/agent-runtime/package-lock.json",
-      "sha256": "6879a5e93a92cffa94fddd1bbe87ec15db3710d9a6eb53465d5c648578ee4944",
-      "bytes": 59490,
-      "executable": false
-    },
-    {
-      "path": "backend/agent-runtime/package.json",
-      "sha256": "39c065f2eeff7d96078d084ac7a59db337abd1132ca7262320bac3510a7285cc",
-      "bytes": 418,
-      "executable": false
-    },
-    {
       "path": "backend/agent-runtime/permissions.mjs",
       "sha256": "43ebd6dc060cd71c6fa002dd6c8680ff77f716ff916a2d52c86fe8b4bcc1d2f7",
       "bytes": 1252,
@@ -37,8 +19,8 @@
     },
     {
       "path": "backend/agent-runtime/providers/claude.mjs",
-      "sha256": "154a8c1ebc56014e444435110764a6656a42374bda814cf23965f85b6d250d8e",
-      "bytes": 10763,
+      "sha256": "511fd1cbb2d6799c785f1bb6f78901a671bd24a6aff217f6ea7c021bc9288b67",
+      "bytes": 10967,
       "executable": false
     },
     {
@@ -49,8 +31,8 @@
     },
     {
       "path": "backend/agent-runtime/providers/opencode.mjs",
-      "sha256": "05088a93dcbbec26e4fbc818f80cf08cbd16f07f9f78e922caf6a32418af2813",
-      "bytes": 13243,
+      "sha256": "621ef61fe2b78a8c0129d258726e3a01a46e03ad3cf5711773ffe28b56c20e38",
+      "bytes": 13447,
       "executable": false
     },
     {
@@ -78,20 +60,8 @@
       "executable": false
     },
     {
-      "path": "backend/agent-runtime/test/git-http.test.mjs",
-      "sha256": "888aef8dd30c9aa996f1f4ce6e865b9bba609fd5207ee7254257500decf8be74",
-      "bytes": 7671,
-      "executable": false
-    },
-    {
-      "path": "backend/agent-runtime/test/git-versions.test.mjs",
-      "sha256": "a288359bf31a32cc9ddd2e41376600fa3aa490bb022276bd9e46cfb27f7df905",
-      "bytes": 13056,
-      "executable": false
-    },
-    {
       "path": "backend/agent-runtime/test/kernel-http.test.mjs",
-      "sha256": "134a56ccdd646b79b3f3bc225cbf2e5acae57b07c9d14148fff4534826e68990",
+      "sha256": "07767d4e70ac661266589c7031e4cafe61ec0f64576d0dcdaac8fed1e6ba359b",
       "bytes": 1810,
       "executable": false
     },
@@ -205,26 +175,26 @@
     },
     {
       "path": "backend/runtime-manager/CONTRACT.md",
-      "sha256": "7233fe416fd1a7bdff4812692918bc75123ae3628f3781c43628aca67ee846d7",
-      "bytes": 8506,
+      "sha256": "2d5c468dcefaa1cedfeb9d1a640a6499b9798c9288c79897403d26771b5d09d7",
+      "bytes": 9281,
       "executable": false
     },
     {
       "path": "backend/runtime-manager/DEPLOY.md",
-      "sha256": "a8346457f72aced73c301a5aa9ec3dceff837dbced295891b490bf4b79ca1056",
-      "bytes": 4513,
+      "sha256": "a81c8df89e12ddc98580903840968448eaea8b25bb8d7442aae02a02be79ef15",
+      "bytes": 4959,
       "executable": false
     },
     {
       "path": "backend/runtime-manager/gateway.mjs",
-      "sha256": "54fe1700c786a865289bd8f7e33450e6b2cbe96e55a4918f734f60ab6295abc3",
-      "bytes": 6058,
+      "sha256": "ea9f1b7b96b45cfb2c4e3ac40d47b6cb1aac86cadff65c94a1e30dde1da90a23",
+      "bytes": 6435,
       "executable": false
     },
     {
       "path": "backend/runtime-manager/manager.mjs",
-      "sha256": "98f8399961c6178409bf349f2cc00eddb606a0fd41727d50fe57779be9993160",
-      "bytes": 17554,
+      "sha256": "01c907101a1f3efed1e8afd54917d991b17464e8f9f423316e14c6472e32cb13",
+      "bytes": 19163,
       "executable": false
     },
     {
@@ -247,14 +217,14 @@
     },
     {
       "path": "backend/runtime-manager/server.mjs",
-      "sha256": "7b5645d9dc5b745238ad6db55306094f6fc5d2da02a34ad89cf262cd5a192498",
-      "bytes": 3223,
+      "sha256": "84571fc090ab6f957b5ccd94ab6f8d3150f38055926e5f5354322f5903b3cacd",
+      "bytes": 3345,
       "executable": false
     },
     {
       "path": "backend/runtime-manager/SERVICE.md",
-      "sha256": "79054a1211e33111a9dd317bb51a56f05cad4e24d17504a4ecc13ea091b1534b",
-      "bytes": 3614,
+      "sha256": "e92a3b1111c28b6ec3ef006cc163d59654b5bfa996cd3384ec43c0de81f2b671",
+      "bytes": 4100,
       "executable": false
     },
     {
@@ -265,8 +235,8 @@
     },
     {
       "path": "backend/runtime-manager/test/manager.test.mjs",
-      "sha256": "7d40a04230913268492a0ea9d3fd8476f9d93f79b757a7ee57c4ec5cac174454",
-      "bytes": 27716,
+      "sha256": "6527c85da5a4f1b9e9ce1bb2cf3a00521e545ab39952ee8806bc64e2fec0fd83",
+      "bytes": 29286,
       "executable": false
     },
     {
@@ -306,15 +276,21 @@
       "executable": false
     },
     {
+      "path": "contracts/engine-dependencies.mjs",
+      "sha256": "f6e805af217bb02103ee0cc2f4140da9e0bf448664548a5a79ef3dea31cfc202",
+      "bytes": 1077,
+      "executable": false
+    },
+    {
       "path": "contracts/kernel.mjs",
-      "sha256": "02508fb01179d8cba66ac24cacae158d6383c0bb9d2fa61d5c8864c8847dc4aa",
-      "bytes": 7731,
+      "sha256": "6ba1b87bab3c749da00e6fc8a39d13e83337608f73f728b4d5d71a85342b7c52",
+      "bytes": 7932,
       "executable": false
     },
     {
       "path": "contracts/local-process.mjs",
-      "sha256": "4fddd78b18dd869057da14a73c1ec9bf4501b344fc0f0214c0c8e8dca8edc17c",
-      "bytes": 4550,
+      "sha256": "e70c8cc76126a9e3c2d7c205ccc97b4f504b427441c6ac1dd83d76d605b5c21d",
+      "bytes": 4566,
       "executable": false
     },
     {
@@ -367,49 +343,19 @@
     },
     {
       "path": "front/ai-config/vite.config.mjs",
-      "sha256": "783a44532b165ac99d528ef84cf76bd2d65e81ace24e505a08e42dabc6776c4c",
-      "bytes": 286,
-      "executable": false
-    },
-    {
-      "path": "front/features/git-version/GitVersionPanel.tsx",
-      "sha256": "f4ac75365d69f079f41aca6ffba99dcce54eea01bca4f00c4c9744602f6d340d",
-      "bytes": 11583,
-      "executable": false
-    },
-    {
-      "path": "front/features/runtime-control/restart-reload.ts",
-      "sha256": "9ea27078cf9247affa0f251f1849991729ede8e2764333eff5e454a17ecbfd5e",
-      "bytes": 721,
-      "executable": false
-    },
-    {
-      "path": "front/features/runtime-control/RestartServices.tsx",
-      "sha256": "e22f54ccf74b0956bd888411d2ea9aefa19af302356ba1099ee0ca1e420c1bc1",
-      "bytes": 5747,
-      "executable": false
-    },
-    {
-      "path": "front/features/runtime-control/runtime-control.css",
-      "sha256": "d3d1f33616c499cabf3f4dfcecc76de87f6f3986faf308a7e3587b5251c745ad",
-      "bytes": 1841,
-      "executable": false
-    },
-    {
-      "path": "front/features/version/VersionFooter.tsx",
-      "sha256": "f5a3cfb6b9256d6f4e5860bc3730e6a3c376b021ce27380fd92311687a60551c",
-      "bytes": 4322,
+      "sha256": "a70a522dc4c2517661ee91d88a8741122b1baf4fa5f85b74f5e8024a910eaa1a",
+      "bytes": 489,
       "executable": false
     },
     {
       "path": "install.sh",
-      "sha256": "98ef901a58965c11dec4186bc99946e703960f0cefc0c06a6d5934124885ee6e",
-      "bytes": 7680,
+      "sha256": "3eebc7f035f945edf1e21f541386920dcc4f75960079bb4137f5086c1f9d92f3",
+      "bytes": 7617,
       "executable": true
     },
     {
       "path": "kernel/build-manifest.mjs",
-      "sha256": "1303b75f313760e875a9bf7a6fbe7853f2ad11a158723ccb5a0a506fabab9ee7",
+      "sha256": "11a51405d1d58f2ff631909dfcaa72fa22174b074de8977fa3a0a819d12609e0",
       "bytes": 3540,
       "executable": false
     },
@@ -421,26 +367,62 @@
     },
     {
       "path": "kernel/CONTRACT.md",
-      "sha256": "db64b102da4bba97d46ef477c8f4bcecc240ccb52c9d846c25bf94fc08fe9717",
-      "bytes": 4365,
+      "sha256": "ed08f5b68647f374cdfb882487019b0cbb8d84bb497f24d9e9f52f5a436e5900",
+      "bytes": 7076,
+      "executable": false
+    },
+    {
+      "path": "kernel/control-page.mjs",
+      "sha256": "d49e179257a91a64e9a1517a44f4659a0e39edd6d8ff1ec6ea357a3181e5c020",
+      "bytes": 7241,
       "executable": false
     },
     {
       "path": "kernel/DEPLOY.md",
-      "sha256": "2917df9c14f5164c6b74cc2e0a5273dd5bb86085599186532dda2171ce6807a3",
-      "bytes": 4401,
+      "sha256": "fb89849111d3d5a13d9d3e4b3dd132f2c7819f1da72b379d5d528dbb86ef317a",
+      "bytes": 5446,
+      "executable": false
+    },
+    {
+      "path": "kernel/handoff.mjs",
+      "sha256": "05c8654c6fb37d38047bd5faf5820d110f8fb1c88cd3e47bcaef8bdd23bf3168",
+      "bytes": 2960,
+      "executable": false
+    },
+    {
+      "path": "kernel/http.mjs",
+      "sha256": "a594a7a28dfc0bdd10ee7e6e890a7c8aa8180125c53fb30a8583e601b6ee8e6f",
+      "bytes": 2993,
+      "executable": false
+    },
+    {
+      "path": "kernel/install-dependencies.mjs",
+      "sha256": "811370df57cc09af3c975a17c1eed6921dfeed6e6cf17394c21cf5af9742f23d",
+      "bytes": 2604,
       "executable": false
     },
     {
       "path": "kernel/manager.mjs",
-      "sha256": "7ae3e0b21da59ffa1347d021c401a27cdf13db15eb41a403c350993e471d0457",
-      "bytes": 13889,
+      "sha256": "3b9f7d87314a7959f3be03ab9fbfd2125c886ae942cabfb1240fc476d69101cf",
+      "bytes": 14629,
+      "executable": false
+    },
+    {
+      "path": "kernel/package-lock.json",
+      "sha256": "58a81bc681058176a163b77b0c3b7678a6de040909b7bc38ec6d5b4ea8e76b3f",
+      "bytes": 85332,
+      "executable": false
+    },
+    {
+      "path": "kernel/package.json",
+      "sha256": "e2d9c2c52c5b93921ed4d46d4cc3cc8d57af504095ec4a49a089170d9ee0e2c4",
+      "bytes": 350,
       "executable": false
     },
     {
       "path": "kernel/recover.mjs",
-      "sha256": "9187768d761cdf9df7e9102260309a152ead49f96a8b0802735695b934d4beeb",
-      "bytes": 9573,
+      "sha256": "b5692b5c72845231bbf6f3534c4a433c65cfcd24feec9b579215d3dc4c929c2c",
+      "bytes": 9703,
       "executable": false
     },
     {
@@ -451,8 +433,8 @@
     },
     {
       "path": "kernel/SERVICE.md",
-      "sha256": "93b0593a3cadff5fb2911bafe4eea37a97e5e87885732734d4a3e21e95d99330",
-      "bytes": 1140,
+      "sha256": "680d9e90425e0d61839e92b5a28945c3e6a2bc0d2cf3c79992c96acf7dc5497a",
+      "bytes": 1948,
       "executable": false
     },
     {
@@ -462,21 +444,33 @@
       "executable": false
     },
     {
+      "path": "kernel/test/maintenance.test.mjs",
+      "sha256": "d2f4ef799942d0b7c12e35eb04e294f4d2b07240b5972f878b379978993842b4",
+      "bytes": 10386,
+      "executable": false
+    },
+    {
       "path": "kernel/test/updates.test.mjs",
-      "sha256": "6c6a1fc1e57c057d27235e034f91f00f81bc4fafbd8ff49b312a351d96a736dd",
-      "bytes": 18990,
+      "sha256": "5bd34e69bb8a238971ff6a2f16930f03a91f383c9d9ec78efbe9862e5979556e",
+      "bytes": 18999,
+      "executable": false
+    },
+    {
+      "path": "kernel/worker.mjs",
+      "sha256": "606493e927be9ae64486e5dec826d1ca54ca8f679d2f42fb0cc96bb7896884c1",
+      "bytes": 9655,
       "executable": false
     },
     {
       "path": "Saplingagent.sh",
-      "sha256": "aaa7ba3214feeae40198283694a3becdd03d14865ff02779aeb97d0e1c11590d",
-      "bytes": 7154,
+      "sha256": "9b6b1d1c382293d5ade0ee0d7982d964c89143c67f2c99333d7b3900e0bcf248",
+      "bytes": 5462,
       "executable": true
     },
     {
       "path": "scripts/dev.mjs",
-      "sha256": "cb06af79a98cd104917ba2bea1965fe00ca1086acccbbfd0bf62b98cf460860f",
-      "bytes": 4684,
+      "sha256": "7b849634e21e2ff28c205a51f28a51ad93cb1449622fd862e8f3188582304e54",
+      "bytes": 4718,
       "executable": false
     },
     {
@@ -487,8 +481,8 @@
     },
     {
       "path": "scripts/launcher/cli.mjs",
-      "sha256": "581acd99518b41fd2c011d9b05cd660a225162c453e6e397d221cc0a3f6b3fcf",
-      "bytes": 26123,
+      "sha256": "341e920f44e7707518f6472a2ae34b850a7c94f8b55643bb8fdb65b977350c2c",
+      "bytes": 25245,
       "executable": false
     },
     {
@@ -505,8 +499,8 @@
     },
     {
       "path": "scripts/launcher/recipient-records.mjs",
-      "sha256": "dcd2e3613475764c5bdc000113b646d98ee3fcc4f48d2c9fa2b90825bafd7f6b",
-      "bytes": 7505,
+      "sha256": "2fa91f778800d3bb1ccf3af4c33493aceb089564fcc07b23d8c199f08f657b74",
+      "bytes": 7032,
       "executable": false
     },
     {
@@ -523,8 +517,8 @@
     },
     {
       "path": "scripts/macos/bootstrap.sh",
-      "sha256": "1a26bd9483731b2b253a3d57a8910f7df42005f81bdd0791caa7068e1654efde",
-      "bytes": 5937,
+      "sha256": "ee78757a7fc0ab0c6dc18a2e31ed50998d67e4d1246235e6c2214a2f11b556db",
+      "bytes": 5921,
       "executable": true
     },
     {
@@ -547,8 +541,8 @@
     },
     {
       "path": "scripts/package-macos.mjs",
-      "sha256": "95aca515d8076fe5677d6f17ce62da4e33de4f2f4b6bfba9735c943774bee806",
-      "bytes": 9476,
+      "sha256": "fdb9bebaa4b866034d9cc87b8a696c31ffe3564b30364b491ba5f1a3744c7b1e",
+      "bytes": 9420,
       "executable": false
     },
     {
@@ -577,8 +571,8 @@
     },
     {
       "path": "scripts/test/curl-install.test.mjs",
-      "sha256": "ef7a55fbc035d0f20db6bcc77c35d741758eaff0a6bb5700a6d931912c31a210",
-      "bytes": 9075,
+      "sha256": "6096a4b5f8e94cb5919ccd1e57bf40a5a00b7377e7027a1b40b949ac3a9bd01f",
+      "bytes": 9114,
       "executable": false
     },
     {
@@ -595,32 +589,32 @@
     },
     {
       "path": "scripts/test/launcher-menu.test.mjs",
-      "sha256": "fddf5dd9feb3997f085b1f038561b55348681b09ea449efde00339ccee11aca8",
-      "bytes": 12583,
+      "sha256": "2d1c6833b7ad61d41fcd6f78b6fb28dd02d255d5b4ca1d31578cc215b086aa54",
+      "bytes": 9174,
       "executable": false
     },
     {
       "path": "scripts/test/macos.test.mjs",
-      "sha256": "0362dfc637830c3028ed497467319e5571c2c99880925020a3b45312c236d17b",
-      "bytes": 24876,
+      "sha256": "1179b09e4ddb42015abee6095901cbd47175b89d2086934068c5de476c864a06",
+      "bytes": 22112,
       "executable": false
     },
     {
       "path": "scripts/test/release-version.test.mjs",
-      "sha256": "66c61238b4fbc615a45b3379e0854d106d62f771615fbe3218f9ff93dd0c6429",
+      "sha256": "d3454b715443e9a7d822cc39d30558f70d4285750d8e142347346cf023dd98b2",
       "bytes": 3375,
       "executable": false
     },
     {
       "path": "scripts/test/runtime-ports.test.mjs",
-      "sha256": "985477abfa456c4c5fd44bfbf0dc74a39bf216ee0e0d9924a8240a0e68ba3c5d",
-      "bytes": 5869,
+      "sha256": "e0c8e541606b698c53d903989051711064302ee05f7faf228f105ed5dbc40e36",
+      "bytes": 6038,
       "executable": false
     },
     {
       "path": "scripts/test/shell-routing.test.mjs",
-      "sha256": "b8d633c33aa23cbb2f896cc913f1630fa82884684e0bc00fc11d6a8e6f6ce06e",
-      "bytes": 6142,
+      "sha256": "feab0e6ac79da709a7c66278451678606c831dafc8de4558008dfddd45a85653",
+      "bytes": 6122,
       "executable": false
     },
     {
@@ -649,8 +643,8 @@
     },
     {
       "path": "scripts/windows/bootstrap.sh",
-      "sha256": "0c335ccff718f88ac45738dd5516ac4ed85deb180d763d62876934bf72099f9e",
-      "bytes": 11065,
+      "sha256": "0bbd2218eff7a2ad7babcdc307478cfe5ced031826fcd69d05b2c5a9ad404b3b",
+      "bytes": 11047,
       "executable": true
     },
     {

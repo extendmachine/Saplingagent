@@ -61,7 +61,7 @@ export async function checkKernel(root, { source = githubSource() } = {}) {
 		local = validateKernelManifest(JSON.parse(installed.bytes.toString()));
 		localManifestHash = installed.hash;
 	} catch {
-		throw new KernelError("INVALID_KERNEL", "Install the current schema2 management tooling and reviewed baseline once. Obsolete broad manifests cannot be updated automatically; application files are unchanged.", 400);
+		throw new KernelError("INVALID_KERNEL", "Install the current schema3 management tooling and reviewed baseline once. Obsolete broad manifests cannot be updated automatically; application files are unchanged.", 400);
 	}
 	const commit = await source.resolve();
 	if (!/^[a-f0-9]{40}$/.test(commit)) throw new KernelError("KERNEL_INTEGRITY", "Invalid source revision.", 500);
@@ -164,6 +164,16 @@ function validPlan(plan, id) {
 		indexes.add(e.index);
 	}
 	return plan;
+}
+export async function inspectKernelPlan(root,id) {
+ if(!validId(id))throw new KernelError('INVALID_PLAN','Invalid plan ID.',400);
+ let plan;
+ try {plan=validPlan(await jsonRead(root,'.runtime/kernel/plans/'+id+'/plan.json'),id);}
+ catch(error){if(error.code==='ENOENT')throw new KernelError('INVALID_PLAN','Check for an update before applying.',400);throw error;}
+ if(plan.conflicts.length)throw new KernelError('KERNEL_CONFLICT','Resolve locally changed kernel files before upgrading.');
+ const current=await readOwned(root,KERNEL_MANIFEST);validateKernelManifest(JSON.parse(current.bytes.toString()));
+ if(current.hash!==plan.baselineManifestHash)throw new KernelError('KERNEL_CONFLICT','Baseline changed. Check again.');
+ return plan;
 }
 export async function applyKernel(root, id, { acceptRisk = false } = {}) {
 	if (!validId(id)) throw new KernelError("INVALID_PLAN", "Invalid kernel plan ID.", 400);

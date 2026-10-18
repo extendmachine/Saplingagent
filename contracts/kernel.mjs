@@ -21,20 +21,16 @@ export const KERNEL_FILE_PATHS = [
 	"contracts/release.mjs",
 	"contracts/local-process.mjs",
 	"contracts/runtime-drain.mjs",
+	"contracts/engine-dependencies.mjs",
 	"contracts/ai-configuration.mjs",
 	"contracts/codex-rpc.mjs",
-	"backend/agent-runtime/git-versions.mjs",
 	"backend/agent-runtime/rpc.mjs",
 	"backend/agent-runtime/approval.mjs",
 	"backend/agent-runtime/permissions.mjs",
 	"backend/agent-runtime/turn-progress.mjs",
-	"backend/agent-runtime/package.json",
-	"backend/agent-runtime/package-lock.json",
 	"backend/agent-runtime/test/approval.test.mjs",
 	"backend/agent-runtime/test/claude.test.mjs",
 	"backend/agent-runtime/test/configured-engine.test.mjs",
-	"backend/agent-runtime/test/git-http.test.mjs",
-	"backend/agent-runtime/test/git-versions.test.mjs",
 	"backend/agent-runtime/test/kernel-http.test.mjs",
 	"backend/agent-runtime/test/opencode-messages.test.mjs",
 	"backend/agent-runtime/test/permissions.test.mjs",
@@ -50,17 +46,14 @@ export const KERNEL_DIRECTORY_PATHS = [
 	"backend/runtime-manager/",
 	"backend/ai-config/",
 	"backend/agent-runtime/providers/",
-	"front/ai-config/",
-	"front/features/git-version/",
-	"front/features/runtime-control/",
-	"front/features/version/"
+	"front/ai-config/"
 ];
 export function isKernelPath(file) {
 	if (typeof file !== "string" || /[\x00-\x1f\x7f:]/.test(file) || /(?:^|\/)(?:\.DS_Store|selfdata\.json|auth\.json|service-token)$/.test(file) || file.includes("\\") || file.startsWith("/") || file.split("/").some((p) => !p || p === "." || p === ".." || p.startsWith(".test-")) || /(^|\/)(?:node_modules|data|logs|local-secrets|secrets|\.secrets|snapshots|\.runtime|\.cache|\.git|\.worktrees|\.venv|__pycache__|dist|build|ai-tasks)(\/|$)/.test(file)) return false;
 	return (KERNEL_FILE_PATHS.includes(file) || KERNEL_DIRECTORY_PATHS.some((prefix) => file.startsWith(prefix))) && !/(?:\.tsbuildinfo|\.py[co]|\.log|\.env(?:\..*)?|\.key|\.pem|\.p12|\.pfx)$/.test(file);
 }
 export function validateKernelManifest(value) {
-	if (!value || value.schemaVersion !== 2 || typeof value.version !== "string" || !/^\d+\.\d+(?:\.\d+)?$/.test(value.version) || !Number.isInteger(value.appApi) || value.appApi < 1 || typeof value.minNode !== "string" || !/^\d+\.\d+\.\d+$/.test(value.minNode) || !Array.isArray(value.files) || !value.files.length || value.files.length > 512) throw new KernelError("INVALID_KERNEL", "Unsupported kernel manifest. Schema2 is required to preserve application-owned modules.", 400);
+	if (!value || value.schemaVersion !== 3 || typeof value.version !== "string" || !/^\d+\.\d+(?:\.\d+)?$/.test(value.version) || !Number.isInteger(value.appApi) || value.appApi < 1 || typeof value.minNode !== "string" || !/^\d+\.\d+\.\d+$/.test(value.minNode) || !Array.isArray(value.files) || !value.files.length || value.files.length > 512) throw new KernelError("INVALID_KERNEL", "Unsupported kernel manifest. Schema3 is required to preserve application-owned modules.", 400);
 	const seen = new Set();
 	let total = 0;
 	for (const file of value.files) {
@@ -118,6 +111,10 @@ export async function kernelStatus(root) {
 	}
 }
 export async function acquireKernelLock(root, purpose) {
+	let job;
+	try { job = JSON.parse(await fs.readFile(path.join(root, ".runtime/kernel/active-job.json"), "utf8")); }
+	catch (error) { if (error.code !== "ENOENT") throw new KernelError("KERNEL_BUSY", "Inspect the maintenance lease before starting."); }
+	if (job && (!job.jobId || process.env.SAPLING_MAINTENANCE_JOB !== job.jobId)) throw new KernelError("KERNEL_BUSY", "Kernel maintenance is active. Use its recovery page; inspect .runtime/kernel/active-job.json if its worker exited.");
 	const directory = path.join(root, ".runtime");
 	await fs.mkdir(directory, { recursive: true });
 	const file = path.join(directory, "kernel-operation.lock"), id = randomUUID();
