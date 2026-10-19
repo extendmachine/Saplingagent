@@ -1,12 +1,12 @@
 # Saplingagent changelog
 
-## 0.9.4 — Contained kernel (release branch, owner review)
+## 0.9.4 — Unified kernel version and contained source (owner review)
 
 - Keep platform implementations, independent project/AI setup website, engine adapters, runtime manager and installer/build helpers under kernel/.
 - Preserve application-owned chat, pages, MCP, Skills, configuration and data; ordinary app features use public kernel contracts and service registration. Full Access is unchanged.
 - Retain thin legacy entries and Node-version metadata for existing native launchers. New launchers read canonical kernel defaults.
-- Keep schema3 with layoutVersion1, original0.9.2 updater compatibility, explicit source recovery and local-core conflict review. Kernel remains0.92.
-- Product0.9.4 identifies the promoted source branch. Real Windows/account/model acceptance remains separate; no new GitHub Releases tag/assets publication is implied.
+- Keep schema3/layoutVersion1 and explicit recovery/conflict review. Manifest path validation remains compatible; old numeric comparators require the documented one-time new-tooling transition.
+- Kernel0.9.4 is the only Saplingagent version, authoritative in kernel/manifest.json. Remove dual product/kernel UI; legacy wire fields are aliases. Real Windows/account/model acceptance remains separate; no new GitHub Releases tag/assets publication is implied.
 
 ## 0.9.3 — Customer-local project setup and launcher (source distribution)
 
