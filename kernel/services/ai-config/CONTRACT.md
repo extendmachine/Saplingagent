@@ -69,3 +69,18 @@ remain. Legacy injected controllers retain the original handoff response for
 compatibility, but all production configuration entries route to external B.
 
 External configuration rejects project/open and project/restart with CONFIGURATION_FINISH_REQUIRED. Finish setup before opening the app so its dependency checks run. Project stop remains available. A failed cleanup handoff permits retry and never reports closed=true.
+
+
+## Project-relative configuration writes (TASK-20261019-040)
+
+Credential/profile/ledger writes and script setup share one ownership-tagged
+`local-secrets/ai-config/write.lock`. Its file handle closes before the protected
+work; the matching writer removes only its own receipt on completion. Existing
+unknown/stale locks produce CONFIG_BUSY for inspection, never deletion by PID
+guess. Ledger publication is an atomic same-directory replacement so reopening
+the script cannot overwrite an in-flight profile update. Managed storage rejects
+symlinked ancestors before creating child directories (PROJECT_STORAGE_LOCATION).
+These checks constrain the configuration service's own destinations, not Agent tools.
+Official login children use project-local temp/cache/XDG defaults and CODEX_HOME.
+Explicit local account imports still read the selected original source without
+changing it. Directory rename waits for active AI requests and owned auth exit.

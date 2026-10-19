@@ -1,3 +1,4 @@
+import {prepareManagedEnvironment} from '../../contracts/local-storage.mjs';
 import path from 'node:path';
 import { AppServer } from '../../contracts/codex-rpc.mjs';
 import { codexBinary } from '../../contracts/local-process.mjs';
@@ -20,7 +21,7 @@ export class AccountSetup {
       await privateDirectory(path.join(this.root,'local-secrets'));
       await privateDirectory(path.join(this.root,'local-secrets/codex'));
       if(epoch!==this.epoch)throw failure('LOGIN_CANCELLED','Sign-in was cancelled.',409);
-      const env={...process.env,CODEX_HOME:path.join(this.root,'local-secrets/codex'),SEED_ROOT:this.root};
+      const env={...await prepareManagedEnvironment(this.root),CODEX_HOME:path.join(this.root,'local-secrets/codex'),SEED_ROOT:this.root};
       for(const key of ['OPENAI_API_KEY','CODEX_API_KEY','CODEX_ACCESS_TOKEN','SAPLING_CODEX_API_KEY'])delete env[key];
       client=this.client=new this.Client({command:this.command,cwd:this.root,env,args:['-c','cli_auth_credentials_store="file"','-c','model_provider="openai"']});
       client.on('notification',m=>{if(m.method==='account/login/completed'){if(epoch===this.epoch&&this.login.phase==='starting')this.notices.push(m.params);else void this.completed(m.params,epoch).catch(()=>{});}});

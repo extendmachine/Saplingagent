@@ -37,3 +37,9 @@ bootstrap if Node is absent and does not need Git Bash for daily activation. A
 failed install does not claim application readiness. Retain the complete source
 folder. No global installation, model call, credential/Git rewrite or automatic
 rollback. See configuration/CONTRACT.md and launcher/DEPENDENCIES.md.
+
+
+TASK040 uses kernel/contracts/local-storage.mjs for project-derived managed output
+and configuration-write.mjs for the shared script/service credential ledger lock.
+No new dependencies. Logs and configuration remain local; read-only account import
+sources and customer Full Access are unchanged. See CONTRACT.md for failures.
