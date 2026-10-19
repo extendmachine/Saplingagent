@@ -4,13 +4,15 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { prepareManagedEnvironment } from './contracts/local-storage.mjs';
 import { npmCommand, codexBinary } from './contracts/local-process.mjs';
 import { acquireKernelLock, assertKernelOffline } from './contracts/kernel.mjs';
 const root=path.resolve(process.argv[2]||fileURLToPath(new URL('../',import.meta.url)));
+const childEnv=await prepareManagedEnvironment(root);
 const release=await acquireKernelLock(root,'kernel-dependencies');
 const npmCLI=process.platform==='win32'?path.join(path.dirname(process.execPath),'node_modules/npm/bin/npm-cli.js'):path.resolve(path.dirname(process.execPath),'../lib/node_modules/npm/bin/npm-cli.js');
 const npm={command:process.execPath,args:[npmCLI]};
-function run(command,args,cwd){return new Promise((resolve,reject)=>{const child=spawn(command,args,{cwd,env:{...process.env,npm_config_cache:path.join(root,'.cache/npm')},stdio:'inherit',windowsHide:true});child.once('error',()=>reject(new Error('Kernel dependency command could not start.')));child.once('exit',code=>code===0?resolve():reject(new Error('Kernel dependency command failed; inspect local maintenance log.')));});}
+function run(command,args,cwd){return new Promise((resolve,reject)=>{const child=spawn(command,args,{cwd,env:childEnv,stdio:'inherit',windowsHide:true});child.once('error',()=>reject(new Error('Kernel dependency command could not start.')));child.once('exit',code=>code===0?resolve():reject(new Error('Kernel dependency command failed; inspect local maintenance log.')));});}
 try {
  await fs.access(npmCLI);
  await assertKernelOffline(root);

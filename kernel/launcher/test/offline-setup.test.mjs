@@ -40,7 +40,7 @@ test('setup lease blocks runtime/kernel operations except its explicit owner',as
 });
 async function until(work,limit=300){for(let i=0;i<limit;i++){const value=await work();if(value)return value;await delay(50);}throw Error('Offline fixture did not settle');}
 async function nativeFixture(t,{brokenResume=false}={}){
- const {root,temp}=await fixture(t),tools=path.join(temp,'system-temp');await fs.mkdir(tools);
+ const {root,temp}=await fixture(t),tools=temp;
  await fs.cp(path.join(repo,'kernel'),path.join(root,'kernel'),{recursive:true,filter:file=>!file.split(path.sep).some(part=>['node_modules','.cache'].includes(part))});
  await fs.mkdir(path.join(root,'.runtime'));await fs.link(process.execPath,path.join(root,'.runtime/node'));
  await fs.mkdir(path.join(root,'local-secrets/notes'),{recursive:true});await fs.writeFile(path.join(root,'local-secrets/notes/project-secrets.json'),JSON.stringify({project:{root},credentials:[{id:'synthetic',credential_file:'../api-keys/demo.json'}]}));
@@ -57,10 +57,10 @@ async function nativeFixture(t,{brokenResume=false}={}){
 test('real macOS external system helper waits for project exit, renames safely, resumes and deletes only its own temp files',{skip:process.platform!=='darwin',timeout:30000},async t=>{
  const {root,temp,tools,child,job}=await nativeFixture(t),after=path.join(temp,'After');
  assert.equal(job.phase,'restarting');assert.equal(await fs.access(root).then(()=>true,()=>false),true);assert.equal(await fs.access(after).then(()=>true,()=>false),false);
- const helpers=await fs.readdir(tools);assert.equal(helpers.length,1);assert.equal((await fs.stat(path.join(tools,helpers[0]))).mode&0o777,0o700);
+ const helpers=(await fs.readdir(tools)).filter(file=>file.startsWith('sapling-setup-'));assert.equal(helpers.length,1);assert.equal((await fs.stat(path.join(tools,helpers[0]))).mode&0o777,0o700);
  await fs.writeFile(path.join(tools,'unrelated.txt'),'keep');child.stdin.end();await until(()=>child.exitCode!==null);
  await until(async()=>{try{return JSON.parse(await fs.readFile(path.join(after,'.runtime/setup-finalization.json'))).phase==='ready';}catch{return false;}});
- await until(async()=>(await fs.readdir(tools)).every(file=>file==='unrelated.txt'));
+ await until(async()=>!(await fs.readdir(tools)).some(file=>file.startsWith('sapling-setup-')));
  assert.deepEqual(JSON.parse(await fs.readFile(path.join(after,'prepared.json'))),{root:after,parentAlive:false});
  assert.deepEqual(JSON.parse(await fs.readFile(path.join(after,'management-resumed.json'))),{root:after,port:62025});
  assert.equal(await fs.readFile(path.join(after,'business.txt'),'utf8'),'preserve application bytes');assert.equal(await fs.readFile(path.join(after,'.git/HEAD'),'utf8'),'ref: refs/heads/main\n');
@@ -71,7 +71,7 @@ test('real macOS external system helper waits for project exit, renames safely, 
 test('a destination appearing during shutdown is never overwritten or nested; original setup resumes with failure',{skip:process.platform!=='darwin',timeout:30000},async t=>{
  const {root,temp,tools,child}=await nativeFixture(t),after=path.join(temp,'After');await fs.mkdir(after);await fs.writeFile(path.join(after,'foreign.txt'),'foreign');
  child.stdin.end();await until(()=>child.exitCode!==null);await until(async()=>{try{return JSON.parse(await fs.readFile(path.join(root,'.runtime/setup-finalization.json'))).phase==='failed';}catch{return false;}});
- await until(async()=>(await fs.readdir(tools)).length===0);assert.equal(await fs.readFile(path.join(after,'foreign.txt'),'utf8'),'foreign');assert.deepEqual(await fs.readdir(after),['foreign.txt']);
+ await until(async()=>!(await fs.readdir(tools)).some(file=>file.startsWith('sapling-setup-')));assert.equal(await fs.readFile(path.join(after,'foreign.txt'),'utf8'),'foreign');assert.deepEqual(await fs.readdir(after),['foreign.txt']);
  assert.equal((await readProject(root)).name,'Display');assert.equal(await fs.access(path.join(root,'management-resumed.json')).then(()=>true,()=>false),true);assert.equal(await fs.access(path.join(root,'prepared.json')).then(()=>true,()=>false),false);assert.equal(await new ProjectLauncher(root).exportReady(),false);
 });
 
@@ -98,22 +98,21 @@ test('export waits for both application and management readiness before releasin
  finally{if(old===undefined)delete process.env.SAPLING_SETUP_JOB;else process.env.SAPLING_SETUP_JOB=old;}
  assert.equal(await manager.exportReady(),true);assert.equal(await fs.access(path.join(root,'.runtime/project-finalization.json')).then(()=>true,()=>false),false);
 });
-test('the external helper temp parent ignores project-local TMPDIR/TEMP from install and management',async()=>{
- const {systemTemporaryParent}=await import('../finalization.mjs');const env={TMPDIR:'/app/.runtime/tmp',TMP:'/app/.runtime/tmp',TEMP:'/app/.runtime/tmp',USERPROFILE:'C:\\Users\\Customer',LOCALAPPDATA:'C:\\Users\\Customer\\AppData\\Local'};
- assert.equal(systemTemporaryParent('darwin',env,'/Users/customer'),'/private/tmp');assert.equal(systemTemporaryParent('win32',env,'C:\\Users\\Customer'),'C:\\Users\\Customer\\AppData\\Local\\Temp');
+test('the offline helper has no system temporary fallback',async()=>{
+ const {systemTemporaryParent}=await import('../finalization.mjs');assert.equal(systemTemporaryParent(path.join(repo,'Application')),repo.slice(0,-1));assert.throws(()=>systemTemporaryParent(),e=>e.code==='PROJECT_HELPER_LOCATION');assert.throws(()=>systemTemporaryParent('darwin'),e=>e.code==='PROJECT_HELPER_LOCATION');
 });
 test('a failed new-root Node resume records failure before temporary helper cleanup',{skip:process.platform!=='darwin',timeout:30000},async t=>{
  const {root,temp,tools,child,job}=await nativeFixture(t,{brokenResume:true}),after=path.join(temp,'After');child.stdin.end();await until(()=>child.exitCode!==null);
- await until(async()=>{try{return JSON.parse(await fs.readFile(path.join(after,'.runtime/setup-finalization.json'))).phase==='failed';}catch{return false;}});await until(async()=>(await fs.readdir(tools)).length===0);
+ await until(async()=>{try{return JSON.parse(await fs.readFile(path.join(after,'.runtime/setup-finalization.json'))).phase==='failed';}catch{return false;}});await until(async()=>!(await fs.readdir(tools)).some(file=>file.startsWith('sapling-setup-')));
  const state=JSON.parse(await fs.readFile(path.join(after,'.runtime/setup-finalization.json')));assert.equal(state.id,job.id);assert.equal(state.error.code,'PROJECT_RESUME_FAILED');assert.equal(await fs.access(path.join(after,'.runtime/setup-restart-error.html')).then(()=>true,()=>false),true);
  assert.equal(JSON.parse(await fs.readFile(path.join(after,'.runtime/project-finalization.json'))).id,job.id);assert.equal(await fs.access(root).then(()=>true,()=>false),false);assert.equal(await fs.readFile(path.join(after,'business.txt'),'utf8'),'preserve application bytes');
 });
 test('Windows helper keeps PowerShell and customer tools on PATH without forwarding credential environment',async()=>{
- const {helperEnvironment}=await import('../finalization.mjs');const env=helperEnvironment('win32',{SystemRoot:'C:\\Windows',USERPROFILE:'C:\\Users\\客户',PATH:'C:\\Program Files\\Git\\bin',CODEX_HOME:'C:\\Users\\客户\\external-auth',OPENAI_API_KEY:'synthetic-only',CODEX_ACCESS_TOKEN:'synthetic-only'});
- assert.equal(env.PATH,'C:\\Windows\\System32;C:\\Windows\\System32\\WindowsPowerShell\\v1.0;C:\\Program Files\\Git\\bin');assert.equal(env.USERPROFILE,'C:\\Users\\客户');assert.equal(env.CODEX_HOME,'C:\\Users\\客户\\external-auth');assert.equal(env.OPENAI_API_KEY,undefined);assert.equal(env.CODEX_ACCESS_TOKEN,undefined);
+ const {helperEnvironment}=await import('../finalization.mjs');const env=helperEnvironment('win32',{SystemRoot:'C:\\Windows',USERPROFILE:'C:\\Users\\客户',PATH:'C:\\Program Files\\Git\\bin',CODEX_HOME:'C:\\Users\\客户\\external-auth',OPENAI_API_KEY:'synthetic-only',CODEX_ACCESS_TOKEN:'synthetic-only'},'C:\\Work\\sapling-setup-fixture');
+ assert.equal(env.PATH,'C:\\Windows\\System32;C:\\Windows\\System32\\WindowsPowerShell\\v1.0;C:\\Program Files\\Git\\bin');assert.equal(env.USERPROFILE,'C:\\Users\\客户');assert.equal(env.CODEX_HOME,undefined);assert.equal(env.TEMP,'C:\\Work\\sapling-setup-fixture\\tmp');assert.equal(env.XDG_CACHE_HOME,'C:\\Work\\sapling-setup-fixture\\cache');assert.equal(env.OPENAI_API_KEY,undefined);assert.equal(env.CODEX_ACCESS_TOKEN,undefined);
 });
 test('PowerShell 5.1 helper explicitly decodes both Unicode job and status JSON as UTF-8',async()=>{
- const code=await fs.readFile(new URL('../offline-helper.ps1',import.meta.url),'utf8');const reads=code.split('\n').filter(line=>line.includes('Get-Content'));assert.equal(reads.length,2);for(const line of reads)assert.match(line,/-Encoding UTF8/);assert.match(code,/\$LASTEXITCODE -ne 0/);assert.match(code,/\[Environment\]::CurrentDirectory = \$safeDirectory/);assert.match(code,/Start-Process -FilePath \$page -WorkingDirectory/);
+ const code=await fs.readFile(new URL('../offline-helper.ps1',import.meta.url),'utf8');const reads=code.split('\n').filter(line=>line.includes('Get-Content'));assert.equal(reads.length,3);for(const line of reads)assert.match(line,/-Encoding UTF8/);assert.match(code,/\$LASTEXITCODE -ne 0/);assert.match(code,/\[Environment\]::CurrentDirectory = \$safeDirectory/);assert.match(code,/Start-Process -FilePath \$page -WorkingDirectory/);
 });
 test('actual management spawn completes readiness instead of losing its spawn event during log close',{timeout:30000},async()=>{
  const parent=path.join(repo,'.cache/offline-setup-tests');await fs.mkdir(parent,{recursive:true});const temp=await fs.mkdtemp(path.join(parent,'actual-management-')),root=path.join(temp,'Before');await fs.mkdir(root);

@@ -6,6 +6,23 @@ say() {
 }
 
 SEED_PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
+# Bind installer/tool scratch space before running curl, tar or Node.
+for SAPLING_LOCAL_DIRECTORY in .runtime .runtime/tmp .cache .cache/npm .cache/node-compile .cache/runtime local-secrets local-secrets/runtime local-secrets/runtime/config data data/runtime data/runtime-state; do
+  if [ -L "$SEED_PROJECT_DIR/$SAPLING_LOCAL_DIRECTORY" ]; then
+    printf '%s\n' 'Project storage must use ordinary local directories.' >&2; exit 1
+  fi
+  mkdir -p "$SEED_PROJECT_DIR/$SAPLING_LOCAL_DIRECTORY"
+done
+export TMPDIR="$SEED_PROJECT_DIR/.runtime/tmp"
+export TMP="$TMPDIR"
+export TEMP="$TMPDIR"
+export npm_config_cache="$SEED_PROJECT_DIR/.cache/npm"
+export NODE_COMPILE_CACHE="$SEED_PROJECT_DIR/.cache/node-compile"
+export XDG_CONFIG_HOME="$SEED_PROJECT_DIR/local-secrets/runtime/config"
+export XDG_DATA_HOME="$SEED_PROJECT_DIR/data/runtime"
+export XDG_STATE_HOME="$SEED_PROJECT_DIR/data/runtime-state"
+export XDG_CACHE_HOME="$SEED_PROJECT_DIR/.cache/runtime"
+
 case "${1:-}" in
   install|login|configure|start|doctor|logout|opencode|kernel|runtime-only) ;;
   *) say "Available actions: install / login / start / doctor / logout / configure / opencode / kernel." "可用操作：install / login / start / doctor / logout / configure / opencode / kernel。" >&2; exit 1 ;;
@@ -50,7 +67,7 @@ if [ ! -x "$SEED_NODE_BIN" ] || [ "$("$SEED_NODE_BIN" --version)" != "v${SEED_NO
     say "Another Node installation is in progress. Retry later; if its window has closed, remove .runtime/node-install.lock as documented." "另一个 Node 安装正在进行。请稍后重试；确认其窗口已关闭后，按文档清理 .runtime/node-install.lock。" >&2
     exit 1
   fi
-  if [ -e "$SEED_PROJECT_DIR/.runtime/kernel-operation.lock" ]; then
+  if [ -e "$SEED_PROJECT_DIR/.runtime/kernel-operation.lock" ] || [ -e "$SEED_PROJECT_DIR/.runtime/launcher-compile.lock" ] || [ -e "$SEED_PROJECT_DIR/.runtime/project-finalization.json" ]; then
     rmdir "$SEED_BOOTSTRAP_LOCK"
     say 'Finish the active kernel/start operation before installing Node.' '请先完成正在进行的内核／启动操作，再安装 Node。' >&2
     exit 1

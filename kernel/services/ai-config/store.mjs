@@ -1,3 +1,5 @@
+import {withConfigurationWrite} from '../../contracts/configuration-write.mjs';
+import {ensureManagedDirectory} from '../../contracts/local-storage.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -53,10 +55,8 @@ export class ConfigurationStore {
   }
   async write(work, revision) {
     const directory = path.dirname(connectionsPath(this.root));
-    for (const folder of ['local-secrets','local-secrets/ai-config','local-secrets/api-keys','local-secrets/notes']) await privateDirectory(path.join(this.root,folder));
-    const lock = path.join(directory,'write.lock'); let handle;
-    try { handle = await fs.open(lock,'wx',0o600); }
-    catch (error) { if (error.code === 'EEXIST') throw failure('CONFIG_BUSY','Another configuration write is running. Retry after it finishes.',409); throw error; }
+    for (const folder of ['local-secrets','local-secrets/ai-config','local-secrets/api-keys','local-secrets/notes']) await ensureManagedDirectory(this.root,folder);
+    return withConfigurationWrite(this.root,async()=>{
     try {
       const data = await readConnections(this.root);
       if (revision !== undefined && revision !== data.revision) throw failure('CONFIG_CHANGED','Configuration changed. Reload it before saving.',409);
@@ -69,7 +69,7 @@ export class ConfigurationStore {
       data.revision++; await atomicJSON(ledgerFile,ledger); await atomicJSON(connectionsPath(this.root),data);
       return this.state();
     } catch (error) { if (error.code && error.status) throw error; throw failure('CONFIG_STORAGE_ERROR','Unable to save configuration. Check the project folder and reload the page to inspect its state.',500); }
-    finally { await handle.close(); await fs.rm(lock,{force:true}); }
+    });
   }
   async save(input) {
     return this.write((data,ledger)=>this.saveProfile(data,ledger,input),input.revision);

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -20,6 +21,41 @@ func problem(message string) {
 		c.Run()
 	}
 }
+
+// Managed writes derive only from this executable's project, never inherited temp paths.
+func localDirectory(root, relative string) (string, error) {
+	current := root
+	for _, part := range strings.Split(filepath.ToSlash(relative), "/") {
+		current = filepath.Join(current, part)
+		if err := os.Mkdir(current, 0700); err != nil && !os.IsExist(err) {
+			return "", err
+		}
+		info, err := os.Lstat(current)
+		if err != nil {
+			return "", err
+		}
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("project storage is not an ordinary local directory")
+		}
+	}
+	return current, nil
+}
+func projectEnvironment(root string) ([]string, error) {
+	env := os.Environ()
+	for _, item := range []struct{ name, relative string }{
+		{"TMPDIR", ".runtime/launcher-tmp"}, {"TMP", ".runtime/launcher-tmp"}, {"TEMP", ".runtime/launcher-tmp"},
+		{"NODE_COMPILE_CACHE", ".cache/node-compile"}, {"npm_config_cache", ".cache/npm"}, {"XDG_CONFIG_HOME", "local-secrets/runtime/config"},
+		{"XDG_DATA_HOME", "data/runtime"}, {"XDG_STATE_HOME", "data/runtime-state"}, {"XDG_CACHE_HOME", ".cache/runtime"},
+	} {
+		directory, err := localDirectory(root, item.relative)
+		if err != nil {
+			return nil, err
+		}
+		env = append(env, item.name+"="+directory)
+	}
+	return append(env, "SEED_ROOT="+root), nil
+}
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--verify" {
 		return
@@ -64,8 +100,16 @@ func main() {
 		dir = "node-v" + cfg.NodeVersion + "-win-" + arch
 		node = filepath.Join(root, ".runtime", dir, "node.exe")
 	}
-	logs := filepath.Join(root, "logs", "project-launcher")
-	os.MkdirAll(logs, 0700)
+	env, err := projectEnvironment(root)
+	if err != nil {
+		problem("Project-local storage is unavailable. Check the folder and retry.")
+		return
+	}
+	logs, err := localDirectory(root, "logs/project-launcher")
+	if err != nil {
+		problem("Project-local logs are unavailable.")
+		return
+	}
 	f, err := os.OpenFile(filepath.Join(logs, "project-launcher-"+time.Now().UTC().Format("2006-01-02")+".log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		problem("The project folder is not writable.")
@@ -74,7 +118,7 @@ func main() {
 	defer f.Close()
 	if _, err = os.Stat(node); err != nil {
 		f.WriteString("Preparing the missing project-local runtime…\n")
-		bootstrap := runtimeBootstrap(root)
+		bootstrap := runtimeBootstrap(root, env)
 		bootstrap.Dir = filepath.Dir(root)
 		bootstrap.Stdout = f
 		bootstrap.Stderr = f
@@ -92,7 +136,7 @@ func main() {
 	cmd.Dir = filepath.Dir(root)
 	cmd.Stdout = f
 	cmd.Stderr = f
-	cmd.Env = append(os.Environ(), "SEED_ROOT="+root)
+	cmd.Env = env
 	background(cmd)
 	if err = cmd.Start(); err != nil {
 		f.WriteString("Launcher could not start the project-local Node runtime. Repair using Saplingagent.sh.\n")

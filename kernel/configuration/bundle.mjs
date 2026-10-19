@@ -4,7 +4,7 @@ import {builtinModules} from 'node:module';
 import {createHash,randomUUID} from 'node:crypto';
 import {prepareSetupUI} from '../launcher/setup-ui.mjs';
 import {writeJSON,issue} from '../launcher/io.mjs';
-import {systemTemporaryParent} from '../launcher/finalization.mjs';
+import {siblingLocation,realDirectory} from './paths.mjs';
 
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 export const within=(root,file)=>{const relative=path.relative(root,file);return relative===''||relative!=='..'&&!relative.startsWith('..'+path.sep)&&!path.isAbsolute(relative);};
@@ -29,6 +29,10 @@ export async function moduleClosure(root,entry='kernel/configuration/host.mjs') 
   await visit(entry);return seen;
 }
 export async function prepareConfigurationBundle(root,{prepareUI=prepareSetupUI}={}) {
+  await realDirectory(root);
+  await realDirectory(path.join(root,'kernel'));
+  await fs.mkdir(path.join(root,'kernel/.cache'),{recursive:true});
+  await realDirectory(path.join(root,'kernel/.cache'));
   await prepareUI(root);
   const files=await moduleClosure(root), cache=path.join(root,'kernel/.cache/configuration');
   const stage=cache+'-'+randomUUID();
@@ -55,14 +59,15 @@ export async function prepareConfigurationBundle(root,{prepareUI=prepareSetupUI}
     return cache;
   }finally{await fs.rm(stage,{recursive:true,force:true});}
 }
-export async function copyConfigurationBundle(root,bundle,{node=process.execPath,tempParent=systemTemporaryParent()}={}) {
-  await fs.mkdir(tempParent,{recursive:true});const parent=await fs.realpath(tempParent);
-  if(within(root,parent))throw issue('CONFIGURATION_LOCATION','Configuration must run outside the project.');
+export async function copyConfigurationBundle(root,bundle,{node=process.execPath,tempParent}={}) {
+  const {parent}=await siblingLocation(root);
+  if(tempParent!==undefined)throw issue('CONFIGURATION_LOCATION','Configuration uses this project’s parent folder; a temporary-directory override is not supported.');
+  await realDirectory(bundle);
   const directory=await fs.mkdtemp(path.join(parent,'sapling-config-'));await fs.chmod(directory,0o700);
   try {
     const receipt=JSON.parse(await fs.readFile(path.join(bundle,'bundle.json'),'utf8'));
     for(const file of receipt.files) {
-      if(!/^(?:code\/kernel\/|ui\/)/.test(file.path)||!within(bundle,path.join(bundle,file.path)))throw issue('CONFIGURATION_BUNDLE_INVALID','Invalid configuration bundle path.',500);
+      if(typeof file.path!=='string'||file.path.includes('\\')||file.path.split('/').some(part=>!part||part==='.'||part==='..')||!/^(?:code\/kernel\/|ui\/)/.test(file.path)||!within(bundle,path.join(bundle,file.path)))throw issue('CONFIGURATION_BUNDLE_INVALID','Invalid configuration bundle path.',500);
       const bytes=await fs.readFile(path.join(bundle,file.path));
       if(digest(bytes)!==file.sha256)throw issue('CONFIGURATION_BUNDLE_CHANGED','Configuration bundle changed. Retry configure.');
       const destination=path.join(directory,file.path);await fs.mkdir(path.dirname(destination),{recursive:true});await fs.writeFile(destination,bytes);

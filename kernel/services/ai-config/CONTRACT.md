@@ -43,7 +43,7 @@ Save → wait for verified restart → export App. Export never renames; when ne
 
 ## Unified kernel version (2026-10-19)
 
-There is one current Saplingagent version: kernel0.9.4. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
+There is one current Saplingagent version: kernel0.9.5. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
 
 New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92→0.9.3; original manifests/backups stay byte-exact. Shipped old comparators cannot understand0.9.4. Stop the app, download new tooling into an isolated .cache subfolder, then run that tooling's kernel/cli.mjs --root ORIGINAL_APP check/update with the project-local Node. Default is preview; update requires existing explicit risk acknowledgement and refuses conflicts/live targets. Never overwrite/rebaseline local core edits or regenerate a customer manifest to hide them. Source recovery remains explicit.
 
@@ -69,3 +69,18 @@ remain. Legacy injected controllers retain the original handoff response for
 compatibility, but all production configuration entries route to external B.
 
 External configuration rejects project/open and project/restart with CONFIGURATION_FINISH_REQUIRED. Finish setup before opening the app so its dependency checks run. Project stop remains available. A failed cleanup handoff permits retry and never reports closed=true.
+
+
+## Project-relative configuration writes (TASK-20261019-040)
+
+Credential/profile/ledger writes and script setup share one ownership-tagged
+`local-secrets/ai-config/write.lock`. Its file handle closes before the protected
+work; the matching writer removes only its own receipt on completion. Existing
+unknown/stale locks produce CONFIG_BUSY for inspection, never deletion by PID
+guess. Ledger publication is an atomic same-directory replacement so reopening
+the script cannot overwrite an in-flight profile update. Managed storage rejects
+symlinked ancestors before creating child directories (PROJECT_STORAGE_LOCATION).
+These checks constrain the configuration service's own destinations, not Agent tools.
+Official login children use project-local temp/cache/XDG defaults and CODEX_HOME.
+Explicit local account imports still read the selected original source without
+changing it. Directory rename waits for active AI requests and owned auth exit.

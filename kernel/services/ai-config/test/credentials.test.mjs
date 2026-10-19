@@ -22,6 +22,7 @@ test('Codex upload selects project-private account; no credential in state or le
 });
 test('explicit local import honors custom/default home and preserves source bytes',async t=>{
  for(const override of [false,true]){const target=await fixture(t),home=path.join(target,'source-home'),directory=override?path.join(home,'custom'):path.join(home,'.codex');await fs.mkdir(directory,{recursive:true});const file=path.join(directory,'auth.json'),content=JSON.stringify(auth);await fs.writeFile(file,content);
+ await fs.mkdir(path.join(target,'app'));
  const imports=new CredentialImport(new ConfigurationStore(path.join(target,'app')),{home,env:override?{CODEX_HOME:directory}:{}});
  const state=await imports.run({engine:'codex',source:'local',revision:0,path:'/ignored-untrusted-path'});assert.equal(state.codex.chatgpt,true);assert.equal(await fs.readFile(file,'utf8'),content);}
 });
@@ -56,6 +57,7 @@ test('Claude upload saves private API scheme and custom transport; subscription 
 });
 test('Claude local env and settings imports extract only API fields and never run helpers',async t=>{
  for(const fromEnv of [true,false]){const target=await fixture(t),home=path.join(target,'home'),directory=path.join(home,'custom-claude');await fs.mkdir(directory,{recursive:true});const value={env:{ANTHROPIC_API_KEY:'synthetic-local',ANTHROPIC_BASE_URL:'https://local-provider.example/v1'},model:'synthetic-model',apiKeyHelper:'never-run',hooks:{never:'copy'}};const file=path.join(directory,'settings.json'),before=JSON.stringify(value);await fs.writeFile(file,before);
+ await fs.mkdir(path.join(target,'app'));
  const imports=new CredentialImport(new ConfigurationStore(path.join(target,'app')),{home,env:fromEnv?{ANTHROPIC_API_KEY:'synthetic-local',ANTHROPIC_BASE_URL:'https://local-provider.example/v1',ANTHROPIC_MODEL:'synthetic-model'}:{CLAUDE_CONFIG_DIR:directory}});
  const state=await imports.run({engine:'claude',source:'local',revision:0});assert.equal(state.profiles[0].model,'synthetic-model');assert.equal(await fs.readFile(file,'utf8'),before);assert.doesNotMatch(JSON.stringify(state),/never-run|synthetic-local/);}
 });

@@ -1,6 +1,6 @@
 # Kernel deployment and recovery
 
-Current manifest version0.9.4, compatibility appApi1. Maintain this version separately from customer Git versions; keep the original baseline0.90. Stop this app before apply/restore. The launcher exposes kernel management regardless of Git storage mode. Check/preview are read-only; update requires compatibility-risk acknowledgement, creates an owned-source backup and refuses locally changed kernel files. Business extensions outside the manifest,config/runtime/services,credentials,conversations and Git metadata are preserved.
+Current manifest version0.9.5, compatibility appApi1. Maintain this version separately from customer Git versions; keep the original baseline0.90. Stop this app before apply/restore. The launcher exposes kernel management regardless of Git storage mode. Check/preview are read-only; update requires compatibility-risk acknowledgement, creates an owned-source backup and refuses locally changed kernel files. Business extensions outside the manifest,config/runtime/services,credentials,conversations and Git metadata are preserved.
 
 After source apply, run bash Saplingagent.sh install --repair to load changed dependency declarations, then start normally and verify actual functionality. An update can break modified apps, imports,dependencies or integrations despite manifest compatibility. No universal compatibility guarantee and no data migration. Startup readiness and model/account behavior are separate checks.
 
@@ -66,7 +66,7 @@ For maintainer publication only, regenerate/check kernel/manifest.json after all
 
 ## Unified kernel version (2026-10-19)
 
-There is one current Saplingagent version: kernel0.9.4. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
+There is one current Saplingagent version: kernel0.9.5. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
 
 New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92→0.9.3; original manifests/backups stay byte-exact. Shipped old comparators cannot understand0.9.4. Stop the app, download new tooling into an isolated .cache subfolder, then run that tooling's kernel/cli.mjs --root ORIGINAL_APP check/update with the project-local Node. Default is preview; update requires existing explicit risk acknowledgement and refuses conflicts/live targets. Never overwrite/rebaseline local core edits or regenerate a customer manifest to hide them. Source recovery remains explicit.
 
@@ -98,3 +98,13 @@ bootstrap if Node is absent and does not need Git Bash for daily activation. A
 failed install does not claim application readiness. Retain the complete source
 folder. No global installation, model call, credential/Git rewrite or automatic
 rollback. See configuration/CONTRACT.md and launcher/DEPENDENCIES.md.
+
+
+TASK038–040: configuration helpers are direct siblings of the canonical project,
+not OS-temp copies. Ensure the project parent is writable. Complete setup and wait
+for the matching cleanup receipt; do not manually delete a live helper. Project
+cache/temp/config output remains local and direct installer/login entrypoints use
+shared operation leases. Preserve stale/unknown ownership records for inspection.
+This changes placement within kernel0.9.4; existing old external sessions should
+finish through their original process before updating. No automatic customer
+baseline regeneration or account/Git rewrite. See docs/configuration-storage.html.

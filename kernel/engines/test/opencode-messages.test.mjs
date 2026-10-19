@@ -74,9 +74,12 @@ test('cancel suppresses late output and maps native abort errors to interruption
 });
 
 async function listen(server){await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));return server.address().port;}
-async function fixture(t){const parent=path.join(project,'.cache/opencode-messages');await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,"中文 app's "));t.after(()=>fs.rm(root,{recursive:true,force:true}));return root;}
+async function fixture(t,beforeRemove=async()=>{}){const parent=path.join(project,'.cache/opencode-messages');await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,"中文 app's "));t.after(async()=>{await beforeRemove();await fs.rm(root,{recursive:true,force:true});});return root;}
 test('native pinned OpenCode streams an actual reply, MCP call and resumed turn through a synthetic Chat API', {skip:process.platform!=='darwin',timeout:60000},async t=>{
-  const root=await fixture(t),requests=[],received=[];let modelCalls=0, rejectNext=false;
+  let p;
+  // Node after-hooks run in registration order. Stop the owned native process
+  // before removing its still-writable dependencies, config and cache directory.
+  const root=await fixture(t,async()=>{await p?.close();}),requests=[],received=[];let modelCalls=0, rejectNext=false;
   const api=http.createServer(async(req,res)=>{
     let raw='';for await(const chunk of req)raw+=chunk;
     const body=raw?JSON.parse(raw):{};requests.push({path:req.url,body});
@@ -92,7 +95,7 @@ test('native pinned OpenCode streams an actual reply, MCP call and resumed turn 
   await fs.mkdir(path.join(root,'backend/agent-runtime/node_modules/.bin'),{recursive:true});await fs.symlink(path.join(project,'kernel/node_modules/.bin/opencode'),path.join(root,'backend/agent-runtime/node_modules/.bin/opencode'));
   await fs.mkdir(path.join(root,'backend/mcp-runtime'),{recursive:true});await fs.writeFile(path.join(root,'backend/mcp-runtime/server.mjs'),`import readline from 'node:readline';for await(const line of readline.createInterface({input:process.stdin})){const m=JSON.parse(line);if(m.id===undefined)continue;let result={};if(m.method==='initialize')result={protocolVersion:'2024-11-05',capabilities:{tools:{}},serverInfo:{name:'synthetic-mcp',version:'1'}};if(m.method==='tools/list')result={tools:[{name:'synthetic_tool',description:'Synthetic tool',inputSchema:{type:'object',properties:{value:{type:'string'}}}}]};if(m.method==='tools/call')result={content:[{type:'text',text:'Synthetic tool completed'}]};process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');}`);
   const reserve=http.createServer();const port=await listen(reserve);await new Promise(resolve=>reserve.close(resolve));
-  let finish;const terminals=[];const p=new OpenCodeProvider({root,port,mcpEnv:{},instructions:'Synthetic only',onEvent:(r,e)=>{received.push(e);if(e.type==='done'||e.type==='error'){terminals.push(e);finish?.();}}});t.after(()=>p.close());
+  let finish;const terminals=[];p=new OpenCodeProvider({root,port,mcpEnv:{},instructions:'Synthetic only',onEvent:(r,e)=>{received.push(e);if(e.type==='done'||e.type==='error'){terminals.push(e);finish?.();}}});
   await p.start();assert.equal(modelCalls,0);
   const r={session:{title:'Synthetic',providerId:`sapling-${saved.activeId}`,modelId:'MiniMax-M3'},save:async()=>{}};
   async function turn(text){received.length=0;const completed=new Promise(resolve=>finish=resolve);await p.execute(r,text,{context:internal});await completed;assert.equal(terminals.at(-1).type,'done',terminals.at(-1).error?.message);assert.equal(terminals.at(-1).status,'completed');assert.equal(received.filter(e=>e.type==='text').map(e=>e.delta).join(''),'Synthetic reply');assert.equal(p.runs.size,0);}

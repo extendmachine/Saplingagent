@@ -1,3 +1,4 @@
+import { prepareManagedEnvironment } from "../contracts/local-storage.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { root, setup } from "./setup.mjs";
@@ -7,6 +8,7 @@ import { createManagerServer } from "../services/runtime-manager/server.mjs";
 import { createGateway } from "../services/runtime-manager/gateway.mjs";
 import { acquireKernelLock, assertKernelOffline } from "../contracts/kernel.mjs";
 async function launch() {
+	Object.assign(process.env, await prepareManagedEnvironment(root));
 	const lease = await acquireKernelLock(root, "runtime-start");
 	let released = false;
 	const release = async () => {

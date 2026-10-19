@@ -1,5 +1,13 @@
 # Saplingagent changelog
 
+## 0.9.5 — Project-relative configuration and safe handoff
+
+- Run the complete configuration website and its helper in a visible, session-owned sibling folder (`../sapling-config-*`), with canonical source retained under `kernel/`.
+- Derive managed configuration, dependency, cache and temporary output paths from the project; do not fall back to global home or system temporary directories.
+- Coordinate setup, installation, login, native compilation and credential-ledger writes with ownership locks. Wait for owned processes to exit before rename, binary replacement and helper cleanup.
+- Keep the native app small: check/install missing or changed local dependencies, then start the application. Preserve customer code, credentials, conversations and Git.
+- Declare one kernel version, 0.9.5, consistently across the manifest, setup/controls, installation and source-package metadata. Existing tags and GitHub Release attachments are unchanged by branch promotion.
+
 ## 0.9.4 — Unified kernel version and contained source (owner review)
 
 - Keep platform implementations, independent project/AI setup website, engine adapters, runtime manager and installer/build helpers under kernel/.

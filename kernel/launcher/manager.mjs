@@ -427,6 +427,7 @@ export class ProjectLauncher {
         );
       for (const f of [
         ".runtime/kernel-operation.lock",
+        ".runtime/launcher-compile.lock",
         ".runtime/macos-install.lock",
         ".runtime/windows-install.lock",
         ".runtime/kernel/active-job.json",

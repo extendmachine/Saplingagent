@@ -8,6 +8,8 @@ import (
 
 func background(cmd *exec.Cmd) { cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} }
 
-func runtimeBootstrap(root string) *exec.Cmd {
-	return exec.Command("/bin/bash", filepath.Join(root, "kernel/scripts/macos/bootstrap.sh"), "runtime-only")
+func runtimeBootstrap(root string, env []string) *exec.Cmd {
+	cmd := exec.Command("/bin/bash", filepath.Join(root, "kernel/scripts/macos/bootstrap.sh"), "runtime-only")
+	cmd.Env = env
+	return cmd
 }

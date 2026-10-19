@@ -23,7 +23,7 @@
 
 <p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 & ARM64 · Source available for noncommercial use</sub></p>
 
-**Saplingagent · Kernel 0.9.4 · Contained kernel layout.** Use the release-branch download or one-line installer below for this source version. See [project setup and local compilation](docs/project-launcher.html).
+**Saplingagent · Kernel 0.9.5 · Contained kernel layout.** Use the release-branch download or one-line installer below for this source version. See [project setup and local compilation](docs/project-launcher.html).
 
 <a id="demo"></a>
 
@@ -200,7 +200,7 @@ The Git-free delivery workflow downloads the release snapshot without `.git`. In
 
 Open **Kernel → Check for kernel update → Upgrade kernel & restart**. Review the verified release SHA, paths and conflicts, then accept the compatibility warning. A copied temporary progress process stops owned services, backs up/applies core, repairs its own dependencies and restarts the complete application at its actual selected port. App/chat pages, MCP, Skills, demos, business code, application dependency manifests, configuration, data and customer Git are retained. Restart app/backend remains available without an upgrade. Recovery is explicit; no automatic rollback. Direct control: `/__saplingagent/kernel`.
 
-This source declares **Kernel0.9.4 / schema3 / layout1**, the single Saplingagent version. Release promotion is separate from main development; inspect the committed release metadata before downloading. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
+This source declares **Kernel0.9.5 / schema3 / layout1**, the single Saplingagent version. Release promotion is separate from main development; inspect the committed release metadata before downloading. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
 
 ## Import existing local credentials
 
@@ -437,9 +437,9 @@ Use the paperclip, drop files into AI chat or paste an image. Attachments stay i
 
 ## Release identity
 
-The installed **Kernel0.9.4** is the only Saplingagent version, read from `kernel/manifest.json`. Setup, footer, Bash and packages use it. There is no separate product version. Missing/invalid metadata is unavailable. Legacy `config/release.json` and `releaseVersion` receipt names remain compatibility mirrors/aliases; they are not runtime authority.
+The installed **Kernel0.9.5** is the only Saplingagent version, read from `kernel/manifest.json`. Setup, footer, Bash and packages use it. There is no separate product version. Missing/invalid metadata is unavailable. Legacy `config/release.json` and `releaseVersion` receipt names remain compatibility mirrors/aliases; they are not runtime authority.
 
-Downloadable source ZIPs record `releaseVersion` and the exact `sourceCommit` in `delivery.json`; their filenames contain both. For **0.9.4**, use the `release` branch source or one-line installer above. GitHub Releases entries/assets are separate and can still refer to older versions. This branch promotion preserves existing tags and does not publish new GitHub Release assets; a future formal publication must align its tag, page and receipts with the checked source. Do not increment that version without the owner’s instruction. See the [release checklist](docs/release-checklist.html) for code-first verification and the [published releases](https://github.com/extendmachine/Saplingagent/releases) for the actual publication status. Source tags, published Releases and real-device/model acceptance are separate facts.
+Downloadable source ZIPs record `releaseVersion` and the exact `sourceCommit` in `delivery.json`; their filenames contain both. For **0.9.5**, use the `release` branch source or one-line installer above. GitHub Releases entries/assets are separate and can still refer to older versions. This branch promotion preserves existing tags and does not publish new GitHub Release assets; a future formal publication must align its tag, page and receipts with the checked source. Do not increment that version without the owner’s instruction. See the [release checklist](docs/release-checklist.html) for code-first verification and the [published releases](https://github.com/extendmachine/Saplingagent/releases) for the actual publication status. Source tags, published Releases and real-device/model acceptance are separate facts.
 
 ### Kernel source boundary
 
@@ -448,3 +448,9 @@ All platform implementations, AI setup website, engine adapters, runtime manager
 ### Updating from historical kernel numbers
 
 Old0.90/0.91/0.92 updaters misread0.9.4 as a downgrade. Use the new updater once from an isolated in-folder download with an explicit target, retaining conflicts, backups and customer files. See [one-time version migration](docs/kernel-version-migration.html). Do not overwrite your whole app or regenerate its baseline.
+
+
+Configuration storage: temporary setup runs in a visible, session-owned
+`../sapling-config-*` folder beside the project and is cleaned after Finish setup.
+Persistent settings, credentials, tools and caches remain project-local.
+See [storage and process locks](docs/configuration-storage.html).

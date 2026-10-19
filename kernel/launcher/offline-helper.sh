@@ -1,5 +1,5 @@
 #!/bin/sh
-# Runs from a private OS temp directory; never executes project-local Node until after move.
+# Runs from a private project sibling; never executes project-local Node until after move.
 set -eu
 job_dir=$1
 cd "$job_dir"
@@ -12,7 +12,7 @@ job_id=$(field id)
 no_open=$(field noOpen)
 case "$parent_pid" in ''|*[!0-9]*) exit 1;; esac
 : > "$job_dir/waiting"
-cleanup() { cd /; /bin/rm -rf "$job_dir"; }
+cleanup() { cd "$(dirname "$job_dir")"; /usr/bin/osascript -l JavaScript "$job_dir/offline-move.js" "$job_dir" cleanup >/dev/null 2>&1 || true; }
 trap cleanup EXIT HUP INT TERM
 count=0
 while kill -0 "$parent_pid" 2>/dev/null; do
@@ -21,7 +21,7 @@ while kill -0 "$parent_pid" 2>/dev/null; do
   if [ "$count" -gt 300 ]; then
     printf '{"schemaVersion":1,"id":"%s","phase":"failed","error":{"code":"PROJECT_STOP_PENDING","message":"Management did not exit. Close this project and inspect the setup restart lease before retrying."}}\n' "$job_id" > "$source_root/.runtime/setup-finalization.json"
     error_page=$(/usr/bin/osascript -l JavaScript "$job_dir/offline-move.js" "$job_dir" failure PROJECT_STOP_PENDING 2>/dev/null) || true
-    cd /
+    cd "$(dirname "$job_dir")"
     [ "$no_open" = true ] || [ -z "${error_page:-}" ] || /usr/bin/open "$error_page" >/dev/null 2>&1 || true
     exit 1
   fi
@@ -42,6 +42,6 @@ else
 fi
 if [ -n "$resume_failed" ]; then
   error_page=$(/usr/bin/osascript -l JavaScript "$job_dir/offline-move.js" "$job_dir" failure PROJECT_RESUME_FAILED 2>/dev/null) || true
-  cd /
+  cd "$(dirname "$job_dir")"
     [ "$no_open" = true ] || [ -z "${error_page:-}" ] || /usr/bin/open "$error_page" >/dev/null 2>&1 || true
 fi

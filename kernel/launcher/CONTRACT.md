@@ -1,6 +1,6 @@
 # Customer-compiled project launcher v1
 
-TASK-20261018-001 / Codex. Current kernel0.9.4; original launcher implementation0.9.3. The management module is kernel-owned; project identity, icons, compiled binaries, toolchains, caches, app source, credentials and customer Git are not update-owned. Full Access is unchanged.
+TASK-20261018-001 / Codex. Current kernel0.9.5; original launcher implementation0.9.3. The management module is kernel-owned; project identity, icons, compiled binaries, toolchains, caches, app source, credentials and customer Git are not update-owned. Full Access is unchanged.
 
 `config/project.json` stores schemaVersion1, projectId UUID, name, folderName and optional icon reference `config/project-icon.png`. Customer project identity is independent of the single kernel version. Names are Unicode single filesystem components,1–60characters, rejecting controls, separators, Windows reserved characters/device names and trailing dots/spaces. Existing destinations are never replaced. Linked worktrees/maintainer checkouts are not automatically renamed. Complete customer folders including ordinary customer Git can be renamed without resetting history. All processes use absolute current root and the native launcher derives root relative to itself, never a compiled developer path.
 
@@ -16,7 +16,7 @@ The public JS facade is kernel/launcher/public.mjs. New update-owned files must 
 
 ## Unified kernel version (2026-10-19)
 
-There is one current Saplingagent version: kernel0.9.4. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
+There is one current Saplingagent version: kernel0.9.5. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
 
 New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92→0.9.3; original manifests/backups stay byte-exact. Shipped old comparators cannot understand0.9.4. Stop the app, download new tooling into an isolated .cache subfolder, then run that tooling's kernel/cli.mjs --root ORIGINAL_APP check/update with the project-local Node. Default is preview; update requires existing explicit risk acknowledgement and refuses conflicts/live targets. Never overwrite/rebaseline local core edits or regenerate a customer manifest to hide them. Source recovery remains explicit.
 
@@ -72,3 +72,39 @@ bootstrap if Node is absent and does not need Git Bash for daily activation. A
 failed install does not claim application readiness. Retain the complete source
 folder. No global installation, model call, credential/Git rewrite or automatic
 rollback. See configuration/CONTRACT.md and launcher/DEPENDENCIES.md.
+
+## Project-relative managed storage (TASK-20261019-039)
+
+All new Saplingagent-managed installer, launcher and compiler outputs derive from
+this project's actual folder. Configuration B uses the expressly selected sibling
+capsule described in `kernel/configuration/CONTRACT.md`; the older offline restart
+helper similarly uses `../sapling-setup-<random>/`. There is no global temporary
+folder fallback or arbitrary external helper-parent override. Internally resolved
+absolute paths remain process ownership metadata, not user-selectable write roots.
+The sibling's temporary directories are private; the legacy helper verifies its
+job/directory identity before deleting only that directory. Unknown/interrupted
+receipts remain available for inspection. Windows cleanup retries sharing violations
+after releasing owned handles; it does not kill unrelated programs.
+
+Native app launch and both OS runtime bootstraps set project-local temporary and
+cache paths before downloads or execution. Launcher builds reset inherited B
+Node/XDG caches to project-local locations. Go's pinned compiler telemetry uses a
+private `.cache/go-telemetry/` directory with an `off` marker; no global Go mode is
+changed. Existing account source locations remain read-only import sources.
+Launcher-managed directories reject links/junctions pointing outside the project;
+this is output-path handling and does not restrict Agent Full Access.
+
+Native compilation holds both `.runtime/launcher-compile.lock` and the shared
+`.runtime/kernel-operation.lock`. It refuses install/maintenance and foreign setup
+leases. Configuration B may compile only with an explicit matching setup ID owned
+by the same PID. Lease handles are closed before subprocess execution. Cleanup checks the exact
+created device/inode, including partial initialization failures; replaced files are
+retained. Original write errors remain observable instead of being masked by parsing
+an incomplete owner record. Rename paths check the compile lease; atomic staged
+replacement preserves the previous artifact on failure. Stale leases are reported,
+never guessed away. Windows native file locking still requires hardware acceptance.
+
+Native and both OS bootstrap entries also override inherited `NODE_COMPILE_CACHE`
+with `.cache/node-compile/` and bind all XDG directories before the first Node
+version probe or script starts. Setting these only inside JavaScript is too late
+for Node's startup cache. Redirected cache paths are rejected before invocation.
