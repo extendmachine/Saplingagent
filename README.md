@@ -46,6 +46,12 @@ The public project introduction, videos and application examples are maintained 
 
 </details>
 
+## Configure and launch
+
+Run `bash Saplingagent.sh`. The script installs the minimal local kernel and opens configuration in a temporary process outside the project. Save the project name, folder, icon and AI connection, then choose **Save & build app**. Wait for completion and choose **Finish setup**. The returning launcher removes the external configuration files after that process exits.
+
+Open the generated `.app` or `.exe` inside the complete project folder. It checks and installs missing/changed project dependencies before starting the application. It stays a small bootstrap; your editable source and data remain in the folder. Reopen `bash Saplingagent.sh configure` to change settings or rebuild the launcher. Normal app startup does not reopen configuration. See the [A/B lifecycle and recovery guide](docs/project-launcher.html).
+
 ## Install, configure, start
 
 ### 1. Get the complete application
@@ -56,7 +62,7 @@ For a new installation, run one command in **macOS Terminal** or **Windows Git B
 bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/Saplingagent/release/install.sh | bash'
 ```
 
-The independent `install.sh` resolves the current **release** commit, downloads that exact source snapshot into `./Saplingagent`, installs the local kernel, then opens web project setup. It does not clone all repository branches or require Node before downloading. No Git repository is initialized or connected. Confirm the project name, icon and final folder first. The page completes any requested folder rename before enabling AI configuration. Then connect your AI and compile the native launcher.
+The independent `install.sh` resolves the current **release** commit, downloads that exact source snapshot into `./Saplingagent`, installs the local kernel, then opens web project setup. It does not clone all repository branches or require Node before downloading. No Git repository is initialized or connected. Save the project name, icon and target folder first, then configure AI. Save & build app applies the folder name and compiles the native launcher from the independent external configuration process. Finish setup closes that process and lets the project launcher remove its temporary folder.
 
 The target folder must be new; existing applications are preserved. Add `--dir` and `--lang` for a different destination/language:
 
@@ -92,9 +98,9 @@ Choose **English** or **中文** (Enter defaults to English). The script install
 
 1. Edit the project name, desired folder name and optional icon, then **Save project settings**. This saves your choices without moving the running folder.
 2. Save and select your AI account/API scheme. Complete your changes before the final save; configuration does not send a model prompt.
-3. Click **Save settings & restart**, then wait. A short-lived system helper outside the project closes owned processes, moves the independent folder, prepares application dependencies/pages and starts services at the final path. It checks readiness and removes its own temporary files. Existing destinations, customer Git, credentials and conversation files are preserved; development worktrees stay in place.
-4. After the page confirms the restart, click **Export app**. The pinned local Go toolchain compiles a small named **Your project.app** (macOS) or **Your project.exe** (Windows). Export never renames; a running owned idle app is stopped for compilation and started again. Failed builds retain the previous output.
-5. Double-click that launcher to develop your app. Save later name/icon/AI changes, wait for restart, then export again. Open/restart/stop remain available; unchanged native executables are reused.
+3. Click **Save & build app**, then wait. Configuration B already runs outside the project. It closes owned authentication and application processes, moves the complete folder without replacing a destination, rebinds saved paths and compiles the named `.app` or `.exe` into that folder. Customer Git, credentials and conversation files are preserved; development worktrees stay in place.
+4. Choose **Finish setup**. B starts A at the final path, receives its acknowledgement and exits. A waits for B to release its files, then removes the verified external capsule. The page confirms the handoff; `.runtime/configuration-complete.json` records actual cleanup.
+5. Double-click the app. It checks Node and declared dependencies, installs missing or changed groups locally, starts the project and opens its actual URL. Reopen `bash Saplingagent.sh configure` to change settings or rebuild. Unchanged native executables are reused; new builds replace the previous output after validation.
 
 Keep the complete folder. Source, local runtimes, compiler and data remain inside it. Renaming the customer project does not change Saplingagent's kernel identity. Native Windows icon/folder replacement still requires real-device acceptance; local Mac compilation is not Developer ID notarization. See the [launcher guide](docs/project-launcher.html).
 
@@ -111,7 +117,7 @@ Runtimes stay in `.runtime/`, dependencies in their modules' `node_modules/`, an
 - **ChatGPT account:** open the official Codex sign-in page, or use a device code. On completion the account becomes the default scheme. Existing project-local ChatGPT credentials can be selected without signing in again.
 - **API / custom provider:** name a scheme, select Codex, OpenCode or Claude Agent, choose the API protocol, enter the provider's **API Base URL**, API key and exact model ID, then **Save & use**. Use the API URL rather than a website homepage. Codex custom endpoints require Responses; Claude Agent requires Anthropic Messages with an API scheme; OpenCode supports Chat Completions, Responses and Anthropic Messages. Presets help fill OpenAI, OpenRouter, Anthropic and local Ollama-compatible endpoints. Providers requiring other protocols, arbitrary headers or separate subscription OAuth need their own adapter.
 - **Fetch models** is optional and performs a catalog GET only. If discovery is unavailable, enter the model ID manually. Use a model with streaming/tool-calling support for application development; saving a scheme does not validate compatibility or quota.
-- Keep multiple schemes and select **Use** to change the default. Choose **Save settings & restart**, wait for readiness and then **Export app**. Use **Open app** or the generated native entry. **Close setup** closes only management; **Stop app** stops owned application services. Closing a browser tab does not stop the service. If browser opening fails, use the loopback URL printed in the terminal.
+- Keep multiple schemes and select **Use** to change the default. Choose **Save & build app**, wait for completion and then **Finish setup**. Open the generated native entry; **Stop app** stops owned application services. Closing a browser tab does not stop the service. If browser opening fails, use the loopback URL printed in the terminal.
 
 Scheme metadata stays in `local-secrets/ai-config/connections.json`, API keys in `local-secrets/api-keys/`, and Codex sign-in credentials in `local-secrets/codex/`. The credential ledger stores file references. The page never reads saved keys back into fields; leave a key blank when editing to retain it. No global credentials are imported. OpenCode's legacy native provider selector remains available as an explicit recovery command and stores its credentials in `local-secrets/opencode/`.
 
@@ -154,7 +160,7 @@ Open **Configure AI → ChatGPT account**, then choose **Use local Codex login**
 
 For Claude choose **Claude API**, enter your provider URL/model and use **Import local Claude API credentials** or **Upload API credential JSON**. The local action reads `ANTHROPIC_API_KEY` inherited from the launcher terminal, or the API env fields in local Claude `settings.json` (`CLAUDE_CONFIG_DIR` or `~/.claude`). JSON accepts `apiKey`, `ANTHROPIC_API_KEY` or `env.ANTHROPIC_API_KEY`, with optional `baseUrl`/`model`; nonblank form fields take precedence. Existing scheme keys require explicit replacement. Claude subscription OAuth files, OS keychain and executable credential helpers are not imported.
 
-Files are limited to32KiB and sent only to the protected local configuration service. Secrets stay in ignored project files, never state responses or browser storage. Import validates local structure/storage, not token expiry, quota or successful model access. Save settings and wait for restart before exporting; start a new conversation when changing providers. See the [configuration guide](docs/ai-configuration.html) and [Claude official API authentication](https://code.claude.com/docs/en/agent-sdk/quickstart).
+Files are limited to32KiB and sent only to the protected local configuration service. Secrets stay in ignored project files, never state responses or browser storage. Import validates local structure/storage, not token expiry, quota or successful model access. Save settings, build the app and finish setup; start a new conversation when changing providers. See the [configuration guide](docs/ai-configuration.html) and [Claude official API authentication](https://code.claude.com/docs/en/agent-sdk/quickstart).
 
 ## Authentication and costs
 
@@ -177,7 +183,7 @@ Codex is the initial default when no scheme is saved. Use **Configure AI → API
 
 Claude can also run through the official **Claude Agent SDK** as its own local agent engine. It embeds the Claude Code agent loop with native shell/file tools, MCP, project Skills, streaming and resumable sessions. This is an embedded SDK integration, with no separate public App Server port.
 
-Run `bash Saplingagent.sh` to open web setup, then choose **API / custom provider** → **Anthropic · Messages**. The preset selects **Claude Agent**. Enter your own API key, exact model ID and API Base URL (`https://api.anthropic.com/v1`, or your compatible gateway URL). **Save & use** → **Save settings & restart** → wait for readiness → **Export app** → **Open app**. Create a new conversation when changing providers. Model discovery is optional; gateways must support Anthropic Messages streaming and tool calls. Claude schemes do not require Codex login.
+Run `bash Saplingagent.sh` to open web setup, then choose **API / custom provider** → **Anthropic · Messages**. The preset selects **Claude Agent**. Enter your own API key, exact model ID and API Base URL (`https://api.anthropic.com/v1`, or your compatible gateway URL). **Save & use** → **Save & build app** → wait for completion → **Finish setup** → open the generated app. Create a new conversation when changing providers. Model discovery is optional; gateways must support Anthropic Messages streaming and tool calls. Claude schemes do not require Codex login.
 
 The SDK is pinned to `0.3.296` and installs its native binary inside the application folder; a separate global Claude Code installation is unnecessary. API keys stay in `local-secrets/api-keys/`, and SDK state/transcripts in `local-secrets/claude/`. Project `CLAUDE.md` imports `AGENTS.md`; `.agents/` loads the existing Skills as the `saplingagent` local plugin. Full Access remains enabled as the current OS user. There is no default whole-turn deadline, automatic fallback, automatic resend or silent replacement of missing sessions.
 
