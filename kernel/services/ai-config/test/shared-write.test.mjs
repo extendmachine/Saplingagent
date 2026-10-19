@@ -5,7 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {setup} from '../../../scripts/setup.mjs';
 import {ConfigurationStore} from '../store.mjs';
-import {withConfigurationWrite} from '../../../contracts/configuration-write.mjs';
+import {withConfigurationWrite,acquireConfigurationWrite} from '../../../contracts/configuration-write.mjs';
 
 async function fixture(t) {
   const parent=fileURLToPath(new URL('../../../../.cache/config-write-tests/',import.meta.url));
@@ -42,4 +42,15 @@ test('setup refuses a linked secrets ancestor before creating external files', a
   await fs.symlink(outside,path.join(root,'local-secrets'),process.platform==='win32'?'junction':'dir');
   await assert.rejects(setup({projectRoot:root,importExistingAuth:false}),e=>e.code==='PROJECT_STORAGE_LOCATION');
   assert.deepEqual(await fs.readdir(outside),[]);
+});
+
+test('configuration rename lease excludes setup and releases at the relocated root', async t => {
+  const root=await fixture(t),release=await acquireConfigurationWrite(root),moved=root+'-renamed';
+  await assert.rejects(setup({projectRoot:root,importExistingAuth:false}),e=>e.code==='CONFIG_BUSY');
+  await fs.rename(root,moved);t.after(()=>fs.rm(moved,{recursive:true,force:true}));
+  await assert.rejects(setup({projectRoot:moved,importExistingAuth:false}),e=>e.code==='CONFIG_BUSY');
+  await release(moved);
+  await setup({projectRoot:moved,importExistingAuth:false});
+  assert.equal(await fs.access(root).then(()=>true,()=>false),false);
+  assert.equal(await fs.access(path.join(moved,'local-secrets/ai-config/write.lock')).then(()=>true,()=>false),false);
 });
