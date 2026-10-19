@@ -1,3 +1,5 @@
+import {ensureManagedDirectory} from '../contracts/local-storage.mjs';
+import {withConfigurationWrite,atomicConfigurationJSON} from '../contracts/configuration-write.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -9,7 +11,7 @@ export async function setup({ importExistingAuth = process.env.SEED_IMPORT_EXIST
   const targetRoot = path.resolve(projectRoot);
   for (const folder of ['local-secrets', 'local-secrets/runtime', 'local-secrets/codex', 'local-secrets/notes', 'local-secrets/api-keys', 'local-secrets/server-keys', 'local-secrets/ssh']) {
     const target = path.join(targetRoot, folder);
-    await fs.mkdir(target, { recursive: true, mode: 0o700 });
+    await ensureManagedDirectory(targetRoot,folder);
     if ((await fs.lstat(target)).isSymbolicLink()) throw new Error('Secret directories must not be symbolic links');
     await fs.chmod(target, 0o700);
   }
@@ -32,6 +34,7 @@ export async function setup({ importExistingAuth = process.env.SEED_IMPORT_EXIST
     if (!(await fs.lstat(authPath)).isFile()) throw new Error('Invalid local Codex auth file');
     await fs.chmod(authPath, 0o600);
   } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  await withConfigurationWrite(targetRoot,async()=>{
   const ledgerPath = path.join(targetRoot, 'local-secrets/notes/project-secrets.json');
   let ledger = { schema_version: 1, project: { name: path.basename(targetRoot), root: targetRoot, last_updated: new Date().toISOString().slice(0, 10), maintainer: 'user' }, credentials: [] };
   try {
@@ -54,8 +57,9 @@ export async function setup({ importExistingAuth = process.env.SEED_IMPORT_EXIST
     provider: 'Codex App Server / local ChatGPT login',
     note: 'Only references; no secret values. Existing project auth is never overwritten.'
   };
-  await fs.writeFile(ledgerPath, JSON.stringify(ledger, null, 2) + '\n', { mode: 0o600 });
+  await atomicConfigurationJSON(ledgerPath,ledger);
   await fs.chmod(ledgerPath, 0o600);
+  });
   return { imported };
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
