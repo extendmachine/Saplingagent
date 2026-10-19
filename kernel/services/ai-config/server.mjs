@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process';
 import { ConfigurationStore,failure } from './store.mjs';
 import { AccountSetup } from './auth.mjs';
 import { CredentialImport } from './credentials.mjs';
-import { ProjectLauncher } from '../../launcher/public.mjs';
+import { ProjectLauncher, prepareSetupUI } from '../../launcher/public.mjs';
 const defaultRoot=fileURLToPath(new URL('../../../',import.meta.url));
 export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRoot,assets=path.join(root,'kernel/.cache/setup'),language='en',authOptions={},importOptions={},onClose,token:providedToken,projectController,onProjectRename,instanceId}={}){
   root=path.resolve(root);
@@ -110,7 +110,11 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
       if(url.pathname==='/')file='index.html';
       else if(/^\/assets\/[a-zA-Z0-9_.-]+\.(js|css|woff2|svg)$/.test(url.pathname))file=url.pathname.slice(1);
       else throw failure('NOT_FOUND','Page not found.',404);
-      let content;try{content=await fs.readFile(path.join(assets,file));}catch{throw failure('UI_NOT_BUILT','Configuration page is not built. Choose Configure AI in Saplingagent.sh after installation.',503);}
+      let content;try{content=await fs.readFile(path.join(assets,file));}catch(error){
+        if(error.code!=='ENOENT')throw failure('UI_UNREADABLE','Configuration page files cannot be read. Check local file permissions and retry configure.',500);
+        if(file!=='index.html')throw failure('UI_ASSET_NOT_FOUND','This configuration resource is unavailable. Reload the configuration page; if it persists, run bash Saplingagent.sh configure.',404);
+        throw failure('UI_NOT_BUILT','Configuration page is not built. Run bash Saplingagent.sh configure to prepare it; if preparation fails, run install --repair first.',503);
+      }
       if(file==='index.html')content=Buffer.from(content.toString('utf8').replaceAll('__SAPLING_CONFIG_TOKEN__',token).replaceAll('__SAPLING_CONFIG_LANGUAGE__',language==='zh'?'zh':'en'));
       res.writeHead(200,{...headers,'Content-Type':file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':file.endsWith('.html')?'text/html; charset=utf-8':'image/svg+xml'});res.end(content);
     }catch(error){if(!res.headersSent)send(res,error.status||500,{error:{code:error.code&&error.status?error.code:'CONFIG_STORAGE_ERROR',message:error.status?error.message:'Unable to read or save local configuration. Check the project files and reload.'}});else res.end();}
@@ -126,6 +130,7 @@ async function openBrowser(url){
   await new Promise(resolve=>{const child=spawn(command,args,{stdio:'ignore',windowsHide:true});child.once('error',resolve);child.once('exit',resolve);});
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+  await prepareSetupUI(path.resolve(process.env.SEED_ROOT||defaultRoot));
   const server=createConfigurationServer({language:process.env.SAPLING_LANG,onClose:()=>process.exit(0)});
   for(const signal of ['SIGINT','SIGTERM','SIGHUP'])process.on(signal,()=>void server.shutdown());
   server.listen(0,'127.0.0.1',async()=>{const url=`http://127.0.0.1:${server.address().port}/`;console.log(process.env.SAPLING_LANG==='zh'?`AI 配置网页：${url}\n完成后点击“完成配置”，回到脚本启动应用。`:`AI configuration: ${url}\nChoose Finish setup to return to the launcher and start the app.`);if(!process.argv.includes('--no-open'))await openBrowser(url);});
