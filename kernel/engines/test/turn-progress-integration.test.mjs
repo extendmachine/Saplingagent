@@ -5,7 +5,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createAgentServer } from '../server.mjs';
+import { createAgentServer } from '../../../backend/agent-runtime/server.mjs';
 import { fakeClock } from './progress-clock.mjs';
 
 const cache = fileURLToPath(new URL('../../../.cache/turn-progress-test/', import.meta.url));

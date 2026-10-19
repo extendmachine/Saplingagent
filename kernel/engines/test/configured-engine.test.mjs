@@ -5,9 +5,9 @@ import path from 'node:path';
 import http from 'node:http';
 import { EventEmitter } from 'node:events';
 import { fileURLToPath } from 'node:url';
-import { createAgentServer } from '../server.mjs';
+import { createAgentServer } from '../../../backend/agent-runtime/server.mjs';
 import { OpenCodeProvider } from '../providers/opencode.mjs';
-import { ConfigurationStore } from '../../ai-config/store.mjs';
+import { ConfigurationStore } from '../../services/ai-config/store.mjs';
 const project=fileURLToPath(new URL('../../../',import.meta.url));
 async function fixture(t){const directory=path.join(project,'.cache/configured-engine-tests');await fs.mkdir(directory,{recursive:true});const root=await fs.mkdtemp(path.join(directory,"中文 app's "));t.after(()=>fs.rm(root,{recursive:true,force:true}));return root;}
 const profile={label:'Synthetic scheme',engine:'opencode',kind:'api',protocol:'chat',baseUrl:'http://127.0.0.1:1/v1',model:'synthetic-coder',apiKey:'synthetic-only-key'};
@@ -35,7 +35,7 @@ test('pinned native OpenCode reads a saved custom scheme and connects its local 
  const root=await fixture(t);const probe=http.createServer((req,res)=>{probe.requests++;res.end('{}');});probe.requests=0;await new Promise(resolve=>probe.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>probe.close(resolve)));
  const reserve=http.createServer();await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve));const port=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));
  await new ConfigurationStore(root).save({...profile,baseUrl:`http://127.0.0.1:${probe.address().port}/v1`});
- await fs.mkdir(path.join(root,'backend/agent-runtime/node_modules/.bin'),{recursive:true});await fs.symlink(path.join(project,'backend/agent-runtime/node_modules/.bin/opencode'),path.join(root,'backend/agent-runtime/node_modules/.bin/opencode'));
+ await fs.mkdir(path.join(root,'backend/agent-runtime/node_modules/.bin'),{recursive:true});await fs.symlink(path.join(project,'kernel/node_modules/.bin/opencode'),path.join(root,'backend/agent-runtime/node_modules/.bin/opencode'));
  await fs.mkdir(path.join(root,'backend/mcp-runtime'),{recursive:true});await fs.writeFile(path.join(root,'backend/mcp-runtime/server.mjs'),`import readline from 'node:readline';for await(const line of readline.createInterface({input:process.stdin})){const m=JSON.parse(line);if(m.id===undefined)continue;let result={};if(m.method==='initialize')result={protocolVersion:'2024-11-05',capabilities:{tools:{}},serverInfo:{name:'synthetic-mcp',version:'1'}};if(m.method==='tools/list')result={tools:[{name:'synthetic_tool',description:'Synthetic test tool',inputSchema:{type:'object',properties:{}}}]};process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');}`);
  const provider=new OpenCodeProvider({root,port,mcpEnv:{},instructions:'Synthetic test only',onEvent(){}});t.after(()=>provider.close());const catalog=await provider.start();const saved=catalog.providers.find(p=>p.label===profile.label);
  assert.ok(saved,'saved custom provider should be discoverable');assert.ok(saved.models.some(m=>m.id===profile.model));assert.equal(catalog.authenticated,true);assert.equal(catalog.mcp.ready,true);assert.equal(probe.requests,0);

@@ -8,7 +8,7 @@ import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { AppServer } from '../rpc.mjs';
-import { createAgentServer } from '../server.mjs';
+import { createAgentServer } from '../../../backend/agent-runtime/server.mjs';
 
 function fixture() {
   const child = new EventEmitter(); child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough(); child.kill = () => true;
@@ -149,7 +149,7 @@ for (const stalled of [false, true]) test(`Agent shutdown is bounded during an a
 });
 test('SIGHUP closes a terminal-launched Agent and its detached App Server group', { skip: process.platform === 'win32' }, async () => {
   const f = await lifecycleFixture();
-  const child = spawn(process.execPath, [fileURLToPath(new URL('../server.mjs', import.meta.url))], { cwd: f.root, env: { ...process.env, SEED_ROOT: f.root, SEED_CODEX_BIN: f.executable, SEED_AGENT_PORT: '0', SEED_WORKSPACE_PORT: String(f.workspace.address().port) }, stdio: 'ignore' });
+  const child = spawn(process.execPath, [fileURLToPath(new URL('../../../backend/agent-runtime/server.mjs', import.meta.url))], { cwd: f.root, env: { ...process.env, SEED_ROOT: f.root, SEED_CODEX_BIN: f.executable, SEED_AGENT_PORT: '0', SEED_WORKSPACE_PORT: String(f.workspace.address().port) }, stdio: 'ignore' });
   try {
     const pids = await f.pids();
     const exited = once(child, 'exit');

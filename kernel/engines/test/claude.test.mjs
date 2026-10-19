@@ -5,8 +5,8 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ClaudeProvider, claudeEnvironment } from '../providers/claude.mjs';
-import { ConfigurationStore } from '../../ai-config/store.mjs';
-import { claudeConnections, readConnections, defaultSelection } from '../../../contracts/ai-configuration.mjs';
+import { ConfigurationStore } from '../../services/ai-config/store.mjs';
+import { claudeConnections, readConnections, defaultSelection } from '../../contracts/ai-configuration.mjs';
 const project=fileURLToPath(new URL('../../../',import.meta.url));
 const profile={label:'Synthetic Claude',engine:'claude',protocol:'anthropic',baseUrl:'http://127.0.0.1:1/v1',model:'synthetic-claude',apiKey:'synthetic-only-key'};
 async function fixture(t){const base=path.join(project,'.cache/claude-tests');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,"中文 app's "));t.after(()=>fs.rm(root,{recursive:true,force:true}));await new ConfigurationStore(root).save(profile);return root;}

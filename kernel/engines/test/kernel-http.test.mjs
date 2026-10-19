@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createMediaFixture } from "./media-fixture.mjs";
+import { createMediaFixture } from "../../../backend/agent-runtime/test/media-fixture.mjs";
 test("read-only kernel metadata is independent of Git/model and does not expose local receipt fields", async (t) => {
 	const parent = fileURLToPath(new URL("../../../.cache/kernel-api/", import.meta.url));
 	await fs.mkdir(parent, { recursive: true });
