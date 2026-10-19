@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
-import { isKernelPath, validateKernelManifest, KERNEL_FILE_PATHS, KERNEL_DIRECTORY_PATHS } from "../contracts/kernel.mjs";
+import { isKernelPath, validateKernelManifest, PUBLIC_BRIDGE_FILES } from "./contracts/kernel.mjs";
 export async function scanKernelFiles(root) {
 	const files = [];
 	async function walk(directory) {
@@ -39,7 +39,7 @@ export async function scanKernelFiles(root) {
 			}
 		}
 	}
-	for (const prefix of KERNEL_DIRECTORY_PATHS) {
+	for (const prefix of ["kernel/"]) {
 		const directory = prefix.slice(0, -1);
 		try {
 			await walk(directory);
@@ -47,7 +47,7 @@ export async function scanKernelFiles(root) {
 			if (error.code !== "ENOENT") throw error;
 		}
 	}
-	for (const name of KERNEL_FILE_PATHS) {
+	for (const name of PUBLIC_BRIDGE_FILES) {
 		try {
 			const file = path.join(root, name), stat = await fs.lstat(file);
 			if (!stat.isFile() || stat.isSymbolicLink()) throw Error("Kernel source must be a regular file: " + name);
@@ -78,6 +78,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
 	const files = await scanKernelFiles(root);
 	const manifest = validateKernelManifest({
 		schemaVersion: 3,
+        layoutVersion: 1,
 		version: previous.version || "0.91",
 		appApi: previous.appApi || 1,
 		minNode: previous.minNode || "24.11.0",

@@ -4,8 +4,8 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
-import { npmCommand, codexBinary } from '../contracts/local-process.mjs';
-import { acquireKernelLock, assertKernelOffline } from '../contracts/kernel.mjs';
+import { npmCommand, codexBinary } from './contracts/local-process.mjs';
+import { acquireKernelLock, assertKernelOffline } from './contracts/kernel.mjs';
 const root=path.resolve(process.argv[2]||fileURLToPath(new URL('../',import.meta.url)));
 const release=await acquireKernelLock(root,'kernel-dependencies');
 const npmCLI=process.platform==='win32'?path.join(path.dirname(process.execPath),'node_modules/npm/bin/npm-cli.js'):path.resolve(path.dirname(process.execPath),'../lib/node_modules/npm/bin/npm-cli.js');
@@ -15,7 +15,7 @@ try {
  await fs.access(npmCLI);
  await assertKernelOffline(root);
  await run(npm.command,[...npm.args,'ci','--include=optional','--no-audit','--no-fund'],path.join(root,'kernel'));
- const config=JSON.parse(await fs.readFile(path.join(root,`config/${process.platform==='win32'?'windows':'macos'}.json`),'utf8'));
+ const config=JSON.parse(await fs.readFile(path.join(root,`kernel/config/${process.platform==='win32'?'windows':'macos'}.json`),'utf8'));
  const stage=`.runtime/codex-maintenance-${randomUUID()}`;const directory=path.join(root,stage);
  try {
   await fs.mkdir(directory,{recursive:true});await fs.writeFile(path.join(directory,'package.json'),JSON.stringify({private:true,dependencies:{'@openai/codex':config.codexVersion}}));
