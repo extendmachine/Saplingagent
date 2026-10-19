@@ -56,7 +56,7 @@ For a new installation, run one command in **macOS Terminal** or **Windows Git B
 bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/Saplingagent/release/install.sh | bash'
 ```
 
-The independent `install.sh` resolves the current **release** commit, downloads that exact source snapshot into `./Saplingagent`, installs the local kernel, then opens web project setup. It does not clone all repository branches or require Node before downloading. No Git repository is initialized or connected. Configure the project name/icon and your AI access, then compile the native launcher in the setup page.
+The independent `install.sh` resolves the current **release** commit, downloads that exact source snapshot into `./Saplingagent`, installs the local kernel, then opens web project setup. It does not clone all repository branches or require Node before downloading. No Git repository is initialized or connected. Confirm the project name, icon and final folder first. The page completes any requested folder rename before enabling AI configuration. Then connect your AI and compile the native launcher.
 
 The target folder must be new; existing applications are preserved. Add `--dir` and `--lang` for a different destination/language:
 
@@ -90,9 +90,9 @@ bash Saplingagent.sh
 
 Choose **English** or **中文** (Enter defaults to English). The script installs only the management kernel and opens the configuration webpage. For Chinese directly, use `bash Saplingagent.sh --lang zh`.
 
-1. Set the project name, folder name and optional icon in the webpage.
+1. Set the project name, folder name and optional icon, then click **Confirm folder & continue**. Any requested rename happens now; the page shows the actual final folder before enabling AI configuration.
 2. Save and select your AI account/API scheme.
-3. Click **Install app & compile launcher**. Application dependencies and the local Go toolchain are installed on demand. An independent customer folder may be renamed before building; existing folders are never replaced, and development worktrees remain in place.
+3. Click **Install app & compile launcher**. Application dependencies and the local Go toolchain are installed on demand. Building never renames the folder. Unconfirmed folder edits must be applied in Step 1 first. Existing folders are never replaced, and development worktrees remain in place.
 4. Double-click the generated **Your project.app** (macOS) or **Your project.exe** (Windows) to develop your app.
 5. Use the management page to **Open app**, **Restart app**, **Stop app**, or **Rebuild app & launcher**. An unchanged native executable is reused; changed launchers are staged and verified before replacement. Failed builds retain the previous output.
 
