@@ -308,6 +308,7 @@ try {
   else if (action === 'login' && args.every(x => x === '--device-auth')) await login(args.includes('--device-auth'));
   else if (action === 'start' && args.every(x => x === '--no-open')) await start(args.includes('--no-open'));
   else if (action === 'kernel') await required(process.execPath,[path.join(root,'kernel/cli.mjs'),...args]);
+  else if (action === 'ensure-dependencies' && !args.length) { const {ensureApplicationDependencies}=await import('../../launcher/dependencies.mjs'); await ensureApplicationDependencies(root,{onProgress:message=>console.log(message)}); }
   else if (action === 'doctor' && !args.length) await doctor();
   else if (action === 'logout' && !args.length) await logout();
   else if (action === 'configure' && args.every(x=>x==='--no-open')) await configureAI(args.includes('--no-open'));

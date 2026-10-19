@@ -14,7 +14,7 @@ async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   const parent = path.join(project, '.cache/macos-tests'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "\u6d4b\u8bd5 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['kernel/contracts/ai-configuration.mjs', 'kernel/contracts/local-process.mjs', 'kernel/contracts/engine-dependencies.mjs', 'kernel/scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'kernel/scripts/launcher/recipient-records.mjs', 'kernel/scripts/setup.mjs', 'kernel/scripts/macos/cli.mjs', 'kernel/scripts/macos/bootstrap.sh', 'kernel/scripts/macos/codex.sh', 'Saplingagent.sh', 'kernel/scripts/Saplingagent.sh', 'kernel/config/macos.json', 'config/runtime.json']) {
+  for (const file of ['kernel/contracts/kernel.mjs', 'kernel/compat/paths.mjs', 'kernel/contracts/ai-configuration.mjs', 'kernel/contracts/local-process.mjs', 'kernel/contracts/engine-dependencies.mjs', 'kernel/scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'kernel/scripts/launcher/recipient-records.mjs', 'kernel/scripts/setup.mjs', 'kernel/scripts/macos/cli.mjs', 'kernel/scripts/macos/bootstrap.sh', 'kernel/scripts/macos/codex.sh', 'Saplingagent.sh', 'kernel/scripts/Saplingagent.sh', 'kernel/config/macos.json', 'config/runtime.json']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const settings = JSON.parse(await fs.readFile(path.join(root, 'kernel/config/macos.json'), 'utf8'));

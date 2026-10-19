@@ -90,6 +90,7 @@ test('Windows native interactive configuration still reads user input in the for
 async function bootstrapFixture(t) {
   const f = await fixture(t);
   await fs.copyFile(path.join(project, 'kernel/scripts/windows/bootstrap.sh'), path.join(f.root, 'kernel/scripts/windows/bootstrap.sh'));
+  await fs.copyFile(path.join(project, 'kernel/scripts/windows/bootstrap.ps1'), path.join(f.root, 'kernel/scripts/windows/bootstrap.ps1'));
   await fs.writeFile(path.join(f.root, 'bin/cygpath'), "#!/bin/bash\nprintf '%s' \"C:\\test\\中文 app's folder\"\n", { mode: 0o755 });
   await fs.writeFile(path.join(f.root, 'bin/winpty'), '#!/bin/bash\nprintf "BRIDGE_CALLED\\n"\nexec "$@"\n', { mode: 0o755 });
   await fs.writeFile(path.join(f.root, 'bin/powershell.exe'), foregroundProbe + `if [ "$SAPLING_BOOTSTRAP_ACTION" = 'start' ]; then
