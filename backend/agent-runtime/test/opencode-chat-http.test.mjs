@@ -5,8 +5,8 @@ import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { createAgentServer } from '../server.mjs';
-import { OpenCodeProvider } from '../providers/opencode.mjs';
-import { ConfigurationStore } from '../../ai-config/store.mjs';
+import { OpenCodeProvider } from '../../../kernel/engines/providers/opencode.mjs';
+import { ConfigurationStore } from '../../../kernel/services/ai-config/store.mjs';
 const project=fileURLToPath(new URL('../../../',import.meta.url));
 async function listen(server){await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));return server.address().port;}
 test('HTTP streaming and persisted/refreshed chat contain genuine OpenCode reply only; context travels as system', {timeout:15000},async t=>{

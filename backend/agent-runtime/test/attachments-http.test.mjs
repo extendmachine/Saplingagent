@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import path from 'node:path';import {fileURLToPath}from'node:url';import{randomUUID}from'node:crypto';
 import {createMediaFixture,fixtureToken,fixtureImage}from'./media-fixture.mjs';
-import {OpenCodeProvider}from'../providers/opencode.mjs';
+import {OpenCodeProvider}from'../../../kernel/engines/providers/opencode.mjs';
 async function fixture(t){const parent=fileURLToPath(new URL('../../../.cache/media-http/',import.meta.url));await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,'app-'));const f=await createMediaFixture(root);t.after(async()=>{await f.close();await fs.rm(root,{recursive:true,force:true})});return f;}
 const headers={Authorization:`Bearer ${fixtureToken}`,'Content-Type':'application/json'};
 test('real local upload, native Codex image, file-only send, persisted recovery and retry identity work together',async t=>{

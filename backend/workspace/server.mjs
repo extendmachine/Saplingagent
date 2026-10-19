@@ -1,4 +1,4 @@
-import { createDrainGate } from '../../contracts/runtime-drain.mjs';
+import { createDrainGate } from '../../kernel/contracts/runtime-drain.mjs';
 import http from 'node:http';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';

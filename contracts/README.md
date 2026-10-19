@@ -5,7 +5,7 @@ runtime-api.md is the local HTTP/SSE field index, and each service CONTRACT is t
 The current contract v2 is Full Access, and there is no directory/compulsory verification threshold; see runtime-api.md for general files and command interfaces.
 
 ## Persistent runtime control
-`scripts/dev.mjs` now supervises frontend and backends using backend/runtime-manager. Public frontPort is a persistent same-origin gateway; internal Vite uses vitePort (default5174). Restart app reloads selected source; Restart backend preserves frontend. Optional services are discovered from the selected checkout. Recovery route `/__saplingagent/runtime` stays available during failure; manager/launcher/port changes require the operating-system launcher. See backend/runtime-manager/CONTRACT.md and DEPLOY.md.
+`scripts/dev.mjs` now supervises frontend and backends using backend/runtime-manager. Public frontPort is a persistent same-origin gateway; internal Vite uses vitePort (default5174). Restart app reloads selected source; Restart backend preserves frontend. Optional services are discovered from the selected checkout. Recovery route `/__saplingagent/runtime` stays available during failure; manager/launcher/port changes require the operating-system launcher. See kernel/services/runtime-manager/CONTRACT.md and DEPLOY.md.
 
 ## OS process contract (TASK028)
 
@@ -13,6 +13,6 @@ local-process.mjs is shared, stateless OS plumbing, not another service's privat
 
 ## AI configuration and Codex transport (TASK-20261012-001)
 
-`ai-configuration.mjs` reads schema-v1 project-private account/API schemes, derives the default engine/model and maps private keys to Codex environment or native OpenCode provider configuration. It validates metadata and never writes public credentials. `codex-rpc.mjs` is shared newline-delimited JSON-RPC stdio transport, including owned-process cleanup; agent-runtime/rpc.mjs remains a compatibility export. Setup and Agent communicate through these public contracts, not private service imports. See backend/ai-config/CONTRACT.md.
+`ai-configuration.mjs` reads schema-v1 project-private account/API schemes, derives the default engine/model and maps private keys to Codex environment or native OpenCode provider configuration. It validates metadata and never writes public credentials. `codex-rpc.mjs` is shared newline-delimited JSON-RPC stdio transport, including owned-process cleanup; agent-runtime/rpc.mjs remains a compatibility export. Setup and Agent communicate through these public contracts, not private service imports. See kernel/services/ai-config/CONTRACT.md.
 
 TASK-20261014-002/003/004: runtime status adds actual ports; the runtime-manager CONTRACT defines .runtime/runtime-address.json discovery and effective SEED_*_PORT values including SEED_FRONT_PORT. Starting values remain in config/runtime.json; unified launch selects available ascending ports without source changes.
