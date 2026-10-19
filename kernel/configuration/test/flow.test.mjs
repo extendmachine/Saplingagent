@@ -21,8 +21,13 @@ export async function fixture(t){
  // Only compilation is synthetic; external processes, HTTP/root rebinding, move,
  // session matching, copied executable, and A cleanup run their real code.
  const controller=path.join(root,'kernel/configuration/controller.mjs');let source=await fs.readFile(controller,'utf8');source=source.replace('super(root,options);','super(root,{...options,compiler:async(root,project)=>{const receipt={artifact:project.name+".app"};await fs.mkdir(path.join(root,receipt.artifact),{recursive:true});await writeJSON(path.join(root,".runtime/launcher.json"),receipt);return receipt;}});');await fs.writeFile(controller,source);
+ // The short-lived takeover receipt can disappear before teardown runs. Record
+ // returning A only in this copied fixture entry, before its real handoff code.
+ const entry=path.join(root,'kernel/launcher/entry.mjs');const entrySource=await fs.readFile(entry,'utf8');
+ assert.ok(entrySource.includes('if(cleanup>=0){'));
+ await fs.writeFile(entry,entrySource.replace('if(cleanup>=0){',`if(cleanup>=0){await fs.appendFile(path.join(root,'.runtime/fixture-return-pids.jsonl'),JSON.stringify({pid:process.pid,root,directory:path.resolve(process.argv[cleanup+1]),compileCache:process.env.NODE_COMPILE_CACHE})+'\\n');`));
  await fs.writeFile(path.join(root,'business.txt'),'preserve application');await fs.mkdir(path.join(root,'.git'));await fs.writeFile(path.join(root,'.git/HEAD'),'ref: refs/heads/customer\n');await fs.mkdir(path.join(root,'local-secrets/codex/sessions'),{recursive:true});await fs.writeFile(path.join(root,'local-secrets/codex/sessions/history.jsonl'),'synthetic retained history\n');
- const roots=[root],children=[];let directory;
+ const roots=[root],children=[],returnedProcesses=[];let directory;
  let cleaned=false;
  async function cleanup(){
   if(cleaned)return;
@@ -57,6 +62,16 @@ export async function fixture(t){
    }
    if(!forced)await until(async()=>!await exists(session.directory)&&!await exists(path.join(session.root,'.runtime/configuration-cleanup.lock'))&&!await exists(path.join(session.root,'.runtime/kernel-operation.lock')),200);
   }
+  // Node flushes compile cache on process exit, after finishConfiguration has
+  // released its locks. Wait for the actual returning A, not only those locks.
+  for(const current of roots){
+   const records=await fs.readFile(path.join(current,'.runtime/fixture-return-pids.jsonl'),'utf8').catch(()=>'');
+   for(const line of records.trim().split('\n').filter(Boolean)){
+    const owner=JSON.parse(line);assert.equal(owner.root,current);assert.equal(path.dirname(owner.directory),temp);assert.match(path.basename(owner.directory),/^sapling-config-[A-Za-z0-9]+$/);assert.ok(Number.isSafeInteger(owner.pid)&&owner.pid>0&&owner.pid!==process.pid);
+    await until(()=>!isAlive(owner.pid),200);
+    returnedProcesses.push({...owner,cacheEntries:await fs.readdir(owner.compileCache).catch(()=>[])});
+   }
+  }
   if(directory&&await exists(directory)){
    // Any undecidable live owner leaves the fixture intact for inspection.
    const receipt=await json(path.join(directory,'session.json')).catch(()=>null);
@@ -70,8 +85,8 @@ export async function fixture(t){
   await fs.rm(temp,{recursive:true,force:true});cleaned=true;
  }
  t.after(cleanup);
- function start(){const child=spawn(localNode,[path.join(root,'kernel/launcher/entry.mjs'),'--no-open'],{cwd:temp,env:{...process.env,SEED_ROOT:root,SAPLING_NO_OPEN:'1',SAPLING_LANG:'zh',TMPDIR:path.join(root,'.runtime/tmp')},stdio:['ignore','pipe','pipe']});children.push(child);let errors='';child.stderr.on('data',b=>errors+=b);return {child,get errors(){return errors;}};}
- return {root,temp,localNode,roots,start,cleanup,track:child=>children.push(child),setDirectory:value=>directory=value};
+ function start(){const child=spawn(localNode,[path.join(root,'kernel/launcher/entry.mjs'),'--no-open'],{cwd:temp,env:{...process.env,SEED_ROOT:root,SAPLING_NO_OPEN:'1',SAPLING_LANG:'zh',TMPDIR:path.join(root,'.runtime/tmp'),NODE_COMPILE_CACHE:path.join(root,'.cache/node-compile')},stdio:['ignore','pipe','pipe']});children.push(child);let errors='';child.stderr.on('data',b=>errors+=b);return {child,get errors(){return errors;}};}
+ return {root,temp,localNode,roots,start,cleanup,returnedProcesses,track:child=>children.push(child),setDirectory:value=>directory=value};
 }
 test('real external B keeps its page across rename, then returned A removes B after exit',{skip:process.platform!=='darwin',timeout:45000},async t=>{
  const f=await fixture(t),launched=f.start();await until(()=>launched.child.exitCode!==null);assert.equal(launched.child.exitCode,0,launched.errors);
@@ -144,4 +159,11 @@ test('fixture cleanup stops its verified B when graceful handoff cannot import h
  const address=await json(path.join(f.root,'.runtime/management-address.json'));await until(async()=>!(await fetch(`http://127.0.0.1:${address.port}/health/project-launcher`).then(r=>r.json())).busy);
  await fs.rename(path.join(f.root,'kernel/launcher/entry.mjs'),path.join(f.root,'kernel/launcher/entry-hidden.mjs'));
  await f.cleanup();assert.equal(await exists(f.temp),false);assert.throws(()=>process.kill(address.pid,0),{code:'ESRCH'});
+});
+
+test('fixture removal waits for returning A to exit and flush its real local Node cache',{skip:process.platform!=='darwin',timeout:45000},async t=>{
+ const f=await fixture(t),started=f.start();await until(()=>started.child.exitCode!==null);assert.equal(started.child.exitCode,0,started.errors);
+ await f.cleanup();assert.ok(f.returnedProcesses.length>0);
+ for(const owner of f.returnedProcesses){assert.equal(owner.compileCache,path.join(f.root,'.cache/node-compile'));assert.ok(owner.cacheEntries.length>0,'Node wrote its enabled compile cache before fixture removal');assert.throws(()=>process.kill(owner.pid,0),{code:'ESRCH'});}
+ assert.equal(await exists(f.temp),false);
 });
