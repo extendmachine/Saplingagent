@@ -118,3 +118,41 @@ test('real offline npm repairs a local-file service dependency without changing 
   await assert.rejects(fs.access(path.join(vendor,'unexpected-script')));
   assert.equal((await ensureApplicationDependencies(f.root)).changed,false);
 });
+
+test('Node package-main resolution accepts extensionless files, directory indexes and package fallback without running code',async t=>{
+  const f=await fixture(t);await ensureApplicationDependencies(f.root,{install:f.install});f.calls.length=0;
+  const directory=path.join(f.root,'backend/custom/node_modules/example');
+  const cases=[
+    ['index','index.js'],['data','data.json'],['binding','binding.node'],
+    ['lib','lib/index.js'],['lib','lib/index.json'],['lib','lib/index.node'],
+    ['missing-main','index.js'],['main.mjs','main.mjs'],['package.json','package.json'],
+  ];
+  for(const [main,file]of cases){
+    await fs.rm(directory,{recursive:true});
+    await write(path.join(directory,'package.json'),{name:'example',version:'1.0.0',main});
+    if(file!=='package.json')await write(path.join(directory,file),"throw Error('package code must never execute during dependency checks');");
+    assert.equal((await applicationDependencyStatus(f.root)).groups.find(g=>g.name==='backend/custom').ready,true,`${main} -> ${file}`);
+    assert.equal((await ensureApplicationDependencies(f.root,{install:f.install})).changed,false,`${main} -> ${file}`);
+  }
+  assert.deepEqual(f.calls,[]);
+});
+test('empty main directory and a removed resolved file require repair, rather than passing an existence check or resolution cache',async t=>{
+  const f=await fixture(t);await ensureApplicationDependencies(f.root,{install:f.install});f.calls.length=0;
+  const directory=path.join(f.root,'backend/custom/node_modules/example');
+  await fs.rm(path.join(directory,'index.js'));await write(path.join(directory,'package.json'),{version:'1.0.0',main:'lib'});await write(path.join(directory,'lib/index.js'),'export default true;');
+  assert.equal((await applicationDependencyStatus(f.root)).groups.find(g=>g.name==='backend/custom').ready,true);
+  await fs.rm(path.join(directory,'lib/index.js'));
+  assert.equal((await applicationDependencyStatus(f.root)).groups.find(g=>g.name==='backend/custom').ready,false);
+  await ensureApplicationDependencies(f.root,{install:f.install});assert.deepEqual(f.calls,['backend/custom']);
+});
+test('package bin entries require exact regular files despite valid main resolution',async t=>{
+  const f=await fixture(t);await ensureApplicationDependencies(f.root,{install:f.install});
+  const directory=path.join(f.root,'backend/custom/node_modules/example');
+  await write(path.join(directory,'package.json'),{version:'1.0.0',main:'index',bin:{example:'bin/tool'}});
+  await write(path.join(directory,'bin/tool.js'),'console.log("not run")');
+  assert.equal((await applicationDependencyStatus(f.root)).groups.find(g=>g.name==='backend/custom').ready,false);
+  await fs.mkdir(path.join(directory,'bin/tool'));
+  assert.equal((await applicationDependencyStatus(f.root)).groups.find(g=>g.name==='backend/custom').ready,false);
+  await fs.rm(path.join(directory,'bin/tool'),{recursive:true});await write(path.join(directory,'bin/tool'),'#!/bin/sh\nexit 0');
+  assert.equal((await applicationDependencyStatus(f.root)).groups.find(g=>g.name==='backend/custom').ready,true);
+});

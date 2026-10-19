@@ -13,6 +13,19 @@ const digest=(...values)=>{const h=createHash('sha256');for(const value of value
 const platformName=()=>process.platform==='win32'?'windows':'macos';
 const requiredEntries={kernel:['node_modules/vite/bin/vite.js'],front:['node_modules/vite/bin/vite.js','node_modules/typescript/bin/tsc']};
 
+const regularFile=file=>fs.stat(file).then(value=>value.isFile(),()=>false);
+async function packageMainPresent(directory,main){
+  // Node's legacy package-main resolution: file, extension, main/index, then
+  // package/index fallback. Read filesystem state directly so a repair cannot
+  // leave a stale require.resolve/package-json cache, and never execute code.
+  const candidate=path.resolve(directory,main);
+  const files=[candidate,...['.js','.json','.node'].map(ext=>candidate+ext),
+    ...['.js','.json','.node'].map(ext=>path.join(candidate,'index'+ext)),
+    ...['.js','.json','.node'].map(ext=>path.join(directory,'index'+ext))];
+  for(const file of files)if(await regularFile(file))return true;
+  return false;
+}
+
 async function packages(root){
   const directories=['kernel','front'];
   const backend=await fs.readdir(path.join(root,'backend'),{withFileTypes:true}).catch(e=>{if(e.code==='ENOENT')return [];throw e;});
@@ -35,9 +48,12 @@ async function packages(root){
       const expected=entry?.link?lock.packages[entry.resolved]:entry;
       const installed=await json(path.join(directory,'node_modules',name,'package.json')).catch(()=>null);
       if(!expected||!installed||expected.version!==installed.version){present=false;break;}
-      // Missing a package's direct entry/binary means a damaged tree, even if package.json survived.
-      const entries=[installed.main,...(typeof installed.bin==='string'?[installed.bin]:Object.values(installed.bin||{}))].filter(x=>typeof x==='string'&&x&&!path.isAbsolute(x)&&!x.split(/[\\/]/).includes('..'));
-      if((await Promise.all(entries.map(file=>exists(path.join(directory,'node_modules',name,file))))).some(ok=>!ok)){present=false;break;}
+      const packageDirectory=path.join(directory,'node_modules',name);
+      const localEntry=x=>typeof x==='string'&&x&&!path.isAbsolute(x)&&!x.split(/[\\/]/).includes('..');
+      if(localEntry(installed.main)&&!await packageMainPresent(packageDirectory,installed.main)){present=false;break;}
+      // A bin is an exact executable path; it does not use package-main extension lookup.
+      const bins=(typeof installed.bin==='string'?[installed.bin]:Object.values(installed.bin||{})).filter(localEntry);
+      if((await Promise.all(bins.map(file=>regularFile(path.join(packageDirectory,file))))).some(ok=>!ok)){present=false;break;}
     }
     for(const file of requiredEntries[relative]||[])if(!await exists(path.join(directory,file)))present=false;
     if(relative==='kernel'&&(!await exists(openCodeBinary(root))||!await exists(claudeBinary(root))))present=false;
