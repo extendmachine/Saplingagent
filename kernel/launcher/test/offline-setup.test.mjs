@@ -91,10 +91,10 @@ test('native export stops and restarts a previously running owned app even when 
 });
 test('export waits for both application and management readiness before releasing the setup lease',async t=>{
  const {root}=await fixture(t),manager=new ProjectLauncher(root);await manager.stageSetup({name:'Display',renameFolder:false});const project=await readProject(root),id=randomUUID();
- const lease={schemaVersion:1,id,root,previousRoot:root,targetRoot:root,projectId:project.projectId,management:{port:62025},fingerprint:await manager.settingsFingerprint(),connectionsFingerprint:await manager.connectionsFingerprint()};
+ const lease={schemaVersion:1,id,root,previousRoot:root,targetRoot:root,projectId:project.projectId,management:{port:62025},language:'zh',fingerprint:await manager.settingsFingerprint(),connectionsFingerprint:await manager.connectionsFingerprint()};
  await fs.writeFile(path.join(root,'.runtime/project-finalization.json'),JSON.stringify(lease));await fs.writeFile(path.join(root,'.runtime/kernel-operation.lock'),JSON.stringify({id}));
  const old=process.env.SAPLING_SETUP_JOB;process.env.SAPLING_SETUP_JOB=id;let running=false;
- try{const {resumeSetup}=await import('../resume-setup.mjs');await resumeSetup(root,id,null,{prepare:async()=>{},start:async()=>{running=true;return{phase:'ready'};},management:async()=>{assert.equal(running,true);assert.equal(await manager.exportReady(),false);assert.equal(JSON.parse(await fs.readFile(path.join(root,'.runtime/project-finalization.json'))).id,id);return{port:62025};}});}
+ try{const {resumeSetup}=await import('../resume-setup.mjs');await resumeSetup(root,id,null,{prepare:async()=>{},start:async()=>{running=true;return{phase:'ready'};},management:async()=>{assert.equal(process.env.SAPLING_LANG,'zh');assert.equal(running,true);assert.equal(await manager.exportReady(),false);assert.equal(JSON.parse(await fs.readFile(path.join(root,'.runtime/project-finalization.json'))).id,id);return{port:62025};}});}
  finally{if(old===undefined)delete process.env.SAPLING_SETUP_JOB;else process.env.SAPLING_SETUP_JOB=old;}
  assert.equal(await manager.exportReady(),true);assert.equal(await fs.access(path.join(root,'.runtime/project-finalization.json')).then(()=>true,()=>false),false);
 });

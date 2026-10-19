@@ -13,7 +13,7 @@ async function launchManagement(root,job) {
   await dailyLog(root,'setup_management_resume',{jobId:job.id});
   async function attempt(fixedPort) {
     const handle=await fs.open(path.join(root,'logs/project-launcher',`project-launcher-${new Date().toISOString().slice(0,10)}.log`),'a');
-    const env={...buildEnv(root),SEED_ROOT:root,SAPLING_SETUP_JOB:job.id};
+    const env={...buildEnv(root),SEED_ROOT:root,SAPLING_SETUP_JOB:job.id,SAPLING_LANG:job.language};
     if(fixedPort)env.SAPLING_MANAGEMENT_PORT=String(job.management.port);else delete env.SAPLING_MANAGEMENT_PORT;
     const open=!fixedPort&&!job.noOpen;
     env.SAPLING_NO_OPEN=open?'0':'1';
@@ -55,6 +55,7 @@ export async function resumeSetup(root,id,failureCode,{prepare=prepareApplicatio
     throw issue('PROJECT_HANDOFF_CHANGED','The setup handoff receipt does not match this folder. Preserve it and inspect the restart.');
   const project=await readProject(root);
   if(project.projectId!==lease.projectId)throw issue('PROJECT_HANDOFF_CHANGED','Project identity changed during restart. Preserve the saved settings.');
+  process.env.SAPLING_LANG=lease.language==='zh'?'zh':'en';
   const manager=new ProjectLauncher(root,{open:async()=>{}});
   const status={...lease,root,phase:'restarting',message:'The folder move is complete. Preparing and restarting application services.'};
   let released=false;
