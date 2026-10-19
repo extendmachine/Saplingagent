@@ -3,20 +3,18 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fork } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { KernelError, acquireKernelLock, isKernelPath } from '../contracts/kernel.mjs';
+import { KernelError, acquireKernelLock, isKernelPath } from './contracts/kernel.mjs';
 import { jsonWrite, safeFile } from './storage.mjs';
 export async function startMaintenance(root, action, id) {
   const jobId = randomUUID(), prefix = `.runtime/kernel/jobs/${jobId}`;
   const release = await acquireKernelLock(root, 'maintenance-handoff');
   let child;
   try {
-    for (const directory of ['kernel','contracts']) {
-      for (const file of await fs.readdir(path.join(root,directory))) {
-        if (!file.endsWith('.mjs') || !isKernelPath(`${directory}/${file}`)) continue;
-        const source = await safeFile(root,`${directory}/${file}`);
-        const target = await safeFile(root,`${prefix}/runner/${directory}/${file}`,{internal:true});
-        await fs.mkdir(path.dirname(target),{recursive:true}); await fs.copyFile(source,target);
-      }
+    const sources=['kernel/worker.mjs','kernel/manager.mjs','kernel/storage.mjs','kernel/recover.mjs','kernel/install-dependencies.mjs','kernel/contracts/kernel.mjs','kernel/contracts/local-process.mjs','kernel/contracts/engine-dependencies.mjs','kernel/compat/paths.mjs'];
+    for (const file of sources) {
+      const source=await safeFile(root,file);
+      const target=await safeFile(root,`${prefix}/runner/${file}`,{internal:true});
+      await fs.mkdir(path.dirname(target),{recursive:true});await fs.copyFile(source,target);
     }
     await jsonWrite(root, '.runtime/kernel/active-job.json', {jobId,pid:process.pid,phase:'handoff',createdAt:new Date().toISOString()});
     const logDirectory = path.join(root,'logs/kernel-manager'); await fs.mkdir(logDirectory,{recursive:true});

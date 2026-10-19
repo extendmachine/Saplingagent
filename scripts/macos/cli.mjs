@@ -1,2 +1,2 @@
-// Compatibility entry; Mac and Windows use the same installer/AI configuration.
-import '../launcher/cli.mjs';
+// Compatibility command; implementation is under kernel/.
+import "../../kernel/scripts/macos/cli.mjs";

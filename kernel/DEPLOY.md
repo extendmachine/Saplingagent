@@ -34,3 +34,32 @@ Kernel0.92/schema3 adds the project-local compiler and setup management. Native 
 The first0.9.3 release introduced contracts/project-launcher.mjs outside the singleton paths recognized by0.9.2/schema3. The corrected release places its public facade at kernel/launcher/public.mjs, inside the previously recognized kernel prefix. Once that fix is promoted to release, an unchanged0.9.2 updater can check/stage/apply it normally; do not edit the old validator, disable checks, overwrite app/data or regenerate the customer's baseline. Stop the app before the explicit CLI apply, review conflicts, then repair kernel dependencies. A kernel-only update preserves config/release.json, so an existing product0.9.2 may correctly report Kernel0.92 after upgrade.
 
 Original0.9.3 installations can update with their original validator. Their older copied .runtime/kernel/recover.mjs did not recognize the old facade path; if that helper rejects the resulting backup entry, use the corrected installed kernel/recover.mjs explicitly instead. Preserve the backup; do not remove its entry or bypass recovery validation.
+
+## Contained platform implementation (2026-10-19)
+
+All kernel implementations, default device settings, internal commands, service contracts,
+engine adapters, native launcher sources and the complete setup website live in `kernel/`.
+The setup React source is `kernel/ui/setup/`; its generated assets are
+`kernel/.cache/setup/`. Runtime management and AI configuration live in
+`kernel/services/`, provider adapters in `kernel/engines/`, and installation/build
+commands in `kernel/scripts/`. `kernel/config/` contains device defaults; customer
+configuration remains under root `config/` and credentials under `local-secrets/`.
+
+Ordinary application development should change `front/`, `backend/`, application
+contracts and `config/services.json`, using public kernel interfaces. Do not edit
+kernel internals to add a business feature. Explicit platform-maintenance requests
+can still modify the kernel with current-user Full Access: this is organization and
+update guidance, not a permission restriction or path lock.
+
+The public root Bash entries and a finite set of old import/command paths remain
+small forwarding adapters and two Node-version metadata files for existing native launchers only. They contain no platform implementation or setup
+page. `kernel/compat/paths.mjs` enumerates these compatibility entries, necessary so
+existing applications and the shipped0.9.2 updater keep working. New code uses
+canonical kernel paths. The schema3 manifest adds `layoutVersion:1`, restricts
+current ownership to `kernel/` plus those entries, and keeps historical validation
+for deliberate migration/recovery. Unmodified old schema3 installations can migrate;
+local core edits still cause conflicts and need a deliberate merge. Never regenerate
+a customer's baseline to hide them. A contained install cannot update back to the
+old distributed layout; restoring an explicit backup remains available.
+
+For maintainer publication only, regenerate/check kernel/manifest.json after all source changes. Old customer core customizations must be reviewed before apply; relocation never authorizes overwriting them.

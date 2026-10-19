@@ -8,13 +8,13 @@ import { promisify } from 'node:util';
 import { createHash, randomUUID } from 'node:crypto';
 import { startMaintenance } from '../handoff.mjs';
 import { prepareKernel } from '../manager.mjs';
-import { acquireKernelLock } from '../../contracts/kernel.mjs';
+import { acquireKernelLock } from '../contracts/kernel.mjs';
 const exec=promisify(execFile),project=fileURLToPath(new URL('../../',import.meta.url));
 const hash=x=>createHash('sha256').update(x).digest('hex');
 async function write(root,file,value){await fs.mkdir(path.dirname(path.join(root,file)),{recursive:true});await fs.writeFile(path.join(root,file),value);}
 async function fixture(t,{failure=false}={}){
  const parent=path.join(project,'.cache/maintenance-tests');await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,'app-'));
- for(const directory of ['kernel','contracts'])for(const name of await fs.readdir(path.join(project,directory)))if(name.endsWith('.mjs'))await write(root,`${directory}/${name}`,await fs.readFile(path.join(project,directory,name)));
+ for(const directory of ['kernel','kernel/contracts','kernel/compat','contracts'])for(const name of await fs.readdir(path.join(project,directory)))if(name.endsWith('.mjs'))await write(root,`${directory}/${name}`,await fs.readFile(path.join(project,directory,name)));
  const helper="import fs from 'node:fs/promises';import path from 'node:path';await fs.writeFile(path.join(process.argv[2],'core-repaired'),'yes');";
  await write(root,'kernel/install-dependencies.mjs',helper);
  const dev=`import http from 'node:http';import fs from 'node:fs/promises';import {randomUUID} from 'node:crypto';const instanceId=randomUUID();const s=http.createServer((req,res)=>{res.setHeader('content-type','application/json');res.end(JSON.stringify({instanceId,phase:'${failure?'failed':'ready'}',busy:false}))});await new Promise(r=>s.listen(0,'127.0.0.1',r));await fs.writeFile('.runtime/runtime-address.json',JSON.stringify({pid:process.pid,instanceId,url:'http://127.0.0.1:'+s.address().port+'/'}));process.on('SIGTERM',()=>s.close(()=>process.exit(0)));`;
@@ -66,8 +66,8 @@ test('unknown or stale plans are refused before runtime draining',async()=>{
 
 test('real HTTP202 handoff closes the controller and independent progress reaches new app',async t=>{
  const f=await fixture(t);
- for(const name of ['manager.mjs','services.mjs','ports.mjs','server.mjs','gateway.mjs'])await write(f.root,'backend/runtime-manager/'+name,await fs.readFile(path.join(project,'backend/runtime-manager',name)));
- const controller=`import fs from 'node:fs/promises';import http from 'node:http';import {randomUUID} from 'node:crypto';import {RuntimeManager} from './backend/runtime-manager/manager.mjs';import {createGateway} from './backend/runtime-manager/gateway.mjs';
+ for(const name of ['manager.mjs','services.mjs','ports.mjs','server.mjs','gateway.mjs'])await write(f.root,'kernel/services/runtime-manager/'+name,await fs.readFile(path.join(project,'kernel/services/runtime-manager',name)));
+ const controller=`import fs from 'node:fs/promises';import http from 'node:http';import {randomUUID} from 'node:crypto';import {RuntimeManager} from './kernel/services/runtime-manager/manager.mjs';import {createGateway} from './kernel/services/runtime-manager/gateway.mjs';
 const root=process.cwd(),instanceId=randomUUID();const manager=new RuntimeManager({root,token:'fixture-token',definitions:[],output:false});manager.instanceId=instanceId;manager.phase='ready';manager.config={frontPort:0,vitePort:1,agentPort:1};const options={manager,token:'fixture-token',frontPort:0,managerPort:1,onMaintenance:async()=>{await manager.close();server.closeAllConnections();await new Promise(r=>server.close(r));await fs.unlink('.runtime/runtime-address.json');process.exit(0)}};const server=createGateway(options);await new Promise(r=>server.listen(0,'127.0.0.1',r));options.frontPort=server.address().port;const url='http://127.0.0.1:'+options.frontPort+'/';await fs.writeFile('.runtime/runtime-address.json',JSON.stringify({pid:process.pid,instanceId,url}));process.send({url});`;
  await write(f.root,'controller.mjs',controller);
  const {fork}=await import('node:child_process');const child=fork(path.join(f.root,'controller.mjs'),[],{cwd:f.root,stdio:['ignore','ignore','pipe','ipc']});

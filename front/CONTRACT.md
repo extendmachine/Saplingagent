@@ -50,7 +50,7 @@ The version control is followed by a single Restart app button (frontend, backen
 
 ## Standalone AI setup and saved default (TASK-20261012-002)
 
-front/ai-config is an independent React/Vite entry served by backend/ai-config after installer choice Configure AI. Its protected local JSON interfaces, profile fields, login/model/close behavior are defined in backend/ai-config/CONTRACT.md. The standalone page follows launcher language or user toggle; no credentials in browser storage or response, no default chat controls added.
+front/ai-config is an independent React/Vite entry served by backend/ai-config after installer choice Configure AI. Its protected local JSON interfaces, profile fields, login/model/close behavior are defined in kernel/services/ai-config/CONTRACT.md. The standalone page follows launcher language or user toggle; no credentials in browser storage or response, no default chat controls added.
 
 Chat uses GET /api/engines.defaultSelection for a fresh/new conversation only. An explicitly chosen engine and restored session are preserved during polling; new conversation reloads the configured default. GET /api/status.codexReady, when present, gates Codex selection independently from aggregate OpenCode default readiness. Older servers without these optional fields keep prior behavior. No automatic prompt/session conversion. Reconfiguration requires a runtime restart to load provider changes.
 

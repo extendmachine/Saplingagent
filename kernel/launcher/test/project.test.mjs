@@ -9,7 +9,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { ProjectLauncher,saveProject,readProject,validateProjectName } from '../manager.mjs';
 import { publishArtifact,buildEnv } from '../build.mjs';
-import { createConfigurationServer } from '../../../backend/ai-config/server.mjs';
+import { createConfigurationServer } from '../../services/ai-config/server.mjs';
 const project=fileURLToPath(new URL('../../../',import.meta.url));
 const exec=promisify(execFile);
 async function fixture(t){const parent=path.join(project,'.cache/launcher-tests');await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,'app-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));return root;}

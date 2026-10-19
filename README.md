@@ -23,7 +23,7 @@
 
 <p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 & ARM64 · Source available for noncommercial use</sub></p>
 
-**Saplingagent 0.9.3 · Kernel 0.92.** Install the local kernel, configure your project and AI in the browser, then compile a small native launcher on your own device. See [project setup and local compilation](docs/project-launcher.html).
+**Saplingagent 0.9.4 · Kernel 0.92 · Contained kernel layout.** Use the release-branch download or one-line installer below for this source version. See [project setup and local compilation](docs/project-launcher.html).
 
 <a id="demo"></a>
 
@@ -148,7 +148,7 @@ Keep the complete folder. Source, local runtimes, compiler and data remain insid
 
 Explicit fallback commands remain: `bash Saplingagent.sh configure --no-open`, `install --repair`, `start`, `doctor`, and `kernel`. `SAPLING_LEGACY_MENU=1 bash Saplingagent.sh` opens the previous terminal menu. Script installation opens web setup; it does not initialize or erase customer Git.
 
-Installation supports macOS 13.5+ on Apple Silicon or Intel, downloads official Node **24.21.0**, checks its official SHA-256 checksum, and installs project-local Codex **0.146.1**, OpenCode, Claude Agent SDK **0.3.296** and locked dependencies. No preinstalled Node, npm, Homebrew or Codex desktop app is required. Git is required for local version history; on Mac, install Apple Command Line Tools with `xcode-select --install` if Git is missing (full Xcode is unnecessary); Windows requires Git Bash and its bundled shell utilities. Windows10 must be version1809+; ARM64 and x64 are detected automatically. Internet access to official downloads, npm and your model provider is required. Versions are declared in [config/macos.json](config/macos.json) and dependency lockfiles.
+Installation supports macOS 13.5+ on Apple Silicon or Intel, downloads official Node **24.21.0**, checks its official SHA-256 checksum, and installs project-local Codex **0.146.1**, OpenCode, Claude Agent SDK **0.3.296** and locked dependencies. No preinstalled Node, npm, Homebrew or Codex desktop app is required. Git is required for local version history; on Mac, install Apple Command Line Tools with `xcode-select --install` if Git is missing (full Xcode is unnecessary); Windows requires Git Bash and its bundled shell utilities. Windows10 must be version1809+; ARM64 and x64 are detected automatically. Internet access to official downloads, npm and your model provider is required. Versions are declared in [kernel/config/macos.json](kernel/config/macos.json) and dependency lockfiles.
 
 Runtimes stay in `.runtime/`, dependencies in their modules' `node_modules/`, and npm cache in `.cache/npm/`. No sudo or global npm installation is needed. Keep the entire application folder; the single user-facing launcher uses its internal scripts and configuration.
 
@@ -163,7 +163,7 @@ Runtimes stay in `.runtime/`, dependencies in their modules' `node_modules/`, an
 
 Scheme metadata stays in `local-secrets/ai-config/connections.json`, API keys in `local-secrets/api-keys/`, and Codex sign-in credentials in `local-secrets/codex/`. The credential ledger stores file references. The page never reads saved keys back into fields; leave a key blank when editing to retain it. No global credentials are imported. OpenCode's legacy native provider selector remains available as an explicit recovery command and stores its credentials in `local-secrets/opencode/`.
 
-Startup uses the saved default scheme. **An OpenCode-only or custom Codex API scheme does not require ChatGPT login.** Reconfigure while an app is running, then restart and start a new conversation to apply the choice. Existing conversations retain their engine/model; do not resume a Codex thread through a different provider. See [AI configuration guide](docs/ai-configuration.html) and [configuration service contract](backend/ai-config/CONTRACT.md).
+Startup uses the saved default scheme. **An OpenCode-only or custom Codex API scheme does not require ChatGPT login.** Reconfigure while an app is running, then restart and start a new conversation to apply the choice. Existing conversations retain their engine/model; do not resume a Codex thread through a different provider. See [AI configuration guide](docs/ai-configuration.html) and [configuration service contract](kernel/services/ai-config/CONTRACT.md).
 
 Startup opens the **actual address printed in the terminal** after local readiness checks. Port5173 is the default starting point; occupied public/internal ports are skipped upward. Send a message to verify an actual response. Installation and saved login do not prove model access or available quota.
 
@@ -194,7 +194,7 @@ Product0.9.3 downloads the release snapshot without `.git`. Installation does no
 
 Open **Kernel → Check for kernel update → Upgrade kernel & restart**. Review the verified release SHA, paths and conflicts, then accept the compatibility warning. A copied temporary progress process stops owned services, backs up/applies core, repairs its own dependencies and restarts the complete application at its actual selected port. App/chat pages, MCP, Skills, demos, business code, application dependency manifests, configuration, data and customer Git are retained. Restart app/backend remains available without an upgrade. Recovery is explicit; no automatic rollback. Direct control: `/__saplingagent/kernel`.
 
-This release-branch source declares product **0.9.3**, with independent kernel **0.92 / schema3**. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.3 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
+This source distribution declares product **0.9.4**, with independent kernel **0.92 / schema3**. Release promotion is separate from main development; inspect the committed release metadata before downloading. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
 
 ## Import existing local credentials
 
@@ -247,8 +247,8 @@ flowchart LR
     Codex --> Skills[Project Skills and rules]
 ```
 
-1. [scripts/macos/codex.sh](scripts/macos/codex.sh) selects project-local Node and Codex, sets project `CODEX_HOME`, and uses file credential storage.
-2. [backend/agent-runtime/rpc.mjs](backend/agent-runtime/rpc.mjs) launches `codex app-server --listen stdio://` and exchanges newline-delimited JSON through stdin/stdout.
+1. [kernel/scripts/macos/codex.sh](kernel/scripts/macos/codex.sh) selects project-local Node and Codex, sets project `CODEX_HOME`, and uses file credential storage.
+2. [kernel/engines/rpc.mjs](kernel/engines/rpc.mjs) launches `codex app-server --listen stdio://` and exchanges newline-delimited JSON through stdin/stdout.
 3. [server.mjs](backend/agent-runtime/server.mjs) sends `initialize`, then `initialized`; checks `account/read` and `model/list`; creates/resumes threads; starts turns; and forwards incremental text/tool events to the browser through SSE.
 4. Startup arguments configure `mcp_servers.seedagent` to launch [the project MCP server](backend/mcp-runtime/server.mjs) with local service endpoints. It exposes **15 tools** for project context, files, commands, change records, preferences and Skills.
 5. Codex discovers `seed-page-edit`, `seed-research` and `seed-skill-author` under [.agents/skills/](.agents/skills/). The AI enters project rules through `AGENTS.md → rules/README.md`.
@@ -258,9 +258,9 @@ The integration does not replace global Codex configuration. Existing `seedagent
 For protocol debugging after installation:
 
 ```bash
-bash scripts/macos/codex.sh --version
-bash scripts/macos/codex.sh login status
-bash scripts/macos/codex.sh app-server --listen stdio://
+bash kernel/scripts/macos/codex.sh --version
+bash kernel/scripts/macos/codex.sh login status
+bash kernel/scripts/macos/codex.sh app-server --listen stdio://
 ```
 
 The last command waits for JSON-RPC input. Send the first line, wait for its successful response, then send the remaining lines:
@@ -370,10 +370,10 @@ New users install `release`; it can lag behind `main`. Shared work lands on `mai
 To prepare a clean source ZIP from a committed revision, use the installed project Node:
 
 ```bash
-SEED_NODE_VERSION="$(/usr/bin/plutil -extract nodeVersion raw -o - config/macos.json)"
+SEED_NODE_VERSION="$(/usr/bin/plutil -extract nodeVersion raw -o - kernel/config/macos.json)"
 SEED_ARCH="$(/usr/bin/uname -m)"
 if [ "$SEED_ARCH" = "x86_64" ]; then SEED_ARCH=x64; fi
-".runtime/node-v${SEED_NODE_VERSION}-darwin-${SEED_ARCH}/bin/node" scripts/package-macos.mjs release
+".runtime/node-v${SEED_NODE_VERSION}-darwin-${SEED_ARCH}/bin/node" kernel/scripts/package-macos.mjs release
 ```
 
 The package and `.sha256` file are written to `.cache/releases/`. It contains committed source, complete rules/Skills, license notices, pinned lockfiles and a per-file SHA-256 manifest in `delivery.json`. Recipient task/goal files are initialized without inheriting developer approvals. It excludes credentials, conversations, logs, snapshots, dependency directories and installed runtimes.
@@ -406,13 +406,13 @@ The user's project rules ship under `rules/`. Translating their prose does not r
 
 Run `bash Saplingagent.sh --lang zh` in Git Bash. The script opens bilingual project/AI setup, followed by local launcher compilation. The legacy terminal menu is available with `SAPLING_LEGACY_MENU=1`. Explicit actions/flags are identical to Mac: `install --repair`, `configure --no-open`, `login --device-auth`, `opencode`, `start --no-open`, `doctor`, `logout`. See [Windows guide](docs/windows-install.html) / [中文 Windows 说明](docs/windows-install.zh.html).
 
-Windows system detection/download/extraction uses its built-in PowerShell internally, embedded in scripts/windows/bootstrap.sh; there is no separate .ps1 file or user PowerShell command. UTF16 encoded command arguments preserve Unicode paths and leave stdin available for provider authentication. Windows menu actions run in the foreground. Diagnostics/web configuration use PowerShell directly; Git Bash's winpty is used when available for interactive install/Git setup/login/OpenCode/start console compatibility. Windows terminal shutdown/model interactions still require native-system testing. No WSL, global Node/Codex, registry/global PATH/permanent execution-policy modification is required.
+Windows system detection/download/extraction uses its built-in PowerShell internally, embedded in kernel/scripts/windows/bootstrap.sh; there is no separate .ps1 file or user PowerShell command. UTF16 encoded command arguments preserve Unicode paths and leave stdin available for provider authentication. Windows menu actions run in the foreground. Diagnostics/web configuration use PowerShell directly; Git Bash's winpty is used when available for interactive install/Git setup/login/OpenCode/start console compatibility. Windows terminal shutdown/model interactions still require native-system testing. No WSL, global Node/Codex, registry/global PATH/permanent execution-policy modification is required.
 
 The App Server is a project-owned native stdio subprocess. Credentials and agent state remain in local-secrets/codex/, local-secrets/opencode/, local-secrets/claude/ and shared local-secrets/api-keys/; dependencies/cache/state stay in the folder. The UI remains English; menu language does not change conversation data. Full Access remains current-user access. Git is required to supply Bash on Windows; fresh snapshots have no Git metadata or storage selection. Existing customer Git is preserved.
 
 Restart app uses the existing persistent gateway and owned live PID-tree shutdown. Finish work before restarting. Forced parent/window termination, power loss and separately detached programs cannot guarantee cleanup; active command side effects are not undone. Ports/manager/launcher changes require normal stop and reopening the same Bash entry. No process-name/port kill, root elevation, automatic rollback or prompt resend is added.
 
-To create a committed clean Windows source ZIP, use `<project-node> scripts/package-windows.mjs release .cache/releases`. Both platform packages include the one executable Saplingagent.sh, all companion sources/helpers/rules, fresh recipient records and per-file/ZIP hashes, excluding credentials/data/logs/dependencies/Git. Copy the complete folder, not just one script. Remove stale installation locks only after confirming the installer has stopped.
+To create a committed clean Windows source ZIP, use `<project-node> kernel/scripts/package-windows.mjs release .cache/releases`. Both platform packages include the one executable Saplingagent.sh, all companion sources/helpers/rules, fresh recipient records and per-file/ZIP hashes, excluding credentials/data/logs/dependencies/Git. Copy the complete folder, not just one script. Remove stale installation locks only after confirming the installer has stopped.
 
 ## Automatic device selection
 
@@ -431,6 +431,10 @@ Use the paperclip, drop files into AI chat or paste an image. Attachments stay i
 
 ## Release identity
 
-This release-branch source declares **Saplingagent 0.9.3** (`config/release.json`). The footer and Bash menu display this release separately from **Kernel 0.92**; the default page has no Workspace Git control. Missing release metadata is shown as unavailable. A local Git reset does not erase product identity. Kernel-only updates preserve the complete distribution version.
+This release-branch source declares **Saplingagent 0.9.4** (`config/release.json`). The footer and Bash menu display this release separately from **Kernel 0.92**; the default page has no Workspace Git control. Missing release metadata is shown as unavailable. A local Git reset does not erase product identity. Kernel-only updates preserve the complete distribution version.
 
-Downloadable source ZIPs record `releaseVersion` and the exact `sourceCommit` in `delivery.json`; their filenames contain both. The release branch now contains0.9.3. Existing GitHub Release/tag downloads remain separately versioned; this branch promotion does not move old tags or create a new GitHub Release. The one-command installer resolves the release branch. Any later GitHub Release publication must align its tag, release page and download receipts with the checked source. Do not increment that version without the owner’s instruction. See the [release checklist](docs/release-checklist.html) for code-first verification and the [published releases](https://github.com/extendmachine/Saplingagent/releases) for the actual publication status. Source tags, published Releases and real-device/model acceptance are separate facts.
+Downloadable source ZIPs record `releaseVersion` and the exact `sourceCommit` in `delivery.json`; their filenames contain both. For **0.9.4**, use the `release` branch source or one-line installer above. GitHub Releases entries/assets are separate and can still refer to older versions. This branch promotion preserves existing tags and does not publish new GitHub Release assets; a future formal publication must align its tag, page and receipts with the checked source. Do not increment that version without the owner’s instruction. See the [release checklist](docs/release-checklist.html) for code-first verification and the [published releases](https://github.com/extendmachine/Saplingagent/releases) for the actual publication status. Source tags, published Releases and real-device/model acceptance are separate facts.
+
+### Kernel source boundary
+
+All platform implementations, AI setup website, engine adapters, runtime manager, device defaults and installer/build helpers are contained in `kernel/`. Setup source: `kernel/ui/setup/`; generated setup assets: `kernel/.cache/setup/`. Application pages/services/MCP/Skills remain outside and are freely editable. Add business services through `config/services.json`. Small root and legacy-path adapters (including two Node-version JSON files for existing native launchers) only forward into the kernel to keep existing installations compatible; they contain no implementation. See [kernel boundary](kernel/CONTRACT.md#contained-platform-implementation-2026-10-19). Explicit kernel maintenance remains possible under Full Access. Relocation preserves conflict detection for locally edited old kernel files.

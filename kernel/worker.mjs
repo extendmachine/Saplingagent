@@ -7,7 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { applyKernel } from './manager.mjs';
 import { restoreKernel } from './recover.mjs';
 import { jsonWrite, validId, record } from './storage.mjs';
-import { terminateOwned } from '../contracts/local-process.mjs';
+import { terminateOwned } from './contracts/local-process.mjs';
 const [root,jobId,action,id]=process.argv.slice(2);
 if(!validId(jobId)||!validId(id)||!['apply','restore'].includes(action))throw Error('Invalid maintenance request.');
 const prefix=`.runtime/kernel/jobs/${jobId}`, state={jobId,phase:'waiting',message:'Waiting for the application to stop.',backupId:action==='restore'?id:null,url:null};

@@ -1,2 +1,2 @@
-// Shared stdio transport; retain the existing Agent import for compatibility.
-export { AppServer } from '../../contracts/codex-rpc.mjs';
+// Public compatibility bridge; implementation is under kernel/.
+export * from "../../kernel/engines/rpc.mjs";

@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
-import { KernelError, isKernelPath, KERNEL_MANIFEST, assertKernelOffline } from "../contracts/kernel.mjs";
+import { KernelError, isKernelPath, KERNEL_MANIFEST, assertKernelOffline } from "./contracts/kernel.mjs";
 export const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 export const validId = (id) => typeof id === "string" && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(id);
 export async function safeFile(root, file, { internal = false } = {}) {

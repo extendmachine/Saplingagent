@@ -104,3 +104,30 @@ Kernel0.91/schema3 owns install/update, complete restart, AI configuration/engin
 The page offers Check for kernel update and Upgrade kernel & restart. Resolve official release to an immutable commit, stage and verify owned bytes, review conflicts, drain app tasks, copy a temporary maintenance worker, stop owned app processes, back up/apply only core, repair only core dependencies and restart all application services. The worker survives controller shutdown and shows actual progress/failures, manual source restore and retry. It returns to the selected live port after verified readiness; source success does not imply model/account readiness. No automatic rollback or Git merge. Application frontend and dependency manifests are preserved.
 
 Schema3 deliberately refuses older broad/schema2 baselines, plans and backup manifests; old updaters also reject3 before interpreting released files as deletions. Existing0.9.1 prototype installations require a deliberate complete-tooling transition in a new folder or manual reconciliation preserving application/data. Never regenerate a customer baseline to hide core edits. Product release metadata is distinct from independent installed kernel version.
+
+## Contained platform implementation (2026-10-19)
+
+All kernel implementations, default device settings, internal commands, service contracts,
+engine adapters, native launcher sources and the complete setup website live in `kernel/`.
+The setup React source is `kernel/ui/setup/`; its generated assets are
+`kernel/.cache/setup/`. Runtime management and AI configuration live in
+`kernel/services/`, provider adapters in `kernel/engines/`, and installation/build
+commands in `kernel/scripts/`. `kernel/config/` contains device defaults; customer
+configuration remains under root `config/` and credentials under `local-secrets/`.
+
+Ordinary application development should change `front/`, `backend/`, application
+contracts and `config/services.json`, using public kernel interfaces. Do not edit
+kernel internals to add a business feature. Explicit platform-maintenance requests
+can still modify the kernel with current-user Full Access: this is organization and
+update guidance, not a permission restriction or path lock.
+
+The public root Bash entries and a finite set of old import/command paths remain
+small forwarding adapters and two Node-version metadata files for existing native launchers only. They contain no platform implementation or setup
+page. `kernel/compat/paths.mjs` enumerates these compatibility entries, necessary so
+existing applications and the shipped0.9.2 updater keep working. New code uses
+canonical kernel paths. The schema3 manifest adds `layoutVersion:1`, restricts
+current ownership to `kernel/` plus those entries, and keeps historical validation
+for deliberate migration/recovery. Unmodified old schema3 installations can migrate;
+local core edits still cause conflicts and need a deliberate merge. Never regenerate
+a customer's baseline to hide them. A contained install cannot update back to the
+old distributed layout; restoring an explicit backup remains available.

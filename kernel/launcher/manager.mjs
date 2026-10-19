@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
-import { codexBinary } from "../../contracts/local-process.mjs";
+import { codexBinary } from "../contracts/local-process.mjs";
 import {
   exists,
   json,
@@ -375,7 +375,7 @@ export class ProjectLauncher {
         this.root,
         nodeForRoot(this.root),
         [
-          path.join(this.root, "scripts/launcher/cli.mjs"),
+          path.join(this.root, "kernel/scripts/launcher/cli.mjs"),
           "install",
           "--app-only",
         ],
@@ -428,7 +428,7 @@ export class ProjectLauncher {
               SEED_CODEX_BIN:
                 process.platform === "win32"
                   ? codexBinary(this.root)
-                  : path.join(this.root, "scripts/macos/codex.sh"),
+                  : path.join(this.root, "kernel/scripts/macos/codex.sh"),
             },
             stdio: ["ignore", handle.fd, handle.fd],
             detached: process.platform !== "win32",

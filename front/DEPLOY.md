@@ -48,7 +48,7 @@ After choosing a branch or historical version in Versions, click **Restart app**
 
 ## Independent AI configuration entry
 
-After installation run `bash Saplingagent.sh configure` from the root. The launcher builds front/ai-config/vite.config.mjs with existing locked frontend dependencies to .cache/ai-config-ui, then the separate configuration service serves it before chat starts. No main Vite proxy or current Agent dependency. English/Chinese controls follow the launcher. Finish setup stops only setup and returns to the launcher; restart an already-running chat and create a new conversation to apply saved engine/provider changes. API keys never enter browser storage or public build variables. Real account sign-in and native Windows browser acceptance remain pending.
+After installation run `bash Saplingagent.sh configure` from the root. The launcher builds kernel/ui/setup/vite.config.mjs with existing locked frontend dependencies to kernel/.cache/setup, then the separate configuration service serves it before chat starts. No main Vite proxy or current Agent dependency. English/Chinese controls follow the launcher. Finish setup stops only setup and returns to the launcher; restart an already-running chat and create a new conversation to apply saved engine/provider changes. API keys never enter browser storage or public build variables. Real account sign-in and native Windows browser acceptance remain pending.
 
 ## Claude Agent delivery
 

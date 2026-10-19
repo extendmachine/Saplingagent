@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { commandShell, terminateOwned } from '../../contracts/local-process.mjs';
+import { commandShell, terminateOwned } from '../../kernel/contracts/local-process.mjs';
 import { spawn } from 'node:child_process';
 
 export class BuilderError extends Error {

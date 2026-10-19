@@ -1,7 +1,7 @@
 // Public kernel HTTP contract; lifecycle owner supplies drain and shutdown hooks.
 import { kernelStatus, prepareKernel, kernelBackups, inspectKernelPlan } from './manager.mjs';
 import { startMaintenance } from './handoff.mjs';
-import { readReleaseMetadata } from '../contracts/release.mjs';
+import { readReleaseMetadata } from './contracts/release.mjs';
 import { validId } from './storage.mjs';
 export async function kernelRequest(req,res,{manager,onMaintenance},route,send){
  if(!route.startsWith('/api/runtime/kernel'))return false;

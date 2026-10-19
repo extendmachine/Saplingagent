@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID, randomBytes } from "node:crypto";
-import { createConfigurationServer } from "../../backend/ai-config/server.mjs";
+import { createConfigurationServer } from "../services/ai-config/server.mjs";
 import { ProjectLauncher, openExternal } from "./manager.mjs";
 import {
   json,

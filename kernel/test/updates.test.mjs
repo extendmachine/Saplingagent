@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { isKernelPath, validateKernelManifest, kernelStatus, acquireKernelLock } from "../../contracts/kernel.mjs";
+import { isKernelPath, validateKernelManifest, kernelStatus, acquireKernelLock } from "../contracts/kernel.mjs";
 import { prepareKernel, applyKernel, githubSource } from "../manager.mjs";
 import { restoreKernel } from "../recover.mjs";
 const exec = promisify(execFile), sha = (bytes) => createHash("sha256").update(bytes).digest("hex"), commit = "a".repeat(40);
