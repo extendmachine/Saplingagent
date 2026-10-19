@@ -9,9 +9,9 @@ import { AccountSetup } from './auth.mjs';
 import { CredentialImport } from './credentials.mjs';
 import { ProjectLauncher, prepareSetupUI } from '../../launcher/public.mjs';
 const defaultRoot=fileURLToPath(new URL('../../../',import.meta.url));
-export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRoot,assets=path.join(root,'kernel/.cache/setup'),language='en',authOptions={},importOptions={},onClose,token:providedToken,projectController,onProjectRename,instanceId}={}){
+export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRoot,assets=path.join(root,'kernel/.cache/setup'),language='en',authOptions={},importOptions={},onClose,token:providedToken,projectController,onProjectRename,instanceId,beforeClose}={}){
   root=path.resolve(root);
-  const store=new ConfigurationStore(root),auth=new AccountSetup(root,store,authOptions),imports=new CredentialImport(store,importOptions);const token=providedToken||randomBytes(32).toString('hex');let closing=false,shutdown,directoryOperation=false,finalizing=false,activeAIRequests=0;const project=projectController||new ProjectLauncher(root);
+  let store=new ConfigurationStore(root),auth=new AccountSetup(root,store,authOptions),imports=new CredentialImport(store,importOptions);const token=providedToken||randomBytes(32).toString('hex');let closing=false,shutdown,directoryOperation=false,finalizing=false,activeAIRequests=0;const project=projectController||new ProjectLauncher(root);
   const aiRoutes=new Set(['profiles','activate','models','login','credentials/import']);
   const pendingLogin=()=>['starting','pending','completing'].includes(auth.login.phase);
   const settingsSaved=async()=>{const state=await project.state();return state.settingsSaved===true;};
@@ -29,7 +29,7 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
       if(url.pathname.startsWith('/api/')){
         const supplied=Buffer.from(String(req.headers['x-sapling-config']||''));const expected=Buffer.from(token);
         if(supplied.length!==expected.length||!timingSafeEqual(supplied,expected))throw failure('UNAUTHORIZED','Reload the local configuration page.',401);
-        if(closing||finalizing)throw failure('CLOSING','Configuration is restarting. Wait for the new setup page.',503);
+        if(closing||finalizing)throw failure('CLOSING','Configuration is closing or restarting. Wait for the operation to finish.',503);
         if(req.method==='GET'&&['/api/config/state','/api/config/project'].includes(url.pathname)&&directoryOperation)throw failure('PROJECT_BUSY','Wait for project directory confirmation to finish.',409);
         if(req.method==='GET'&&url.pathname==='/api/config/state'){const login=auth.snapshot();return send(res,200,{...await store.state(),login});}
         if(req.method==='GET'&&url.pathname==='/api/config/project')return send(res,200,await project.state());
@@ -46,17 +46,18 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
         if(url.pathname.startsWith('/api/config/project/')){
           if(pendingLogin()||imports.busy)throw failure('LOGIN_BUSY','Finish account configuration before project operations.',409);
           const route=url.pathname.slice('/api/config/project/'.length);
-          if(route==='rename')throw failure('PROJECT_FINALIZATION_REQUIRED','Save project settings, then choose Save settings & restart. The live configuration process cannot rename its own folder.',409);
+          if(route==='rename')throw failure('PROJECT_FINALIZATION_REQUIRED',project.configurationHost==='external'?'Save project settings, then choose Save & build app to apply the folder name.':'Save project settings, then choose Save settings & restart. The live configuration process cannot rename its own folder.',409);
           if(['save','prepare','finalize'].includes(route)){
             if(activeAIRequests)throw failure('PROJECT_BUSY','Wait for AI configuration requests before saving or restarting.',409);
             directoryOperation=true;
             try{
               await auth.close();
               if(route!=='finalize')return send(res,200,{project:await project.stageSetup(body),root:project.root,renamed:false});
-              if(Object.keys(body).length)throw failure('INVALID_CONFIG','Restart uses the saved settings and accepts an empty object only.');
-              if(!await settingsSaved())throw failure('PROJECT_SETTINGS_REQUIRED','Save project settings before restarting.',409);
-              if(!(await store.state()).activeId)throw failure('AI_NOT_CONFIGURED','Save and select an AI connection before restarting.',409);
+              if(Object.keys(body).length)throw failure('INVALID_CONFIG','Finalization uses the saved settings and accepts an empty object only.');
+              if(!await settingsSaved())throw failure('PROJECT_SETTINGS_REQUIRED','Save project settings before finalizing setup.',409);
+              if(!(await store.state()).activeId)throw failure('AI_NOT_CONFIGURED','Save and select an AI connection before finalizing setup.',409);
               const result=await project.finalizeSetup({management:{pid:process.pid,instanceId,port:address.port},language});
+              if(project.configurationHost==='external')return send(res,202,{job:result});
               const finalization={...Object.fromEntries(['id','phase','targetRoot','previousRoot','readyUrl'].filter(key=>result[key]!==undefined).map(key=>[key,result[key]])),managementPort:address.port};
               finalizing=true;
               send(res,202,{finalization});
@@ -68,7 +69,8 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
             if(activeAIRequests)throw failure('PROJECT_BUSY','Wait for AI configuration requests before exporting.',409);
             directoryOperation=true;
             try{
-              if((await project.state()).exportReady!==true)throw failure('PROJECT_RESTART_REQUIRED','Save settings and wait for the completed restart before exporting your app.',409);
+              await auth.close();
+              if(project.configurationHost!=='external'&&(await project.state()).exportReady!==true)throw failure('PROJECT_RESTART_REQUIRED','Save settings and wait for the completed restart before exporting your app.',409);
               if(!(await store.state()).activeId)throw failure('AI_NOT_CONFIGURED','Save and select an AI connection before exporting.',409);
               return send(res,202,{job:await project.build()});
             }finally{directoryOperation=false;}
@@ -96,7 +98,7 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
         }
         if(url.pathname==='/api/config/login/cancel'){activeAIRequests++;try{return send(res,200,{login:await auth.cancel()});}finally{activeAIRequests--;}}
         if(url.pathname==='/api/config/close'&&(project.busy||activeAIRequests))throw failure('PROJECT_BUSY','Wait for project and AI configuration operations before closing setup.',409);
-        if(url.pathname==='/api/config/close'){send(res,200,{closed:true});setImmediate(()=>void server.shutdown());return;}
+        if(url.pathname==='/api/config/close'){closing=true;try{await auth.close();await prepareClose();}catch(error){closing=false;throw error;}send(res,200,{closed:true,...(project.configurationHost==='external'?{handoff:true}:{})});setImmediate(()=>void server.shutdown());return;}
         throw failure('NOT_FOUND','Configuration endpoint not found.',404);
       }
       if(req.method!=='GET')throw failure('NOT_FOUND','Page not found.',404);
@@ -119,8 +121,11 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
       res.writeHead(200,{...headers,'Content-Type':file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':file.endsWith('.html')?'text/html; charset=utf-8':'image/svg+xml'});res.end(content);
     }catch(error){if(!res.headersSent)send(res,error.status||500,{error:{code:error.code&&error.status?error.code:'CONFIG_STORAGE_ERROR',message:error.status?error.message:'Unable to read or save local configuration. Check the project files and reload.'}});else res.end();}
   });
+  let closePreparation;
+  const prepareClose=()=>closePreparation||(closePreparation=Promise.resolve().then(()=>beforeClose?.()).catch(error=>{closePreparation=null;throw error;}));
+  server.relocate=async current=>{await auth.close();root=path.resolve(current);store=new ConfigurationStore(root);auth=new AccountSetup(root,store,authOptions);imports=new CredentialImport(store,importOptions);server.configStore=store;server.accountSetup=auth;await onProjectRename?.();};
   server.requestTimeout=90000;server.headersTimeout=10000;
-  server.shutdown=()=>shutdown||=(async()=>{closing=true;if(!finalizing)await project.cancel();await auth.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await onClose?.();})();
+  server.shutdown=()=>shutdown||=(async()=>{closing=true;if(!finalizing)await project.cancel();await auth.close();await prepareClose();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await onClose?.();})().catch(error=>{shutdown=null;closing=false;throw error;});
   server.configStore=store;server.accountSetup=auth;server.projectLauncher=project;
   return server;
 }
@@ -130,8 +135,8 @@ async function openBrowser(url){
   await new Promise(resolve=>{const child=spawn(command,args,{stdio:'ignore',windowsHide:true});child.once('error',resolve);child.once('exit',resolve);});
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  await prepareSetupUI(path.resolve(process.env.SEED_ROOT||defaultRoot));
-  const server=createConfigurationServer({language:process.env.SAPLING_LANG,onClose:()=>process.exit(0)});
-  for(const signal of ['SIGINT','SIGTERM','SIGHUP'])process.on(signal,()=>void server.shutdown());
-  server.listen(0,'127.0.0.1',async()=>{const url=`http://127.0.0.1:${server.address().port}/`;console.log(process.env.SAPLING_LANG==='zh'?`AI 配置网页：${url}\n完成后点击“完成配置”，回到脚本启动应用。`:`AI configuration: ${url}\nChoose Finish setup to return to the launcher and start the app.`);if(!process.argv.includes('--no-open'))await openBrowser(url);});
+  const {openConfiguration}=await import('../../configuration/bootstrap.mjs');
+  const root=path.resolve(process.env.SEED_ROOT||defaultRoot);
+  const address=await openConfiguration(root,{noOpen:process.argv.includes('--no-open')||process.env.SAPLING_NO_OPEN==='1'});
+  console.log(`Project setup: http://127.0.0.1:${address.port}/`);
 }

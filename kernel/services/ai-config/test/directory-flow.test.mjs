@@ -10,7 +10,7 @@ const profile={label:'Synthetic endpoint',engine:'opencode',kind:'api',protocol:
 const credentials={tokens:{id_token:'synthetic-id',access_token:'synthetic-access',refresh_token:'synthetic-refresh'}};
 const settings={name:'After',folderName:'After',renameFolder:true};
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
-async function fixture(t,{stage,state,finalize,real=false}={}){
+async function fixture(t,{stage,state,finalize,beforeClose,real=false}={}){
  const parent=path.join(source,'.cache/setup-directory-tests');await fs.mkdir(parent,{recursive:true});
  const holder=await fs.mkdtemp(path.join(parent,'flow-')),root=path.join(holder,'Before');await fs.mkdir(root);
  t.after(()=>fs.rm(holder,{recursive:true,force:true}));
@@ -21,7 +21,7 @@ async function fixture(t,{stage,state,finalize,real=false}={}){
   async invalidateSetup(){this.invalidations++;this.ready=false;},
   async finalizeSetup(input){this.finalizeCalls++;if(finalize)return finalize.call(this,input);throw Error('Unexpected finalization');},async cancel(){},
  };
- const server=createConfigurationServer({root,assets,projectController:controller,instanceId:'synthetic-management'});
+ const server=createConfigurationServer({root,assets,projectController:controller,instanceId:'synthetic-management',beforeClose});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>server.shutdown());
  const base=`http://127.0.0.1:${server.address().port}`,html=await fetch(base).then(r=>r.text()),token=html.match(/content="([a-f0-9]+)"/)[1];
  const headers={Origin:base,'Content-Type':'application/json','X-Sapling-Config':token};
@@ -109,4 +109,17 @@ test('export reserves setup while the owned runtime stops and releases its reser
  const exporting=f.post('project/build');await entered.promise;
  for(const route of ['close','project/save','project/finalize','profiles'])assert.equal((await f.post(route,profile)).status,409,route);
  release.resolve();assert.equal((await exporting).status,409);assert.equal((await f.post('project/save',settings)).status,200);
+});
+
+
+test('external close reserves mutations until handoff and a failed handoff can be retried',async t=>{
+ const entered=deferred(),release=deferred();let attempts=0;
+ const f=await fixture(t,{async beforeClose(){attempts++;if(attempts===1){entered.resolve();await release.promise;throw Object.assign(Error('Synthetic return failure'),{code:'CONFIGURATION_RETURN_FAILED',status:409});}}});
+ f.controller.configurationHost='external';f.controller.saved=true;
+ const closing=f.post('close');await entered.promise;
+ assert.equal((await f.post('profiles',profile)).status,503);
+ assert.equal((await f.post('project/save',settings)).status,503);
+ release.resolve();assert.equal((await closing).status,409);
+ assert.equal((await f.post('profiles',profile)).status,200);
+ const retried=await f.post('close');assert.equal(retried.status,200);assert.deepEqual(await retried.json(),{closed:true,handoff:true});assert.equal(attempts,2);
 });

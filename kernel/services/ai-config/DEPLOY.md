@@ -26,3 +26,25 @@ Files are limited to32KiB (request64KiB), processed by the local setup service a
 
 
 Configuration UI recovery: Configure AI, the native launcher and offline restart verify/build the setup page automatically using project-local dependencies. Rebuilds use staging and retain the old page until a complete replacement is ready; old hashed resources remain available to already-open documents. A missing resource requests a page reload. If automatic preparation reports UI_BUILD_FAILED, run `bash Saplingagent.sh install --repair`, then `bash Saplingagent.sh configure`. UI_BUILD_INTERRUPTED requires inspecting the stopped builder before removing only kernel/.cache/setup-build.lock. Do not remove credentials or conversations to repair page assets.
+
+
+## External configuration capsule and thin app (TASK-20261019-031–034)
+
+This owner workflow supersedes the earlier Save settings & restart / later Export
+sequence. A configuration activation prepares kernel/.cache/configuration with a
+closed backend module graph and built frontend, copies it and Node outside the
+project, starts B and exits. B keeps the same local URL during saves, offline
+rename and native compilation. Settings and app output remain in the project;
+stores are rebound to its actual root. Save & build app closes owned auth and
+project processes, waits for release, moves without replacing a destination and
+compiles the small launcher. It does not install/build business pages at this step.
+Finish setup starts the project-local A, waits for takeover acknowledgement and
+exits. A waits for B exit and removes only its verified external capsule.
+
+Normal .app/.exe activation checks Node and declared dependencies, installs only
+missing/changed local groups and starts the application. It does not automatically
+open another configuration capsule. Native Windows uses the shared PowerShell
+bootstrap if Node is absent and does not need Git Bash for daily activation. A
+failed install does not claim application readiness. Retain the complete source
+folder. No global installation, model call, credential/Git rewrite or automatic
+rollback. See configuration/CONTRACT.md and launcher/DEPENDENCIES.md.

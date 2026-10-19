@@ -51,3 +51,21 @@ New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92�
 ## Static configuration errors (TASK-20261019-028)
 
 Management entry and direct service execution prepare and verify the configuration document/assets before listening. The test/embedding factory still accepts explicit assets without starting build tools. GET / returns UI_NOT_BUILT/503 only when index.html is absent. An absent allowed /assets/<name> returns UI_ASSET_NOT_FOUND/404 with reload/configure guidance, not a claim that the entire page is unbuilt. Other filesystem read failures return UI_UNREADABLE/500 with local-file recovery guidance. Responses remain no-store with existing security headers. No new authenticated API or credential operation.
+
+
+## External configuration host (TASK-20261019-034)
+
+Production Configure AI now runs from an independent copied capsule. GET project
+adds configurationHost:'external'. Save/prepare still save settings without moving.
+POST project/finalize {} returns202 {job} (kind configure), remains on the same
+server/token and polls GET project through rename and native launcher compilation.
+The server closes owned login and rebinds stores/credential imports to the actual
+root after relocation; assets stay in the external capsule. No model request.
+POST project/build is the same saved-settings rebuild operation for this host.
+POST close acknowledges cleanup A before returning {closed:true,handoff:true}; B
+then exits, and A waits before deleting the owned capsule. If takeover fails, the
+page remains available with CONFIGURATION_RETURN_FAILED. Same-origin/token gates
+remain. Legacy injected controllers retain the original handoff response for
+compatibility, but all production configuration entries route to external B.
+
+External configuration rejects project/open and project/restart with CONFIGURATION_FINISH_REQUIRED. Finish setup before opening the app so its dependency checks run. Project stop remains available. A failed cleanup handoff permits retry and never reports closed=true.

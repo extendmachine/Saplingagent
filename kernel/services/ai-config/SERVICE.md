@@ -15,3 +15,25 @@ credentials.mjs parses bounded, explicitly selected local/upload documents witho
 TASK-20261019-024 supersedes the earlier immediate-rename order: save identity/icon without moving, configure/save AI, then accept Save settings & restart. The service serializes auth/configuration and export preparation, delegates offline relocation through the launcher public contract and closes only after returning the accepted handoff. The short-lived external helper restarts the application and management at the actual root before export is enabled. Saved connection changes invalidate export readiness. Health exposes only root/instance and minimal job phase for token-safe reconnection. No new dependency or model call. Credentials, conversations and Full Access are retained. See CONTRACT.md and launcher/CONTRACT.md for error, lease and cleanup behavior.
 
 TASK-20261019-028 distinguishes missing configuration document (503), missing individual resource (404/reload) and unreadable assets (500). The launcher public preparation contract verifies/builds the page before production entry is published. Authentication and configuration data are unchanged.
+
+
+## External configuration capsule and thin app (TASK-20261019-031–034)
+
+This owner workflow supersedes the earlier Save settings & restart / later Export
+sequence. A configuration activation prepares kernel/.cache/configuration with a
+closed backend module graph and built frontend, copies it and Node outside the
+project, starts B and exits. B keeps the same local URL during saves, offline
+rename and native compilation. Settings and app output remain in the project;
+stores are rebound to its actual root. Save & build app closes owned auth and
+project processes, waits for release, moves without replacing a destination and
+compiles the small launcher. It does not install/build business pages at this step.
+Finish setup starts the project-local A, waits for takeover acknowledgement and
+exits. A waits for B exit and removes only its verified external capsule.
+
+Normal .app/.exe activation checks Node and declared dependencies, installs only
+missing/changed local groups and starts the application. It does not automatically
+open another configuration capsule. Native Windows uses the shared PowerShell
+bootstrap if Node is absent and does not need Git Bash for daily activation. A
+failed install does not claim application readiness. Retain the complete source
+folder. No global installation, model call, credential/Git rewrite or automatic
+rollback. See configuration/CONTRACT.md and launcher/DEPENDENCIES.md.
