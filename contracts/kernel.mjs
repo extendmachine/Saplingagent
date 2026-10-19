@@ -19,7 +19,7 @@ export const KERNEL_FILE_PATHS = [
 	"config/windows.json",
 	"contracts/kernel.mjs",
 	"contracts/release.mjs",
-	"contracts/project-launcher.mjs",
+	"contracts/project-launcher.mjs", // Historical0.92 baseline; new public entry lives under kernel/.
 	"contracts/local-process.mjs",
 	"contracts/runtime-drain.mjs",
 	"contracts/engine-dependencies.mjs",
