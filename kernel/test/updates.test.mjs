@@ -383,3 +383,20 @@ test("old broad backup entries and schema1 baseline restores cannot overwrite re
 	assert.equal(await fs.readFile(path.join(f.root, "kernel/manager.mjs"), "utf8"), "new manager");
 	for (const [name, value] of Object.entries(applicationFiles)) assert.equal(await fs.readFile(path.join(f.root, name), "utf8"), value);
 });
+
+test('explicit recovery restores the historical0.92 public facade after relocation',async t=>{
+ const {root,old,files,target,source}=await fixture(t);
+ const previous={...old,'contracts/project-launcher.mjs':'historical facade'};
+ await text(root,'contracts/project-launcher.mjs',previous['contracts/project-launcher.mjs']);
+ await text(root,'kernel/manifest.json',JSON.stringify(manifest(previous)));
+ files['kernel/launcher/public.mjs']='relocated public facade';
+ target.files=manifest(files,target.version).files;
+ const plan=await prepareKernel(root,{source});assert.deepEqual(plan.conflicts,[]);
+ assert.ok(plan.changes.some(file=>file.path==='contracts/project-launcher.mjs'&&file.afterHash===null));
+ const result=await applyKernel(root,plan.id,{acceptRisk:true});
+ await assert.rejects(fs.access(path.join(root,'contracts/project-launcher.mjs')));
+ await restoreKernel(root,result.backupId);
+ assert.equal(await fs.readFile(path.join(root,'contracts/project-launcher.mjs'),'utf8'),'historical facade');
+ await assert.rejects(fs.access(path.join(root,'kernel/launcher/public.mjs')));
+ await preserved(root);
+});

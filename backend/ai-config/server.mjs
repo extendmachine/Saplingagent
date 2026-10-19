@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process';
 import { ConfigurationStore,failure } from './store.mjs';
 import { AccountSetup } from './auth.mjs';
 import { CredentialImport } from './credentials.mjs';
-import { ProjectLauncher } from '../../contracts/project-launcher.mjs';
+import { ProjectLauncher } from '../../kernel/launcher/public.mjs';
 const defaultRoot=fileURLToPath(new URL('../../',import.meta.url));
 export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRoot,assets=path.join(root,'.cache/ai-config-ui'),language='en',authOptions={},importOptions={},onClose,token:providedToken,projectController,onProjectRename,instanceId}={}){
   let store=new ConfigurationStore(root),auth=new AccountSetup(root,store,authOptions),imports=new CredentialImport(store,importOptions);const token=providedToken||randomBytes(32).toString('hex');let closing=false,shutdown;const project=projectController||new ProjectLauncher(root);

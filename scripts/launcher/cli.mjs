@@ -170,7 +170,7 @@ async function configureAI(noOpen,launch=false) {
   await required(process.execPath,[path.join(root,'kernel/node_modules/vite/bin/vite.js'),'build','--config',path.join(root,'front/ai-config/vite.config.mjs')]);
   const setupEnv={...env};if(process.env.CODEX_HOME)setupEnv.CODEX_HOME=process.env.CODEX_HOME;else delete setupEnv.CODEX_HOME;
   if(!await exists(path.join(root,'kernel/launcher/entry.mjs'))){await required(process.execPath,[path.join(root,'backend/ai-config/server.mjs'),...(noOpen?['--no-open']:[])],{childEnv:setupEnv});return;}
-  const {managementFingerprint}=await import('../../contracts/project-launcher.mjs');const expectedFingerprint=await managementFingerprint(root);
+  const {managementFingerprint}=await import('../../kernel/launcher/public.mjs');const expectedFingerprint=await managementFingerprint(root);
   const dir=path.join(root,'logs/project-launcher');await fs.mkdir(dir,{recursive:true});
   const handle=await fs.open(path.join(dir,`project-launcher-${new Date().toISOString().slice(0,10)}.log`),'a');
   const child=spawn(process.execPath,[path.join(root,'kernel/launcher/entry.mjs'),...(noOpen?['--no-open']:[]),...(launch?['--launch']:[])],{cwd:path.dirname(root),env:setupEnv,detached:!windows,windowsHide:true,stdio:['ignore',handle.fd,handle.fd]});
@@ -180,7 +180,7 @@ async function configureAI(noOpen,launch=false) {
 }
 async function installKernelAndConfigure(repair=false){
  if(!await exists(path.join(root,'kernel/package.json')))return install(repair);
- const {ProjectLauncher}=await import('../../contracts/project-launcher.mjs');
+ const {ProjectLauncher}=await import('../../kernel/launcher/public.mjs');
  const runtime=await new ProjectLauncher(root).runtime();
  const signatureFile=path.join(root,'.runtime/core-install.json');
  const coreSignature=createHash('sha256').update(await fs.readFile(path.join(root,'kernel/package-lock.json'))).update(JSON.stringify(settings)).update(process.platform+process.arch).digest('hex');

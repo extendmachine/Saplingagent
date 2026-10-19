@@ -4,6 +4,6 @@ export {
   readProject,
   saveProject,
   validateProjectName,
-} from "../kernel/launcher/manager.mjs";
+} from "./manager.mjs";
 
-export { managementFingerprint } from "../kernel/launcher/io.mjs";
+export { managementFingerprint } from "./io.mjs";
