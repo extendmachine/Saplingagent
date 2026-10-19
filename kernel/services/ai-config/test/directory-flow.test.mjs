@@ -5,110 +5,108 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createConfigurationServer} from '../server.mjs';
 import {ProjectLauncher} from '../../../launcher/public.mjs';
-
 const source=fileURLToPath(new URL('../../../../',import.meta.url));
 const profile={label:'Synthetic endpoint',engine:'opencode',kind:'api',protocol:'chat',baseUrl:'https://provider.example/v1',model:'synthetic-model',apiKey:'synthetic-only-key'};
 const credentials={tokens:{id_token:'synthetic-id',access_token:'synthetic-access',refresh_token:'synthetic-refresh'}};
+const settings={name:'After',folderName:'After',renameFolder:true};
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
-async function fixture(t,{prepare,state,real=false}={}){
+async function fixture(t,{stage,state,finalize,real=false}={}){
  const parent=path.join(source,'.cache/setup-directory-tests');await fs.mkdir(parent,{recursive:true});
  const holder=await fs.mkdtemp(path.join(parent,'flow-')),root=path.join(holder,'Before');await fs.mkdir(root);
  t.after(()=>fs.rm(holder,{recursive:true,force:true}));
- const assets=path.join(root,'kernel/.cache/setup');await fs.mkdir(assets,{recursive:true});
- await fs.writeFile(path.join(assets,'index.html'),'<meta name="config-token" content="__SAPLING_CONFIG_TOKEN__">');
- const controller=real?new ProjectLauncher(root):{root,busy:false,ready:false,prepareCalls:0,renameCalls:0,
-  async state(){return state?state.call(this):{root:this.root,directoryReady:this.ready};},
-  async prepare(input){this.prepareCalls++;if(prepare)return prepare.call(this,input);this.ready=true;return {root:this.root,renamed:false,project:{name:input.name,folderName:input.folderName}};},
-  async rename(){this.renameCalls++;throw Error('Unexpected rename');},async cancel(){},
+ const assets=path.join(root,'kernel/.cache/setup');await fs.mkdir(assets,{recursive:true});await fs.writeFile(path.join(assets,'index.html'),'<meta name="config-token" content="__SAPLING_CONFIG_TOKEN__">');
+ const controller=real?new ProjectLauncher(root):{root,busy:false,saved:false,ready:false,stageCalls:0,finalizeCalls:0,invalidations:0,
+  async state(){return state?state.call(this):{root:this.root,settingsSaved:this.saved,exportReady:this.ready,finalization:this.finalization};},
+  async stageSetup(input){this.stageCalls++;if(stage)return stage.call(this,input);this.saved=true;this.ready=false;return {name:input.name,folderName:input.folderName};},
+  async invalidateSetup(){this.invalidations++;this.ready=false;},
+  async finalizeSetup(input){this.finalizeCalls++;if(finalize)return finalize.call(this,input);throw Error('Unexpected finalization');},async cancel(){},
  };
- const moves=[];const server=createConfigurationServer({root,assets,projectController:controller,onProjectRename:(before,after)=>moves.push({before,after})});
+ const server=createConfigurationServer({root,assets,projectController:controller,instanceId:'synthetic-management'});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>server.shutdown());
  const base=`http://127.0.0.1:${server.address().port}`,html=await fetch(base).then(r=>r.text()),token=html.match(/content="([a-f0-9]+)"/)[1];
  const headers={Origin:base,'Content-Type':'application/json','X-Sapling-Config':token};
  const post=(route,body={})=>fetch(base+'/api/config/'+route,{method:'POST',headers,body:JSON.stringify(body)});
  const get=route=>fetch(base+'/api/config/'+route,{headers:{'X-Sapling-Config':token}});
- return {root,holder,controller,server,base,post,get,moves};
+ return {root,holder,controller,server,base,post,get};
 }
-const preparation={name:'After',folderName:'After',renameFolder:true};
-
-test('AI actions and build require actual directory confirmation; closing never renames',async t=>{
+test('AI writes require saved settings; export requires a separately verified restart',async t=>{
  const f=await fixture(t);
- for(const [route,body] of [['profiles',profile],['activate',{id:'missing'}],['login',{mode:'chatgpt'}],['models',profile],['credentials/import',{engine:'codex',source:'upload',revision:0,json:JSON.stringify(credentials)}],['project/build',{}]]){
-  const r=await f.post(route,body);assert.equal(r.status,409,route);assert.equal((await r.json()).error.code,'PROJECT_DIRECTORY_REQUIRED');
+ for(const [route,body] of [['profiles',profile],['activate',{id:'missing'}],['login',{mode:'chatgpt'}],['models',profile],['credentials/import',{engine:'codex',source:'upload',revision:0,json:JSON.stringify(credentials)}]]){
+  const r=await f.post(route,body);assert.equal(r.status,409,route);assert.equal((await r.json()).error.code,'PROJECT_SETTINGS_REQUIRED');
  }
+ assert.equal((await (await f.post('project/build')).json()).error.code,'PROJECT_RESTART_REQUIRED');
  assert.equal(await fs.access(path.join(f.root,'local-secrets')).then(()=>true,()=>false),false);
- assert.equal((await f.post('close')).status,200);assert.equal(f.controller.prepareCalls,0);assert.equal(f.controller.renameCalls,0);
 });
-
-test('directory preparation closes auth before moving, serializes requests and rebinds all project-local stores/assets',async t=>{
+test('real settings save keeps the physical directory while AI credentials persist at the current root',async t=>{
+ const f=await fixture(t,{real:true});const r=await f.post('project/save',settings);assert.equal(r.status,200);const saved=await r.json();
+ assert.equal(saved.root,f.root);assert.equal(saved.renamed,false);assert.equal(saved.project.name,'After');
+ const state=await (await f.get('project')).json();assert.equal(state.settingsSaved,true);assert.equal(state.exportReady,false);
+ assert.equal((await f.post('profiles',profile)).status,200);assert.equal(await fs.access(path.join(f.root,'local-secrets/ai-config/connections.json')).then(()=>true,()=>false),true);
+ assert.equal(await fs.access(path.join(f.holder,'After')).then(()=>true,()=>false),false);assert.equal((await f.post('project/build')).status,409);assert.equal((await f.post('close')).status,200);
+});
+test('compatibility prepare stages only; live immediate rename is rejected',async t=>{
+ const f=await fixture(t);assert.equal((await f.post('project/prepare',settings)).status,200);assert.equal(f.controller.stageCalls,1);
+ const r=await f.post('project/rename',{folderName:'After'});assert.equal(r.status,409);assert.equal((await r.json()).error.code,'PROJECT_FINALIZATION_REQUIRED');assert.equal(await fs.access(f.root).then(()=>true,()=>false),true);
+});
+test('settings staging awaits auth closure and serializes other mutations',async t=>{
  const entered=deferred(),release=deferred();let closed=false;
- const f=await fixture(t,{async prepare(){assert.equal(closed,true);entered.resolve();await release.promise;const target=path.join(path.dirname(this.root),'After');await fs.rename(this.root,target);this.root=target;this.ready=true;return {root:target,renamed:true,project:{name:'After',folderName:'After'}};}});
- f.server.accountSetup.close=async()=>{closed=true;};
- const preparing=f.post('project/prepare',preparation);await entered.promise;
- for(const route of ['profiles','credentials/import','login','project/prepare','close']){const r=await f.post(route,profile);assert.equal(r.status,409,route);assert.equal((await r.json()).error.code,'PROJECT_BUSY');}
- assert.equal((await f.get('state')).status,409);
- release.resolve();assert.equal((await preparing).status,200);
- const target=f.controller.root;assert.notEqual(target,f.root);assert.deepEqual(f.moves,[{before:f.root,after:target}]);
- assert.equal(f.server.configStore.root,target);assert.equal(f.server.accountSetup.root,target);
- assert.equal((await fetch(f.base)).status,200,'setup assets follow the renamed folder');
- assert.equal((await f.post('profiles',profile)).status,200);
- assert.equal(await fs.access(path.join(target,'local-secrets/ai-config/connections.json')).then(()=>true,()=>false),true);
- const imported=await f.post('credentials/import',{engine:'codex',source:'upload',revision:1,json:JSON.stringify(credentials)});assert.equal(imported.status,200);
- assert.equal(await fs.access(path.join(target,'local-secrets/codex/auth.json')).then(()=>true,()=>false),true);
- assert.equal(await fs.access(f.root).then(()=>true,()=>false),false,'no request recreates the obsolete root');
- assert.doesNotMatch(JSON.stringify(await (await f.get('state')).json()),/synthetic-(?:id|access|refresh|only-key)/);
+ const f=await fixture(t,{async stage(input){assert.equal(closed,true);entered.resolve();await release.promise;this.saved=true;return input;}});f.server.accountSetup.close=async()=>{closed=true;};
+ const saving=f.post('project/save',settings);await entered.promise;
+ for(const route of ['profiles','credentials/import','login','project/save','project/finalize','close'])assert.equal((await f.post(route,profile)).status,409,route);
+ assert.equal((await f.get('state')).status,409);release.resolve();assert.equal((await saving).status,200);assert.equal(f.controller.root,f.root);
 });
-
-test('an AI request already in progress prevents a concurrent directory operation',async t=>{
- const entered=deferred(),release=deferred();let block=false;
- const f=await fixture(t,{async state(){if(block){entered.resolve();await release.promise;}return {root:this.root,directoryReady:true};}});
+test('an in-progress AI write prevents concurrent settings staging and finalization',async t=>{
+ const entered=deferred(),release=deferred();let block=false,reads=0;
+ const f=await fixture(t,{async state(){if(block&&++reads===2){entered.resolve();await release.promise;}return {root:this.root,settingsSaved:true};}});
  block=true;const saving=f.post('profiles',profile);await entered.promise;
- const preparing=await f.post('project/prepare',preparation);assert.equal(preparing.status,409);assert.equal((await preparing.json()).error.code,'PROJECT_BUSY');assert.equal(f.controller.prepareCalls,0);
- release.resolve();assert.equal((await saving).status,200);
+ for(const route of ['project/save','project/finalize'])assert.equal((await f.post(route,settings)).status,409);
+ assert.equal(f.controller.stageCalls,0);release.resolve();assert.equal((await saving).status,200);
 });
-
-test('directory confirmation waits until a cancelled native login has actually closed',async t=>{
- const f=await fixture(t),entered=deferred(),release=deferred();
- f.controller.ready=true;f.server.accountSetup.login={phase:'pending'};f.server.accountSetup.loginId='synthetic-login';
- f.server.accountSetup.client={async call(){},async close(){entered.resolve();await release.promise;}};
- const cancelling=f.post('login/cancel');await entered.promise;
- assert.equal(f.server.accountSetup.login.phase,'cancelled');
- const preparing=await f.post('project/prepare',preparation);assert.equal(preparing.status,409);assert.equal((await preparing.json()).error.code,'PROJECT_BUSY');assert.equal(f.controller.prepareCalls,0);
- release.resolve();assert.equal((await cancelling).status,200);assert.equal((await f.post('project/prepare',preparation)).status,200);
+test('settings staging waits for cancelled native login closure',async t=>{
+ const f=await fixture(t),entered=deferred(),release=deferred();f.controller.saved=true;
+ const setup=f.server.accountSetup;setup.login={phase:'pending'};setup.loginId='synthetic-login';setup.client={async call(){},async close(){entered.resolve();await release.promise;}};
+ const cancelling=f.post('login/cancel');await entered.promise;assert.equal((await f.post('project/save',settings)).status,409);assert.equal(f.controller.stageCalls,0);
+ release.resolve();assert.equal((await cancelling).status,200);assert.equal((await f.post('project/save',settings)).status,200);
 });
-
-for(const success of [false,true])test(`directory confirmation waits for native close after ${success?'successful':'failed'} asynchronous sign-in completion`,async t=>{
- const f=await fixture(t),entered=deferred(),release=deferred(),setup=f.server.accountSetup;
- f.controller.ready=true;setup.login={phase:'pending'};setup.loginId='synthetic-login';
- setup.client={async close(){entered.resolve();await release.promise;}};
+for(const success of [false,true])test(`settings staging awaits native closure after ${success?'successful':'failed'} asynchronous login completion`,async t=>{
+ const f=await fixture(t),entered=deferred(),release=deferred(),setup=f.server.accountSetup;f.controller.saved=true;setup.login={phase:'pending'};setup.loginId='synthetic-login';setup.client={async close(){entered.resolve();await release.promise;}};
  if(success){await fs.mkdir(path.join(f.root,'local-secrets/codex'),{recursive:true});await fs.writeFile(path.join(f.root,'local-secrets/codex/auth.json'),JSON.stringify(credentials));}
  const completed=setup.completed({loginId:'synthetic-login',success},setup.epoch);await entered.promise;
- assert.equal(setup.login.phase,success?'completed':'failed');
- const preparationEntered=deferred(),close=setup.close.bind(setup);setup.close=()=>{preparationEntered.resolve();return close();};
- const preparing=f.post('project/prepare',preparation);await preparationEntered.promise;assert.equal(f.controller.prepareCalls,0,'native auth must close before moving the folder');
- const response=await f.post('profiles',profile);assert.equal(response.status,409);assert.equal((await response.json()).error.code,'PROJECT_BUSY');
- release.resolve();await completed;assert.equal((await preparing).status,200);assert.equal(f.controller.prepareCalls,1);
- const before=(await f.server.configStore.state()).revision;await setup.completed({loginId:'synthetic-login',success:true},setup.epoch-1);assert.equal((await f.server.configStore.state()).revision,before,'late callbacks never write after preparation');
+ const closeEntered=deferred(),close=setup.close.bind(setup);setup.close=()=>{closeEntered.resolve();return close();};
+ const saving=f.post('project/save',settings);await closeEntered.promise;assert.equal(f.controller.stageCalls,0);release.resolve();await completed;assert.equal((await saving).status,200);
+ const revision=(await f.server.configStore.state()).revision;await setup.completed({loginId:'synthetic-login',success:true},setup.epoch-1);assert.equal((await f.server.configStore.state()).revision,revision);
+});
+test('finalization requires a selected scheme and rejects browser-supplied process parameters',async t=>{
+ const f=await fixture(t);assert.equal((await f.post('project/finalize')).status,409);await f.post('project/save',settings);
+ let r=await f.post('project/finalize');assert.equal(r.status,409);assert.equal((await r.json()).error.code,'AI_NOT_CONFIGURED');r=await f.post('project/finalize',{pid:1,command:'not-allowed'});assert.equal(r.status,400);assert.equal(f.controller.finalizeCalls,0);
+});
+test('accepted handoff derives server ownership, returns202 and closes without cancelling the helper',async t=>{
+ const closed=deferred();let input,cancelled=0;
+ const f=await fixture(t,{async finalize(options){input=options;return {id:'synthetic-finalize',phase:'restarting',targetRoot:path.join(this.root,'..','After'),privatePlan:'never-public'};}});
+ f.controller.cancel=async()=>{cancelled++;};await f.post('project/save',settings);await f.post('profiles',profile);
+ const original=f.server.shutdown;let shutdownPromise;f.server.shutdown=()=>shutdownPromise||=(async()=>{await original();closed.resolve();})();
+ const r=await f.post('project/finalize');assert.equal(r.status,202);const body=await r.json();assert.equal(body.finalization.id,'synthetic-finalize');assert.equal(body.finalization.privatePlan,undefined);
+ assert.deepEqual(input.management,{pid:process.pid,instanceId:'synthetic-management',port:Number(new URL(f.base).port)});await closed.promise;assert.equal(cancelled,0);
+});
+test('failed helper preflight leaves management available for correction',async t=>{
+ const f=await fixture(t,{async finalize(){throw Object.assign(Error('Synthetic busy project'),{code:'PROJECT_BUSY',status:409});}});await f.post('project/save',settings);await f.post('profiles',profile);
+ assert.equal((await f.post('project/finalize')).status,409);assert.equal((await f.get('project')).status,200);assert.equal(await fs.access(f.root).then(()=>true,()=>false),true);
+});
+test('AI mutations invalidate export readiness without exposing credentials',async t=>{
+ const f=await fixture(t);await f.post('project/save',settings);f.controller.ready=true;assert.equal((await f.post('profiles',profile)).status,200);assert.equal(f.controller.ready,false);assert.equal(f.controller.invalidations,1);
+ f.controller.ready=true;assert.equal((await f.post('credentials/import',{engine:'codex',source:'upload',revision:1,json:JSON.stringify(credentials)})).status,200);assert.equal(f.controller.ready,false);
+ assert.doesNotMatch(JSON.stringify(await (await f.get('state')).json()),/synthetic-(?:id|access|refresh|only-key)/);
+});
+test('new management rejects mutations during resume and exposes only minimal unauthenticated status',async t=>{
+ const f=await fixture(t);f.controller.saved=true;f.controller.finalization={id:'synthetic-finalize',phase:'restarting',privatePlan:'never-public'};
+ for(const route of ['profiles','project/save','project/finalize','close'])assert.equal((await f.post(route,profile)).status,409,route);
+ const health=await fetch(f.base+'/health/project-launcher').then(r=>r.json());assert.deepEqual(health.finalization,{id:'synthetic-finalize',phase:'restarting'});assert.equal(health.root,f.root);assert.equal(f.controller.stageCalls,0);assert.equal(f.controller.invalidations,0);
 });
 
-test('metadata failure after a successful move still rebinds setup and allows a deliberate retry',async t=>{
- const f=await fixture(t,{async prepare(){const target=path.join(path.dirname(this.root),'After');await fs.rename(this.root,target);this.root=target;throw Object.assign(Error('Synthetic metadata failure'),{status:500,code:'PROJECT_METADATA_INVALID'});}});
- const r=await f.post('project/prepare',preparation);assert.equal(r.status,500);assert.equal((await r.json()).error.code,'PROJECT_METADATA_INVALID');
- assert.equal(f.server.configStore.root,f.controller.root);assert.equal(f.server.accountSetup.root,f.controller.root);
- assert.equal((await fetch(f.base)).status,200);assert.equal((await f.get('state')).status,200);assert.equal((await f.post('profiles',profile)).status,409);
- f.controller.prepare=async()=>{f.controller.ready=true;return {root:f.controller.root,renamed:false,project:{name:'After',folderName:'After'}};};
- assert.equal((await f.post('project/prepare',preparation)).status,200);assert.equal((await f.post('profiles',profile)).status,200);
- assert.equal(await fs.access(f.root).then(()=>true,()=>false),false);assert.equal(f.moves.length,1);
-});
-
-test('real launcher confirmation moves the directory before AI persistence and later build/finish keep that location',async t=>{
- const f=await fixture(t,{real:true});
- assert.equal((await (await f.get('project')).json()).directoryReady,false);
- const prepared=await f.post('project/prepare',preparation);assert.equal(prepared.status,200);const value=await prepared.json();assert.equal(value.renamed,true);
- const target=path.join(f.holder,'After');assert.equal(value.root,target);assert.equal((await (await f.get('project')).json()).directoryReady,true);
- assert.equal((await f.post('profiles',profile)).status,200);assert.equal(f.server.configStore.root,target);
- const calls=[];f.controller.run=async(root,exe,args)=>calls.push({root,exe,args});f.controller.compiler=async(root)=>{assert.equal(root,target);return {artifact:'After.app'};};
- const built=await f.post('project/build');assert.equal(built.status,202);await f.controller.completion;assert.equal(f.controller.job.phase,'completed');assert.ok(calls.every(c=>c.root===target));
- assert.equal(f.moves.length,1);assert.equal((await f.post('close')).status,200);assert.equal(f.moves.length,1);
- assert.equal(await fs.access(f.root).then(()=>true,()=>false),false);assert.equal(await fs.access(path.join(target,'local-secrets/ai-config/connections.json')).then(()=>true,()=>false),true);
+test('export reserves setup while the owned runtime stops and releases its reservation after failure',async t=>{
+ const f=await fixture(t),entered=deferred(),release=deferred();await f.post('project/save',settings);await f.post('profiles',profile);f.controller.ready=true;
+ f.controller.build=async()=>{entered.resolve();await release.promise;throw Object.assign(Error('Synthetic stop blocked'),{status:409,code:'PROJECT_BUSY'});};
+ const exporting=f.post('project/build');await entered.promise;
+ for(const route of ['close','project/save','project/finalize','profiles'])assert.equal((await f.post(route,profile)).status,409,route);
+ release.resolve();assert.equal((await exporting).status,409);assert.equal((await f.post('project/save',settings)).status,200);
 });
