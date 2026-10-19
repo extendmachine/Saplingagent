@@ -97,7 +97,9 @@ this is output-path handling and does not restrict Agent Full Access.
 Native compilation holds both `.runtime/launcher-compile.lock` and the shared
 `.runtime/kernel-operation.lock`. It refuses install/maintenance and foreign setup
 leases. Configuration B may compile only with an explicit matching setup ID owned
-by the same PID. Leases are closed before subprocess execution and removed only
-when their IDs still match. Rename paths check the compile lease; atomic staged
+by the same PID. Lease handles are closed before subprocess execution. Cleanup checks the exact
+created device/inode, including partial initialization failures; replaced files are
+retained. Original write errors remain observable instead of being masked by parsing
+an incomplete owner record. Rename paths check the compile lease; atomic staged
 replacement preserves the previous artifact on failure. Stale leases are reported,
 never guessed away. Windows native file locking still requires hardware acceptance.

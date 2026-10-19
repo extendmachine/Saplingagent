@@ -56,3 +56,24 @@ test('pinned compiler runs with local disabled telemetry and cannot populate inh
  const env={...buildEnv(root),HOME:home,APPDATA:home,LOCALAPPDATA:home};await command(root,go,['version'],{env});
  assert.deepEqual(await fs.readdir(home),[]);assert.deepEqual(await fs.readdir(path.join(root,'.cache/go-telemetry')),['mode']);
 });
+
+for(const failingName of ['launcher-compile.lock','kernel-operation.lock'])test(`partial ${failingName} initialization closes handles and removes only created files`,async t=>{
+ const root=await fixture(t),originalOpen=fs.open;let closed=0;const failure=Object.assign(Error('Synthetic storage write failure'),{code:'ENOSPC'});
+ fs.open=async function(file,...args){
+  const handle=await originalOpen.call(fs,file,...args);
+  if(path.basename(String(file))!==failingName)return handle;
+  return {stat:options=>handle.stat(options),writeFile:async()=>{await handle.writeFile('{"id":');throw failure;},close:async()=>{await handle.close();closed++;}};
+ };
+ try{await assert.rejects(compileLauncher(root,{}),error=>error===failure);}finally{fs.open=originalOpen;}
+ assert.equal(closed,1);for(const name of ['launcher-compile.lock','kernel-operation.lock'])await assert.rejects(fs.access(path.join(root,'.runtime',name)));
+});
+
+test('partial lease failure never deletes a replacement created under the same pathname',async t=>{
+ const root=await fixture(t),originalOpen=fs.open;let closed=0;const failure=Object.assign(Error('Synthetic storage write failure'),{code:'ENOSPC'}),name=path.join(root,'.runtime/launcher-compile.lock');
+ fs.open=async function(file,...args){
+  const handle=await originalOpen.call(fs,file,...args);if(String(file)!==name)return handle;
+  return {stat:options=>handle.stat(options),writeFile:async()=>{await handle.writeFile('{"id":');await fs.rename(name,name+'.owned-original');await fs.writeFile(name,'replacement-owned-elsewhere');throw failure;},close:async()=>{await handle.close();closed++;}};
+ };
+ try{await assert.rejects(compileLauncher(root,{}),error=>error===failure);}finally{fs.open=originalOpen;}
+ assert.equal(closed,1);assert.equal(await fs.readFile(name,'utf8'),'replacement-owned-elsewhere');
+});

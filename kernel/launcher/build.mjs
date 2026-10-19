@@ -518,27 +518,41 @@ async function compileLauncherUnlocked(
   return receipt;
 }
 
+async function removeCreatedLease(file,identity) {
+  if(!identity||identity.ino===0n)return;
+  const current=await fs.lstat(file,{bigint:true}).catch(error=>{if(error.code==='ENOENT')return null;throw error;});
+  if(current?.isFile()&&!current.isSymbolicLink()&&current.ino===identity.ino&&current.dev===identity.dev)await fs.rm(file,{force:true});
+}
+async function compilationLease(file,owner,message) {
+  const handle=await fs.open(file,'wx',0o600).catch(error=>{if(error.code==='EEXIST')throw issue('LAUNCHER_BUILD_BUSY',message);throw error;});
+  let identity, failure;
+  try {identity=await handle.stat({bigint:true});await handle.writeFile(JSON.stringify(owner)+'\n');}
+  catch(error){failure=error;}
+  try {await handle.close();}catch(error){failure ||= error;}
+  if(failure){await removeCreatedLease(file,identity).catch(()=>{});throw failure;}
+  return ()=>removeCreatedLease(file,identity);
+}
+
 // Separate cross-process lease: two setup instances must not replace one artifact.
 export async function compileLauncher(root,project,options={}) {
   root=await fs.realpath(root);
   const runtime=path.join(root,'.runtime');await fs.mkdir(runtime,{recursive:true});
   if((await fs.lstat(runtime)).isSymbolicLink())throw issue('PROJECT_STORAGE_LOCATION','Launcher runtime must be an ordinary project-local directory.');
   const file=path.join(runtime,'launcher-compile.lock'),operation=path.join(runtime,'kernel-operation.lock'),id=randomUUID();
-  const handle=await fs.open(file,'wx',0o600).catch(error=>{if(error.code==='EEXIST')throw issue('LAUNCHER_BUILD_BUSY','Another launcher compilation is active or interrupted. Inspect .runtime/launcher-compile.lock before retrying.');throw error;});
-  try {await handle.writeFile(JSON.stringify({id,pid:process.pid})+'\n');} finally {await handle.close();}
-  let ownsOperation=false;
+  const releaseCompile=await compilationLease(file,{id,pid:process.pid},'Another launcher compilation is active or interrupted. Inspect .runtime/launcher-compile.lock before retrying.');
+  let releaseOperation, failure;
   try{
-    const lock=await fs.open(operation,'wx',0o600).catch(error=>{if(error.code==='EEXIST')throw issue('LAUNCHER_BUILD_BUSY','A project start, move or maintenance operation is active. Wait before compiling.');throw error;});
-    ownsOperation=true;
-    try{await lock.writeFile(JSON.stringify({id,pid:process.pid,purpose:'launcher-compile'})+'\n');}finally{await lock.close();}
+    releaseOperation=await compilationLease(operation,{id,pid:process.pid,purpose:'launcher-compile'},'A project start, move or maintenance operation is active. Wait before compiling.');
     const setup=await json(path.join(runtime,'project-finalization.json'));
     if(setup && (!options.setupId||setup.id!==options.setupId||setup.pid!==process.pid))throw issue('LAUNCHER_BUILD_BUSY','A different setup operation owns this project. Wait before compiling.');
     if(await exists(path.join(runtime,'kernel/active-job.json')))throw issue('LAUNCHER_BUILD_BUSY','Kernel maintenance is active. Wait before compiling.');
     for(const name of ['macos-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])if(await exists(path.join(runtime,name)))throw issue('LAUNCHER_BUILD_BUSY','Dependency installation is active. Wait before compiling.');
     await prepareBuildStorage(root);
     return await compileLauncherUnlocked(root,project,options);
-  } finally {
-    if(ownsOperation&&(await json(operation))?.id===id)await fs.rm(operation);
-    if((await json(file))?.id===id)await fs.rm(file);
+  }catch(error){failure=error;throw error;}
+  finally {
+    // Release both even if one unlink fails; retain the original operation error.
+    const cleanup=await Promise.allSettled([releaseOperation?.(),releaseCompile()]);
+    if(!failure){const rejected=cleanup.find(result=>result.status==='rejected');if(rejected)throw rejected.reason;}
   }
 }
