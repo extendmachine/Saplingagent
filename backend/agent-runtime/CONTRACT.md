@@ -113,3 +113,7 @@ Engine adapters resolve their ESM SDKs and native executables through kernel/con
 ## Unified kernel metadata (2026-10-19)
 
 GET /api/kernel remains the installed kernel contract. The legacy GET /api/release shape is kept for existing clients, but its version now follows the valid installed kernel manifest first; no separate product version exists. Only pre-kernel apps with a missing manifest use the old file fallback. A malformed installed manifest is an error, never a stale-file fallback. Responses remain read-only and contain no receipt secrets or conversation content. Current UI renders only kernel metadata or unavailable.
+
+## Stop during native session relocation
+
+Stop cancels the same thread's pending native resume even before a turnId exists. A cancelled setup finishes as interrupted, or preserves a pre-existing abort cause as failed, without starting/resending a model turn or replacing the saved thread. The new optional transport cancelResume hook complements normal turn/interrupt; older injected transports remain compatible. Native missing-rollout recovery itself belongs to kernel/engines and verifies local history identity. It does not rewrite customer history or reduce Full Access.

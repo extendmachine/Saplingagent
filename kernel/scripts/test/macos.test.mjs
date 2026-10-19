@@ -14,7 +14,7 @@ async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   const parent = path.join(project, '.cache/macos-tests'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "\u6d4b\u8bd5 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['kernel/contracts/ai-configuration.mjs', 'kernel/contracts/local-process.mjs', 'kernel/contracts/engine-dependencies.mjs', 'kernel/scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'kernel/scripts/launcher/recipient-records.mjs', 'kernel/scripts/setup.mjs', 'kernel/scripts/macos/cli.mjs', 'kernel/scripts/macos/bootstrap.sh', 'kernel/scripts/macos/codex.sh', 'Saplingagent.sh', 'kernel/scripts/Saplingagent.sh', 'kernel/config/macos.json', 'config/runtime.json']) {
+  for (const file of ['kernel/contracts/kernel.mjs', 'kernel/compat/paths.mjs', 'kernel/contracts/ai-configuration.mjs', 'kernel/contracts/local-process.mjs', 'kernel/contracts/engine-dependencies.mjs', 'kernel/scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'kernel/scripts/launcher/recipient-records.mjs', 'kernel/scripts/setup.mjs', 'kernel/scripts/macos/cli.mjs', 'kernel/scripts/macos/bootstrap.sh', 'kernel/scripts/macos/codex.sh', 'Saplingagent.sh', 'kernel/scripts/Saplingagent.sh', 'kernel/config/macos.json', 'config/runtime.json']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const settings = JSON.parse(await fs.readFile(path.join(root, 'kernel/config/macos.json'), 'utf8'));
@@ -166,15 +166,14 @@ test('Chinese login failures preserve error meaning and do not expose raw creden
   }
 });
 
-test('web configuration builds and launches its independent page without Codex login or chat startup',async t=>{
- const root=await fixture(t,{auth:'broken'});
- await fs.mkdir(path.join(root,'kernel/ui/setup'),{recursive:true});await fs.writeFile(path.join(root,'kernel/ui/setup/vite.config.mjs'),'export default {}');
- await fs.mkdir(path.join(root,'kernel/node_modules/vite/bin'),{recursive:true});
- await fs.writeFile(path.join(root,'kernel/node_modules/vite/bin/vite.js'),"import fs from 'node:fs';fs.writeFileSync('build-args.json',JSON.stringify(process.argv.slice(2)));");
- await fs.mkdir(path.join(root,'kernel/services/ai-config'),{recursive:true});await fs.writeFile(path.join(root,'kernel/services/ai-config/server.mjs'),"import fs from 'node:fs';fs.writeFileSync('configuration-start.json',JSON.stringify({args:process.argv.slice(2),root:process.env.SEED_ROOT,home:process.env.CODEX_HOME}));");
+async function configurationStub(root,marker='configuration-start.json') {
+ await fs.mkdir(path.join(root,'kernel/configuration'),{recursive:true});
+ await fs.writeFile(path.join(root,'kernel/configuration/bootstrap.mjs'),`import fs from 'node:fs/promises';import path from 'node:path';export async function openConfiguration(root,{noOpen}){await fs.writeFile(path.join(root,${JSON.stringify(marker)}),JSON.stringify({root,home:process.env.CODEX_HOME||undefined,noOpen}));return {port:60001};}`);
+}
+test('CLI delegates to external configuration without Codex login or chat startup',async t=>{
+ const root=await fixture(t,{auth:'broken'});await configurationStub(root);
  const result=await runCli(root,['configure','--no-open']);assert.equal(result.code,0,result.output);assert.match(result.output,/independent AI configuration/);
- assert.deepEqual(JSON.parse(await fs.readFile(path.join(root,'build-args.json'),'utf8')),['build','--config',path.join(root,'kernel/ui/setup/vite.config.mjs')]);
- const started=JSON.parse(await fs.readFile(path.join(root,'configuration-start.json'),'utf8'));assert.deepEqual(started.args,['--no-open']);assert.equal(path.resolve(started.root),root);assert.equal(started.home,'/invalid-codex-home');
+ const started=JSON.parse(await fs.readFile(path.join(root,'configuration-start.json'),'utf8'));assert.equal(started.noOpen,true);assert.equal(path.resolve(started.root),root);assert.equal(started.home,'/invalid-codex-home');
  // Runtime isolation is retained while explicit setup discovery uses caller home.
  assert.equal(await fs.readFile(path.join(root,'local-secrets/codex/config.toml'),'utf8'),'cli_auth_credentials_store = "file"\n');
  const defaultHome=await runCli(root,['configure','--no-open'],{CODEX_HOME:''});assert.equal(defaultHome.code,0,defaultHome.output);
@@ -226,10 +225,10 @@ test('actual macOS terminal install preserves an existing customer repository an
 });
 
 test('AI setup remains available with kernel dependencies when app frontend and lock are broken',async t=>{
- const root=await fixture(t);await fs.mkdir(path.join(root,'kernel'),{recursive:true});await fs.writeFile(path.join(root,'kernel/package.json'),'{}');
+ const root=await fixture(t);await configurationStub(root,'core-setup-started');await fs.mkdir(path.join(root,'kernel'),{recursive:true});await fs.writeFile(path.join(root,'kernel/package.json'),'{}');
  for(const relative of ['.bin/opencode',`@anthropic-ai/claude-agent-sdk-darwin-${process.arch}/claude`]){const target=path.join(root,'kernel/node_modules',relative);await fs.mkdir(path.dirname(target),{recursive:true});await fs.copyFile(path.join(root,'backend/agent-runtime/node_modules',relative),target);}
  await fs.mkdir(path.join(root,'kernel/node_modules/vite/bin'),{recursive:true});await fs.writeFile(path.join(root,'kernel/node_modules/vite/bin/vite.js'),"import fs from 'node:fs';fs.writeFileSync('core-ui-built','yes')");
  await fs.mkdir(path.join(root,'kernel/services/ai-config'),{recursive:true});await fs.writeFile(path.join(root,'kernel/services/ai-config/server.mjs'),"import fs from 'node:fs';fs.writeFileSync('core-setup-started','yes')");
  await fs.rm(path.join(root,'front/node_modules'),{recursive:true,force:true});await fs.writeFile(path.join(root,'front/package-lock.json'),'CUSTOMER APP LOCK');
- const result=await runCli(root,['configure','--no-open']);assert.equal(result.code,0,result.output);assert.equal(await fs.readFile(path.join(root,'core-ui-built'),'utf8'),'yes');assert.equal(await fs.readFile(path.join(root,'core-setup-started'),'utf8'),'yes');assert.equal(await fs.readFile(path.join(root,'front/package-lock.json'),'utf8'),'CUSTOMER APP LOCK');
+ const result=await runCli(root,['configure','--no-open']);assert.equal(result.code,0,result.output);assert.equal(JSON.parse(await fs.readFile(path.join(root,'core-setup-started'),'utf8')).noOpen,true);assert.equal(await fs.readFile(path.join(root,'front/package-lock.json'),'utf8'),'CUSTOMER APP LOCK');
 });

@@ -334,6 +334,8 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     run.progress?.stop();
     if (run.session?.engine === 'opencode') return openCode.interrupt(run);
     if (run.session?.engine === 'claude') return claude.interrupt(run);
+    // A relocated native resume can still be pending before a turn ID exists.
+    rpc?.cancelResume?.(run.session?.threadId);
     if (run.turnId && !run.interruptSent && !run.finished) {
       run.interruptSent = true;
       try { await rpc.call('turn/interrupt', { threadId: run.session.threadId, turnId: run.turnId }, 5000); }
@@ -396,7 +398,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       } finally { turnReady(); }
       if (!currentRun(run)) return;
       if (run.cancelRequested) await interrupt(run);
-    } catch (error) { if (!currentRun(run)) return; if (run.turnId || run.startAttempted) await abortRun(run, error); else await finish(run, 'failed', error); }
+    } catch (error) { if (!currentRun(run)) return; if (run.turnId || run.startAttempted) await abortRun(run, error); else if (run.cancelRequested) await finishStopped(); else await finish(run, 'failed', error); }
   }
   function runtimeContext(preferences, run, engineLabel) {
     const files = (run.attachments || []).map(value => ({ name: value.name, contentType: value.contentType, size: value.size, path: path.resolve(root, value.path) }));

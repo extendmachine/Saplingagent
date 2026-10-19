@@ -7,3 +7,4 @@ export {
 } from "./manager.mjs";
 
 export { managementFingerprint } from "./io.mjs";
+export { prepareSetupUI } from "./setup-ui.mjs";

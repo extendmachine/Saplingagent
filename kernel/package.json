@@ -13,7 +13,7 @@
     "vite": "8.3.4"
   },
   "scripts": {
-    "build:setup": "vite build --config ui/setup/vite.config.mjs",
+    "build:setup": "node launcher/setup-ui.mjs",
     "typecheck": "tsc -p ui/setup/tsconfig.json"
   },
   "devDependencies": {

@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { readConnections,defaultSelection,codexConnection,claudeConnections,openCodeConnections } from '../../contracts/ai-configuration.mjs';
 import { initializeDownloadedRecords } from './recipient-records.mjs';
 import { setup } from '../setup.mjs';
+import {assertSetupAvailable} from '../../contracts/kernel.mjs';
 import { codexBinary, claudeBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
 const t = (en, zh) => {
@@ -15,6 +16,7 @@ const t = (en, zh) => {
 };
 
 const root = path.resolve(fileURLToPath(new URL('../../../', import.meta.url)));
+await assertSetupAvailable(root);
 const windows = process.platform === 'win32';
 const platformName = windows ? 'windows' : 'macos';
 const launcher = 'Saplingagent.sh';
@@ -163,20 +165,13 @@ async function configureOpenCode() {
   if (result.code !== 0) throw new Error(t(`OpenCode provider setup failed (exit code ${result.code}).`, `OpenCode 服务商配置失败（退出码 ${result.code}）。`));
   console.log(t('OpenCode provider saved. Restart Saplingagent, start a new conversation, then choose OpenCode.', "OpenCode 服务商已保存。请重启 Saplingagent，新建会话后选择 OpenCode。"));
 }
-async function configureAI(noOpen,launch=false) {
+async function configureAI(noOpen) {
   if (!await coreInstalled()) throw new Error(t('Install the local kernel first: bash Saplingagent.sh install','请先安装本地内核：bash Saplingagent.sh install'));
   await localSetup();
   console.log(t('Preparing independent AI configuration and project setup…','正在准备独立 AI 与项目配置网页…'));
-  await required(process.execPath,[path.join(root,'kernel/node_modules/vite/bin/vite.js'),'build','--config',path.join(root,'kernel/ui/setup/vite.config.mjs')]);
-  const setupEnv={...env};if(process.env.CODEX_HOME)setupEnv.CODEX_HOME=process.env.CODEX_HOME;else delete setupEnv.CODEX_HOME;
-  if(!await exists(path.join(root,'kernel/launcher/entry.mjs'))){await required(process.execPath,[path.join(root,'kernel/services/ai-config/server.mjs'),...(noOpen?['--no-open']:[])],{childEnv:setupEnv});return;}
-  const {managementFingerprint}=await import('../../launcher/public.mjs');const expectedFingerprint=await managementFingerprint(root);
-  const dir=path.join(root,'logs/project-launcher');await fs.mkdir(dir,{recursive:true});
-  const handle=await fs.open(path.join(dir,`project-launcher-${new Date().toISOString().slice(0,10)}.log`),'a');
-  const child=spawn(process.execPath,[path.join(root,'kernel/launcher/entry.mjs'),...(noOpen?['--no-open']:[]),...(launch?['--launch']:[])],{cwd:path.dirname(root),env:setupEnv,detached:!windows,windowsHide:true,stdio:['ignore',handle.fd,handle.fd]});
-  await handle.close();child.once('error',()=>{});child.unref();
-  for(let i=0;i<100;i++){try{const address=JSON.parse(await fs.readFile(path.join(root,'.runtime/management-address.json'),'utf8'));const health=await fetch(`http://127.0.0.1:${address.port}/health/project-launcher`,{signal:AbortSignal.timeout(500)}).then(r=>r.json());if(health.instanceId===address.instanceId&&health.root===root&&(address.fingerprint===expectedFingerprint||health.busy)){console.log(t(`Project setup: http://127.0.0.1:${address.port}/. Continue in your browser. You can close this script.`,`项目配置：http://127.0.0.1:${address.port}/。请在网页继续配置，可以关闭此脚本。`));return;}}catch{}await delay(100);}
-  throw new Error(t('Project setup could not open. Check logs/project-launcher/.','项目配置网页未能启动，请检查 logs/project-launcher/。'));
+  const {openConfiguration}=await import('../../configuration/bootstrap.mjs');
+  const address=await openConfiguration(root,{noOpen:noOpen||process.env.SAPLING_NO_OPEN==='1'});
+  console.log(t(`Project setup: http://127.0.0.1:${address.port}/. Continue in your browser. This script will close.`,`项目配置：http://127.0.0.1:${address.port}/。请在网页继续配置，此脚本将退出。`));
 }
 async function installKernelAndConfigure(repair=false){
  if(!await exists(path.join(root,'kernel/package.json')))return install(repair);
@@ -305,6 +300,7 @@ try {
   else if (action === 'login' && args.every(x => x === '--device-auth')) await login(args.includes('--device-auth'));
   else if (action === 'start' && args.every(x => x === '--no-open')) await start(args.includes('--no-open'));
   else if (action === 'kernel') await required(process.execPath,[path.join(root,'kernel/cli.mjs'),...args]);
+  else if (action === 'ensure-dependencies' && !args.length) { const {ensureApplicationDependencies}=await import('../../launcher/dependencies.mjs'); await ensureApplicationDependencies(root,{onProgress:message=>console.log(message)}); }
   else if (action === 'doctor' && !args.length) await doctor();
   else if (action === 'logout' && !args.length) await logout();
   else if (action === 'configure' && args.every(x=>x==='--no-open')) await configureAI(args.includes('--no-open'));

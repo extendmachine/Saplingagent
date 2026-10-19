@@ -1,9 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { spawn } from "node:child_process";
-import {kernelStatus} from "../contracts/kernel.mjs";
+import {kernelStatus, assertKernelOffline} from "../contracts/kernel.mjs";
 import { codexBinary } from "../contracts/local-process.mjs";
+import { beginFinalization } from "./finalization.mjs";
+import { relocationLedger, completeRelocation } from './relocation.mjs';
 import {
   exists,
   json,
@@ -74,43 +76,23 @@ export async function readProject(root) {
     icon: v.icon || null,
   };
 }
+function projectIcon(data) {
+  if (data == null) return null;
+  if (typeof data !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(data) || data.length > 1400000)
+    throw issue('INVALID_PROJECT_ICON', 'Choose a PNG image (up to 1 MiB).', 400);
+  const bytes = Buffer.from(data.split(',')[1], 'base64');
+  if (bytes.length < 33 || bytes.length > 1048576 || !bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])) || bytes.readUInt32BE(16) !== 256 || bytes.readUInt32BE(20) !== 256)
+    throw issue('INVALID_PROJECT_ICON', 'The project icon must be a 256×256 PNG. The setup page resizes uploaded images automatically.', 400);
+  return bytes;
+}
 export async function saveProject(root, input) {
   const previous = await readProject(root);
   const name = validateProjectName(input.name),
     folderName = validateProjectName(input.folderName || name);
   let icon = previous.icon || null;
-  if (input.iconData !== undefined) {
-    if (input.iconData === null) icon = null;
-    else {
-      if (
-        typeof input.iconData !== "string" ||
-        !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(input.iconData) ||
-        input.iconData.length > 1400000
-      )
-        throw issue(
-          "INVALID_PROJECT_ICON",
-          "Choose a PNG image (up to 1 MiB).",
-          400,
-        );
-      const bytes = Buffer.from(input.iconData.split(",")[1], "base64");
-      if (
-        bytes.length < 33 ||
-        bytes.length > 1048576 ||
-        !bytes
-          .subarray(0, 8)
-          .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ||
-        bytes.readUInt32BE(16) !== 256 ||
-        bytes.readUInt32BE(20) !== 256
-      )
-        throw issue(
-          "INVALID_PROJECT_ICON",
-          "The project icon must be a 256×256 PNG. The setup page resizes uploaded images automatically.",
-          400,
-        );
-      await atomic(path.join(root, "config/project-icon.png"), bytes);
-      icon = "config/project-icon.png";
-    }
-  }
+  const bytes = projectIcon(input.iconData);
+  if (input.iconData === null) icon = null;
+  else if (bytes) { await atomic(path.join(root, 'config/project-icon.png'), bytes); icon = 'config/project-icon.png'; }
   const project = {
     schemaVersion: 1,
     projectId: previous.projectId || randomUUID(),
@@ -199,6 +181,10 @@ export class ProjectLauncher {
       productVersion: kernel?.version || null,
       kernelVersion: kernel?.version || null,
       canRename: !linked && !maintainer,
+      directoryReady: await this.directoryReady(),
+      settingsSaved: await this.settingsSaved(),
+      exportReady: await this.exportReady(),
+      finalization: await json(path.join(this.root, ".runtime/setup-finalization.json")),
       project: await readProject(this.root),
       root: this.root,
       device: { platform: process.platform, arch: process.arch },
@@ -252,6 +238,107 @@ export class ProjectLauncher {
       this.busy = false;
     }
   }
+  async settingsFingerprint() {
+    const project = await readProject(this.root);
+    const hash = createHash('sha256').update(JSON.stringify(project));
+    if (project.icon) hash.update(await fs.readFile(path.join(this.root, project.icon)));
+    return hash.digest('hex');
+  }
+  async settingsSaved() {
+    const marker = await json(path.join(this.root, '.runtime/setup-settings.json'));
+    return marker?.schemaVersion === 1 && marker.root === this.root
+      && marker.fingerprint === await this.settingsFingerprint();
+  }
+  async exportReady() {
+    if(await exists(path.join(this.root,'.runtime/project-finalization.json')))return false;
+    const status = await json(path.join(this.root, '.runtime/setup-finalization.json'));
+    if (status?.phase !== 'ready' || status.root !== this.root || !await this.directoryReady() || !await this.settingsSaved()) return false;
+    return status.connectionsFingerprint === await this.connectionsFingerprint();
+  }
+  async connectionsFingerprint() {
+    const bytes = await fs.readFile(path.join(this.root, 'local-secrets/ai-config/connections.json')).catch(e => {
+      if (e.code === 'ENOENT') return Buffer.from(''); throw e;
+    });
+    return createHash('sha256').update(bytes).digest('hex');
+  }
+  async invalidateSetup() {
+    const old = await json(path.join(this.root, '.runtime/setup-finalization.json'));
+    if (old?.phase === 'restarting') throw issue('PROJECT_BUSY', 'Saved setup is restarting. Wait for it to finish.');
+    await writeJSON(path.join(this.root, '.runtime/setup-finalization.json'), {
+      schemaVersion: 1, phase: 'saved', root: this.root,
+      message: 'Settings changed. Save and restart before exporting the app.',
+    });
+  }
+  async stageSetup(input) {
+    this.assertIdle(); this.busy = true;
+    try {
+      if(await exists(path.join(this.root,'.runtime/project-finalization.json')))throw issue('PROJECT_BUSY','Saved setup is restarting. Wait for it to finish.');
+      validateProjectName(input.name); projectIcon(input.iconData);
+      const folderName = input.renameFolder ? validateProjectName(input.folderName || input.name) : path.basename(this.root);
+      await this.preflightDirectory(folderName);
+      const project = await saveProject(this.root, {...input, folderName});
+      await writeJSON(path.join(this.root, '.runtime/setup-settings.json'), {
+        schemaVersion: 1, root: this.root, projectId: project.projectId,
+        renameFolder: !!input.renameFolder, fingerprint: await this.settingsFingerprint(),
+      });
+      await this.invalidateSetup();
+      return project;
+    } finally { this.busy = false; }
+  }
+  async finalizeSetup({management, language} = {}) {
+    this.assertIdle();
+    if (!await this.settingsSaved()) throw issue('PROJECT_SETTINGS_REQUIRED', 'Save the project settings before restarting.');
+    const project = await readProject(this.root);
+    await this.preflightDirectory(project.folderName);
+    const runtime = await this.runtime();
+    await this.stop();
+    if (Number.isSafeInteger(runtime.pid) && runtime.pid > 0) {
+      let exited = false;
+      for (let i=0; i<100; i++) {
+        try {process.kill(runtime.pid, 0);} catch (error) {if(error.code==='ESRCH'){exited=true;break;}throw error;}
+        await sleep(100);
+      }
+      if(!exited)throw issue('PROJECT_STOP_PENDING', 'The owned runtime is still exiting. Wait before saving and restarting again.');
+    }
+    await assertKernelOffline(this.root);
+    this.busy = true;
+    try {
+      return await beginFinalization(this.root, {project, management, language,
+        fingerprint: await this.settingsFingerprint(), connectionsFingerprint: await this.connectionsFingerprint()});
+    } catch (error) { this.busy = false; throw error; }
+  }
+  async preflightDirectory(folderName) {
+    validateProjectName(folderName);
+    if (path.basename(this.root) === folderName) return;
+    const git = path.join(this.root, '.git');
+    if (await fs.lstat(git).then(v => v.isFile(), () => false) || await exists(path.join(git, 'worktrees')))
+      throw issue('PROJECT_GIT_RENAME', 'Development worktrees are not renamed automatically. Use a complete independent customer folder.');
+    const target = path.join(path.dirname(this.root), folderName);
+    if (await exists(target)) throw issue('PROJECT_FOLDER_EXISTS', 'The requested folder already exists. Choose another name.');
+  }
+  async directoryReady() {
+    const project = await readProject(this.root);
+    const marker = await json(path.join(this.root, '.runtime/project-directory.json'));
+    return !!project.projectId && marker?.schemaVersion === 1 && marker.projectId === project.projectId
+      && marker.root === this.root && marker.folderName === project.folderName;
+  }
+  async prepare(input) {
+    this.assertIdle();
+    this.busy = true;
+    const before = this.root;
+    try {
+      validateProjectName(input.name);
+      projectIcon(input.iconData);
+      await readProject(this.root);
+      const folderName = input.renameFolder ? validateProjectName(input.folderName || input.name) : path.basename(this.root);
+      await this.renameDirectory(folderName);
+      const project = await saveProject(this.root, {...input, folderName});
+      await writeJSON(path.join(this.root, '.runtime/project-directory.json'), {
+        schemaVersion: 1, projectId: project.projectId, root: this.root, folderName,
+      });
+      return {root: this.root, renamed: before !== this.root, project};
+    } finally { this.busy = false; }
+  }
   startJob(kind, work) {
     this.assertIdle();
     this.busy = true;
@@ -304,6 +391,10 @@ export class ProjectLauncher {
     this.assertIdle();
     this.busy = true;
     try {
+      return await this.renameDirectory(folderName);
+    } finally { this.busy = false; }
+  }
+  async renameDirectory(folderName) {
       validateProjectName(folderName);
       const current = this.root;
       if (path.basename(current) === folderName)
@@ -345,6 +436,7 @@ export class ProjectLauncher {
             "PROJECT_BUSY",
             "Finish installation or kernel maintenance before renaming.",
           );
+      const ledger = await relocationLedger(current);
       try {
         await fs.rename(current, target);
       } catch {
@@ -354,13 +446,21 @@ export class ProjectLauncher {
         );
       }
       this.root = await fs.realpath(target);
+      await completeRelocation(current, this.root, ledger);
       return { root: this.root, renamed: true };
-    } finally {
-      this.busy = false;
-    }
   }
   async build() {
+    this.assertIdle();
+    this.busy = true;
+    let wasRunning;
+    try {
+      if (!await this.exportReady()) throw issue('PROJECT_RESTART_REQUIRED', 'Save settings and wait for the setup restart before exporting the app.', 409);
+      wasRunning = (await this.runtime()).phase !== 'stopped';
+      if (wasRunning) await this.stop({reserved:true});
+    } catch(error) {this.busy=false;throw error;}
+    this.busy = false;
     return this.startJob("build", async () => {
+      try {
       const project = await readProject(this.root);
       if (!project.projectId)
         throw issue(
@@ -393,13 +493,15 @@ export class ProjectLauncher {
         onProgress: (s) => this.progress(s),
       });
       return { artifact: receipt.artifact, root: this.root };
+      } finally {
+        if (wasRunning) await this.startConfiguredProject({ignoreCancellation:true});
+      }
     });
   }
-  async openProject() {
-    return this.startJob("open", async () => {
+  async startConfiguredProject({requireLauncher = false,ignoreCancellation = false} = {}) {
       let state = await this.runtime();
       if (state.phase === "stopped") {
-        if (!(await exists(path.join(this.root, ".runtime/launcher.json"))))
+        if (requireLauncher && !(await exists(path.join(this.root, ".runtime/launcher.json"))))
           throw issue(
             "LAUNCHER_NOT_BUILT",
             "Finish project setup and compile the launcher first.",
@@ -437,15 +539,15 @@ export class ProjectLauncher {
             windowsHide: true,
           },
         );
-        await handle.close();
-        this.appChild = child;
         child.once("error", () => {
           child.spawnFailed = true;
         });
+        this.appChild = child;
+        await handle.close();
         child.unref();
         const deadline = Date.now() + 150000;
         while (Date.now() < deadline) {
-          if (this.abortController?.signal.aborted)
+          if (!ignoreCancellation && this.abortController?.signal.aborted)
             throw issue(
               "PROJECT_CANCELLED",
               "Management operation interrupted. Reopen the launcher to inspect this project.",
@@ -475,8 +577,13 @@ export class ProjectLauncher {
           "APP_NOT_READY",
           "This project is already starting or recovering. Inspect its runtime page.",
         );
+      return state;
+  }
+  async openProject() {
+    return this.startJob("open", async () => {
+      const state = await this.startConfiguredProject({requireLauncher: true});
       await this.open(state.url);
-      return { url: state.url };
+      return {url: state.url};
     });
   }
   async restart() {
@@ -509,8 +616,8 @@ export class ProjectLauncher {
       );
     return value;
   }
-  async stop() {
-    this.assertIdle();
+  async stop({reserved = false} = {}) {
+    if(!reserved)this.assertIdle();
     const state = await this.runtime();
     if (state.phase === "stopped") return { stopped: true };
     const token = (

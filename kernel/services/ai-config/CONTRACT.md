@@ -1,6 +1,6 @@
 # AI configuration contract v1.1
 
-TASK-20261012-001, Codex. The standalone setup service binds 127.0.0.1 at an OS-assigned port; it serves the compiled front/ai-config entry independently of chat. No persistent supervisor slot. Same-origin requests with X-Sapling-Config token from the HTML meta tag; reject other Host, Origin and cross-site Fetch Metadata. Token only protects setup HTTP and does not change Agent Full Access.
+TASK-20261012-001, Codex. The standalone setup service binds 127.0.0.1 at an OS-assigned port; it serves the compiled kernel/ui/setup entry independently of chat. No persistent supervisor slot. Same-origin requests with X-Sapling-Config token from the HTML meta tag; reject other Host, Origin and cross-site Fetch Metadata. Token only protects setup HTTP and does not change Agent Full Access.
 
 - GET /api/config/state: {revision,activeId,profiles,codex,login}. Profile summaries contain hasKey, never key material, credentials, email or arbitrary headers.
 - POST /api/config/profiles: {revision?,id?,label,engine:codex|opencode|claude,kind:api|chatgpt,protocol:responses|chat|anthropic,baseUrl,model,apiKey?,noAuth?,contextWindow?,maxOutput?,activate?}. Blank key retains a saved key; noAuth disables it for that edited profile while retaining the old private key. ChatGPT profile needs locally saved ChatGPT credentials. Creates/updates one scheme; no model request. Returns sanitized state. Version mismatch 409 CONFIG_CHANGED; invalid input 400 INVALID_CONFIG. Configuration is stored in local-secrets/ai-config/connections.json; API keys are local-secrets/api-keys/ai-<id>.json and referenced in the ledger. No key in public runtime config/TOML/CLI argv.
@@ -27,10 +27,45 @@ Engine ID `claude` uses the project-local official Claude Agent SDK, with API-on
 
 ## Product0.9.3 project setup
 
-The same standalone service hosts project identity, PNG icon, local build progress and runtime actions through /api/config/project. Delegation uses the public kernel/launcher/public.mjs interface; see kernel/launcher/CONTRACT.md. Builds return202 and progress is polled; refreshing the browser does not resend a build. Project image requests have a bounded2MiB JSON limit; credential endpoints retain64KiB. All mutations retain same-origin/token validation. Explicit rename updates controller/store roots after checking offline ownership and destination; no browser-supplied arbitrary shell commands. Closing setup during a build returns409; explicit Stop app is distinct from closing the page. Native launch mode starts/reuses the app while retaining management independently of business restarts.
+The same standalone service hosts project identity, PNG icon, local build progress and runtime actions through /api/config/project. Delegation uses the public kernel/launcher/public.mjs interface; see kernel/launcher/CONTRACT.md. Builds return202 and progress is polled; refreshing the browser does not resend a build. Project image requests have a bounded2MiB JSON limit; credential endpoints retain64KiB. All mutations retain same-origin/token validation. Offline finalization restarts controllers at the actual root; no browser-supplied arbitrary shell commands. Closing setup during a build returns409; explicit Stop app is distinct from closing the page. Native launch mode starts/reuses the app while retaining management independently of business restarts.
+
+## Save settings, offline finalization and export (TASK-20261019-024)
+
+This owner-requested flow supersedes TASK019's immediate directory rename. `POST /api/config/project/save` takes `{name,folderName,iconData?,renameFolder:boolean}` and saves desired identity/icon and a root-bound settings receipt without moving the folder. The compatibility `/project/prepare` route performs the same save-only operation. Maintainer worktrees retain their actual folder (`renameFolder:false`). The old immediate `/project/rename` route returns409 `PROJECT_FINALIZATION_REQUIRED`; no HTTP route moves the directory inside the live management process.
+
+`GET /api/config/project` adds `settingsSaved`, `exportReady` and `finalization:{id?,phase,message?,error?}`. AI configuration requires saved settings (`PROJECT_SETTINGS_REQUIRED`409); export requires a verified restart (`PROJECT_RESTART_REQUIRED`409). Profile/activation/import/login mutations invalidate export readiness before any possible credential write, including partial failures and asynchronous login completion. Model discovery is read-only and does not invalidate readiness. Credentials remain in the project, never in the temporary helper plan or a browser redirect.
+
+`POST /api/config/project/finalize` accepts only `{}`. After settings and a selected AI scheme exist, it waits for owned auth to close and delegates to `ProjectLauncher.finalizeSetup` with the actual server PID, instance ID and bound loopback port. The launcher stops only verified owned idle runtime services and stages a short-lived external system helper. A busy application, pending OAuth/import, concurrent configuration request, install/update or another finalization returns409 without a directory move. The response is202 `{finalization:{id,phase,targetRoot,previousRoot,managementPort,readyUrl}}`; then the old management process closes. There is no client-supplied PID, arbitrary command or executable path.
+
+The helper waits for the old process to release project-local Node/log handles, moves the folder, resumes at the actual root and starts the application plus management. It attempts to reuse the management port. The old page polls unauthenticated `GET /health/project-launcher` for a matching finalization ID with phase `ready` or `failed`, then reloads to acquire the new per-process token. Health exposes root, instance ID, busy and sanitized finalization status only. New management opens its page as a recovery route when old-page reconnection fails. A failed move keeps the source directory; a later failure retains the actual current root, failed receipt and explicit retry instructions, with no automatic rollback.
+
+Save → wait for verified restart → export App. Export never renames; when necessary it stops the verified idle runtime for compilation and starts it again. Closing the configuration page alone does not save unsaved inputs, request finalization or export. The directory-operation latch and active AI-request counter serialize staging against account/provider writes and closure. Full Access, existing credentials, native session recovery, application source/data and customer Git remain unchanged. See the launcher contract for temporary directory ownership/cleanup and process readiness; Windows native behavior needs its own acceptance.
 
 ## Unified kernel version (2026-10-19)
 
 There is one current Saplingagent version: kernel0.9.4. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
 
 New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92→0.9.3; original manifests/backups stay byte-exact. Shipped old comparators cannot understand0.9.4. Stop the app, download new tooling into an isolated .cache subfolder, then run that tooling's kernel/cli.mjs --root ORIGINAL_APP check/update with the project-local Node. Default is preview; update requires existing explicit risk acknowledgement and refuses conflicts/live targets. Never overwrite/rebaseline local core edits or regenerate a customer manifest to hide them. Source recovery remains explicit.
+
+
+## Static configuration errors (TASK-20261019-028)
+
+Management entry and direct service execution prepare and verify the configuration document/assets before listening. The test/embedding factory still accepts explicit assets without starting build tools. GET / returns UI_NOT_BUILT/503 only when index.html is absent. An absent allowed /assets/<name> returns UI_ASSET_NOT_FOUND/404 with reload/configure guidance, not a claim that the entire page is unbuilt. Other filesystem read failures return UI_UNREADABLE/500 with local-file recovery guidance. Responses remain no-store with existing security headers. No new authenticated API or credential operation.
+
+
+## External configuration host (TASK-20261019-034)
+
+Production Configure AI now runs from an independent copied capsule. GET project
+adds configurationHost:'external'. Save/prepare still save settings without moving.
+POST project/finalize {} returns202 {job} (kind configure), remains on the same
+server/token and polls GET project through rename and native launcher compilation.
+The server closes owned login and rebinds stores/credential imports to the actual
+root after relocation; assets stay in the external capsule. No model request.
+POST project/build is the same saved-settings rebuild operation for this host.
+POST close acknowledges cleanup A before returning {closed:true,handoff:true}; B
+then exits, and A waits before deleting the owned capsule. If takeover fails, the
+page remains available with CONFIGURATION_RETURN_FAILED. Same-origin/token gates
+remain. Legacy injected controllers retain the original handoff response for
+compatibility, but all production configuration entries route to external B.
+
+External configuration rejects project/open and project/restart with CONFIGURATION_FINISH_REQUIRED. Finish setup before opening the app so its dependency checks run. Project stop remains available. A failed cleanup handoff permits retry and never reports closed=true.

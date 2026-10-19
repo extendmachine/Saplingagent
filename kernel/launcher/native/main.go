@@ -64,10 +64,6 @@ func main() {
 		dir = "node-v" + cfg.NodeVersion + "-win-" + arch
 		node = filepath.Join(root, ".runtime", dir, "node.exe")
 	}
-	if _, err = os.Stat(node); err != nil {
-		problem("Project-local Node is missing. Open Saplingagent.sh and install or repair this project.")
-		return
-	}
 	logs := filepath.Join(root, "logs", "project-launcher")
 	os.MkdirAll(logs, 0700)
 	f, err := os.OpenFile(filepath.Join(logs, "project-launcher-"+time.Now().UTC().Format("2006-01-02")+".log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
@@ -76,6 +72,22 @@ func main() {
 		return
 	}
 	defer f.Close()
+	if _, err = os.Stat(node); err != nil {
+		f.WriteString("Preparing the missing project-local runtime…\n")
+		bootstrap := runtimeBootstrap(root)
+		bootstrap.Dir = filepath.Dir(root)
+		bootstrap.Stdout = f
+		bootstrap.Stderr = f
+		if err = bootstrap.Run(); err != nil {
+			f.WriteString("Runtime preparation failed; inspect this log and retry with network access.\n")
+			problem("Project runtime installation failed. Check logs/project-launcher and open the app again after resolving the error.")
+			return
+		}
+		if _, err = os.Stat(node); err != nil {
+			problem("Runtime installation did not produce the configured Node executable. Check logs/project-launcher.")
+			return
+		}
+	}
 	cmd := exec.Command(node, filepath.Join(root, "kernel", "launcher", "entry.mjs"), "--launch")
 	cmd.Dir = filepath.Dir(root)
 	cmd.Stdout = f

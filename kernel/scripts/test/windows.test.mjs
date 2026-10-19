@@ -46,9 +46,13 @@ test('Windows termination reports unavailable taskkill without silently killing 
     const killer = new EventEmitter(); queueMicrotask(() => killer.emit('error', new Error('ENOENT'))); return killer;
   } }), /Cannot stop owned Windows process tree/);
 });
-test('single Bash entry embeds Windows bootstrap with local runtime, Unicode encoding and no standalone PS launcher', async () => {
+test('single Bash entry shares a private Windows bootstrap with native launch, with local runtime and Unicode encoding', async () => {
   await assert.rejects(fs.access(path.join(root, 'Saplingagent.ps1')));
-  const source = await fs.readFile(path.join(root, 'kernel/scripts/windows/bootstrap.sh'), 'utf8');
+  const shell = await fs.readFile(path.join(root, 'kernel/scripts/windows/bootstrap.sh'), 'utf8');
+  const powershell = await fs.readFile(path.join(root, 'kernel/scripts/windows/bootstrap.ps1'), 'utf8');
+  const source = shell + powershell;
+  assert.match(shell, /kernel\/scripts\/windows\/bootstrap\.ps1/);
+  assert.match(powershell, /runtime-only/);
   assert.match(source, /Get-FileHash -LiteralPath \$archive -Algorithm SHA256/);
   assert.match(source, /FileMode\]::CreateNew/);
   assert.match(source, /UTF-16LE/); assert.match(source, /-EncodedCommand/);

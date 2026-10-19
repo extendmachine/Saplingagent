@@ -18,7 +18,7 @@ async function fixture(config = {}) {
   const root = await fs.mkdtemp(path.join(cache, 'progress-')), sessions = new Map(), clock = fakeClock();
   let nextSession = 0, nextThread = 0, nextTurn = 0, rpc;
   const prompts = [], threadSetups = [], starts = [], interrupts = [], replies = [], channels = [];
-  let beforeAck, nextPatchGate, nextPreferencesGate, nextThreadGate;
+  let beforeAck, nextPatchGate, nextPreferencesGate, nextThreadGate, cancellableResume;
   const gates = [];
   function gate() { let release; const value = { entered: false, ready: new Promise(resolve => { release = resolve; }), release: () => release() }; gates.push(value); return value; }
   class FakeAppServer extends EventEmitter {
@@ -32,7 +32,7 @@ async function fixture(config = {}) {
       if (['thread/start', 'thread/resume'].includes(method)) threadSetups.push(p);
       if (['thread/start', 'thread/resume'].includes(method) && !p.ephemeral && nextThreadGate) { const hold = nextThreadGate; nextThreadGate = undefined; hold.entered = true; await hold.ready; }
       if (method === 'thread/start') return { thread: { id: `thread-${++nextThread}` }, sandbox: { type: 'dangerFullAccess' }, approvalPolicy: 'never' };
-      if (method === 'thread/resume') return {};
+      if (method === 'thread/resume') { if (cancellableResume) { cancellableResume.entered = true; await cancellableResume.ready; if(cancellableResume.cancelled)throw Object.assign(Error('Conversation resume was cancelled.'),{code:'CODEX_RESUME_CANCELLED'}); } return {}; }
       if (method === 'turn/start') {
         prompts.push(p);
         const turnId = `turn-${++nextTurn}`, turn = { threadId: p.threadId, turnId };
@@ -45,6 +45,7 @@ async function fixture(config = {}) {
       }
       throw new Error(`Unexpected synthetic RPC ${method}`);
     }
+    cancelResume(threadId) { if(cancellableResume?.entered){cancellableResume.threadId=threadId;cancellableResume.cancelled=true;cancellableResume.release();} }
     send() {}
     reply(id, result) { replies.push({ id, result }); }
     reject() {}
@@ -97,6 +98,7 @@ async function fixture(config = {}) {
     delayNextSave() { return nextPatchGate = gate(); },
     delayPreferences() { return nextPreferencesGate = gate(); },
     delayThreadSetup() { return nextThreadGate = gate(); },
+    delayCancellableResume() { return cancellableResume = gate(); },
     stream, request,
     async chat(requestId, sessionId) { const ch = await stream('/api/chat', { requestId, sessionId, text: 'Synthetic test' }); await until(() => starts.length > 0 && sessions.get(ch.sessionId)?.threadId); return ch; },
     async session(id) { return (await (await request(`/api/sessions/${id}`)).json()).session; },
@@ -303,4 +305,15 @@ test('new and resumed conversations receive truthful every-turn receipt guidance
     }
     await f.complete(f.starts[1]);
   } finally { await f.cleanup(); }
+});
+
+
+test('Stop cancels the pending native resume before a turn exists and releases the same saved session',async()=>{
+ const f=await fixture();try{
+  const id='saved-resume-cancel';f.sessions.set(id,{id,threadId:'saved-thread',messages:[],requests:[],running:false});
+  const hold=f.delayCancellableResume();const ch=await f.stream('/api/chat',{requestId:'cancel-native-resume',sessionId:id,text:'Synthetic only'});await until(()=>hold.entered);
+  assert.equal(f.starts.length,0);assert.equal((await f.request('/api/sessions/'+id+'/cancel',{})).status,200);
+  await until(()=>ch.events.some(e=>e.type==='done'));const saved=await f.session(id);
+  assert.equal(hold.threadId,'saved-thread');assert.equal(hold.cancelled,true);assert.equal(saved.running,false);assert.equal(saved.threadId,'saved-thread');assert.equal(saved.requests.at(-1).status,'interrupted');assert.equal(ch.events.find(e=>e.type==='done').status,'interrupted');assert.equal(ch.events.some(e=>e.type==='error'),false);assert.equal(f.starts.length,0);assert.equal(f.interrupts.length,0);assert.equal(f.clock.pending,0);
+ }finally{await f.cleanup()}
 });

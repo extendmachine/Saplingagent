@@ -69,3 +69,32 @@ For maintainer publication only, regenerate/check kernel/manifest.json after all
 There is one current Saplingagent version: kernel0.9.4. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
 
 New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92→0.9.3; original manifests/backups stay byte-exact. Shipped old comparators cannot understand0.9.4. Stop the app, download new tooling into an isolated .cache subfolder, then run that tooling's kernel/cli.mjs --root ORIGINAL_APP check/update with the project-local Node. Default is preview; update requires existing explicit risk acknowledgement and refuses conflicts/live targets. Never overwrite/rebaseline local core edits or regenerate a customer manifest to hide them. Source recovery remains explicit.
+
+
+## Directory finalization and existing Codex sessions (2026-10-19)
+
+Customer setup saves desired identity/icon and AI settings before moving the folder. Save settings & restart stages a private external system helper, closes verified owned processes and waits for project-local executable/log handles to be released. The helper moves the independent folder, resumes from its actual root, prepares application dependencies/pages, starts services and configuration, verifies readiness, then removes its owned temporary files. Only afterward may the user export the native app; export never renames. The temporary external helper is explicitly owner-authorized, with canonical source and persistent receipts inside the complete project. Pending work is reported, unrelated processes are left alone and failures never trigger automatic rollback. Credentials, conversations, customer Git and original recipient kernel baselines are preserved. See launcher/CONTRACT.md and services/ai-config/CONTRACT.md.
+
+For existing Codex sessions moved by older setup flows, the pinned native thread/resume path support can recover a verified local rollout after the specific missing-rollout error. The same thread ID is checked before and after recovery; no transcript rewriting, replacement thread, general request retry, global database replacement or permission restriction. Codex itself may update its index; user model calls remain separate from source/readiness tests. Preserve backups and actual history; do not regenerate a customer kernel baseline to hide local patches.
+
+
+## External configuration capsule and thin app (TASK-20261019-031–034)
+
+This owner workflow supersedes the earlier Save settings & restart / later Export
+sequence. A configuration activation prepares kernel/.cache/configuration with a
+closed backend module graph and built frontend, copies it and Node outside the
+project, starts B and exits. B keeps the same local URL during saves, offline
+rename and native compilation. Settings and app output remain in the project;
+stores are rebound to its actual root. Save & build app closes owned auth and
+project processes, waits for release, moves without replacing a destination and
+compiles the small launcher. It does not install/build business pages at this step.
+Finish setup starts the project-local A, waits for takeover acknowledgement and
+exits. A waits for B exit and removes only its verified external capsule.
+
+Normal .app/.exe activation checks Node and declared dependencies, installs only
+missing/changed local groups and starts the application. It does not automatically
+open another configuration capsule. Native Windows uses the shared PowerShell
+bootstrap if Node is absent and does not need Git Bash for daily activation. A
+failed install does not claim application readiness. Retain the complete source
+folder. No global installation, model call, credential/Git rewrite or automatic
+rollback. See configuration/CONTRACT.md and launcher/DEPENDENCIES.md.

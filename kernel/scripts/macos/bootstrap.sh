@@ -7,7 +7,7 @@ say() {
 
 SEED_PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 case "${1:-}" in
-  install|login|configure|start|doctor|logout|opencode|kernel) ;;
+  install|login|configure|start|doctor|logout|opencode|kernel|runtime-only) ;;
   *) say "Available actions: install / login / start / doctor / logout / configure / opencode / kernel." "可用操作：install / login / start / doctor / logout / configure / opencode / kernel。" >&2; exit 1 ;;
 esac
 if [ "$(/usr/bin/uname -s)" != "Darwin" ]; then
@@ -40,7 +40,7 @@ SEED_NODE_DIR="$SEED_PROJECT_DIR/.runtime/node-v${SEED_NODE_VERSION}-darwin-${SE
 SEED_NODE_BIN="$SEED_NODE_DIR/bin/node"
 
 if [ ! -x "$SEED_NODE_BIN" ] || [ "$("$SEED_NODE_BIN" --version)" != "v${SEED_NODE_VERSION}" ] || [ "$("$SEED_NODE_BIN" -p 'process.arch')" != "$SEED_MAC_ARCH" ]; then
-  if [ "$1" != "install" ]; then
+  if [ "$1" != "install" ] && [ "$1" != "runtime-only" ]; then
     say "Project-local Node is not installed or has a different version. Open Saplingagent.sh and choose Install / update first." "项目内 Node 未安装或版本不符。请运行 bash Saplingagent.sh，先选择安装 / 更新。" >&2
     exit 1
   fi
@@ -84,6 +84,8 @@ if [ ! -x "$SEED_NODE_BIN" ] || [ "$("$SEED_NODE_BIN" --version)" != "v${SEED_NO
   rm -rf "$SEED_BOOTSTRAP_STAGE"
   rmdir "$SEED_BOOTSTRAP_LOCK"
 fi
+
+if [ "$1" = "runtime-only" ]; then exit 0; fi
 
 export PATH="$SEED_NODE_DIR/bin:$PATH"
 export SEED_ROOT="$SEED_PROJECT_DIR"

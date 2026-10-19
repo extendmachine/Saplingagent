@@ -109,10 +109,10 @@ Office 支持基础编辑：Word 格式作用于整段，PowerPoint 以文字修
 当前源码版本为 **内核 0.9.4**。请通过下方一行安装命令或 release 分支下载本版本。
 
 1. 运行 `bash Saplingagent.sh`，检测设备、安装最小管理内核后直接打开配置网页。
-2. 在网页设置项目名称、文件夹名称、图标和 AI 接口。独立客户文件夹可在编译前改名；不覆盖同名目录，开发工作树保留原位置。
-3. 点击安装应用并编译启动器：业务依赖和校验后的 Go 工具链在本地项目目录内准备，不安装到系统全局。
-4. 双击生成的“项目名称.app”（Mac）或“项目名称.exe”（Windows），进入开发。源码和数据仍留在完整文件夹内。
-5. 管理页提供打开、重启、停止和重新构建。未变化的启动器复用；变化时先编译验证再替换，失败保留原产物。
+2. 在网页修改项目名称、目标文件夹名称和图标，先点击“保存项目设置”；这一步只保存，不移动目录。再完成 AI 账号或接口配置并保存。
+3. 每次打开配置时，项目内短进程 A 会准备完整的配置包（前后端和独立 Node）、复制到系统临时目录，启动外部 B 后退出。网页保存到项目内，凭据不复制到临时包。
+4. 完成所有修改后，点击“保存并构建应用”。外部 B 停止本项目服务、等待进程退出，再应用文件夹名称并编译“项目名称.app”（Mac）或“项目名称.exe”（Windows）。页面地址保持不变；不会覆盖同名目录。构建失败会保留当前实际目录和配置，修复后重试。
+5. 构建完成后点击“完成配置”。B 启动项目内 A 并交接临时目录，随后退出；A 等待 B 退出，再清理自己的临时配置包。之后双击应用，启动器检查并安装缺少或变更的依赖，再打开项目。更改名称、图标或 AI 时重新打开配置；重新构建成功后替换上次产物，失败保留原产物。
 
 通过 `bash Saplingagent.sh configure --no-open` 可重新打开管理；`SAPLING_LEGACY_MENU=1 bash Saplingagent.sh` 保留旧终端菜单。原生 Windows 图标、目录改名和替换需要真机验收。详见[启动器说明](docs/project-launcher.html)。旧终端菜单仅作为显式选择的兼容入口。
 
@@ -160,7 +160,7 @@ bash Saplingagent.sh --lang zh
 
 直接运行 `bash Saplingagent.sh` 时，首先选择 English 或 中文，回车默认 English。不要用 `sh` 执行，也不以双击脚本作为标准启动方式。
 
-脚本安装最小管理内核后，直接打开配置网页；按上方0.9.3流程完成名称、图标、AI 配置与本机编译。日常双击生成的启动器，管理页可打开、重启、停止或重新构建应用。
+脚本安装最小管理内核后，直接打开配置网页；按上方内核0.9.4流程保存名称、图标和 AI 配置，再保存并构建应用、完成配置。日常双击生成的启动器，检查并安装缺少或变更的依赖后启动项目；更改设置时重新打开配置。
 
 如需旧版终端菜单，运行 `SAPLING_LEGACY_MENU=1 bash Saplingagent.sh --lang zh`。显式恢复命令仍可使用 `configure --no-open`、`install --repair`、`start`、`doctor` 和 `kernel`。
 
@@ -183,7 +183,7 @@ bash Saplingagent.sh --lang zh
 
 **获取模型 / Fetch models**是可选的目录查询；不支持查询时可手动填写模型 ID。用于应用开发的模型应支持流式输出与工具调用。保存方案不代表已验证模型兼容性或可用额度。
 
-点击 **保存并使用 / Save & use**，再点 **完成设置 / Finish setup**，回到菜单选择 **启动应用 / Start app**。可以保存多个方案并切换默认项。完成设置仅关闭配置服务；单独关闭浏览器标签不会停止服务，必要时可在终端按 Control+C。浏览器未自动打开时，使用终端打印的本地网址。
+点击 **保存并使用 / Save & use**，完成所有修改后选择 **保存并构建应用 / Save & build app**。等待构建完成，再点击 **完成配置 / Finish setup**，随后双击项目内 App。可以保存多个方案并切换默认项；更换服务商后新建对话。**完成配置 / Finish setup** 会交回项目内启动器，等待外部配置进程退出后清理临时目录，单独关闭浏览器标签不会停止服务。浏览器未自动打开时，使用终端打印的本地网址。
 
 方案元数据保存在 `local-secrets/ai-config/connections.json`，API key 保存在 `local-secrets/api-keys/`，Codex 登录凭据保存在 `local-secrets/codex/`。凭据总账只保存文件引用。页面不会将已有密钥回填到表单；编辑时留空可保留旧密钥。安装不会自动导入全局凭据。
 
@@ -214,7 +214,7 @@ bash Saplingagent.sh logout
 
 ## 无 Git 的应用文件夹
 
-0.9.3 下载的是 release 源码快照，不包含 `.git`，安装时不创建 Git、不询问存放方式、不连接作者仓库。默认网页不再显示分支、Git 版本和 Save version。以后可自行创建仓库；重新安装或升级内核不会删除已有 Git、应用源码、数据和配置。
+内核0.9.4 下载的是 release 源码快照，不包含 `.git`，安装时不创建 Git、不询问存放方式、不连接作者仓库。默认网页不再显示分支、Git 版本和 Save version。以后可自行创建仓库；重新安装或升级内核不会删除已有 Git、应用源码、数据和配置。
 
 ## 独立内核升级
 
@@ -229,7 +229,7 @@ bash Saplingagent.sh logout
 
 Claude 使用 **Claude API**，填写服务地址与模型，再选择 **Import local Claude API credentials**或 **Upload API credential JSON**。本地导入读取启动终端继承的 `ANTHROPIC_API_KEY`，或 `CLAUDE_CONFIG_DIR` / `~/.claude/settings.json` 中的 API 环境字段。JSON 支持 `apiKey`、`ANTHROPIC_API_KEY`、`env.ANTHROPIC_API_KEY`，可附带 `baseUrl` / `model`；非空表单优先。替换已有方案密钥也需要明确选择。
 
-导入不读取 Claude 订阅 OAuth 文件、系统钥匙串或可执行凭据助手。文件最大 32KiB，只发送给受保护的本地配置服务。密钥保存在 Git 忽略的项目文件中，不写入状态响应或浏览器存储。导入只验证本地结构与保存，不验证有效期、额度或模型推理；完成设置后重启已有应用并新建对话。详见 [AI 配置指南](docs/ai-configuration.html)。
+导入不读取 Claude 订阅 OAuth 文件、系统钥匙串或可执行凭据助手。文件最大 32KiB，只发送给受保护的本地配置服务。密钥保存在 Git 忽略的项目文件中，不写入状态响应或浏览器存储。导入只验证本地结构与保存，不验证有效期、额度或模型推理；保存并构建应用、完成配置后再打开 App；更换服务商后新建对话。详见 [AI 配置指南](docs/ai-configuration.html)。
 
 <a id="authentication"></a>
 
@@ -254,7 +254,7 @@ Claude 使用 **Claude API**，填写服务地址与模型，再选择 **Import 
 
 Claude Agent 通过官方 **Claude Agent SDK**作为独立的本地引擎运行，内嵌 Claude Code 的 Agent 循环，支持原生文件 / 命令工具、MCP、项目 Skills、流式输出和会话恢复；没有独立对外 App Server 端口，也不通过 Claude Desktop 执行推理。
 
-安装后进入 **配置 AI → API / 自定义服务商 → Anthropic · Messages**，预设会选择 **Claude Agent**。填写自己的 API key、准确模型 ID，以及 `https://api.anthropic.com/v1` 或兼容网关地址。保存并使用、完成设置后启动；已运行的应用请重启并新建对话。网关需支持 Anthropic Messages 流式输出与工具调用，模型发现可选，Claude 方案无需 Codex 登录。
+安装后进入 **配置 AI → API / 自定义服务商 → Anthropic · Messages**，预设会选择 **Claude Agent**。填写自己的 API key、准确模型 ID，以及 `https://api.anthropic.com/v1` 或兼容网关地址。保存并使用，再保存并构建应用，完成配置后打开 App；更换服务商后新建对话。网关需支持 Anthropic Messages 流式输出与工具调用，模型发现可选，Claude 方案无需 Codex 登录。
 
 SDK 固定为 `0.3.296`，原生二进制安装在应用文件夹内，无需全局安装 Claude Code。共享 API key 位于 `local-secrets/api-keys/`，Claude 状态和会话位于 `local-secrets/claude/`。项目 `CLAUDE.md` 引入 `AGENTS.md`，`.agents/` 作为本地 `saplingagent` 插件加载现有 Skills。
 
