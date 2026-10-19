@@ -109,3 +109,7 @@ GET /api/release ->200 {release:{schemaVersion:1,version:"0.9.1"}}. No input/bod
 ## Product0.9.2 engine dependency ownership
 
 Engine adapters resolve their ESM SDKs and native executables through kernel/contracts/engine-dependencies.mjs and kernel/contracts/local-process.mjs from kernel/node_modules. The default application Agent package has no duplicate engine dependencies; its own package/lock remain application-owned for future customer additions. Legacy source fixtures without a kernel package retain explicit backend dependency resolution. Codex stdio/provider/session/streaming and Full Access behavior are unchanged. Default Git UI is removed; existing Agent Git API remains optional application compatibility code, never invoked by installer.
+
+## Unified kernel metadata (2026-10-19)
+
+GET /api/kernel remains the installed kernel contract. The legacy GET /api/release shape is kept for existing clients, but its version now follows the valid installed kernel manifest first; no separate product version exists. Only pre-kernel apps with a missing manifest use the old file fallback. A malformed installed manifest is an error, never a stale-file fallback. Responses remain read-only and contain no receipt secrets or conversation content. Current UI renders only kernel metadata or unavailable.

@@ -60,7 +60,7 @@ The primary Restart app action always requests scope all, including the frontend
 
 Accessing the sessionStorage property can itself be denied. RestartDraft catches that case before invoking its storage helpers, keeping the chat usable; draft recovery then remains unavailable, while full-restart reload uses its in-memory marker.
 
-## Kernel baseline version (2026-10-15)
+## Historical kernel baseline display (superseded below)
 
 The page footer reads the installed package version from GET /api/kernel independently of Git history. The original baseline and fallback remain0.90, including when metadata is unavailable/invalid or the legacy package has no manifest. Managed packages display their own manifest version; do not change the fallback merely for application edits. Kernel metadata loads once per page; restart/reload after maintenance. Existing Git version polling/refresh behavior is unchanged.
 
@@ -75,3 +75,9 @@ The composer adds a multiple-file picker, file/image drop zone and paste handlin
 The independently mounted PageContextBridge handles fresh page_read requests even with chat collapsed. capture.ts returns rendered DOM/text/layout and optional PNG using lazy html-to-image1.11.13 (MIT), the only new locked dependency. Passwords, input values, unsent drafts and chat messages are excluded; application regions can use data-page-private. No navigator.clipboard.read, OS screen capture or permission prompt. Image rendering failure keeps fresh DOM/layout with explicit warnings. See docs/runtime.html and service contracts for scope and limits.
 
 Product release label reads the additive Agent /api/release route from the same origin; it is independent of kernel/Git labels and never defaults to the kernel baseline. See CONTRACT.md and contracts/release.md.
+
+## Unified kernel version (2026-10-19)
+
+There is one current Saplingagent version: kernel0.9.4. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
+
+New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92→0.9.3; original manifests/backups stay byte-exact. Shipped old comparators cannot understand0.9.4. Stop the app, download new tooling into an isolated .cache subfolder, then run that tooling's kernel/cli.mjs --root ORIGINAL_APP check/update with the project-local Node. Default is preview; update requires existing explicit risk acknowledgement and refuses conflicts/live targets. Never overwrite/rebaseline local core edits or regenerate a customer manifest to hide them. Source recovery remains explicit.
