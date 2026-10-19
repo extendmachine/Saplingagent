@@ -115,3 +115,23 @@ test('Windows helper keeps PowerShell and customer tools on PATH without forward
 test('PowerShell 5.1 helper explicitly decodes both Unicode job and status JSON as UTF-8',async()=>{
  const code=await fs.readFile(new URL('../offline-helper.ps1',import.meta.url),'utf8');const reads=code.split('\n').filter(line=>line.includes('Get-Content'));assert.equal(reads.length,2);for(const line of reads)assert.match(line,/-Encoding UTF8/);assert.match(code,/\$LASTEXITCODE -ne 0/);assert.match(code,/\[Environment\]::CurrentDirectory = \$safeDirectory/);assert.match(code,/Start-Process -FilePath \$page -WorkingDirectory/);
 });
+test('actual management spawn completes readiness instead of losing its spawn event during log close',{timeout:15000},async()=>{
+ const parent=path.join(repo,'.cache/offline-setup-tests');await fs.mkdir(parent,{recursive:true});const temp=await fs.mkdtemp(path.join(parent,'actual-management-')),root=path.join(temp,'Before');await fs.mkdir(root);
+ let address;const previousJob=process.env.SAPLING_SETUP_JOB;
+ try{
+  await fs.cp(path.join(repo,'kernel'),path.join(root,'kernel'),{recursive:true,filter:file=>!file.split(path.sep).some(part=>['node_modules','.cache'].includes(part))});
+  await fs.mkdir(path.join(root,'kernel/.cache/setup'),{recursive:true});await fs.writeFile(path.join(root,'kernel/.cache/setup/index.html'),'<meta name="config-token" content="__SAPLING_CONFIG_TOKEN__">');
+  const {default:net}=await import('node:net');const probe=net.createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
+  const manager=new ProjectLauncher(root);await manager.stageSetup({name:'Before',renameFolder:false});const project=await readProject(root),id=randomUUID();process.env.SAPLING_SETUP_JOB=id;
+  const job={schemaVersion:1,id,root,previousRoot:root,targetRoot:root,projectId:project.projectId,management:{port},language:'zh',noOpen:true,fingerprint:await manager.settingsFingerprint(),connectionsFingerprint:await manager.connectionsFingerprint()};
+  await fs.writeFile(path.join(root,'.runtime/project-finalization.json'),JSON.stringify(job));await fs.writeFile(path.join(root,'.runtime/kernel-operation.lock'),JSON.stringify({id}));
+  const {resumeSetup}=await import('../resume-setup.mjs');const result=await resumeSetup(root,id,null,{prepare:async()=>{},start:async()=>({phase:'ready'})});
+  address=JSON.parse(await fs.readFile(path.join(root,'.runtime/management-address.json')));assert.equal(result.phase,'ready');assert.equal(address.port,port);assert.equal(address.root,root);assert.equal(await manager.exportReady(),true);
+  const health=await fetch(`http://127.0.0.1:${port}/health/project-launcher`).then(r=>r.json());assert.equal(health.root,root);assert.equal(health.instanceId,address.instanceId);
+ }finally{
+  if(previousJob===undefined)delete process.env.SAPLING_SETUP_JOB;else process.env.SAPLING_SETUP_JOB=previousJob;
+  if(!address)try{address=JSON.parse(await fs.readFile(path.join(root,'.runtime/management-address.json')));}catch{}
+  if(address?.root===root){const base=`http://127.0.0.1:${address.port}`,token=(await fs.readFile(path.join(root,'local-secrets/runtime/launcher-token'),'utf8')).trim();await fetch(base+'/api/config/close',{method:'POST',headers:{Origin:base,'X-Sapling-Config':token,'Content-Type':'application/json'},body:'{}'}).catch(()=>{});await until(()=>{try{process.kill(address.pid,0);return false;}catch{return true;}});}
+  await fs.rm(temp,{recursive:true,force:true});
+ }
+});

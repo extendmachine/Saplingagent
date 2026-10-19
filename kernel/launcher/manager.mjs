@@ -539,11 +539,11 @@ export class ProjectLauncher {
             windowsHide: true,
           },
         );
-        await handle.close();
-        this.appChild = child;
         child.once("error", () => {
           child.spawnFailed = true;
         });
+        this.appChild = child;
+        await handle.close();
         child.unref();
         const deadline = Date.now() + 150000;
         while (Date.now() < deadline) {

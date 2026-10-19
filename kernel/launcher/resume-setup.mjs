@@ -21,8 +21,8 @@ async function launchManagement(root,job) {
     const child=spawn(nodeForRoot(root),[path.join(root,'kernel/launcher/entry.mjs'),...(open?[]:['--no-open'])],{
       cwd:path.dirname(root),env,stdio:['ignore',handle.fd,handle.fd],detached:true,windowsHide:true,
     });
-    await handle.close();
-    await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',()=>reject(issue('PROJECT_MANAGEMENT_START_FAILED','The setup service could not restart. Run Saplingagent.sh configure from the current folder.')));});
+    const spawned=new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',()=>reject(issue('PROJECT_MANAGEMENT_START_FAILED','The setup service could not restart. Run Saplingagent.sh configure from the current folder.')));});
+    await Promise.all([spawned,handle.close()]);
     child.unref();
     for(let i=0;i<100;i++){
       const address=await json(path.join(root,'.runtime/management-address.json'));
