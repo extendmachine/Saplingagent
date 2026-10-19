@@ -473,7 +473,7 @@ export function ProjectSetup({
             {t("Status:", "状态：")} {state?.runtime.phase || "—"}
           </p>
           <div className="buttons">
-            <button
+            {!external && <button
               disabled={disabled || !state?.launcher}
               onClick={() =>
                 void action(async () => {
@@ -482,8 +482,8 @@ export function ProjectSetup({
               }
             >
               {t("Open app", "打开应用")}
-            </button>
-            <button
+            </button>}
+            {!external && <button
               className="quiet"
               disabled={disabled || state?.runtime.phase === "stopped"}
               onClick={() =>
@@ -493,7 +493,7 @@ export function ProjectSetup({
               }
             >
               {t("Restart app", "重启应用")}
-            </button>
+            </button>}
             <button
               className="quiet"
               disabled={disabled || state?.runtime.phase === "stopped"}
