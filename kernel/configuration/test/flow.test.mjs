@@ -1,0 +1,74 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {spawn} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {readSession} from '../session.mjs';
+const repo=fileURLToPath(new URL('../../../',import.meta.url));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const json=async file=>JSON.parse(await fs.readFile(file,'utf8'));
+const exists=file=>fs.access(file).then(()=>true,()=>false);
+async function until(work,count=400){for(let i=0;i<count;i++){const value=await work();if(value)return value;await sleep(50);}throw Error('Configuration fixture did not settle');}
+export async function fixture(t){
+ const parent=path.join(repo,'.runtime/configuration-tests');await fs.mkdir(parent,{recursive:true});const temp=await fs.mkdtemp(path.join(parent,'flow-'));const root=path.join(temp,'Before');await fs.mkdir(root);
+ await fs.cp(path.join(repo,'kernel'),path.join(root,'kernel'),{recursive:true,filter:file=>!path.relative(path.join(repo,'kernel'),file).split(path.sep).some(p=>['node_modules','.cache','ai-tasks'].includes(p))});
+ const config=await json(path.join(root,'kernel/config/macos.json'));
+ const localNode=path.join(root,`.runtime/node-v${config.nodeVersion}-darwin-${process.arch}/bin/node`);await fs.mkdir(path.dirname(localNode),{recursive:true});await fs.copyFile(process.execPath,localNode);await fs.chmod(localNode,0o755);
+ const vite=path.join(root,'kernel/node_modules/vite/bin');await fs.mkdir(vite,{recursive:true});await fs.writeFile(path.join(vite,'vite.js'),`const fs=require('node:fs'),path=require('node:path');const out=process.argv[process.argv.indexOf('--outDir')+1];fs.mkdirSync(path.join(out,'assets'),{recursive:true});fs.writeFileSync(path.join(out,'assets/setup-fixture.js'),'/* synthetic setup */');fs.writeFileSync(path.join(out,'index.html'),'<meta name="config-token" content="__SAPLING_CONFIG_TOKEN__"><script src="/assets/setup-fixture.js"></script>');`);
+ // Only compilation is synthetic; external processes, HTTP/root rebinding, move,
+ // session matching, copied executable, and A cleanup run their real code.
+ const controller=path.join(root,'kernel/configuration/controller.mjs');let source=await fs.readFile(controller,'utf8');source=source.replace('super(root,options);','super(root,{...options,compiler:async(root,project)=>{const receipt={artifact:project.name+".app"};await fs.mkdir(path.join(root,receipt.artifact),{recursive:true});await writeJSON(path.join(root,".runtime/launcher.json"),receipt);return receipt;}});');await fs.writeFile(controller,source);
+ await fs.writeFile(path.join(root,'business.txt'),'preserve application');await fs.mkdir(path.join(root,'.git'));await fs.writeFile(path.join(root,'.git/HEAD'),'ref: refs/heads/customer\n');await fs.mkdir(path.join(root,'local-secrets/codex/sessions'),{recursive:true});await fs.writeFile(path.join(root,'local-secrets/codex/sessions/history.jsonl'),'synthetic retained history\n');
+ const roots=[root],children=[];let directory;
+ t.after(async()=>{
+  for(const current of roots){
+   const address=await json(path.join(current,'.runtime/management-address.json')).catch(()=>null);if(!address)continue;
+   const token=await fs.readFile(path.join(current,'local-secrets/runtime/launcher-token'),'utf8').catch(()=>'');
+   await fetch(`http://127.0.0.1:${address.port}/api/config/close`,{method:'POST',headers:{Origin:`http://127.0.0.1:${address.port}`,'Content-Type':'application/json','X-Sapling-Config':token.trim()},body:'{}',signal:AbortSignal.timeout(20000)}).catch(()=>{});
+  }
+  if(directory)await until(()=>exists(directory).then(v=>!v),250).catch(async()=>{const owner=await json(path.join(directory,'session.json')).catch(()=>null);if(owner?.root&&roots.includes(owner.root)&&owner.pid)try{process.kill(owner.pid,'SIGTERM');}catch{};});
+  for(const child of children)if(child.exitCode===null){child.kill('SIGTERM');await until(()=>child.exitCode!==null).catch(()=>{});}
+  await fs.rm(temp,{recursive:true,force:true});
+ });
+ function start(){const child=spawn(localNode,[path.join(root,'kernel/launcher/entry.mjs'),'--no-open'],{cwd:temp,env:{...process.env,SEED_ROOT:root,SAPLING_NO_OPEN:'1',SAPLING_LANG:'zh',TMPDIR:path.join(root,'.runtime/tmp')},stdio:['ignore','pipe','pipe']});children.push(child);let errors='';child.stderr.on('data',b=>errors+=b);return {child,get errors(){return errors;}};}
+ return {root,temp,localNode,roots,start,track:child=>children.push(child),setDirectory:value=>directory=value};
+}
+test('real external B keeps its page across rename, then returned A removes B after exit',{skip:process.platform!=='darwin',timeout:45000},async t=>{
+ const f=await fixture(t),launched=f.start();await until(()=>launched.child.exitCode!==null);assert.equal(launched.child.exitCode,0,launched.errors);
+ const address=await json(path.join(f.root,'.runtime/management-address.json')),session=await json(path.join(f.root,'.runtime/configuration-session.json'));f.setDirectory(session.directory);
+ assert.notEqual(address.pid,launched.child.pid);assert.equal(session.pid,address.pid);assert.equal(session.directory.startsWith(f.root+path.sep),false);await readSession(session.directory,f.root);
+ const base=`http://127.0.0.1:${address.port}`,token=(await fs.readFile(path.join(f.root,'local-secrets/runtime/launcher-token'),'utf8')).trim();
+ const request=(route,body)=>fetch(base+'/api/config/'+route,body===undefined?{headers:{'X-Sapling-Config':token}}:{method:'POST',headers:{Origin:base,'Content-Type':'application/json','X-Sapling-Config':token},body:JSON.stringify(body)});
+ await until(async()=>!(await fetch(base+'/health/project-launcher').then(r=>r.json())).busy);
+ const repeat=f.start();await until(()=>repeat.child.exitCode!==null);assert.equal(repeat.child.exitCode,0,repeat.errors);assert.equal((await json(path.join(f.root,'.runtime/management-address.json'))).pid,address.pid);
+ // The running UI/backend no longer depend on original configuration resources.
+ await fs.rename(path.join(f.root,'kernel/services/ai-config'),path.join(f.root,'kernel/services/ai-config-hidden'));
+ await fs.rm(path.join(f.root,'kernel/.cache/setup'),{recursive:true});
+ assert.equal((await fetch(base)).status,200);assert.equal((await fetch(base+'/assets/setup-fixture.js')).status,200);assert.equal((await request('state')).status,200);
+ const runtimeFile=path.join(f.root,'owned-runtime.mjs');
+ await fs.writeFile(runtimeFile,`import fs from 'node:fs/promises';import path from 'node:path';import http from 'node:http';const root=process.cwd(),id='fixture-runtime';await fs.writeFile(path.join(root,'local-secrets/runtime/service-token'),'fixture-token');const server=http.createServer((req,res)=>{if(req.url==='/api/runtime/status'){res.end(JSON.stringify({applicationRoot:root,instanceId:id,phase:'ready'}));return;}if(req.url==='/api/runtime/stop'&&req.headers.authorization==='Bearer fixture-token'){res.end('{}');setTimeout(async()=>{await fs.rm(path.join(root,'.runtime/runtime-address.json'));server.close(()=>process.exit(0));},30);return;}res.writeHead(404);res.end();});server.listen(0,'127.0.0.1',async()=>{const port=server.address().port;await fs.writeFile(path.join(root,'.runtime/runtime-address.json'),JSON.stringify({root,pid:process.pid,instanceId:id,ports:{runtimeManagerPort:port},url:'http://127.0.0.1:'+port}));});`);
+ const runtime=spawn(f.localNode,[runtimeFile],{cwd:f.root,stdio:'ignore'});f.track(runtime);await until(()=>exists(path.join(f.root,'.runtime/runtime-address.json')));
+ const finalName='项目 After α',after=path.join(f.temp,finalName);f.roots.push(after);
+ assert.equal((await request('project/save',{name:finalName,folderName:finalName,renameFolder:true})).status,200);
+ assert.equal((await request('profiles',{engine:'opencode',kind:'api',protocol:'chat',label:'Synthetic',baseUrl:'http://127.0.0.1:1/v1',model:'synthetic',noAuth:true})).status,200);
+ const result=await request('project/finalize',{});assert.equal(result.status,202);assert.equal((await result.json()).job.kind,'configure');
+ const state=await until(async()=>{const s=await request('project').then(r=>r.json());if(s.job?.phase==='failed')throw Error(JSON.stringify(s.job.error));return s.job?.phase==='completed'&&s;});
+ assert.equal(runtime.exitCode,0,'owned runtime exited normally before folder move');
+ assert.equal(state.root,after);assert.equal(state.exportReady,true);assert.equal(state.runtime.phase,'stopped');assert.equal(state.launcher.artifact,finalName+'.app');assert.equal(await exists(f.root),false);
+ assert.equal((await request('state')).status,200);assert.equal((await json(path.join(after,'.runtime/management-address.json'))).pid,address.pid);assert.equal((await fs.readFile(path.join(after,'local-secrets/runtime/launcher-token'),'utf8')).trim(),token);
+ assert.equal(await fs.readFile(path.join(after,'business.txt'),'utf8'),'preserve application');assert.equal(await fs.readFile(path.join(after,'.git/HEAD'),'utf8'),'ref: refs/heads/customer\n');assert.equal(await fs.readFile(path.join(after,'local-secrets/codex/sessions/history.jsonl'),'utf8'),'synthetic retained history\n');
+ // Restore only synthetic hidden source so A imports the normal complete project.
+ await fs.rename(path.join(after,'kernel/services/ai-config-hidden'),path.join(after,'kernel/services/ai-config'));
+ const closed=await request('close',{});assert.equal(closed.status,200,await closed.clone().text());assert.deepEqual(await closed.json(),{closed:true,handoff:true});
+ await until(async()=>!await exists(session.directory));await until(()=>exists(path.join(after,'.runtime/configuration-complete.json')));
+ const done=await json(path.join(after,'.runtime/configuration-complete.json'));assert.equal(done.temporaryFilesRemoved,true);assert.equal(await exists(path.join(after,'.runtime/configuration-session.json')),false);assert.equal(await exists(path.join(after,'.runtime/management-address.json')),false);
+});
+
+test('two complete project folders configure on independent ports and cleanup independently',{skip:process.platform!=='darwin',timeout:45000},async t=>{
+ const a=await fixture(t),b=await fixture(t),one=a.start(),two=b.start();await until(()=>one.child.exitCode!==null&&two.child.exitCode!==null);assert.equal(one.child.exitCode,0,one.errors);assert.equal(two.child.exitCode,0,two.errors);
+ const first=await json(path.join(a.root,'.runtime/management-address.json')),second=await json(path.join(b.root,'.runtime/management-address.json'));
+ a.setDirectory((await json(path.join(a.root,'.runtime/configuration-session.json'))).directory);b.setDirectory((await json(path.join(b.root,'.runtime/configuration-session.json'))).directory);
+ assert.notEqual(first.port,second.port);assert.notEqual(first.pid,second.pid);
+ for(const [address,root]of [[first,a.root],[second,b.root]])assert.equal((await fetch(`http://127.0.0.1:${address.port}/health/project-launcher`).then(r=>r.json())).root,root);
+});

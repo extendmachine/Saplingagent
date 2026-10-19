@@ -28,7 +28,7 @@ async function launchManagement(root,job) {
     child.unref();
     for(let i=0;i<100;i++){
       const address=await json(path.join(root,'.runtime/management-address.json'));
-      if(address?.root===root&&address.pid===child.pid&&(!fixedPort||address.port===job.management.port)){
+      if(address?.root===root&&(address.pid===child.pid||address.configurationHost==='external')&&(!fixedPort||address.port===job.management.port)){
         try{const health=await fetch(`http://127.0.0.1:${address.port}/health/project-launcher`,{signal:AbortSignal.timeout(500)}).then(r=>r.json());
           if(health.root===root&&health.instanceId===address.instanceId)return address;}catch{}
       }

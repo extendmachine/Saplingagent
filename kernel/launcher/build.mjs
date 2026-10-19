@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import {readFileSync,existsSync} from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
@@ -9,10 +10,19 @@ export const buildContext = new AsyncLocalStorage();
 const originalRoot = path.resolve(
   fileURLToPath(new URL("../../", import.meta.url)),
 );
-export const nodeForRoot = (root) =>
-  process.execPath.startsWith(originalRoot + path.sep)
+export const nodeForRoot = (root) => {
+  if(process.env.SAPLING_CONFIGURATION_DIR){
+    const platform=process.platform==='win32'?'windows':'macos';
+    const config=JSON.parse(readFileSync(path.join(root,`kernel/config/${platform}.json`),'utf8'));
+    const directory=`node-v${config.nodeVersion}-${process.platform==='win32'?'win':'darwin'}-${process.arch}`;
+    const node=path.join(root,'.runtime',directory,...(process.platform==='win32'?['node.exe']:['bin','node']));
+    if(!existsSync(node))throw issue('PROJECT_LOCAL_NODE_REQUIRED','The project Node runtime is missing. Run Saplingagent.sh to repair it.');
+    return node;
+  }
+  return process.execPath.startsWith(originalRoot + path.sep)
     ? path.join(root, path.relative(originalRoot, process.execPath))
     : process.execPath;
+};
 import { exists, json, writeJSON, issue, cleanOutput } from "./io.mjs";
 export function buildEnv(root) {
   const env = {
@@ -42,6 +52,7 @@ export function buildEnv(root) {
       )
     )
       delete env[k];
+  delete env.SAPLING_CONFIGURATION_DIR;delete env.SAPLING_CONFIG_PARENT_PID;
   return { ...env, GOENV: "off", GOWORK: "off" };
 }
 export async function command(

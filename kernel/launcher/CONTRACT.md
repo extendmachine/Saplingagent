@@ -50,3 +50,25 @@ macOS system-process tests use isolated copies and synthetic endpoints only. Win
 `prepareSetupUI(root)` is the shared public preparation entry for Configure AI, native management, direct setup service and offline restart. It validates a source/lockfile signature and hashes of the document and every generated asset before reuse. Missing/corrupt output or changed sources trigger a project-local Vite build in kernel/.cache/setup-stage-<id>. Exclusive kernel/.cache/setup-build.lock serializes builders; an interrupted owner is reported for inspection, never silently erased. Build failure leaves the previous usable document. Publish resources first and atomically replace index.html last. Retain previous hashed assets for already-loaded documents; these caches are excluded from source distribution and may be cleared only while setup is stopped. No credentials/model call or new service.
 
 Native management prepares the document before publishing its address. Offline resume prepares it before starting the management child/readiness deadline. This checks local UI readiness, not remote authentication. Standalone `npm run build:setup` uses the same preparation; source version changes rebuild without clearing the live page. Errors UI_BUILD_FAILED/500, UI_BUILD_CHANGED/409, UI_BUILD_BUSY/409 and UI_BUILD_INTERRUPTED/409 retain source/data and report recovery.
+
+
+## External configuration capsule and thin app (TASK-20261019-031–034)
+
+This owner workflow supersedes the earlier Save settings & restart / later Export
+sequence. A configuration activation prepares kernel/.cache/configuration with a
+closed backend module graph and built frontend, copies it and Node outside the
+project, starts B and exits. B keeps the same local URL during saves, offline
+rename and native compilation. Settings and app output remain in the project;
+stores are rebound to its actual root. Save & build app closes owned auth and
+project processes, waits for release, moves without replacing a destination and
+compiles the small launcher. It does not install/build business pages at this step.
+Finish setup starts the project-local A, waits for takeover acknowledgement and
+exits. A waits for B exit and removes only its verified external capsule.
+
+Normal .app/.exe activation checks Node and declared dependencies, installs only
+missing/changed local groups and starts the application. It does not automatically
+open another configuration capsule. Native Windows uses the shared PowerShell
+bootstrap if Node is absent and does not need Git Bash for daily activation. A
+failed install does not claim application readiness. Retain the complete source
+folder. No global installation, model call, credential/Git rewrite or automatic
+rollback. See configuration/CONTRACT.md and launcher/DEPENDENCIES.md.

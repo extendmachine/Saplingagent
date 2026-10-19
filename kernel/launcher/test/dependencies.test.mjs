@@ -156,3 +156,8 @@ test('package bin entries require exact regular files despite valid main resolut
   await fs.rm(path.join(directory,'bin/tool'),{recursive:true});await write(path.join(directory,'bin/tool'),'#!/bin/sh\nexit 0');
   assert.equal((await applicationDependencyStatus(f.root)).groups.find(g=>g.name==='backend/custom').ready,true);
 });
+
+test('copied discovery for a different project never blocks local dependency repair',async t=>{
+  const f=await fixture(t);await write(path.join(f.root,'.runtime/runtime-address.json'),{pid:process.pid,root:path.join(f.root,'other-project')});
+  assert.equal((await ensureApplicationDependencies(f.root,{install:f.install})).changed,true);
+});

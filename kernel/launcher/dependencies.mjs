@@ -123,7 +123,7 @@ export async function ensureApplicationDependencies(root,{onProgress=()=>{},inst
     if(state.ready)return {changed:false,signature:state.signature};
     if(await exists(path.join(root,'.runtime/kernel-operation.lock'))||await exists(path.join(root,'.runtime/kernel/active-job.json')))throw issue('DEPENDENCY_MAINTENANCE_BUSY','Finish kernel maintenance before installing dependencies.');
     const runtime=await json(path.join(root,'.runtime/runtime-address.json'));
-    if(alive(runtime?.pid))throw issue('DEPENDENCY_APP_RUNNING','Dependencies changed or are missing. Stop this project, then open the app again to install them.');
+    if((!runtime?.root||path.resolve(runtime.root)===root)&&alive(runtime?.pid))throw issue('DEPENDENCY_APP_RUNNING','Dependencies changed or are missing. Stop this project, then open the app again to install them.');
     const receipt=await json(path.join(root,'.runtime/dependencies.json'))||{schemaVersion:1,groups:{}};
     receipt.groups||={};let changed=false;
     for(const group of state.groups){

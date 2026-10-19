@@ -115,11 +115,12 @@ test('Windows helper keeps PowerShell and customer tools on PATH without forward
 test('PowerShell 5.1 helper explicitly decodes both Unicode job and status JSON as UTF-8',async()=>{
  const code=await fs.readFile(new URL('../offline-helper.ps1',import.meta.url),'utf8');const reads=code.split('\n').filter(line=>line.includes('Get-Content'));assert.equal(reads.length,2);for(const line of reads)assert.match(line,/-Encoding UTF8/);assert.match(code,/\$LASTEXITCODE -ne 0/);assert.match(code,/\[Environment\]::CurrentDirectory = \$safeDirectory/);assert.match(code,/Start-Process -FilePath \$page -WorkingDirectory/);
 });
-test('actual management spawn completes readiness instead of losing its spawn event during log close',{timeout:15000},async()=>{
+test('actual management spawn completes readiness instead of losing its spawn event during log close',{timeout:30000},async()=>{
  const parent=path.join(repo,'.cache/offline-setup-tests');await fs.mkdir(parent,{recursive:true});const temp=await fs.mkdtemp(path.join(parent,'actual-management-')),root=path.join(temp,'Before');await fs.mkdir(root);
  let address;const previousJob=process.env.SAPLING_SETUP_JOB;
  try{
   await fs.cp(path.join(repo,'kernel'),path.join(root,'kernel'),{recursive:true,filter:file=>!file.split(path.sep).some(part=>['node_modules','.cache'].includes(part))});
+  const device=JSON.parse(await fs.readFile(path.join(root,'kernel/config/macos.json')));const node=path.join(root,`.runtime/node-v${device.nodeVersion}-darwin-${process.arch}/bin/node`);await fs.mkdir(path.dirname(node),{recursive:true});await fs.copyFile(process.execPath,node);await fs.chmod(node,0o755);
   const vite=path.join(root,'kernel/node_modules/vite/bin');await fs.mkdir(vite,{recursive:true});
   await fs.writeFile(path.join(vite,'vite.js'),`const fs=require('node:fs'),path=require('node:path');const out=process.argv[process.argv.indexOf('--outDir')+1];fs.mkdirSync(path.join(out,'assets'),{recursive:true});fs.writeFileSync(path.join(out,'assets/setup-fixture.js'),'/* synthetic setup */');fs.writeFileSync(path.join(out,'index.html'),'<meta name="config-token" content="__SAPLING_CONFIG_TOKEN__"><script src="/assets/setup-fixture.js"></script>');`);
   const {default:net}=await import('node:net');const probe=net.createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
@@ -129,11 +130,12 @@ test('actual management spawn completes readiness instead of losing its spawn ev
   const {resumeSetup}=await import('../resume-setup.mjs');const result=await resumeSetup(root,id,null,{prepare:async()=>{},start:async()=>({phase:'ready'})});
   address=JSON.parse(await fs.readFile(path.join(root,'.runtime/management-address.json')));assert.equal(result.phase,'ready');assert.equal(address.port,port);assert.equal(address.root,root);assert.equal(await manager.exportReady(),true);
   const health=await fetch(`http://127.0.0.1:${port}/health/project-launcher`).then(r=>r.json());assert.equal(health.root,root);assert.equal(health.instanceId,address.instanceId);
+  await until(async()=>!(await fetch(`http://127.0.0.1:${port}/health/project-launcher`).then(r=>r.json())).busy);
   assert.equal((await fetch(`http://127.0.0.1:${port}/`)).status,200);assert.equal((await fetch(`http://127.0.0.1:${port}/assets/setup-fixture.js`)).status,200);
  }finally{
   if(previousJob===undefined)delete process.env.SAPLING_SETUP_JOB;else process.env.SAPLING_SETUP_JOB=previousJob;
   if(!address)try{address=JSON.parse(await fs.readFile(path.join(root,'.runtime/management-address.json')));}catch{}
-  if(address?.root===root){const base=`http://127.0.0.1:${address.port}`,token=(await fs.readFile(path.join(root,'local-secrets/runtime/launcher-token'),'utf8')).trim();await fetch(base+'/api/config/close',{method:'POST',headers:{Origin:base,'X-Sapling-Config':token,'Content-Type':'application/json'},body:'{}'}).catch(()=>{});await until(()=>{try{process.kill(address.pid,0);return false;}catch{return true;}});}
+  if(address?.root===root){const base=`http://127.0.0.1:${address.port}`,token=(await fs.readFile(path.join(root,'local-secrets/runtime/launcher-token'),'utf8')).trim();await fetch(base+'/api/config/close',{method:'POST',headers:{Origin:base,'X-Sapling-Config':token,'Content-Type':'application/json'},body:'{}'}).catch(()=>{});await until(()=>{try{process.kill(address.pid,0);return false;}catch{return true;}});await until(async()=>!await fs.access(path.join(root,'.runtime/configuration-session.json')).then(()=>true,()=>false));}
   await fs.rm(temp,{recursive:true,force:true});
  }
 });

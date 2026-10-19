@@ -165,21 +165,13 @@ async function configureOpenCode() {
   if (result.code !== 0) throw new Error(t(`OpenCode provider setup failed (exit code ${result.code}).`, `OpenCode 服务商配置失败（退出码 ${result.code}）。`));
   console.log(t('OpenCode provider saved. Restart Saplingagent, start a new conversation, then choose OpenCode.', "OpenCode 服务商已保存。请重启 Saplingagent，新建会话后选择 OpenCode。"));
 }
-async function configureAI(noOpen,launch=false) {
+async function configureAI(noOpen) {
   if (!await coreInstalled()) throw new Error(t('Install the local kernel first: bash Saplingagent.sh install','请先安装本地内核：bash Saplingagent.sh install'));
   await localSetup();
   console.log(t('Preparing independent AI configuration and project setup…','正在准备独立 AI 与项目配置网页…'));
-  const {prepareSetupUI}=await import('../../launcher/public.mjs');
-  await prepareSetupUI(root);
-  const setupEnv={...env};if(process.env.CODEX_HOME)setupEnv.CODEX_HOME=process.env.CODEX_HOME;else delete setupEnv.CODEX_HOME;
-  if(!await exists(path.join(root,'kernel/launcher/entry.mjs'))){await required(process.execPath,[path.join(root,'kernel/services/ai-config/server.mjs'),...(noOpen?['--no-open']:[])],{childEnv:setupEnv});return;}
-  const {managementFingerprint}=await import('../../launcher/public.mjs');const expectedFingerprint=await managementFingerprint(root);
-  const dir=path.join(root,'logs/project-launcher');await fs.mkdir(dir,{recursive:true});
-  const handle=await fs.open(path.join(dir,`project-launcher-${new Date().toISOString().slice(0,10)}.log`),'a');
-  const child=spawn(process.execPath,[path.join(root,'kernel/launcher/entry.mjs'),...(noOpen?['--no-open']:[]),...(launch?['--launch']:[])],{cwd:path.dirname(root),env:setupEnv,detached:!windows,windowsHide:true,stdio:['ignore',handle.fd,handle.fd]});
-  await handle.close();child.once('error',()=>{});child.unref();
-  for(let i=0;i<100;i++){try{const address=JSON.parse(await fs.readFile(path.join(root,'.runtime/management-address.json'),'utf8'));const health=await fetch(`http://127.0.0.1:${address.port}/health/project-launcher`,{signal:AbortSignal.timeout(500)}).then(r=>r.json());if(health.instanceId===address.instanceId&&health.root===root&&(address.fingerprint===expectedFingerprint||health.busy)){console.log(t(`Project setup: http://127.0.0.1:${address.port}/. Continue in your browser. You can close this script.`,`项目配置：http://127.0.0.1:${address.port}/。请在网页继续配置，可以关闭此脚本。`));return;}}catch{}await delay(100);}
-  throw new Error(t('Project setup could not open. Check logs/project-launcher/.','项目配置网页未能启动，请检查 logs/project-launcher/。'));
+  const {openConfiguration}=await import('../../configuration/bootstrap.mjs');
+  const address=await openConfiguration(root,{noOpen:noOpen||process.env.SAPLING_NO_OPEN==='1'});
+  console.log(t(`Project setup: http://127.0.0.1:${address.port}/. Continue in your browser. This script will close.`,`项目配置：http://127.0.0.1:${address.port}/。请在网页继续配置，此脚本将退出。`));
 }
 async function installKernelAndConfigure(repair=false){
  if(!await exists(path.join(root,'kernel/package.json')))return install(repair);

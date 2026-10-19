@@ -65,5 +65,16 @@ export async function managementFingerprint(root) {
     "kernel/services/ai-config/server.mjs",
   ])
     hash.update(await fs.readFile(path.join(root, file)));
+  for(const directory of ['kernel/configuration','kernel/ui/setup']) {
+    async function scan(relative){
+      for(const item of (await fs.readdir(path.join(root,relative),{withFileTypes:true})).sort((a,b)=>a.name.localeCompare(b.name))){
+        if(item.name.startsWith('.')||['node_modules','test','ai-tasks'].includes(item.name))continue;
+        const name=relative+'/'+item.name;
+        if(item.isDirectory())await scan(name);
+        else if(item.isFile()&&/\.(mjs|tsx?|css|html)$/.test(name))hash.update(name).update(await fs.readFile(path.join(root,name)));
+      }
+    }
+    await scan(directory);
+  }
   return hash.digest("hex");
 }
