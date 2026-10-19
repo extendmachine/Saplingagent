@@ -116,7 +116,7 @@ bash Saplingagent.sh --lang zh
 
 手动下载源码后，先选 **1. 安装 / 修复依赖**。一键安装命令已经执行了这一步。接着选 **2. 配置 AI**，完成配置后选 **3. 启动应用**。操作结束会返回菜单，失败时可根据提示重试。更新依赖前请先停止正在运行的应用；应用运行期间保留启动终端，按 Control+C 停止它所管理的服务并退出启动器。
 
-安装程序将固定版本的 Node **24.21.0**、Codex **0.146.1**、OpenCode、Claude Agent SDK **0.3.296** 和锁定依赖安装到项目内，并核对官方 Node SHA-256。无需预装 Node、npm、Homebrew 或 Codex 桌面应用，也无需 sudo 或全局 npm 安装。版本声明见 [config/macos.json](config/macos.json) 和各模块的锁文件。
+安装程序将固定版本的 Node **24.21.0**、Codex **0.146.1**、OpenCode、Claude Agent SDK **0.3.296** 和锁定依赖安装到项目内，并核对官方 Node SHA-256。无需预装 Node、npm、Homebrew 或 Codex 桌面应用，也无需 sudo 或全局 npm 安装。版本声明见 [kernel/config/macos.json](kernel/config/macos.json) 和各模块的锁文件。
 
 新安装不需要配置 Git；Windows 由 Git for Windows 提供 Git Bash。安装需要访问官方下载、npm 与所选模型服务。`.runtime/` 保存运行时，各模块 `node_modules/` 保存依赖，`.cache/npm/` 保存 npm 缓存。请保留整个应用文件夹。
 
@@ -139,7 +139,7 @@ bash Saplingagent.sh --lang zh
 
 方案元数据保存在 `local-secrets/ai-config/connections.json`，API key 保存在 `local-secrets/api-keys/`，Codex 登录凭据保存在 `local-secrets/codex/`。凭据总账只保存文件引用。页面不会将已有密钥回填到表单；编辑时留空可保留旧密钥。安装不会自动导入全局凭据。
 
-OpenCode 独立方案和自定义 Codex API 方案无需先登录 ChatGPT。修改默认方案后，重启应用并新建对话；已有对话保留原来的引擎与模型，不要将旧 Codex 会话交给另一服务商恢复。详见 [AI 配置指南](docs/ai-configuration.html)和[配置服务契约](backend/ai-config/CONTRACT.md)。
+OpenCode 独立方案和自定义 Codex API 方案无需先登录 ChatGPT。修改默认方案后，重启应用并新建对话；已有对话保留原来的引擎与模型，不要将旧 Codex 会话交给另一服务商恢复。详见 [AI 配置指南](docs/ai-configuration.html)和[配置服务契约](kernel/services/ai-config/CONTRACT.md)。
 
 启动后使用终端打印的**实际网址**。默认从端口 `5173` 开始，已被占用时自动向上选择空闲端口。发送一条消息，检查真实回复；安装成功、已登录和获取到模型列表都不等于推理成功。
 
@@ -251,8 +251,8 @@ flowchart LR
     Codex --> Skills[项目 Skills 与规则]
 ```
 
-1. [scripts/macos/codex.sh](scripts/macos/codex.sh) 选择项目 Node / Codex，设置项目 `CODEX_HOME`，使用文件凭据。
-2. [rpc.mjs](backend/agent-runtime/rpc.mjs) 启动 `codex app-server --listen stdio://`，通过标准输入 / 输出交换按行分隔的 JSON。
+1. [kernel/scripts/macos/codex.sh](kernel/scripts/macos/codex.sh) 选择项目 Node / Codex，设置项目 `CODEX_HOME`，使用文件凭据。
+2. [rpc.mjs](kernel/engines/rpc.mjs) 启动 `codex app-server --listen stdio://`，通过标准输入 / 输出交换按行分隔的 JSON。
 3. [server.mjs](backend/agent-runtime/server.mjs) 完成 `initialize` / `initialized`、账号与模型查询、会话创建 / 恢复与 turn 调用，将文本和工具事件通过 SSE 发往浏览器。
 4. `mcp_servers.seedagent` 启动[项目 MCP](backend/mcp-runtime/server.mjs)，提供 **15 个工具**，覆盖项目上下文、文件、命令、变更记录、偏好与 Skills。
 5. [.agents/skills/](.agents/skills/) 提供 `seed-page-edit`、`seed-research`、`seed-skill-author`；规则入口是 `AGENTS.md → rules/README.md`。
@@ -331,13 +331,13 @@ AI 开发先读 [AGENTS.md](AGENTS.md)和 [rules/README.md](rules/README.md)。�
 维护者打包 Mac 源码时，使用项目安装的 Node：
 
 ```bash
-SEED_NODE_VERSION="$(/usr/bin/plutil -extract nodeVersion raw -o - config/macos.json)"
+SEED_NODE_VERSION="$(/usr/bin/plutil -extract nodeVersion raw -o - kernel/config/macos.json)"
 SEED_ARCH="$(/usr/bin/uname -m)"
 if [ "$SEED_ARCH" = "x86_64" ]; then SEED_ARCH=x64; fi
-".runtime/node-v${SEED_NODE_VERSION}-darwin-${SEED_ARCH}/bin/node" scripts/package-macos.mjs release
+".runtime/node-v${SEED_NODE_VERSION}-darwin-${SEED_ARCH}/bin/node" kernel/scripts/package-macos.mjs release
 ```
 
-Windows 源码包使用 `<project-node> scripts/package-windows.mjs release .cache/releases`，其中 `<project-node>` 代表此项目安装的 Node 路径。
+Windows 源码包使用 `<project-node> kernel/scripts/package-windows.mjs release .cache/releases`，其中 `<project-node>` 代表此项目安装的 Node 路径。
 
 包和 `.sha256` 位于 `.cache/releases/`，包含已提交源码、完整规则 / Skills、许可证、锁文件，以及 `delivery.json` 的逐文件 SHA-256 清单。接收者记录重新初始化，不继承维护者历史与批准。默认不包含凭据、对话、日志、快照、依赖目录、运行时与 Git 元数据。
 

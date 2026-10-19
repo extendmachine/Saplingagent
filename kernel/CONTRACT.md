@@ -1,8 +1,8 @@
 # Independent kernel package contract v3
 
-TASK-20261016-001,2026-10-16. Kernel is project-local platform tooling; the runtime gateway hosts its control and a temporary copied loopback worker owns upgrades. Public library exports are in kernel/manager.mjs; the launcher calls kernel/cli.mjs as a separate command. Metadata and startup interlock are shared contracts/kernel.mjs, not another service's private implementation.
+TASK-20261016-001,2026-10-16. Kernel is project-local platform tooling; the runtime gateway hosts its control and a temporary copied loopback worker owns upgrades. Public library exports are in kernel/manager.mjs; the launcher calls kernel/cli.mjs as a separate command. Metadata and startup interlock are kernel/contracts/kernel.mjs, not another service's private implementation.
 
-Manifest kernel/manifest.json: schemaVersion3,version0.91,appApi1,minNode,notes and files[{path,sha256,bytes,executable}]. Exact membership is defined by isKernelPath in contracts/kernel.mjs. Kernel owns install/update tooling, complete process restart, AI configuration/engine adapters and their explicitly declared shared contracts. The mixed Agent HTTP/chat entry, application frontend entry/styles/build/dependency files, chat UI, workspace/context, builder/page reading, MCP runtime and all Skills/plugin registrations are application-owned. Their source remains in the complete distribution, freely editable and outside kernel update/deletion/restore. Runtime/services config,rules/AGENTS/goals/records,data,secrets,Git metadata,logs and installed dependencies remain excluded. Full Access is unchanged; membership is an update package boundary, not a tool permission boundary.
+Manifest kernel/manifest.json: schemaVersion3,layoutVersion1,version0.92,appApi1,minNode,notes and files[{path,sha256,bytes,executable}]. Current membership is defined by isContainedKernelPath and the manifest in kernel/contracts/kernel.mjs; isKernelPath additionally recognizes historical baselines for migration and recovery. Kernel owns install/update tooling, complete process restart, AI configuration/engine adapters and their explicitly declared shared contracts. The mixed Agent HTTP/chat entry, application frontend entry/styles/build/dependency files, chat UI, workspace/context, builder/page reading, MCP runtime and all Skills/plugin registrations are application-owned. Their source remains in the complete distribution, freely editable and outside kernel update/deletion/restore. Runtime/services config,rules/AGENTS/goals/records,data,secrets,Git metadata,logs and installed dependencies remain excluded. Full Access is unchanged; membership is an update package boundary, not a tool permission boundary.
 
 Schema3 deliberately refuses earlier schema1 and schema2 baselines, plans and backup manifests before source writes. Old updaters reject3 before treating released application modules as deletions. Use a deliberate complete-tooling transition from0.9.1; preserve originals and customer data. Never regenerate a recipient baseline to hide core edits.
 
@@ -31,3 +31,30 @@ The page host uses same-origin postMessage: kernel-before-restart saves drafts; 
 ## Customer launcher0.9.3
 
 Management owns kernel/launcher source and kernel/launcher/public.mjs, including customer-local compile/orchestration. It never owns config/project.json,config/project-icon.png,root-level generated launchers or .runtime/.cache. Kernel update changes compiler/source but does not silently rebuild customer binaries or rename folders. The existing native bootstrap invokes the updated editable management source; explicit Rebuild app & launcher refreshes a changed native source/icon/name. Independent kernel0.92 and product0.9.3 remain distinct.
+
+## Contained platform implementation (2026-10-19)
+
+All kernel implementations, default device settings, internal commands, service contracts,
+engine adapters, native launcher sources and the complete setup website live in `kernel/`.
+The setup React source is `kernel/ui/setup/`; its generated assets are
+`kernel/.cache/setup/`. Runtime management and AI configuration live in
+`kernel/services/`, provider adapters in `kernel/engines/`, and installation/build
+commands in `kernel/scripts/`. `kernel/config/` contains device defaults; customer
+configuration remains under root `config/` and credentials under `local-secrets/`.
+
+Ordinary application development should change `front/`, `backend/`, application
+contracts and `config/services.json`, using public kernel interfaces. Do not edit
+kernel internals to add a business feature. Explicit platform-maintenance requests
+can still modify the kernel with current-user Full Access: this is organization and
+update guidance, not a permission restriction or path lock.
+
+The public root Bash entries and a finite set of old import/command paths remain
+small forwarding adapters only. They contain no platform implementation or setup
+page. `kernel/compat/paths.mjs` enumerates these compatibility entries, necessary so
+existing applications and the shipped0.9.2 updater keep working. New code uses
+canonical kernel paths. The schema3 manifest adds `layoutVersion:1`, restricts
+current ownership to `kernel/` plus those entries, and keeps historical validation
+for deliberate migration/recovery. Unmodified old schema3 installations can migrate;
+local core edits still cause conflicts and need a deliberate merge. Never regenerate
+a customer's baseline to hide them. A contained install cannot update back to the
+old distributed layout; restoring an explicit backup remains available.
