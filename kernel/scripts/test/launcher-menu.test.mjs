@@ -169,3 +169,10 @@ test('menu shows only installed kernel version even when old compatibility metad
  const root=await fixture(t);await fs.writeFile(path.join(root,'kernel/manifest.json'),JSON.stringify({version:'0.9.4'}));await fs.mkdir(path.join(root,'config'));await fs.writeFile(path.join(root,'config/release.json'),JSON.stringify({version:'0.9.1'}));
  const value=await execute(root,'0\n');assert.equal(value.code,0);assert.match(value.output,/Kernel version: 0\.9\.4/);assert.doesNotMatch(value.output,/Release:|0\.9\.1/);
 });
+
+test('successful web setup releases the legacy menu process instead of retaining its project script',async t=>{
+ const root=await fixture(t);await fs.mkdir(path.join(root,'kernel/launcher'),{recursive:true});await fs.writeFile(path.join(root,'kernel/launcher/entry.mjs'),'// Synthetic management entry');
+ const value=await execute(root,'2\n4\n0\n',[],'en',{SAPLING_LEGACY_MENU:'1'});assert.equal(value.code,0);assert.equal(await actions(root),'configure\n');
+ const failed=await fixture(t,{failure:true});await fs.mkdir(path.join(failed,'kernel/launcher'),{recursive:true});await fs.writeFile(path.join(failed,'kernel/launcher/entry.mjs'),'// Synthetic management entry');
+ assert.equal((await execute(failed,'2\n4\n0\n',[],'en',{SAPLING_LEGACY_MENU:'1'})).code,0);assert.equal(await actions(failed),'configure\ndoctor\n');
+});

@@ -1,6 +1,9 @@
 #!/bin/bash
 set -uo pipefail
 SAPLING_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+# The setup helper may rename the project after this script opens its webpage.
+# Keep our own shell outside that directory so it does not retain a Windows cwd lock.
+cd "$(dirname "$SAPLING_ROOT")" || exit 1
 SAPLING_BOOTSTRAP=''
 SAPLING_CHILD_PID=''
 SAPLING_LANG_CHOSEN=0
@@ -119,8 +122,8 @@ while true; do
   if [ "$SAPLING_LANG" = 'zh' ]; then printf '请选择 [0-4, 6, 9]: '; else printf 'Choose [0-4, 6, 9]: '; fi
   if ! IFS= read -r choice; then printf '\n'; exit 0; fi
   case "$choice" in
-    1) run_action install ;;
-    2) run_action configure ;;
+    1) run_action install; if [ "${SAPLING_ACTION_STATUS:-1}" -eq 0 ] && [ -f "$SAPLING_ROOT/kernel/launcher/entry.mjs" ]; then exit 0; fi ;;
+    2) run_action configure; if [ "${SAPLING_ACTION_STATUS:-1}" -eq 0 ] && [ -f "$SAPLING_ROOT/kernel/launcher/entry.mjs" ]; then exit 0; fi ;;
     3) run_action start ;;
     4) run_action doctor ;;
     6) run_action kernel ;;

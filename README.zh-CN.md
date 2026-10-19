@@ -53,10 +53,10 @@
 当前源码版本为 **内核 0.9.4**。请通过下方一行安装命令或 release 分支下载本版本。
 
 1. 运行 `bash Saplingagent.sh`，检测设备、安装最小管理内核后直接打开配置网页。
-2. 先在网页设置项目名称、文件夹名称和图标，点击“确认文件夹并继续”，立即完成所选的目录改名。看到最终路径后，再配置 AI 接口；不覆盖同名目录，开发工作树保留原位置。
-3. 点击安装应用并编译启动器（此时不再改名）：业务依赖和校验后的 Go 工具链在本地项目目录内准备，不安装到系统全局。
-4. 双击生成的“项目名称.app”（Mac）或“项目名称.exe”（Windows），进入开发。源码和数据仍留在完整文件夹内。
-5. 管理页提供打开、重启、停止和重新构建。未变化的启动器复用；变化时先编译验证再替换，失败保留原产物。
+2. 在网页修改项目名称、目标文件夹名称和图标，先点击“保存项目设置”；这一步只保存，不移动目录。再完成 AI 账号或接口配置并保存。
+3. 完成所有修改后，点击“保存设置并重启”，等待页面显示重启完成。目录外的临时系统辅助进程会关闭项目所属进程、改名、准备依赖和页面、从新路径启动服务；确认就绪后清理自己的临时文件。不覆盖同名目录，不改动客户 Git、凭据或聊天文件；开发工作树保留原位置。
+4. 重启确认完成后再点击“导出 App”，使用项目内校验后的 Go 工具链编译“项目名称.app”（Mac）或“项目名称.exe”（Windows）。导出不会再改名；需要时会停止空闲的所属应用，编译后重新启动。
+5. 双击启动器进行开发。以后修改名称、图标或 AI 配置，同样先完成修改和保存、等待重启、再导出。未变化的启动器复用；编译替换失败保留原产物。
 
 通过 `bash Saplingagent.sh configure --no-open` 可重新打开管理；`SAPLING_LEGACY_MENU=1 bash Saplingagent.sh` 保留旧终端菜单。原生 Windows 图标、目录改名和替换需要真机验收。详见[启动器说明](docs/project-launcher.html)。下方旧版菜单步骤仅适用于既有 release。
 
@@ -135,7 +135,7 @@ bash Saplingagent.sh --lang zh
 
 **获取模型 / Fetch models**是可选的目录查询；不支持查询时可手动填写模型 ID。用于应用开发的模型应支持流式输出与工具调用。保存方案不代表已验证模型兼容性或可用额度。
 
-点击 **保存并使用 / Save & use**，再点 **完成设置 / Finish setup**，回到菜单选择 **启动应用 / Start app**。可以保存多个方案并切换默认项。完成设置仅关闭配置服务；单独关闭浏览器标签不会停止服务，必要时可在终端按 Control+C。浏览器未自动打开时，使用终端打印的本地网址。
+点击 **保存并使用 / Save & use**，完成所有修改后选择 **保存设置并重启 / Save settings & restart**，等待重启就绪后再 **导出 App / Export app**。可以保存多个方案并切换默认项；更换服务商后新建对话。**关闭配置 / Close setup** 仅关闭配置服务，单独关闭浏览器标签不会停止服务。浏览器未自动打开时，使用终端打印的本地网址。
 
 方案元数据保存在 `local-secrets/ai-config/connections.json`，API key 保存在 `local-secrets/api-keys/`，Codex 登录凭据保存在 `local-secrets/codex/`。凭据总账只保存文件引用。页面不会将已有密钥回填到表单；编辑时留空可保留旧密钥。安装不会自动导入全局凭据。
 
@@ -181,7 +181,7 @@ bash Saplingagent.sh logout
 
 Claude 使用 **Claude API**，填写服务地址与模型，再选择 **Import local Claude API credentials**或 **Upload API credential JSON**。本地导入读取启动终端继承的 `ANTHROPIC_API_KEY`，或 `CLAUDE_CONFIG_DIR` / `~/.claude/settings.json` 中的 API 环境字段。JSON 支持 `apiKey`、`ANTHROPIC_API_KEY`、`env.ANTHROPIC_API_KEY`，可附带 `baseUrl` / `model`；非空表单优先。替换已有方案密钥也需要明确选择。
 
-导入不读取 Claude 订阅 OAuth 文件、系统钥匙串或可执行凭据助手。文件最大 32KiB，只发送给受保护的本地配置服务。密钥保存在 Git 忽略的项目文件中，不写入状态响应或浏览器存储。导入只验证本地结构与保存，不验证有效期、额度或模型推理；完成设置后重启已有应用并新建对话。详见 [AI 配置指南](docs/ai-configuration.html)。
+导入不读取 Claude 订阅 OAuth 文件、系统钥匙串或可执行凭据助手。文件最大 32KiB，只发送给受保护的本地配置服务。密钥保存在 Git 忽略的项目文件中，不写入状态响应或浏览器存储。导入只验证本地结构与保存，不验证有效期、额度或模型推理；保存设置并等待重启后再导出 App；更换服务商后新建对话。详见 [AI 配置指南](docs/ai-configuration.html)。
 
 <a id="authentication"></a>
 
@@ -206,7 +206,7 @@ Claude 使用 **Claude API**，填写服务地址与模型，再选择 **Import 
 
 Claude Agent 通过官方 **Claude Agent SDK**作为独立的本地引擎运行，内嵌 Claude Code 的 Agent 循环，支持原生文件 / 命令工具、MCP、项目 Skills、流式输出和会话恢复；没有独立对外 App Server 端口，也不通过 Claude Desktop 执行推理。
 
-安装后进入 **配置 AI → API / 自定义服务商 → Anthropic · Messages**，预设会选择 **Claude Agent**。填写自己的 API key、准确模型 ID，以及 `https://api.anthropic.com/v1` 或兼容网关地址。保存并使用、完成设置后启动；已运行的应用请重启并新建对话。网关需支持 Anthropic Messages 流式输出与工具调用，模型发现可选，Claude 方案无需 Codex 登录。
+安装后进入 **配置 AI → API / 自定义服务商 → Anthropic · Messages**，预设会选择 **Claude Agent**。填写自己的 API key、准确模型 ID，以及 `https://api.anthropic.com/v1` 或兼容网关地址。保存并使用，再保存设置并等待重启，最后导出 App；更换服务商后新建对话。网关需支持 Anthropic Messages 流式输出与工具调用，模型发现可选，Claude 方案无需 Codex 登录。
 
 SDK 固定为 `0.3.296`，原生二进制安装在应用文件夹内，无需全局安装 Claude Code。共享 API key 位于 `local-secrets/api-keys/`，Claude 状态和会话位于 `local-secrets/claude/`。项目 `CLAUDE.md` 引入 `AGENTS.md`，`.agents/` 作为本地 `saplingagent` 插件加载现有 Skills。
 
