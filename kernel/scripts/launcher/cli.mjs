@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { readConnections,defaultSelection,codexConnection,claudeConnections,openCodeConnections } from '../../contracts/ai-configuration.mjs';
 import { initializeDownloadedRecords } from './recipient-records.mjs';
 import { setup } from '../setup.mjs';
+import {prepareManagedEnvironment} from '../../contracts/local-storage.mjs';
 import {assertSetupAvailable} from '../../contracts/kernel.mjs';
 import { codexBinary, claudeBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
@@ -27,7 +28,7 @@ const opencode = openCodeBinary(root);
 const stampFile = path.join(root, `.runtime/${platformName}-install.json`);
 const services = [...(await fs.access(path.join(root,'kernel/package.json')).then(()=>['kernel'],()=>[])), 'front', 'backend/app-builder', 'backend/mcp-runtime', 'backend/agent-runtime'];
 const authArgs = ['-c', 'cli_auth_credentials_store="file"'];
-const env = { ...process.env, TMPDIR:path.join(root,'.runtime/tmp'),TMP:path.join(root,'.runtime/tmp'),TEMP:path.join(root,'.runtime/tmp'),PATH:path.dirname(process.execPath)+path.delimiter+(process.env.PATH||''),SEED_ROOT: root, SEED_CODEX_BIN: windows ? cli : path.join(root, 'kernel/scripts/macos/codex.sh'), SEED_IMPORT_EXISTING_AUTH: '0', CODEX_HOME: path.join(root, 'local-secrets/codex'), npm_config_cache: path.join(root, '.cache/npm') };
+const env = { ...await prepareManagedEnvironment(root), TMPDIR:path.join(root,'.runtime/tmp'),TMP:path.join(root,'.runtime/tmp'),TEMP:path.join(root,'.runtime/tmp'),PATH:path.dirname(process.execPath)+path.delimiter+(process.env.PATH||''),SEED_ROOT: root, SEED_CODEX_BIN: windows ? cli : path.join(root, 'kernel/scripts/macos/codex.sh'), SEED_IMPORT_EXISTING_AUTH: '0', CODEX_HOME: path.join(root, 'local-secrets/codex'), npm_config_cache: path.join(root, '.cache/npm') };
 for (const key of ['OPENAI_API_KEY', 'CODEX_API_KEY', 'CODEX_ACCESS_TOKEN']) delete env[key];
 
 async function run(command, args, { cwd = root, capture = false, childEnv = env } = {}) {
@@ -171,6 +172,7 @@ async function configureAI(noOpen) {
   console.log(t('Preparing independent AI configuration and project setup…','正在准备独立 AI 与项目配置网页…'));
   const {openConfiguration}=await import('../../configuration/bootstrap.mjs');
   const address=await openConfiguration(root,{noOpen:noOpen||process.env.SAPLING_NO_OPEN==='1'});
+  if(address.relativeDirectory)console.log(t(`Temporary configuration folder (beside this project): ${address.relativeDirectory} — removed after Finish setup.`,`临时配置目录（项目旁）：${address.relativeDirectory}；完成配置后自动清理。`));
   console.log(t(`Project setup: http://127.0.0.1:${address.port}/. Continue in your browser. This script will close.`,`项目配置：http://127.0.0.1:${address.port}/。请在网页继续配置，此脚本将退出。`));
 }
 async function installKernelAndConfigure(repair=false){
