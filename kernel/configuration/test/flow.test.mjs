@@ -23,18 +23,55 @@ export async function fixture(t){
  const controller=path.join(root,'kernel/configuration/controller.mjs');let source=await fs.readFile(controller,'utf8');source=source.replace('super(root,options);','super(root,{...options,compiler:async(root,project)=>{const receipt={artifact:project.name+".app"};await fs.mkdir(path.join(root,receipt.artifact),{recursive:true});await writeJSON(path.join(root,".runtime/launcher.json"),receipt);return receipt;}});');await fs.writeFile(controller,source);
  await fs.writeFile(path.join(root,'business.txt'),'preserve application');await fs.mkdir(path.join(root,'.git'));await fs.writeFile(path.join(root,'.git/HEAD'),'ref: refs/heads/customer\n');await fs.mkdir(path.join(root,'local-secrets/codex/sessions'),{recursive:true});await fs.writeFile(path.join(root,'local-secrets/codex/sessions/history.jsonl'),'synthetic retained history\n');
  const roots=[root],children=[];let directory;
- t.after(async()=>{
-  for(const current of roots){
-   const address=await json(path.join(current,'.runtime/management-address.json')).catch(()=>null);if(!address)continue;
-   const token=await fs.readFile(path.join(current,'local-secrets/runtime/launcher-token'),'utf8').catch(()=>'');
-   await fetch(`http://127.0.0.1:${address.port}/api/config/close`,{method:'POST',headers:{Origin:`http://127.0.0.1:${address.port}`,'Content-Type':'application/json','X-Sapling-Config':token.trim()},body:'{}',signal:AbortSignal.timeout(20000)}).catch(()=>{});
+ let cleaned=false;
+ async function cleanup(){
+  if(cleaned)return;
+  // Stop fixture children first, so an interrupted A cannot spawn a new B after
+  // discovery. Every child here was created by this test's spawn call.
+  for(const child of children)if(child.exitCode===null&&child.signalCode===null){
+   child.kill('SIGTERM');await until(()=>child.exitCode!==null||child.signalCode!==null,100).catch(async()=>{child.kill('SIGKILL');await until(()=>child.exitCode!==null||child.signalCode!==null,100);});
   }
-  if(directory)await until(()=>exists(directory).then(v=>!v),250).catch(async()=>{const owner=await json(path.join(directory,'session.json')).catch(()=>null);if(owner?.root&&roots.includes(owner.root)&&owner.pid)try{process.kill(owner.pid,'SIGTERM');}catch{};});
-  for(const child of children)if(child.exitCode===null){child.kill('SIGTERM');await until(()=>child.exitCode!==null).catch(()=>{});}
-  await fs.rm(temp,{recursive:true,force:true});
- });
+  const owners=[];
+  for(const current of roots){
+   const session=await storedSession(current).catch(()=>null);
+   const address=await json(path.join(current,'.runtime/management-address.json')).catch(()=>null);
+   if(!session||!address||address.root!==current||address.instanceId!==session.id||address.pid!==session.pid)continue;
+   const base=`http://127.0.0.1:${address.port}`;
+   const health=await fetch(base+'/health/project-launcher',{signal:AbortSignal.timeout(2000)}).then(r=>r.json()).catch(()=>null);
+   if(health?.root!==current||health.instanceId!==session.id)continue;
+   owners.push({session,address,base});directory=session.directory;
+   if(health.busy)await until(async()=>!(await fetch(base+'/health/project-launcher',{signal:AbortSignal.timeout(2000)}).then(r=>r.json())).busy,100).catch(()=>{});
+   const token=await fs.readFile(path.join(current,'local-secrets/runtime/launcher-token'),'utf8').catch(()=>'');
+   await fetch(base+'/api/config/close',{method:'POST',headers:{Origin:base,'Content-Type':'application/json','X-Sapling-Config':token.trim()},body:'{}',signal:AbortSignal.timeout(20000)}).catch(()=>{});
+  }
+  const isAlive=pid=>{try{process.kill(pid,0);return true;}catch(error){if(error.code==='ESRCH')return false;throw error;}};
+  for(const {session,address,base}of owners){
+   let forced=false;
+   try{await until(()=>!isAlive(address.pid),60);}catch{
+    // A failing test may intentionally hide source required by graceful handoff.
+    // Verify the exact synthetic B again; never signal an arbitrary reused PID.
+    const current=await readSession(session.directory,session.root);
+    const health=await fetch(base+'/health/project-launcher',{signal:AbortSignal.timeout(2000)}).then(r=>r.json());
+    assert.equal(current.id,session.id);assert.equal(current.pid,address.pid);assert.equal(health.root,session.root);assert.equal(health.instanceId,session.id);
+    process.kill(address.pid,'SIGKILL');forced=true;await until(()=>!isAlive(address.pid),100);
+   }
+   if(!forced)await until(async()=>!await exists(session.directory)&&!await exists(path.join(session.root,'.runtime/configuration-cleanup.lock'))&&!await exists(path.join(session.root,'.runtime/kernel-operation.lock')),200);
+  }
+  if(directory&&await exists(directory)){
+   // Any undecidable live owner leaves the fixture intact for inspection.
+   const receipt=await json(path.join(directory,'session.json')).catch(()=>null);
+   assert.ok(!receipt||!isAlive(receipt.pid),'Refusing to remove a live configuration fixture');
+  }
+  for(const name of await fs.readdir(temp)){
+   if(!/^sapling-config-[A-Za-z0-9]+$/.test(name))continue;
+   const capsule=path.join(temp,name),receipt=await json(path.join(capsule,'session.json')).catch(()=>null),spawned=await json(path.join(capsule,'process.json')).catch(()=>null);
+   for(const pid of [receipt?.pid,spawned?.pid])if(Number.isSafeInteger(pid)&&pid>0&&pid!==process.pid)assert.equal(isAlive(pid),false,'Preserving fixture with an unresolved live configuration owner');
+  }
+  await fs.rm(temp,{recursive:true,force:true});cleaned=true;
+ }
+ t.after(cleanup);
  function start(){const child=spawn(localNode,[path.join(root,'kernel/launcher/entry.mjs'),'--no-open'],{cwd:temp,env:{...process.env,SEED_ROOT:root,SAPLING_NO_OPEN:'1',SAPLING_LANG:'zh',TMPDIR:path.join(root,'.runtime/tmp')},stdio:['ignore','pipe','pipe']});children.push(child);let errors='';child.stderr.on('data',b=>errors+=b);return {child,get errors(){return errors;}};}
- return {root,temp,localNode,roots,start,track:child=>children.push(child),setDirectory:value=>directory=value};
+ return {root,temp,localNode,roots,start,cleanup,track:child=>children.push(child),setDirectory:value=>directory=value};
 }
 test('real external B keeps its page across rename, then returned A removes B after exit',{skip:process.platform!=='darwin',timeout:45000},async t=>{
  const f=await fixture(t),launched=f.start();await until(()=>launched.child.exitCode!==null);assert.equal(launched.child.exitCode,0,launched.errors);
@@ -100,4 +137,11 @@ test('failed spawned-PID persistence retains closed operation and management lea
  assert.equal((await json(path.join(f.root,'.runtime/management.lock/owner.json'))).pid,process.pid);await fs.access(directory);
  // The closed receipt can be moved/removed without an open operation descriptor.
  await fs.rename(path.join(f.root,'.runtime/kernel-operation.lock'),path.join(f.root,'.runtime/inspected-operation.json'));
+});
+
+test('fixture cleanup stops its verified B when graceful handoff cannot import hidden source',{skip:process.platform!=='darwin',timeout:45000},async t=>{
+ const f=await fixture(t),started=f.start();await until(()=>started.child.exitCode!==null);assert.equal(started.child.exitCode,0,started.errors);
+ const address=await json(path.join(f.root,'.runtime/management-address.json'));await until(async()=>!(await fetch(`http://127.0.0.1:${address.port}/health/project-launcher`).then(r=>r.json())).busy);
+ await fs.rename(path.join(f.root,'kernel/launcher/entry.mjs'),path.join(f.root,'kernel/launcher/entry-hidden.mjs'));
+ await f.cleanup();assert.equal(await exists(f.temp),false);assert.throws(()=>process.kill(address.pid,0),{code:'ESRCH'});
 });
