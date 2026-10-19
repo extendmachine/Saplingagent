@@ -22,7 +22,7 @@ const controller=new ConfigurationController(session.root,{session,onRelocate:as
 }});
 const publish=async()=>{
   session=controller.session;
-  const address={root:controller.root,fingerprint:session.fingerprint,pid:process.pid,instanceId:session.id,port:server.address().port,configurationHost:'external'};
+  const address={root:controller.root,fingerprint:session.fingerprint,pid:process.pid,instanceId:session.id,port:server.address().port,configurationHost:'external',relativeDirectory:path.relative(controller.root,directory)};
   await writeJSON(path.join(controller.root,'.runtime/management-address.json'),address);
   await writeJSON(path.join(controller.root,'.runtime/management.lock/owner.json'),{root:controller.root,pid:process.pid,id:session.id});
   await writeJSON(path.join(directory,'address.json'),address);

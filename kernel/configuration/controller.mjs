@@ -3,6 +3,7 @@ import path from 'node:path';
 import {ProjectLauncher,readProject} from '../launcher/manager.mjs';
 import {json,writeJSON,issue,exists} from '../launcher/io.mjs';
 import {relocationLedger,completeRelocation} from '../launcher/relocation.mjs';
+import {acquireConfigurationWrite} from '../contracts/configuration-write.mjs';
 import {assertKernelOffline} from '../contracts/kernel.mjs';
 import {saveSession,waitForExit} from './session.mjs';
 import {moveProject} from './move.mjs';
@@ -24,7 +25,7 @@ export class ConfigurationController extends ProjectLauncher {
   async build(){return this.finalizeSetup();}
   async configure(project){
     const id=this.session.id, previousRoot=this.root;
-    let ownsLease=false,ownsOperation=false;
+    let ownsLease=false,ownsOperation=false,releaseConfiguration;
     const removeOwned=async name=>{const file=path.join(this.root,'.runtime',name);if((await json(file))?.id===id)await fs.rm(file);};
     try {
       this.progress('Waiting for the original launcher to exit…');
@@ -35,17 +36,20 @@ export class ConfigurationController extends ProjectLauncher {
       if(runtime.pid)await waitForExit([runtime.pid]);
       await assertKernelOffline(this.root);
       if(await exists(path.join(this.root,'.runtime/kernel/active-job.json')))throw issue('PROJECT_BUSY','Finish kernel maintenance first.');
+      if(await exists(path.join(this.root,'.runtime/launcher-compile.lock')))throw issue('PROJECT_BUSY','A launcher compilation still owns this folder. Wait for it to finish before saving or renaming.');
       await this.preflightDirectory(project.folderName);
-      const ledger=await relocationLedger(this.root);
       for(const [name,purpose]of [['kernel-operation.lock','configuration-build'],['project-finalization.json','external-configuration']]){
         const handle=await fs.open(path.join(this.root,'.runtime',name),'wx',0o600).catch(e=>{if(e.code==='EEXIST')throw issue('PROJECT_BUSY','A project operation is active. Wait before saving again.');throw e;});
         if(name==='project-finalization.json')ownsLease=true;else ownsOperation=true;
         try{await handle.writeFile(JSON.stringify({schemaVersion:1,id,pid:process.pid,purpose,projectId:project.projectId})+'\n');}finally{await handle.close();}
       }
+      releaseConfiguration=await acquireConfigurationWrite(this.root);
+      const ledger=await relocationLedger(this.root);
       // Recheck under both leases: a competing app start could have won the
       // operation lock after the earlier idle check.
       await assertKernelOffline(this.root);
       if(await exists(path.join(this.root,'.runtime/kernel/active-job.json')))throw issue('PROJECT_BUSY','Finish kernel maintenance first.');
+      if(await exists(path.join(this.root,'.runtime/launcher-compile.lock')))throw issue('PROJECT_BUSY','A launcher compilation still owns this folder. Wait for it to finish before saving or renaming.');
       await this.preflightDirectory(project.folderName);
       const target=path.join(path.dirname(this.root),project.folderName);
       await writeJSON(path.join(this.root,'.runtime/setup-finalization.json'),{schemaVersion:1,id,phase:'building',root:this.root,targetRoot:target});
@@ -70,7 +74,7 @@ export class ConfigurationController extends ProjectLauncher {
       // lease remains until compilation finishes and excludes independent starts.
       await removeOwned('kernel-operation.lock');ownsOperation=false;
       this.progress('Compiling the lightweight app launcher…');
-      const receipt=await this.compiler(this.root,project,{onProgress:s=>this.progress(s)});
+      const receipt=await this.compiler(this.root,project,{onProgress:s=>this.progress(s),setupId:id});
       const result={artifact:receipt.artifact,root:this.root};
       await writeJSON(path.join(this.root,'.runtime/setup-finalization.json'),{schemaVersion:1,id,phase:'ready',root:this.root,previousRoot,connectionsFingerprint:await this.connectionsFingerprint(),finishedAt:new Date().toISOString(),message:'App built. Finish setup, then open the app. Dependencies are checked at launch.',...result});
       return result;
@@ -82,6 +86,7 @@ export class ConfigurationController extends ProjectLauncher {
       await writeJSON(path.join(this.root,'.runtime/setup-finalization.json'),{schemaVersion:1,id,phase:'failed',root:this.root,previousRoot,error:{code:error.code||'CONFIGURATION_BUILD_FAILED',message:error.status?error.message:'Configuration did not finish. Inspect project logs and retry.'}}).catch(()=>{});
       throw error;
     }finally{
+      await releaseConfiguration?.(this.root);
       if(ownsOperation)await removeOwned('kernel-operation.lock');
       if(ownsLease)await removeOwned('project-finalization.json');
     }

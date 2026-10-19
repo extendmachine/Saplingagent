@@ -9,8 +9,8 @@ import {saveSession} from '../session.mjs';
 import {moveProject} from '../move.mjs';
 const repo=fileURLToPath(new URL('../../../',import.meta.url));
 async function fixture(t){
- const parent=path.join(repo,'.runtime/configuration-tests');await fs.mkdir(parent,{recursive:true});const temp=await fs.mkdtemp(path.join(parent,'controller-'));
- t.after(()=>fs.rm(temp,{recursive:true,force:true}));const root=path.join(temp,'Before'),directory=path.join(temp,'external');await fs.mkdir(root);await fs.mkdir(directory);
+ const parent=path.join(repo,'.cache/configuration-tests');await fs.mkdir(parent,{recursive:true});const temp=await fs.mkdtemp(path.join(parent,'controller-'));
+ t.after(()=>fs.rm(temp,{recursive:true,force:true}));const root=path.join(temp,'Before'),directory=path.join(temp,'sapling-config-fixture');await fs.mkdir(root);await fs.mkdir(directory);
  const session={schemaVersion:1,id:randomUUID(),nonce:'a'.repeat(64),root,directory,pid:process.pid,projectId:null,bootstrapPids:[]};await saveSession(session);
  let compiled=0,rebound;
  const manager=new ConfigurationController(root,{session,onRelocate:async value=>{rebound=value;},compiler:async(root,project)=>{compiled++;const receipt={artifact:project.name+'.app'};await fs.writeFile(path.join(root,'.runtime/launcher.json'),JSON.stringify(receipt));return receipt;}});
@@ -43,4 +43,16 @@ test('external setup never starts the app before Finish handoff',async()=>{
  const controller=new ConfigurationController('/unused');
  await assert.rejects(controller.openProject(),{code:'CONFIGURATION_FINISH_REQUIRED'});
  await assert.rejects(controller.restart(),{code:'CONFIGURATION_FINISH_REQUIRED'});
+});
+
+test('active native compilation prevents configuration rename and preserves its lock',async t=>{
+ const {manager,root}=await fixture(t);await manager.stageSetup({name:'After',renameFolder:true});
+ const file=path.join(root,'.runtime/launcher-compile.lock');await fs.writeFile(file,JSON.stringify({pid:process.pid,id:'compiler'}));
+ const job=await manager.finalizeSetup();await manager.completion;assert.equal(job.phase,'failed');assert.equal(job.error.code,'PROJECT_BUSY');assert.equal(manager.root,root);assert.deepEqual(JSON.parse(await fs.readFile(file,'utf8')),{pid:process.pid,id:'compiler'});
+});
+
+test('an in-progress AI configuration writer blocks relocation and retains its ownership',async t=>{
+ const {manager,root}=await fixture(t);await manager.stageSetup({name:'After',renameFolder:true});
+ const file=path.join(root,'local-secrets/ai-config/write.lock');await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,JSON.stringify({id:'other-writer',pid:process.pid}));
+ const job=await manager.finalizeSetup();await manager.completion;assert.equal(job.phase,'failed');assert.equal(job.error.code,'CONFIG_BUSY');assert.equal(manager.root,root);assert.equal(JSON.parse(await fs.readFile(file,'utf8')).id,'other-writer');
 });

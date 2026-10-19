@@ -7,7 +7,9 @@ with the React source under kernel/ui/setup. The generated small capsule under
 kernel/.cache/configuration contains their complete backend import closure and
 built frontend. It excludes engine installations, business source, credentials,
 Git, histories and node_modules. Node is copied from the project's runtime when
-launching the private external copy. No new npm dependency or global runtime.
+launching the private external copy beside the project at
+`../sapling-config-<random>/`. B keeps temporary/XDG/cache output there; persistent
+configuration stays project-local. No OS temp/home output selection is used. No new npm dependency or global runtime.
 
 Start through bash Saplingagent.sh configure. Close with Finish setup (A/B cleanup
 handshake). Health is GET /health/project-launcher on the selected loopback port.

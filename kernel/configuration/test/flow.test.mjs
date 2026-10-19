@@ -2,16 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {EventEmitter} from 'node:events';
+import {openConfiguration} from '../bootstrap.mjs';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {readSession} from '../session.mjs';
+import {readSession,storedSession} from '../session.mjs';
 const repo=fileURLToPath(new URL('../../../',import.meta.url));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const json=async file=>JSON.parse(await fs.readFile(file,'utf8'));
 const exists=file=>fs.access(file).then(()=>true,()=>false);
 async function until(work,count=400){for(let i=0;i<count;i++){const value=await work();if(value)return value;await sleep(50);}throw Error('Configuration fixture did not settle');}
 export async function fixture(t){
- const parent=path.join(repo,'.runtime/configuration-tests');await fs.mkdir(parent,{recursive:true});const temp=await fs.mkdtemp(path.join(parent,'flow-'));const root=path.join(temp,'Before');await fs.mkdir(root);
+ const parent=path.join(repo,'.cache/configuration-tests');await fs.mkdir(parent,{recursive:true});const temp=await fs.mkdtemp(path.join(parent,'flow-'));const root=path.join(temp,'Before');await fs.mkdir(root);
  await fs.cp(path.join(repo,'kernel'),path.join(root,'kernel'),{recursive:true,filter:file=>!path.relative(path.join(repo,'kernel'),file).split(path.sep).some(p=>['node_modules','.cache','ai-tasks'].includes(p))});
  const config=await json(path.join(root,'kernel/config/macos.json'));
  const localNode=path.join(root,`.runtime/node-v${config.nodeVersion}-darwin-${process.arch}/bin/node`);await fs.mkdir(path.dirname(localNode),{recursive:true});await fs.copyFile(process.execPath,localNode);await fs.chmod(localNode,0o755);
@@ -36,8 +38,8 @@ export async function fixture(t){
 }
 test('real external B keeps its page across rename, then returned A removes B after exit',{skip:process.platform!=='darwin',timeout:45000},async t=>{
  const f=await fixture(t),launched=f.start();await until(()=>launched.child.exitCode!==null);assert.equal(launched.child.exitCode,0,launched.errors);
- const address=await json(path.join(f.root,'.runtime/management-address.json')),session=await json(path.join(f.root,'.runtime/configuration-session.json'));f.setDirectory(session.directory);
- assert.notEqual(address.pid,launched.child.pid);assert.equal(session.pid,address.pid);assert.equal(session.directory.startsWith(f.root+path.sep),false);await readSession(session.directory,f.root);
+ const address=await json(path.join(f.root,'.runtime/management-address.json')),session=await storedSession(f.root);f.setDirectory(session.directory);
+ assert.notEqual(address.pid,launched.child.pid);assert.equal(session.pid,address.pid);assert.equal(path.dirname(session.directory),path.dirname(f.root));assert.equal(address.relativeDirectory,path.relative(f.root,session.directory));await readSession(session.directory,f.root);
  const base=`http://127.0.0.1:${address.port}`,token=(await fs.readFile(path.join(f.root,'local-secrets/runtime/launcher-token'),'utf8')).trim();
  const request=(route,body)=>fetch(base+'/api/config/'+route,body===undefined?{headers:{'X-Sapling-Config':token}}:{method:'POST',headers:{Origin:base,'Content-Type':'application/json','X-Sapling-Config':token},body:JSON.stringify(body)});
  await until(async()=>!(await fetch(base+'/health/project-launcher').then(r=>r.json())).busy);
@@ -68,7 +70,34 @@ test('real external B keeps its page across rename, then returned A removes B af
 test('two complete project folders configure on independent ports and cleanup independently',{skip:process.platform!=='darwin',timeout:45000},async t=>{
  const a=await fixture(t),b=await fixture(t),one=a.start(),two=b.start();await until(()=>one.child.exitCode!==null&&two.child.exitCode!==null);assert.equal(one.child.exitCode,0,one.errors);assert.equal(two.child.exitCode,0,two.errors);
  const first=await json(path.join(a.root,'.runtime/management-address.json')),second=await json(path.join(b.root,'.runtime/management-address.json'));
- a.setDirectory((await json(path.join(a.root,'.runtime/configuration-session.json'))).directory);b.setDirectory((await json(path.join(b.root,'.runtime/configuration-session.json'))).directory);
+ a.setDirectory((await storedSession(a.root)).directory);b.setDirectory((await storedSession(b.root)).directory);
  assert.notEqual(first.port,second.port);assert.notEqual(first.pid,second.pid);
  for(const [address,root]of [[first,a.root],[second,b.root]])assert.equal((await fetch(`http://127.0.0.1:${address.port}/health/project-launcher`).then(r=>r.json())).root,root);
+});
+
+test('simultaneous configuration startup cannot steal the other launcher lease',{skip:process.platform!=='darwin',timeout:45000},async t=>{
+ const f=await fixture(t),one=f.start(),two=f.start();await until(()=>one.child.exitCode!==null&&two.child.exitCode!==null);
+ assert.ok([one,two].some(start=>start.child.exitCode===0),one.errors+two.errors);
+ const session=await storedSession(f.root);f.setDirectory(session.directory);
+ const address=await json(path.join(f.root,'.runtime/management-address.json'));
+ assert.equal(address.pid,session.pid);assert.equal(path.dirname(session.directory),f.temp);
+ assert.equal((await fs.readdir(f.temp)).filter(name=>name.startsWith('sapling-config-')).length,1);
+});
+
+test('live management lock blocks and a verified dead owner can be reclaimed',{skip:process.platform!=='darwin',timeout:45000},async t=>{
+ const f=await fixture(t),lock=path.join(f.root,'.runtime/management.lock');await fs.mkdir(lock,{recursive:true});
+ const owner={root:f.root,pid:process.pid,id:'11111111-1111-4111-8111-111111111111'};await fs.writeFile(path.join(lock,'owner.json'),JSON.stringify(owner));
+ const blocked=f.start();await until(()=>blocked.child.exitCode!==null);assert.equal(blocked.child.exitCode,1);assert.match(blocked.errors,/CONFIGURATION_BUSY/);assert.deepEqual(await json(path.join(lock,'owner.json')),owner);
+ const short=spawn(f.localNode,['-e',''],{stdio:'ignore'});f.track(short);await until(()=>short.exitCode!==null);
+ await fs.writeFile(path.join(lock,'owner.json'),JSON.stringify({...owner,pid:short.pid}));
+ const retry=f.start();await until(()=>retry.child.exitCode!==null);assert.equal(retry.child.exitCode,0,retry.errors);const session=await storedSession(f.root);f.setDirectory(session.directory);assert.notEqual(session.pid,short.pid);
+});
+
+test('failed spawned-PID persistence retains closed operation and management leases',async t=>{
+ const f=await fixture(t);let directory;
+ await assert.rejects(openConfiguration(f.root,{noOpen:true,prepare:async()=>f.root,copy:async()=>{directory=await fs.mkdtemp(path.join(f.temp,'sapling-config-'));await fs.mkdir(path.join(directory,'process.json'));return {directory,executable:f.localNode};},spawnProcess:()=>{const child=new EventEmitter();child.pid=process.pid;child.exitCode=null;child.unref=()=>{};queueMicrotask(()=>child.emit('spawn'));return child;}}));
+ const lock=await json(path.join(f.root,'.runtime/kernel-operation.lock'));assert.equal(lock.pid,process.pid);assert.equal(lock.purpose,'prepare-configuration');
+ assert.equal((await json(path.join(f.root,'.runtime/management.lock/owner.json'))).pid,process.pid);await fs.access(directory);
+ // The closed receipt can be moved/removed without an open operation descriptor.
+ await fs.rename(path.join(f.root,'.runtime/kernel-operation.lock'),path.join(f.root,'.runtime/inspected-operation.json'));
 });
