@@ -7,7 +7,7 @@ import { ConfigurationStore } from '../store.mjs';
 import { CredentialImport } from '../credentials.mjs';
 import { createConfigurationServer } from '../server.mjs';
 import { readConnections, codexConnection, claudeConnections } from '../../../contracts/ai-configuration.mjs';
-const root=fileURLToPath(new URL('../../../',import.meta.url));
+const root=fileURLToPath(new URL('../../../../',import.meta.url));
 const auth={tokens:{id_token:'synthetic-id',access_token:'synthetic-access',refresh_token:'synthetic-refresh',account_id:'synthetic-account'},last_refresh:'2026-10-13T00:00:00Z',unrelated:'do-not-copy'};
 async function fixture(t){await fs.mkdir(path.join(root,'.cache/auth-tests'),{recursive:true});const target=await fs.mkdtemp(path.join(root,'.cache/auth-tests/import-'));t.after(()=>fs.rm(target,{recursive:true,force:true}));return target;}
 const upload=(json,revision=0)=>({engine:'codex',source:'upload',json:JSON.stringify(json),revision});

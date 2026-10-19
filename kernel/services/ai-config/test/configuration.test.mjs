@@ -9,7 +9,7 @@ import { ConfigurationStore } from '../store.mjs';
 import { AccountSetup } from '../auth.mjs';
 import { createConfigurationServer } from '../server.mjs';
 import { readConnections,readCredential,codexConnection,openCodeConnections,defaultSelection } from '../../../contracts/ai-configuration.mjs';
-const root=fileURLToPath(new URL('../../../',import.meta.url));
+const root=fileURLToPath(new URL('../../../../',import.meta.url));
 async function fixture(t){const directory=path.join(root,'.cache/configuration-tests');await fs.mkdir(directory,{recursive:true});const target=await fs.mkdtemp(path.join(directory,"中文 app's "));t.after(()=>fs.rm(target,{recursive:true,force:true}));return target;}
 const draft={label:'My endpoint',engine:'opencode',kind:'api',protocol:'chat',baseUrl:'https://provider.example/v1',model:'coder-model',apiKey:'synthetic-only-key'};
 test('schemes persist private keys, retain blank edits, preserve ledger and switch default independently',async t=>{
