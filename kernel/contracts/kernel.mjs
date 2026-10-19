@@ -3,7 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { PUBLIC_BRIDGE_FILES } from "../compat/paths.mjs";
 export { PUBLIC_BRIDGE_FILES };
-export const isContainedKernelPath = file => typeof file === "string" && (file.startsWith("kernel/") || PUBLIC_BRIDGE_FILES.includes(file));
+export const isContainedKernelPath = file => isKernelPath(file) && (file.startsWith("kernel/") || PUBLIC_BRIDGE_FILES.includes(file));
 export const KERNEL_BASELINE = "0.90";
 export const KERNEL_MANIFEST = "kernel/manifest.json";
 export class KernelError extends Error {

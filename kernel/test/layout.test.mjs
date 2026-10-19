@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {PUBLIC_BRIDGE_FILES,validateKernelManifest} from '../contracts/kernel.mjs';
+import {PUBLIC_BRIDGE_FILES,isContainedKernelPath,validateKernelManifest} from '../contracts/kernel.mjs';
 import {scanKernelFiles} from '../build-manifest.mjs';
 import {checkKernel} from '../manager.mjs';
 const root=fileURLToPath(new URL('../../',import.meta.url));
@@ -32,4 +32,8 @@ test('contained installations reject updating backwards into distributed source 
  const distributed={...manifest};delete distributed.layoutVersion;
  await assert.rejects(checkKernel(fixture,{source:{resolve:async()=>'a'.repeat(40),read:async()=>Buffer.from(JSON.stringify(distributed))}}),{code:'KERNEL_INCOMPATIBLE'});
  assert.equal(await fs.readFile(path.join(fixture,'kernel/manifest.json'),'utf8'),JSON.stringify(manifest));
+});
+
+test('contained ownership still excludes private installed and historical task records',()=>{
+ for(const file of ['kernel/services/ai-config/ai-tasks/handoff.md','kernel/.cache/setup/index.html','kernel/node_modules/react/index.js','kernel/data/customer.json','kernel/local-secrets/auth.json'])assert.equal(isContainedKernelPath(file),false,file);
 });

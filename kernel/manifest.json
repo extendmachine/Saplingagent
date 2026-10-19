@@ -218,8 +218,8 @@
     },
     {
       "path": "kernel/contracts/kernel.mjs",
-      "sha256": "b7a87a054b6a4dbbd49b808be06b221b3573d6a07f4c1bd55d9de736819a2e3f",
-      "bytes": 8741,
+      "sha256": "de492814d02d0a98ebb7e402cd32b440b148c28ec36365406751da927f03b49b",
+      "bytes": 8735,
       "executable": false
     },
     {
@@ -824,8 +824,8 @@
     },
     {
       "path": "kernel/test/layout.test.mjs",
-      "sha256": "e61555fe6bcb50ae383e683017b9572c732f37dd9556ce75eae2d5efb2f322d9",
-      "bytes": 2562,
+      "sha256": "884151f1084de21b99397751a22433a2a5b2203b1d85583b5919f8b428896dce",
+      "bytes": 2937,
       "executable": false
     },
     {
