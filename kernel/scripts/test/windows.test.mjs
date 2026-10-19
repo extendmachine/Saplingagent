@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { claudeBinary, codexBinary, openCodeBinary, npmCommand, commandShell, windowsTreeCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
-const root = fileURLToPath(new URL('../../', import.meta.url));
+const root = fileURLToPath(new URL('../../../', import.meta.url));
 test('Windows paths use native executables and npm JS, with no cmd shim or shell interpolation', () => {
   const folder = path.resolve("app's 中文 folder");
   assert.match(codexBinary(folder, 'win32', 'x64'), /codex-win32-x64.*x86_64-pc-windows-msvc.*codex\.exe$/);
@@ -48,7 +48,7 @@ test('Windows termination reports unavailable taskkill without silently killing 
 });
 test('single Bash entry embeds Windows bootstrap with local runtime, Unicode encoding and no standalone PS launcher', async () => {
   await assert.rejects(fs.access(path.join(root, 'Saplingagent.ps1')));
-  const source = await fs.readFile(path.join(root, 'scripts/windows/bootstrap.sh'), 'utf8');
+  const source = await fs.readFile(path.join(root, 'kernel/scripts/windows/bootstrap.sh'), 'utf8');
   assert.match(source, /Get-FileHash -LiteralPath \$archive -Algorithm SHA256/);
   assert.match(source, /FileMode\]::CreateNew/);
   assert.match(source, /UTF-16LE/); assert.match(source, /-EncodedCommand/);

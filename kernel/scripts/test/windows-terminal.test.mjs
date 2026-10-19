@@ -5,7 +5,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const project = fileURLToPath(new URL('../../', import.meta.url));
+const project = fileURLToPath(new URL('../../../', import.meta.url));
 const testPython = process.env.SAPLING_TEST_PYTHON;
 const skipPty = process.platform !== 'darwin' || !testPython;
 // A macOS Python test driver supplies a real controlling PTY; these checks do not claim
@@ -67,7 +67,7 @@ printf 'FOREGROUND_OK\\n'
 `;
 test('Windows menu owns the terminal before native install, even with Bash job control', { skip: skipPty }, async t => {
   const f = await fixture(t);
-  await fs.writeFile(path.join(f.root, 'scripts/windows/bootstrap.sh'), foregroundProbe);
+  await fs.writeFile(path.join(f.root, 'kernel/scripts/windows/bootstrap.sh'), foregroundProbe);
   const result = await terminal(f, 'FOREGROUND_OK');
   assert.equal(result.code, 0, result.output);
   assert.match(result.output, /FOREGROUND_OK/); assert.doesNotMatch(result.output, /退出码 150/);
@@ -77,19 +77,19 @@ test('background console regression yields 150 before native startup', { skip: s
   // Recreate the old background dispatch with the same terminal ownership probe.
   const old = source.replace('/bin/bash "$SAPLING_BOOTSTRAP" "$@" <&0\n    result=$?', '/bin/bash "$SAPLING_BOOTSTRAP" "$@" <&0 &\n    wait $!\n    result=$?');
   const f = await fixture(t, old);
-  await fs.writeFile(path.join(f.root, 'scripts/windows/bootstrap.sh'), foregroundProbe);
+  await fs.writeFile(path.join(f.root, 'kernel/scripts/windows/bootstrap.sh'), foregroundProbe);
   const result = await terminal(f, '退出码 150');
   assert.equal(result.code, 0, result.output); assert.match(result.output, /退出码 150/); assert.doesNotMatch(result.output, /FOREGROUND_OK/);
 });
 test('Windows native interactive configuration still reads user input in the foreground', { skip: skipPty }, async t => {
   const f = await fixture(t);
-  await fs.writeFile(path.join(f.root, 'scripts/windows/bootstrap.sh'), foregroundProbe + `printf 'PROVIDER_PROMPT\\n'\nIFS= read -r reply\n[ "$reply" = 'provider-choice' ] || exit 9\nprintf 'AUTH_INPUT_OK\\n'\n`);
+  await fs.writeFile(path.join(f.root, 'kernel/scripts/windows/bootstrap.sh'), foregroundProbe + `printf 'PROVIDER_PROMPT\\n'\nIFS= read -r reply\n[ "$reply" = 'provider-choice' ] || exit 9\nprintf 'AUTH_INPUT_OK\\n'\n`);
   const result = await terminal(f, 'AUTH_INPUT_OK', '2\nprovider-choice\n');
   assert.equal(result.code, 0, result.output); assert.match(result.output, /AUTH_INPUT_OK/); assert.doesNotMatch(result.output, /操作未完成/);
 });
 async function bootstrapFixture(t) {
   const f = await fixture(t);
-  await fs.copyFile(path.join(project, 'scripts/windows/bootstrap.sh'), path.join(f.root, 'scripts/windows/bootstrap.sh'));
+  await fs.copyFile(path.join(project, 'kernel/scripts/windows/bootstrap.sh'), path.join(f.root, 'kernel/scripts/windows/bootstrap.sh'));
   await fs.writeFile(path.join(f.root, 'bin/cygpath'), "#!/bin/bash\nprintf '%s' \"C:\\test\\中文 app's folder\"\n", { mode: 0o755 });
   await fs.writeFile(path.join(f.root, 'bin/winpty'), '#!/bin/bash\nprintf "BRIDGE_CALLED\\n"\nexec "$@"\n', { mode: 0o755 });
   await fs.writeFile(path.join(f.root, 'bin/powershell.exe'), foregroundProbe + `if [ "$SAPLING_BOOTSTRAP_ACTION" = 'start' ]; then

@@ -9,16 +9,17 @@ import { promisify } from 'node:util';
 const exec = promisify(execFile);
 const git = async (root, ...args) => (await exec('git', ['-C', root, ...args])).stdout.trim();
 
-const project = fileURLToPath(new URL('../../', import.meta.url));
+const project = fileURLToPath(new URL('../../../', import.meta.url));
 async function fixture(t, { failure = false, longRunning = false } = {}) {
   const parent = path.join(project, '.cache/menu-tests');
   await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "菜单 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   await fs.copyFile(path.join(project, 'Saplingagent.sh'), path.join(root, 'Saplingagent.sh'));
-  await fs.mkdir(path.join(root, 'scripts/macos'), { recursive: true });
-  await fs.writeFile(path.join(root, 'scripts/macos/bootstrap.sh'), `#!/bin/bash
-cd "$(dirname "$0")/../.."
+  await fs.mkdir(path.join(root, 'kernel/scripts/macos'), { recursive: true });
+  await fs.copyFile(path.join(project,'kernel/scripts/Saplingagent.sh'),path.join(root,'kernel/scripts/Saplingagent.sh'));
+  await fs.writeFile(path.join(root, 'kernel/scripts/macos/bootstrap.sh'), `#!/bin/bash
+cd "$(dirname "$0")/../../.."
 printf '%s\\n' "$*" >> actions.txt
 printf '%s\\n' "\${SAPLING_LANG}" >> languages.txt
 ${longRunning ? `trap 'printf stopped > stopped.txt; exit 0' TERM INT HUP

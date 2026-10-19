@@ -7,11 +7,11 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { initializeDownloadedRecords } from '../launcher/recipient-records.mjs';
-const exec=promisify(execFile),project=fileURLToPath(new URL('../../',import.meta.url)),sha='a'.repeat(40);
+const exec=promisify(execFile),project=fileURLToPath(new URL('../../../',import.meta.url)),sha='a'.repeat(40);
 async function fixture(t,{bad=false,link=false,os='Darwin',invalidVersion=false}={}){
   const base=path.join(project,'.cache/curl-tests');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,"客户 app's "));t.after(()=>fs.rm(root,{recursive:true,force:true}));
   const bin=path.join(root,'bin'),source=path.join(root,'source',`Saplingagent-${sha}`);await fs.mkdir(bin);await fs.mkdir(source,{recursive:true});
-  for(const f of ['install.sh','AGENTS.md','FINAL_GOAL.md','TODO.md','AI_TASKS.md','rules/README.md','scripts/launcher/recipient-records.mjs','scripts/macos/bootstrap.sh','scripts/windows/bootstrap.sh']){await fs.mkdir(path.dirname(path.join(source,f)),{recursive:true});await fs.writeFile(path.join(source,f),'Synthetic '+f+'\n');}
+  for(const f of ['install.sh','AGENTS.md','FINAL_GOAL.md','TODO.md','AI_TASKS.md','rules/README.md','kernel/scripts/launcher/recipient-records.mjs','kernel/scripts/macos/bootstrap.sh','kernel/scripts/windows/bootstrap.sh']){await fs.mkdir(path.dirname(path.join(source,f)),{recursive:true});await fs.writeFile(path.join(source,f),'Synthetic '+f+'\n');}
   await fs.writeFile(path.join(source,'Saplingagent.sh'),`#!/bin/bash\nprintf '%s\\n' "$*" >> "${root}/actions.txt"\nif [ "\${3:-}" = install ]; then printf SYNTHETIC_CHOICE; read -r answer; printf '%s\\n' "$answer" >> "${root}/actions.txt"; fi\n`);
   await fs.mkdir(path.join(source,'config'),{recursive:true}); await fs.copyFile(path.join(project,'config/release.json'),path.join(source,'config/release.json'));
   if(invalidVersion)await fs.writeFile(path.join(source,'config/release.json'),JSON.stringify({schemaVersion:1,version:'0.90'}));
@@ -19,8 +19,8 @@ async function fixture(t,{bad=false,link=false,os='Darwin',invalidVersion=false}
   const archive=path.join(root,'source.tar.gz');await exec('tar',['-czf',archive,'-C',path.dirname(source),path.basename(source)]);
   if(bad)await fs.writeFile(archive,'Not an archive');
   await fs.writeFile(path.join(bin,'uname'),`#!/bin/bash\nprintf '%s\\n' '${os}'\n`,{mode:0o755});
-  await fs.writeFile(path.join(bin,'curl'),`#!/bin/bash\nset -e\nprintf '%s\\n' "$*" >> "$FIXTURE_LOG"\nurl='';out='';while [ "$#" -gt 0 ]; do case "$1" in -o) out="$2";shift 2;; https:*) url="$1";shift;; *) shift;; esac;done\ncase "$url" in https://api.github.com/repos/extendmachine/Saplingagent/git/ref/heads/release) printf '%s' '{"ref":"refs/heads/release","object":{"sha":"${sha}"}}' > "$out";; https://github.com/extendmachine/Saplingagent/archive/${sha}.tar.gz) cp "$FIXTURE_ARCHIVE" "$out";; *) exit 22;; esac\n`,{mode:0o755});
-  const env={...process.env,PATH:bin+path.delimiter+process.env.PATH,FIXTURE_ARCHIVE:archive,FIXTURE_LOG:path.join(root,'curl.log')};
+  await fs.writeFile(path.join(bin,'curl'),`#!/bin/bash\nset -e\nprintf '%s\\n' "$*" >> "$FIXTURE_LOG"\nurl='';out='';while [ "$#" -gt 0 ]; do case "$1" in -o) out="$2";shift 2;; https:*) url="$1";shift;; *) shift;; esac;done\ncase "$url" in https://raw.githubusercontent.com/extendmachine/Saplingagent/release/kernel/scripts/install-source.sh) cat "$FIXTURE_HELPER";; https://api.github.com/repos/extendmachine/Saplingagent/git/ref/heads/release) printf '%s' '{"ref":"refs/heads/release","object":{"sha":"${sha}"}}' > "$out";; https://github.com/extendmachine/Saplingagent/archive/${sha}.tar.gz) cp "$FIXTURE_ARCHIVE" "$out";; *) exit 22;; esac\n`,{mode:0o755});
+  const env={...process.env,PATH:bin+path.delimiter+process.env.PATH,FIXTURE_HELPER:path.join(project,'kernel/scripts/install-source.sh'),FIXTURE_ARCHIVE:archive,FIXTURE_LOG:path.join(root,'curl.log')};
   return {root,env,source,run:(args=[],input)=>exec('/bin/bash',[path.join(project,'install.sh'),...args],{cwd:root,env,...(input?{input}:{} )})};
 }
 test('release-only bootstrap downloads a pinned snapshot into a Unicode/new folder without Git refs',async t=>{

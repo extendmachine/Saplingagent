@@ -6,12 +6,12 @@ import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
-const project = fileURLToPath(new URL('../../', import.meta.url));
+const project = fileURLToPath(new URL('../../../', import.meta.url));
 async function fixture(t, os = 'MINGW64_NT-10.0-19045') {
   const parent = path.join(project, '.cache/shell-routing'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "中文 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['Saplingagent.sh', 'scripts/windows/bootstrap.sh']) {
+  for (const file of ['Saplingagent.sh','kernel/scripts/Saplingagent.sh', 'kernel/scripts/windows/bootstrap.sh']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const bin = path.join(root, 'fake-bin'); await fs.mkdir(bin);

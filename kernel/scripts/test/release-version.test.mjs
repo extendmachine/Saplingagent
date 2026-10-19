@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import { verifyRelease } from '../verify-release.mjs';
 
 async function fixture(t) {
-  const parent = fileURLToPath(new URL('../../.cache/release-gate/', import.meta.url));
+  const parent = fileURLToPath(new URL('../../../.cache/release-gate/', import.meta.url));
   await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, 'repo-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));

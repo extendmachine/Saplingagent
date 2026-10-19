@@ -6,11 +6,11 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { codexBinary } from '../../contracts/local-process.mjs';
 
-const root = fileURLToPath(new URL('../../', import.meta.url));
+const root = fileURLToPath(new URL('../../../', import.meta.url));
 test('Mac bootstrap and Codex wrapper agree on native Intel, Apple Silicon and Rosetta architecture', { skip: process.platform === 'win32' }, async () => {
   for (const [file, variable, end] of [
-    ['scripts/macos/bootstrap.sh', 'SEED_MAC_ARCH', '\nesac'],
-    ['scripts/macos/codex.sh', 'SEED_CODEX_ARCH', '\nSEED_CODEX_NODE='],
+    ['kernel/scripts/macos/bootstrap.sh', 'SEED_MAC_ARCH', '\nesac'],
+    ['kernel/scripts/macos/codex.sh', 'SEED_CODEX_ARCH', '\nSEED_CODEX_NODE='],
   ]) {
     const source = await fs.readFile(path.join(root, file), 'utf8');
     const start = source.indexOf(`${variable}="$(/usr/bin/uname -m)"`);
@@ -24,7 +24,7 @@ test('Mac bootstrap and Codex wrapper agree on native Intel, Apple Silicon and R
   }
 });
 test('Windows config includes checksum-verified native x64 and ARM64 archives and native Codex binaries', async () => {
-  const config = JSON.parse(await fs.readFile(path.join(root, 'config/windows.json'), 'utf8'));
+  const config = JSON.parse(await fs.readFile(path.join(root, 'kernel/config/windows.json'), 'utf8'));
   assert.deepEqual(Object.keys(config.nodeSha256).sort(), ['arm64', 'x64']);
   for (const digest of Object.values(config.nodeSha256)) assert.match(digest, /^[a-f0-9]{64}$/);
   assert.notEqual(config.nodeSha256.arm64, config.nodeSha256.x64);
@@ -33,7 +33,7 @@ test('Windows config includes checksum-verified native x64 and ARM64 archives an
 
 const powershell = process.env.SAPLING_TEST_PWSH || (process.platform === 'win32' ? 'powershell.exe' : null);
 test('actual PowerShell resolver prefers native OS over emulation, handles WOW64 fallback and rejects 32-bit', { skip: !powershell }, async () => {
-  const helper = await fs.readFile(path.join(root, 'scripts/windows/bootstrap.sh'), 'utf8');
+  const helper = await fs.readFile(path.join(root, 'kernel/scripts/windows/bootstrap.sh'), 'utf8');
   const embedded = helper.split("<<'SAPLING_POWERSHELL'\n")[1].split('\nSAPLING_POWERSHELL')[0];
   const program = `
     $ErrorActionPreference='Stop'; $errors=$null; $tokens=$null
@@ -52,7 +52,7 @@ test('actual PowerShell resolver prefers native OS over emulation, handles WOW64
 });
 
 test('actual PowerShell bootstrap reports its startup boundary before a device check fails', { skip: !powershell || process.platform === 'win32' }, async () => {
-  const helper = await fs.readFile(path.join(root, 'scripts/windows/bootstrap.sh'), 'utf8');
+  const helper = await fs.readFile(path.join(root, 'kernel/scripts/windows/bootstrap.sh'), 'utf8');
   const embedded = helper.split("<<'SAPLING_POWERSHELL'\n")[1].split('\nSAPLING_POWERSHELL')[0];
   const result = spawnSync(powershell, ['-NoLogo', '-NoProfile', '-EncodedCommand', Buffer.from(embedded, 'utf16le').toString('base64')], {
     encoding: 'utf8', timeout: 10000,

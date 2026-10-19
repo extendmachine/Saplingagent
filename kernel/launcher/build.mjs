@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { terminateOwned } from "../../contracts/local-process.mjs";
+import { terminateOwned } from "../contracts/local-process.mjs";
 export const buildContext = new AsyncLocalStorage();
 const originalRoot = path.resolve(
   fileURLToPath(new URL("../../", import.meta.url)),

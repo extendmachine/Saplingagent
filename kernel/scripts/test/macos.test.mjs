@@ -9,15 +9,15 @@ import { distributable } from '../package-macos.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-const project = fileURLToPath(new URL('../../', import.meta.url));
+const project = fileURLToPath(new URL('../../../', import.meta.url));
 async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   const parent = path.join(project, '.cache/macos-tests'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "\u6d4b\u8bd5 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['contracts/ai-configuration.mjs', 'contracts/local-process.mjs', 'contracts/engine-dependencies.mjs', 'scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'scripts/launcher/recipient-records.mjs', 'scripts/setup.mjs', 'scripts/macos/cli.mjs', 'scripts/macos/bootstrap.sh', 'scripts/macos/codex.sh', 'Saplingagent.sh', 'config/macos.json', 'config/runtime.json']) {
+  for (const file of ['kernel/contracts/ai-configuration.mjs', 'kernel/contracts/local-process.mjs', 'kernel/contracts/engine-dependencies.mjs', 'kernel/scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'kernel/scripts/launcher/recipient-records.mjs', 'kernel/scripts/setup.mjs', 'kernel/scripts/macos/cli.mjs', 'kernel/scripts/macos/bootstrap.sh', 'kernel/scripts/macos/codex.sh', 'Saplingagent.sh', 'kernel/scripts/Saplingagent.sh', 'kernel/config/macos.json', 'config/runtime.json']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
-  const settings = JSON.parse(await fs.readFile(path.join(root, 'config/macos.json'), 'utf8'));
+  const settings = JSON.parse(await fs.readFile(path.join(root, 'kernel/config/macos.json'), 'utf8'));
   const hash = createHash('sha256').update(JSON.stringify(settings));
   for (const service of ['front', 'backend/app-builder', 'backend/mcp-runtime', 'backend/agent-runtime']) {
     await fs.mkdir(path.join(root, service), { recursive: true });
@@ -33,13 +33,13 @@ async function fixture(t, { auth = 'missing', badDev = false } = {}) {
 }
 function runCli(root, action, extraEnv = {},nodeExecutable=process.execPath) {
   return new Promise((resolve, reject) => {
-    const child = spawn(nodeExecutable, [path.join(root, 'scripts/macos/cli.mjs'), ...action], { cwd: root, env: { ...process.env, SEED_ROOT: '/invalid-root', CODEX_HOME: '/invalid-codex-home', ...(action[0] === 'install' ? { SAPLING_GIT_MODE: 'local' } : {}), ...extraEnv }, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(nodeExecutable, [path.join(root, 'kernel/scripts/macos/cli.mjs'), ...action], { cwd: root, env: { ...process.env, SEED_ROOT: '/invalid-root', CODEX_HOME: '/invalid-codex-home', ...(action[0] === 'install' ? { SAPLING_GIT_MODE: 'local' } : {}), ...extraEnv }, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = ''; child.stdout.on('data', x => output += x); child.stderr.on('data', x => output += x); child.once('error', reject); child.once('exit', code => resolve({ code, output }));
   });
 }
 test('distribution filter excludes runtime/private files while retaining complete rules and Skills', () => {
   for (const file of ['local-secrets/codex/auth.json', 'backend/a/local-secrets/key.txt', 'data/session.json', 'backend/agent-runtime/ai-tasks/runtime/run.md', 'front/node_modules/react/index.js', '.runtime/codex/package.json', '.worktrees/coordination/TODO.md', 'logs/front/x.log', 'backend/a/.env.local', 'backend/a/token.pem', 'front/dist/index.html', '1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', 'Saplingagent.command', '4-Doctor.command', '5-Configure-OpenCode.command']) assert.equal(distributable(file), false, file);
-  for (const file of ['config/release.json','README.zh-CN.md','assets/brand/saplingagent-growth-logo.png','assets/cases/document-workspace/workspace-overview.jpg','kernel/manifest.json','kernel/recover.mjs','contracts/kernel.mjs','LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', 'rules/README.md', 'rules/clawtask-package-skill-v2.zip', '.agents/skills/seed-page-edit/SKILL.md', 'Saplingagent.sh', 'install.sh', 'scripts/launcher/recipient-records.mjs', '.agents/.claude-plugin/plugin.json', 'backend/agent-runtime/providers/claude.mjs', 'front/App.tsx', 'scripts/macos/codex.sh']) assert.equal(distributable(file), true, file);
+  for (const file of ['config/release.json','README.zh-CN.md','assets/brand/saplingagent-growth-logo.png','assets/cases/document-workspace/workspace-overview.jpg','kernel/manifest.json','kernel/recover.mjs','contracts/kernel.mjs','LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', 'rules/README.md', 'rules/clawtask-package-skill-v2.zip', '.agents/skills/seed-page-edit/SKILL.md', 'Saplingagent.sh', 'install.sh', 'kernel/scripts/launcher/recipient-records.mjs', '.agents/.claude-plugin/plugin.json', 'kernel/engines/providers/claude.mjs', 'front/App.tsx', 'kernel/scripts/macos/codex.sh']) assert.equal(distributable(file), true, file);
 });
 test('missing login does not launch services or copy global authentication', async t => {
   const root = await fixture(t);
@@ -71,7 +71,7 @@ test('cancelled OpenCode configuration stops the owned auth child and does not c
   const binary = path.join(root, 'backend/agent-runtime/node_modules/.bin/opencode');
   await fs.writeFile(binary, '#!/bin/sh\ntrap "printf stopped > auth-stopped.txt; exit 0" TERM INT HUP\nprintf running > auth-running.txt\nwhile true; do sleep 0.05; done\n');
   await fs.chmod(binary, 0o755);
-  const child = spawn(process.execPath, [path.join(root, 'scripts/macos/cli.mjs'), 'opencode'], { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, [path.join(root, 'kernel/scripts/macos/cli.mjs'), 'opencode'], { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = ''; child.stdout.on('data', chunk => output += chunk); child.stderr.on('data', chunk => output += chunk);
   const exited = new Promise(resolve => child.once('exit', code => resolve(code)));
   t.after(() => { if (child.exitCode === null) child.kill('SIGTERM'); });
@@ -99,7 +99,7 @@ test('a failed launcher cannot claim another live project is ready', async t => 
 });
 test('failed staging preserves a complete old installation and repairs stripped script permissions', async t => {
   const root = await fixture(t, { auth: 'present' });
-  const marker = path.join(root, '.runtime/macos-install.json'), wrapper = path.join(root, 'scripts/macos/codex.sh');
+  const marker = path.join(root, '.runtime/macos-install.json'), wrapper = path.join(root, 'kernel/scripts/macos/codex.sh');
   const before = await fs.readFile(marker, 'utf8'); await fs.chmod(wrapper, 0o644);
   const bin = path.join(root, 'fake-bin'); await fs.mkdir(bin);
   await fs.writeFile(path.join(bin, 'npm'), '#!/bin/sh\necho "Synthetic network failure" >&2\nexit 42\n', { mode: 0o755 });
@@ -118,7 +118,7 @@ test('failed managed startup keeps the recovery gateway alive until the user sto
   const net = await import('node:net'); const probe = net.createServer(); await new Promise(resolve => probe.listen(0, '127.0.0.1', resolve)); const port = probe.address().port; await new Promise(resolve => probe.close(resolve));
   const file = path.join(root, 'config/runtime.json'), config = JSON.parse(await fs.readFile(file, 'utf8')); config.frontPort = port; await fs.writeFile(file, JSON.stringify(config));
   await fs.writeFile(path.join(root, 'scripts/dev.mjs'), `import http from 'node:http';const server=http.createServer((req,res)=>{res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({phase:'failed',busy:false,error:{code:'FIXTURE_NOT_READY'}}))});server.listen(${port},'127.0.0.1',()=>console.log('Saplingagent: http://127.0.0.1:${port}/'));process.on('SIGTERM',()=>{server.close(()=>process.exit(0));server.closeAllConnections()});`);
-  const child = spawn(process.execPath,[path.join(root,'scripts/macos/cli.mjs'),'start','--no-open'],{cwd:root,env:{...process.env,SEED_ROOT:root},stdio:['ignore','pipe','pipe']});
+  const child = spawn(process.execPath,[path.join(root,'kernel/scripts/macos/cli.mjs'),'start','--no-open'],{cwd:root,env:{...process.env,SEED_ROOT:root},stdio:['ignore','pipe','pipe']});
   let output = ''; child.stdout.on('data',chunk=>output+=chunk);child.stderr.on('data',chunk=>output+=chunk);t.after(()=>{if(child.exitCode===null)child.kill('SIGTERM')});
   const exited = new Promise(resolve=>child.once('exit',code=>resolve(code)));
   const end=Date.now()+5000;while(!output.includes('Keep this window open')&&child.exitCode===null&&Date.now()<end)await new Promise(resolve=>setTimeout(resolve,30));
@@ -132,7 +132,7 @@ test('Mac startup follows the announced port instead of a ready foreign app on t
  await new Promise(resolve=>foreign.listen(0,'127.0.0.1',resolve));t.after(()=>{foreign.closeAllConnections();return new Promise(resolve=>foreign.close(resolve))});
  const configFile=path.join(root,'config/runtime.json'),config=JSON.parse(await fs.readFile(configFile));config.frontPort=foreign.address().port;await fs.writeFile(configFile,JSON.stringify(config));
  await fs.writeFile(path.join(root,'scripts/dev.mjs'),`import http from 'node:http';import fs from 'node:fs';const s=http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({instanceId:'fixture-instance',phase:'ready',busy:false,ready:true,authenticated:true,provider:'Fixture',model:'fixture-model',mcp:{ready:true,tools:[]},skills:[]}))});s.listen(0,'127.0.0.1',()=>{const port=s.address().port;fs.writeFileSync('.runtime/runtime-address.json',JSON.stringify({instanceId:'fixture-instance',ports:{frontPort:port}}));console.log('Saplingagent: http://127.0.0.1:'+port+'/')});process.on('SIGTERM',()=>{s.closeAllConnections();s.close(()=>process.exit(0))});`);
- const child=spawn(process.execPath,[path.join(root,'scripts/macos/cli.mjs'),'start','--no-open'],{cwd:root,stdio:['ignore','pipe','pipe']});
+ const child=spawn(process.execPath,[path.join(root,'kernel/scripts/macos/cli.mjs'),'start','--no-open'],{cwd:root,stdio:['ignore','pipe','pipe']});
  let output='';child.stdout.on('data',x=>output+=x);child.stderr.on('data',x=>output+=x);const exited=new Promise(resolve=>child.once('exit',code=>resolve(code)));t.after(()=>{if(child.exitCode===null)child.kill('SIGTERM')});
  const end=Date.now()+5000;while(!output.includes('Keep this window open')&&child.exitCode===null&&Date.now()<end)await new Promise(r=>setTimeout(r,30));
  assert.match(output,/Connected to Fixture: fixture-model/);assert.equal(foreignRequests,0);
@@ -146,7 +146,7 @@ test('Mac startup follows the announced port instead of a ready foreign app on t
 test('Chinese bootstrap reports missing Node without downloading anything', async t => {
   const root = await fixture(t);
   const result = await new Promise((resolve, reject) => {
-    const child = spawn('/bin/bash', [path.join(root, 'scripts/macos/bootstrap.sh'), 'doctor'], { cwd: '/', env: { ...process.env, SAPLING_LANG: 'zh' }, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn('/bin/bash', [path.join(root, 'kernel/scripts/macos/bootstrap.sh'), 'doctor'], { cwd: '/', env: { ...process.env, SAPLING_LANG: 'zh' }, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = ''; child.stdout.on('data', chunk => output += chunk); child.stderr.on('data', chunk => output += chunk);
     child.once('error', reject); child.once('exit', code => resolve({ code, output }));
   });
@@ -168,12 +168,12 @@ test('Chinese login failures preserve error meaning and do not expose raw creden
 
 test('web configuration builds and launches its independent page without Codex login or chat startup',async t=>{
  const root=await fixture(t,{auth:'broken'});
- await fs.mkdir(path.join(root,'front/ai-config'),{recursive:true});await fs.writeFile(path.join(root,'front/ai-config/vite.config.mjs'),'export default {}');
+ await fs.mkdir(path.join(root,'kernel/ui/setup'),{recursive:true});await fs.writeFile(path.join(root,'kernel/ui/setup/vite.config.mjs'),'export default {}');
  await fs.mkdir(path.join(root,'kernel/node_modules/vite/bin'),{recursive:true});
  await fs.writeFile(path.join(root,'kernel/node_modules/vite/bin/vite.js'),"import fs from 'node:fs';fs.writeFileSync('build-args.json',JSON.stringify(process.argv.slice(2)));");
- await fs.mkdir(path.join(root,'backend/ai-config'),{recursive:true});await fs.writeFile(path.join(root,'backend/ai-config/server.mjs'),"import fs from 'node:fs';fs.writeFileSync('configuration-start.json',JSON.stringify({args:process.argv.slice(2),root:process.env.SEED_ROOT,home:process.env.CODEX_HOME}));");
+ await fs.mkdir(path.join(root,'kernel/services/ai-config'),{recursive:true});await fs.writeFile(path.join(root,'kernel/services/ai-config/server.mjs'),"import fs from 'node:fs';fs.writeFileSync('configuration-start.json',JSON.stringify({args:process.argv.slice(2),root:process.env.SEED_ROOT,home:process.env.CODEX_HOME}));");
  const result=await runCli(root,['configure','--no-open']);assert.equal(result.code,0,result.output);assert.match(result.output,/independent AI configuration/);
- assert.deepEqual(JSON.parse(await fs.readFile(path.join(root,'build-args.json'),'utf8')),['build','--config',path.join(root,'front/ai-config/vite.config.mjs')]);
+ assert.deepEqual(JSON.parse(await fs.readFile(path.join(root,'build-args.json'),'utf8')),['build','--config',path.join(root,'kernel/ui/setup/vite.config.mjs')]);
  const started=JSON.parse(await fs.readFile(path.join(root,'configuration-start.json'),'utf8'));assert.deepEqual(started.args,['--no-open']);assert.equal(path.resolve(started.root),root);assert.equal(started.home,'/invalid-codex-home');
  // Runtime isolation is retained while explicit setup discovery uses caller home.
  assert.equal(await fs.readFile(path.join(root,'local-secrets/codex/config.toml'),'utf8'),'cli_auth_credentials_store = "file"\n');
@@ -210,7 +210,7 @@ finally:os.close(fd)
  const {stdout}=await promisify(execFile)('python3',['-c',python,root,storageChoice?'yes':'no',independent?'yes':'no'],{timeout:20000,env:{...process.env,SAPLING_GIT_MODE:'',SAPLING_SOURCE_UPDATE_DONE:''}});return JSON.parse(stdout);
 }
 async function nativeNode(root) {
- const settings=JSON.parse(await fs.readFile(path.join(root,'config/macos.json'))),folder=path.join(root,'.runtime',`node-v${settings.nodeVersion}-darwin-${process.arch}`,'bin');await fs.mkdir(folder,{recursive:true});await fs.symlink(process.execPath,path.join(folder,'node'));
+ const settings=JSON.parse(await fs.readFile(path.join(root,'kernel/config/macos.json'))),folder=path.join(root,'.runtime',`node-v${settings.nodeVersion}-darwin-${process.arch}`,'bin');await fs.mkdir(folder,{recursive:true});await fs.symlink(process.execPath,path.join(folder,'node'));
 }
 test('actual macOS terminal installs existing dependencies without a Git prompt or initialization',{skip:process.platform!=='darwin',timeout:25000},async t=>{
  const root=await fixture(t);await nativeNode(root);const result=await menuPty(root);
@@ -229,7 +229,7 @@ test('AI setup remains available with kernel dependencies when app frontend and 
  const root=await fixture(t);await fs.mkdir(path.join(root,'kernel'),{recursive:true});await fs.writeFile(path.join(root,'kernel/package.json'),'{}');
  for(const relative of ['.bin/opencode',`@anthropic-ai/claude-agent-sdk-darwin-${process.arch}/claude`]){const target=path.join(root,'kernel/node_modules',relative);await fs.mkdir(path.dirname(target),{recursive:true});await fs.copyFile(path.join(root,'backend/agent-runtime/node_modules',relative),target);}
  await fs.mkdir(path.join(root,'kernel/node_modules/vite/bin'),{recursive:true});await fs.writeFile(path.join(root,'kernel/node_modules/vite/bin/vite.js'),"import fs from 'node:fs';fs.writeFileSync('core-ui-built','yes')");
- await fs.mkdir(path.join(root,'backend/ai-config'),{recursive:true});await fs.writeFile(path.join(root,'backend/ai-config/server.mjs'),"import fs from 'node:fs';fs.writeFileSync('core-setup-started','yes')");
+ await fs.mkdir(path.join(root,'kernel/services/ai-config'),{recursive:true});await fs.writeFile(path.join(root,'kernel/services/ai-config/server.mjs'),"import fs from 'node:fs';fs.writeFileSync('core-setup-started','yes')");
  await fs.rm(path.join(root,'front/node_modules'),{recursive:true,force:true});await fs.writeFile(path.join(root,'front/package-lock.json'),'CUSTOMER APP LOCK');
  const result=await runCli(root,['configure','--no-open']);assert.equal(result.code,0,result.output);assert.equal(await fs.readFile(path.join(root,'core-ui-built'),'utf8'),'yes');assert.equal(await fs.readFile(path.join(root,'core-setup-started'),'utf8'),'yes');assert.equal(await fs.readFile(path.join(root,'front/package-lock.json'),'utf8'),'CUSTOMER APP LOCK');
 });
