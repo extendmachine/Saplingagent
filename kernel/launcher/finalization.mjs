@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import os from 'node:os';
 import {randomUUID} from 'node:crypto';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -11,15 +10,14 @@ import {relocationLedger} from './relocation.mjs';
 const source = path.dirname(fileURLToPath(import.meta.url));
 const isInside = (root, file) => { const relative = path.relative(root, file); return relative && relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative); };
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-export function systemTemporaryParent(platform=process.platform,env=process.env,home=os.homedir()) {
-  if(platform==='darwin')return '/private/tmp';
-  if(platform==='win32')return path.win32.join(env.LOCALAPPDATA || path.win32.join(env.USERPROFILE || home,'AppData','Local'),'Temp');
-  throw issue('UNSUPPORTED_DEVICE','Offline setup restart currently supports macOS and Windows.');
+// Compatibility export: callers must supply a project. There is no OS-temp fallback.
+export function systemTemporaryParent(root) {
+  if(typeof root!=='string'||!path.isAbsolute(root))throw issue('PROJECT_HELPER_LOCATION','A project folder is required for sibling setup storage.');
+  return path.dirname(root);
 }
-export function helperEnvironment(platform=process.platform, inherited=process.env) {
+export function helperEnvironment(platform=process.platform, inherited=process.env, directory) {
   const env={};
   for(const key of ['SystemRoot','SYSTEMROOT','ComSpec','COMSPEC','WINDIR','USERPROFILE','HOME','LANG','LC_ALL',
-    'CODEX_HOME','CLAUDE_CONFIG_DIR','XDG_CONFIG_HOME','XDG_DATA_HOME','XDG_CACHE_HOME','XDG_STATE_HOME',
     'LOCALAPPDATA','APPDATA','ProgramFiles','ProgramFiles(x86)','ProgramW6432','PATHEXT'])
     if(inherited[key])env[key]=inherited[key];
   const system=platform==='win32' ? path.win32.join(inherited.SystemRoot || inherited.SYSTEMROOT || 'C:\\Windows','System32') : null;
@@ -28,6 +26,12 @@ export function helperEnvironment(platform=process.platform, inherited=process.e
   // resume rebases project-internal entries before running application commands.
   if(inherited.PATH)base.push(inherited.PATH);
   env.PATH=base.join(platform==='win32'?';':':');
+  if(directory){
+    const join=platform==='win32'?path.win32.join:path.join;
+    for(const key of ['TMPDIR','TMP','TEMP'])env[key]=join(directory,'tmp');
+    for(const [key,name]of [['XDG_CACHE_HOME','cache'],['XDG_CONFIG_HOME','config'],['XDG_DATA_HOME','data'],['XDG_STATE_HOME','state']])env[key]=join(directory,name);
+    env.npm_config_cache=join(directory,'cache','npm');
+  }
   return env;
 }
 // This helper receives paths and lifecycle IDs only. Credentials never leave the project.
@@ -42,7 +46,7 @@ export async function beginFinalization(root, {project, management, language, fi
     throw issue('PROJECT_HANDOFF_UNAVAILABLE', 'Management ownership changed. Reload setup before restarting.');
   if (!isInside(root, node)) throw issue('PROJECT_LOCAL_NODE_REQUIRED', 'Run this project with its installed local Node runtime before saving and restarting.');
   if (await exists(path.join(root, '.runtime/kernel/active-job.json'))) throw issue('PROJECT_BUSY', 'Finish kernel maintenance before restarting setup.');
-  for (const file of ['macos-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])
+  for (const file of ['launcher-compile.lock','macos-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])
     if (await exists(path.join(root,'.runtime',file))) throw issue('PROJECT_BUSY','Finish dependency installation before restarting setup.');
   await relocationLedger(root); // Validate before any shutdown or physical move.
   const id = randomUUID(), lease = path.join(root,'.runtime/project-finalization.json');
@@ -59,18 +63,18 @@ export async function beginFinalization(root, {project, management, language, fi
     try {await operation.writeFile(JSON.stringify({id,pid:process.pid,purpose:'setup-finalization',createdAt:job.createdAt})+'\n');} finally {await operation.close();}
     await previous.writeFile(JSON.stringify(job)+'\n'); await previous.close();
     await writeJSON(path.join(root,'.runtime/setup-finalization.json'),job);
-    // Project processes deliberately point TMP/TEMP at .runtime. Never derive the
-    // independent helper location from those overridden environment variables.
-    const externalBase = tempParent || systemTemporaryParent(platform);
-    if(!tempParent)await fs.mkdir(externalBase,{recursive:true,mode:0o700});
-    const tempBase = await fs.realpath(externalBase);
-    if (tempBase === root || isInside(root,tempBase)) throw issue('PROJECT_HELPER_LOCATION','The system temporary folder must be outside the project.');
+    const tempBase=await fs.realpath(path.dirname(root));
+    if(tempParent && await fs.realpath(tempParent)!==tempBase)throw issue('PROJECT_HELPER_LOCATION','Setup helpers must be direct siblings of this project.');
     temp = await fs.mkdtemp(path.join(tempBase,'sapling-setup-')); await fs.chmod(temp,0o700);
+    const owned=await fs.lstat(temp);
+    job.helper={name:path.basename(temp),device:String(owned.dev),inode:String(owned.ino)};
+    for(const name of ['tmp','cache','config','data','state'])await fs.mkdir(path.join(temp,name),{mode:0o700});
+    await writeJSON(lease,job);await writeJSON(path.join(root,'.runtime/setup-finalization.json'),job);
     // All launch fields are private job metadata, never executable string interpolation.
     await writeJSON(path.join(temp,'job.json'),job);
     for (const file of platform==='win32'?['offline-helper.ps1']:['offline-helper.sh','offline-move.js'])
       await fs.copyFile(path.join(source,file),path.join(temp,file));
-    const env = helperEnvironment(platform);
+    const env = helperEnvironment(platform,process.env,temp);
     env.SAPLING_SETUP_JOB=id;
     const executable=platform==='win32'?path.win32.join(process.env.SystemRoot||'C:\\Windows','System32/WindowsPowerShell/v1.0/powershell.exe'):'/bin/sh';
     const args=platform==='win32'?['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(temp,'offline-helper.ps1'),'-JobDirectory',temp]:[path.join(temp,'offline-helper.sh'),temp];

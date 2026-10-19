@@ -1,6 +1,19 @@
 ﻿$ErrorActionPreference = 'Stop'
 $SaplingRoot = if ($env:SAPLING_BOOTSTRAP_ROOT) { $env:SAPLING_BOOTSTRAP_ROOT } else { [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..')) }
 $SaplingLanguage = $env:SAPLING_LANG
+# Scratch paths are project-derived before .NET downloads/extraction can run.
+foreach ($relative in @('.runtime', '.runtime/tmp', '.cache', '.cache/npm')) {
+    $directory = Join-Path $SaplingRoot $relative
+    if (Test-Path -LiteralPath $directory) {
+        $item = Get-Item -LiteralPath $directory -Force
+        if (!$item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Project storage must use ordinary local directories.' }
+    } else { [IO.Directory]::CreateDirectory($directory) | Out-Null }
+}
+$env:TMP = Join-Path $SaplingRoot '.runtime/tmp'
+$env:TEMP = $env:TMP
+$env:TMPDIR = $env:TMP
+$env:npm_config_cache = Join-Path $SaplingRoot '.cache/npm'
+
 # Undo MSYS argument-conversion overrides before any application child starts.
 [Environment]::SetEnvironmentVariable('MSYS2_ARG_CONV_EXCL', $env:SAPLING_PREVIOUS_ARG_CONV, 'Process')
 [Environment]::SetEnvironmentVariable('MSYS2_ENV_CONV_EXCL', $env:SAPLING_PREVIOUS_ENV_CONV, 'Process')
@@ -56,7 +69,9 @@ function Ensure-Node([bool]$Install) {
     $stage = Join-Path $runtime ('windows-node-' + [Guid]::NewGuid().ToString('N'))
     $oldTls = [Net.ServicePointManager]::SecurityProtocol
     try {
-        if (Test-Path -LiteralPath (Join-Path $runtime 'kernel-operation.lock')) { throw 'Finish the active kernel/start operation before installing Node.' }
+        foreach ($lease in @('kernel-operation.lock', 'launcher-compile.lock', 'project-finalization.json')) {
+            if (Test-Path -LiteralPath (Join-Path $runtime $lease)) { throw 'Finish the active kernel/start/setup operation before installing Node.' }
+        }
         New-Item -ItemType Directory -Path $stage | Out-Null
         $archive = Join-Path $stage ($folderName + '.zip')
         Say 'Downloading project-local Node from nodejs.org...' '正在从 nodejs.org 下载项目内 Node…'

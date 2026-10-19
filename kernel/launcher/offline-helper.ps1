@@ -3,6 +3,18 @@ $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $JobDirectory
 $job = Get-Content -LiteralPath (Join-Path $JobDirectory 'job.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($job.schemaVersion -ne 1 -or $job.id -notmatch '^[a-f0-9-]{36}$') { throw 'SETUP_JOB_INVALID' }
+function Assert-HelperLocation {
+  $item = Get-Item -LiteralPath $JobDirectory -Force
+  $expected = Join-Path (Split-Path -Parent $job.previousRoot) $job.helper.name
+  if (!$job.helper -or $job.helper.name -notmatch '^sapling-setup-[A-Za-z0-9]+$' -or
+      [IO.Path]::GetFullPath($JobDirectory) -cne [IO.Path]::GetFullPath($expected) -or
+      (Split-Path -Parent $job.targetRoot) -cne (Split-Path -Parent $job.previousRoot) -or
+      !$item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'SETUP_HELPER_CHANGED' }
+  $owner = Get-Content -LiteralPath (Join-Path $JobDirectory 'job.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+  if ($owner.id -ne $job.id -or $owner.helper.name -cne $job.helper.name) { throw 'SETUP_HELPER_CHANGED' }
+}
+Assert-HelperLocation
+
 $parentProcess = Get-Process -Id $job.management.pid -ErrorAction SilentlyContinue
 # Capture the process handle now; WaitForExit cannot accidentally follow a recycled PID.
 if ($parentProcess) { $null = $parentProcess.Handle }
@@ -41,8 +53,13 @@ try {
   if (-not $job.noOpen) { Start-Process -FilePath $page -WorkingDirectory ([IO.Path]::GetPathRoot($JobDirectory)) }
 } finally {
   if ($parentProcess) { $parentProcess.Dispose() }
-  $safeDirectory = [IO.Path]::GetPathRoot($JobDirectory)
+  Assert-HelperLocation
+  $safeDirectory = Split-Path -Parent $JobDirectory
   Set-Location -LiteralPath $safeDirectory
   [Environment]::CurrentDirectory = $safeDirectory
-  Remove-Item -LiteralPath $JobDirectory -Recurse -Force
+  # Retry Windows sharing violations only after releasing this helper's handles.
+  for ($attempt = 0; $attempt -lt 10; $attempt++) {
+    try { Assert-HelperLocation; Remove-Item -LiteralPath $JobDirectory -Recurse -Force; break }
+    catch { if ($attempt -eq 9) { throw }; Start-Sleep -Milliseconds 200 }
+  }
 }

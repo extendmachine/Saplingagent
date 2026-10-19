@@ -23,7 +23,7 @@ export const nodeForRoot = (root) => {
     ? path.join(root, path.relative(originalRoot, process.execPath))
     : process.execPath;
 };
-import { exists, json, writeJSON, issue, cleanOutput } from "./io.mjs";
+import { exists, json, writeJSON, atomic, issue, cleanOutput } from "./io.mjs";
 export function buildEnv(root) {
   const env = {
     ...process.env,
@@ -37,6 +37,12 @@ export function buildEnv(root) {
     GOMODCACHE: path.join(root, ".cache/go-mod"),
     GOPATH: path.join(root, ".runtime/go-path"),
     GOTOOLCHAIN: "local",
+    NODE_COMPILE_CACHE: path.join(root, ".cache/node"),
+    TEST_TELEMETRY_DIR: path.join(root, ".cache/go-telemetry"),
+    XDG_CONFIG_HOME: path.join(root, "local-secrets/runtime/config"),
+    XDG_CACHE_HOME: path.join(root, ".cache/runtime"),
+    XDG_DATA_HOME: path.join(root, "data/runtime"),
+    XDG_STATE_HOME: path.join(root, "data/runtime-state"),
     CGO_ENABLED: "0",
     GO111MODULE: "off",
     GOMAXPROCS: "2",
@@ -55,6 +61,30 @@ export function buildEnv(root) {
   delete env.SAPLING_CONFIGURATION_DIR;delete env.SAPLING_CONFIG_PARENT_PID;
   return { ...env, GOENV: "off", GOWORK: "off" };
 }
+// Only launcher-managed output directories are checked; this is not an Agent sandbox.
+async function managedDirectory(root,relative) {
+  let current=root;
+  if(!relative)return current;
+  for(const name of relative.split(path.sep)){
+    if(!name||name==='.'||name==='..')throw issue('PROJECT_STORAGE_LOCATION','Invalid launcher output folder.');
+    current=path.join(current,name);
+    await fs.mkdir(current,{mode:0o700}).catch(error=>{if(error.code!=='EEXIST')throw error;});
+    const stat=await fs.lstat(current);
+    if(!stat.isDirectory()||stat.isSymbolicLink())throw issue('PROJECT_STORAGE_LOCATION','Launcher output directories must be ordinary project-local directories.');
+  }
+  return current;
+}
+export async function prepareBuildStorage(root) {
+  root=await fs.realpath(root);
+  for(const relative of ['kernel/.cache','.runtime/launcher-tmp','.runtime/go-path','.runtime/launcher-build','.cache/npm','.cache/node','.cache/go-build','.cache/go-mod','.cache/go-telemetry','.cache/runtime','local-secrets/runtime/config','data/runtime','data/runtime-state'])await managedDirectory(root,path.normalize(relative));
+  // Go1.27's compiler telemetry honors this directory for every build subprocess.
+  // A private off marker prevents both counters and uploader subprocesses.
+  const mode=path.join(root,'.cache/go-telemetry/mode');
+  const stat=await fs.lstat(mode).catch(error=>{if(error.code==='ENOENT')return null;throw error;});
+  if(stat && (!stat.isFile()||stat.isSymbolicLink()))throw issue('PROJECT_STORAGE_LOCATION','The project-local telemetry marker must be a regular file.');
+  if(!stat||await fs.readFile(mode,'utf8')!=='off\n')await atomic(mode,'off\n');
+}
+
 export async function command(
   root,
   exe,
@@ -67,8 +97,11 @@ export async function command(
     signal = buildContext.getStore()?.signal,
   } = {},
 ) {
-  await fs.mkdir(cwd, { recursive: true });
-  await fs.mkdir(path.join(root, ".runtime/launcher-tmp"), { recursive: true });
+  root=await fs.realpath(root);
+  const relative=path.relative(root,path.resolve(cwd));
+  if(relative==='..'||relative.startsWith('..'+path.sep)||path.isAbsolute(relative))throw issue('PROJECT_STORAGE_LOCATION','Launcher commands must run from the project folder.');
+  await prepareBuildStorage(root);
+  await managedDirectory(root,relative);
   return new Promise((resolve, reject) => {
     let output = "",
       finished = false,
@@ -161,6 +194,7 @@ export function toolchainForDevice(
   return file;
 }
 export async function ensureGo(root, onProgress = () => {}) {
+  root=await fs.realpath(root);await prepareBuildStorage(root);
   const pin = await json(path.join(root, "kernel/launcher/toolchain.json"));
   const file = toolchainForDevice(pin),
     arch = file.arch;
@@ -265,12 +299,16 @@ export async function publishArtifact(
   { oldRelative, onProgress = () => {} } = {},
 ) {
   if (
-    path.basename(relative) !== relative ||
+    !relative || path.basename(relative) !== relative || !/\.(app|exe)$/i.test(relative) ||
     (oldRelative &&
       (path.basename(oldRelative) !== oldRelative ||
         !/\.(app|exe)$/i.test(oldRelative)))
   )
     throw issue("INVALID_LAUNCHER_PATH", "Invalid launcher artifact metadata.");
+  root=await fs.realpath(root);
+  await prepareBuildStorage(root);
+  const staged=await fs.realpath(stage).catch(error=>{if(error.code==='ENOENT')return path.resolve(stage);throw error;});
+  if(!staged.startsWith(root+path.sep))throw issue("PROJECT_STORAGE_LOCATION","Launcher staging must stay inside its project.");
   const destination = path.join(root, relative);
   const samePrevious =
     oldRelative &&
@@ -325,7 +363,7 @@ export async function publishArtifact(
   }
   return destination;
 }
-export async function compileLauncher(
+async function compileLauncherUnlocked(
   root,
   project,
   { onProgress = () => {}, force = false } = {},
@@ -478,4 +516,29 @@ export async function compileLauncher(
   await writeJSON(path.join(root, ".runtime/launcher.json"), receipt);
   await fs.rm(base, { recursive: true, force: true });
   return receipt;
+}
+
+// Separate cross-process lease: two setup instances must not replace one artifact.
+export async function compileLauncher(root,project,options={}) {
+  root=await fs.realpath(root);
+  const runtime=path.join(root,'.runtime');await fs.mkdir(runtime,{recursive:true});
+  if((await fs.lstat(runtime)).isSymbolicLink())throw issue('PROJECT_STORAGE_LOCATION','Launcher runtime must be an ordinary project-local directory.');
+  const file=path.join(runtime,'launcher-compile.lock'),operation=path.join(runtime,'kernel-operation.lock'),id=randomUUID();
+  const handle=await fs.open(file,'wx',0o600).catch(error=>{if(error.code==='EEXIST')throw issue('LAUNCHER_BUILD_BUSY','Another launcher compilation is active or interrupted. Inspect .runtime/launcher-compile.lock before retrying.');throw error;});
+  try {await handle.writeFile(JSON.stringify({id,pid:process.pid})+'\n');} finally {await handle.close();}
+  let ownsOperation=false;
+  try{
+    const lock=await fs.open(operation,'wx',0o600).catch(error=>{if(error.code==='EEXIST')throw issue('LAUNCHER_BUILD_BUSY','A project start, move or maintenance operation is active. Wait before compiling.');throw error;});
+    ownsOperation=true;
+    try{await lock.writeFile(JSON.stringify({id,pid:process.pid,purpose:'launcher-compile'})+'\n');}finally{await lock.close();}
+    const setup=await json(path.join(runtime,'project-finalization.json'));
+    if(setup && (!options.setupId||setup.id!==options.setupId||setup.pid!==process.pid))throw issue('LAUNCHER_BUILD_BUSY','A different setup operation owns this project. Wait before compiling.');
+    if(await exists(path.join(runtime,'kernel/active-job.json')))throw issue('LAUNCHER_BUILD_BUSY','Kernel maintenance is active. Wait before compiling.');
+    for(const name of ['macos-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])if(await exists(path.join(runtime,name)))throw issue('LAUNCHER_BUILD_BUSY','Dependency installation is active. Wait before compiling.');
+    await prepareBuildStorage(root);
+    return await compileLauncherUnlocked(root,project,options);
+  } finally {
+    if(ownsOperation&&(await json(operation))?.id===id)await fs.rm(operation);
+    if((await json(file))?.id===id)await fs.rm(file);
+  }
 }

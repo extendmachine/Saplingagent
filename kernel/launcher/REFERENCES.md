@@ -16,3 +16,11 @@ Checked2026-10-18, public documentation without login. Building/downloads requir
 - Windows PowerShell5.1 text encoding: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_character_encoding?view=powershell-5.1. Node writes UTF-8 JSON without BOM; the helper explicitly reads job/status as UTF-8 so Unicode customer paths are retained.
 
 - Windows PowerShell5.1 runspace and process locations: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/get-location?view=powershell-5.1. The helper changes both its provider location and [Environment]::CurrentDirectory before deleting its own temporary directory.
+
+## Pinned compiler storage audit (2026-10-19)
+
+Go1.27.2 distributed source, `src/cmd/internal/telemetry/telemetry.go` and
+`src/cmd/vendor/golang.org/x/telemetry/internal/telemetry/dir.go`, was inspected
+locally. The compiler and counters honor `TEST_TELEMETRY_DIR`; its local `mode`
+file accepts `off`. Builds use this pinned behavior to avoid both global telemetry
+writes and upload subprocesses. No remote account or model invocation was used.

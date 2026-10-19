@@ -72,3 +72,32 @@ bootstrap if Node is absent and does not need Git Bash for daily activation. A
 failed install does not claim application readiness. Retain the complete source
 folder. No global installation, model call, credential/Git rewrite or automatic
 rollback. See configuration/CONTRACT.md and launcher/DEPENDENCIES.md.
+
+## Project-relative managed storage (TASK-20261019-039)
+
+All new Saplingagent-managed installer, launcher and compiler outputs derive from
+this project's actual folder. Configuration B uses the expressly selected sibling
+capsule described in `kernel/configuration/CONTRACT.md`; the older offline restart
+helper similarly uses `../sapling-setup-<random>/`. There is no global temporary
+folder fallback or arbitrary external helper-parent override. Internally resolved
+absolute paths remain process ownership metadata, not user-selectable write roots.
+The sibling's temporary directories are private; the legacy helper verifies its
+job/directory identity before deleting only that directory. Unknown/interrupted
+receipts remain available for inspection. Windows cleanup retries sharing violations
+after releasing owned handles; it does not kill unrelated programs.
+
+Native app launch and both OS runtime bootstraps set project-local temporary and
+cache paths before downloads or execution. Launcher builds reset inherited B
+Node/XDG caches to project-local locations. Go's pinned compiler telemetry uses a
+private `.cache/go-telemetry/` directory with an `off` marker; no global Go mode is
+changed. Existing account source locations remain read-only import sources.
+Launcher-managed directories reject links/junctions pointing outside the project;
+this is output-path handling and does not restrict Agent Full Access.
+
+Native compilation holds both `.runtime/launcher-compile.lock` and the shared
+`.runtime/kernel-operation.lock`. It refuses install/maintenance and foreign setup
+leases. Configuration B may compile only with an explicit matching setup ID owned
+by the same PID. Leases are closed before subprocess execution and removed only
+when their IDs still match. Rename paths check the compile lease; atomic staged
+replacement preserves the previous artifact on failure. Stale leases are reported,
+never guessed away. Windows native file locking still requires hardware acceptance.

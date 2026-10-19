@@ -3,7 +3,7 @@ import path from 'node:path';
 import {createHash, randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {setTimeout as delay} from 'node:timers/promises';
-import {command, nodeForRoot} from './build.mjs';
+import {command, nodeForRoot, prepareBuildStorage} from './build.mjs';
 import {atomic, json, issue, writeJSON} from './io.mjs';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -63,6 +63,7 @@ async function compile(root, stage) {
 // hashed resources so a document loaded before a rebuild can still finish loading.
 export async function prepareSetupUI(root, {build=compile, waitMs=120000}={}) {
   root = await fs.realpath(root);
+  await prepareBuildStorage(root);
   const signature = await sourceSignature(root);
   if (await current(root,signature)) return {rebuilt:false};
   const cache = path.join(root,'kernel/.cache');

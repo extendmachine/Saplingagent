@@ -56,3 +56,11 @@ Compiled macOS launcher checks cover Unicode paths, missing Node and subsequent
 reuse; the same Go source cross-compiles for Windows x64/ARM64. Windows runtime,
 PowerShell downloads, antivirus/file locks and real account/model behavior still
 require native acceptance. No customer folder or global account was modified.
+
+Managed scratch/cache paths now stay in the project (`.runtime/`, `.cache/`,
+`local-secrets/runtime/`, `data/runtime/`) or the explicitly owned sibling setup
+capsule. macOS and Windows Node bootstraps bind temporary storage before using OS
+network/extraction tools. Native launch rejects redirected managed directories.
+The pinned Go1.27.2 toolchain receives `TEST_TELEMETRY_DIR` pointing at the project
+and an `off` mode marker; this is verified against that pinned compiler's source
+and a real local invocation. Future compiler pin changes must recheck this behavior.

@@ -6,6 +6,23 @@ function run(args) {
   if (!data) throw new Error('SETUP_JOB_MISSING');
   var job = JSON.parse(ObjC.unwrap($.NSString.alloc.initWithDataEncoding(data, $.NSUTF8StringEncoding)));
   if (!job || job.schemaVersion !== 1 || !/^[a-f0-9-]{36}$/.test(job.id)) throw new Error('SETUP_JOB_INVALID');
+  var fm = $.NSFileManager.defaultManager;
+  var directory = String(ObjC.unwrap($(args[0]).stringByStandardizingPath));
+  var parent = String(ObjC.unwrap($(job.previousRoot).stringByDeletingLastPathComponent));
+  var resolved = String(ObjC.unwrap($(directory).stringByResolvingSymlinksInPath));
+  var attrs = fm.attributesOfItemAtPathError(directory, Ref());
+  if (!job.helper || !/^sapling-setup-[A-Za-z0-9]+$/.test(job.helper.name) ||
+      directory !== parent + '/' + job.helper.name || resolved !== directory ||
+      String(ObjC.unwrap($(job.targetRoot).stringByDeletingLastPathComponent)) !== parent ||
+      !attrs || String(ObjC.unwrap(attrs.objectForKey($.NSFileType))) !== String(ObjC.unwrap($.NSFileTypeDirectory)) ||
+      String(ObjC.unwrap(attrs.objectForKey($.NSFileSystemFileNumber))) !== job.helper.inode ||
+      String(ObjC.unwrap(attrs.objectForKey($.NSFileSystemNumber))) !== job.helper.device) throw new Error('SETUP_HELPER_CHANGED');
+  if (args[1] === 'cleanup') {
+    var cleanupError = Ref();
+    if (!fm.removeItemAtPathError(directory, cleanupError)) throw new Error('SETUP_HELPER_CLEANUP_FAILED');
+    return 'removed';
+  }
+
   if (args[1] === 'field') return String(job[args[2]]);
   if (args[1] === 'pid') return String(job.management.pid);
   if (args[1] === 'failure') {
