@@ -76,6 +76,7 @@ test('configuration HTTP blocks unauthorized imports and OAuth/import races, ret
  const endpoint=url+'/api/config/credentials/import',headers={'Content-Type':'application/json',Origin:url,'X-Sapling-Config':token},body=JSON.stringify(upload(auth));
  assert.equal((await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json',Origin:url},body})).status,401);assert.equal((await fetch(endpoint,{method:'POST',headers:{...headers,Origin:'https://foreign.example'},body})).status,403);
  server.accountSetup.login={phase:'pending'};assert.equal((await fetch(endpoint,{method:'POST',headers,body})).status,409);server.accountSetup.login={phase:'idle'};
+ const prepared=await fetch(url+'/api/config/project/prepare',{method:'POST',headers,body:JSON.stringify({name:'Credential fixture',folderName:path.basename(target),renameFolder:false})});assert.equal(prepared.status,200);
  const response=await fetch(endpoint,{method:'POST',headers,body});assert.equal(response.status,200);assert.doesNotMatch(await response.text(),/synthetic-/);assert.equal((await fetch(url+'/local-secrets/codex/auth.json')).status,404);
  assert.equal((await fetch(endpoint,{method:'POST',headers,body:JSON.stringify({...upload(auth,1),json:' '.repeat(70000)})})).status,413);
 });

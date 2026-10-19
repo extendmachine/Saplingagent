@@ -10,6 +10,7 @@ type Snapshot = {
   kernelVersion?: string;
   root: string;
   canRename: boolean;
+  directoryReady: boolean;
   project: Project;
   device: { platform: string; arch: string };
   job?: {
@@ -28,22 +29,30 @@ export function ProjectSetup({
   request,
   t,
   aiReady,
+  aiBusy = false,
+  onDirectoryState,
+  onPrepared,
   children,
 }: {
   children?: React.ReactNode;
   request: (route: string, body?: unknown) => Promise<any>;
   t: T;
   aiReady: boolean;
+  aiBusy?: boolean;
+  onDirectoryState?: (state: { ready: boolean; busy: boolean }) => void;
+  onPrepared?: () => Promise<void> | void;
 }) {
   const [state, setState] = useState<Snapshot | null>(null),
     [name, setName] = useState(""),
     [folder, setFolder] = useState(""),
     [icon, setIcon] = useState<string | null | undefined>(),
     [rename, setRename] = useState(true),
+    [confirmedRename, setConfirmedRename] = useState(true),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   const initialized = useRef(false),
+    localOperation = useRef(false),
     picker = useRef<HTMLInputElement>(null);
   const running = state?.job?.phase === "running";
   async function refresh() {
@@ -52,18 +61,22 @@ export function ProjectSetup({
     if (!initialized.current) {
       setName(value.project.name);
       setFolder(value.project.folderName);
-      setRename(value.canRename);
+      const renameFolder = value.canRename &&
+        (!value.directoryReady || value.project.folderName === value.root.split(/[\\/]/).pop());
+      setRename(renameFolder);
+      setConfirmedRename(renameFolder);
       initialized.current = true;
     }
+    return value;
   }
   useEffect(() => {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     async function poll() {
       try {
-        if (!stopped) await refresh();
+        if (!stopped && !localOperation.current) await refresh();
       } catch (e) {
-        if (!stopped) setError((e as Error).message);
+        if (!stopped && !localOperation.current) setError((e as Error).message);
       }
       if (!stopped) timer = setTimeout(poll, 1500);
     }
@@ -74,6 +87,7 @@ export function ProjectSetup({
     };
   }, []);
   async function action(work: () => Promise<void>) {
+    localOperation.current = true;
     setBusy(true);
     setError("");
     setNotice("");
@@ -83,16 +97,23 @@ export function ProjectSetup({
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      localOperation.current = false;
       setBusy(false);
     }
   }
-  async function save() {
-    await request("project/save", {
+  async function prepare() {
+    await request("project/prepare", {
       name,
       folderName: folder,
+      renameFolder: rename && !!state?.canRename,
       ...(icon === undefined ? {} : { iconData: icon }),
     });
     setIcon(undefined);
+    const value = await refresh();
+    setName(value.project.name);
+    setFolder(value.project.folderName);
+    setConfirmedRename(rename);
+    await onPrepared?.();
   }
   async function choose(file?: File) {
     if (!file) return;
@@ -131,7 +152,12 @@ export function ProjectSetup({
       }
     });
   }
-  const disabled = busy || running;
+  const dirty = !!state && (name !== state.project.name || folder !== state.project.folderName || icon !== undefined || rename !== confirmedRename);
+  const directoryReady = !!state?.directoryReady && !dirty;
+  const disabled = busy || running || aiBusy || !state;
+  useEffect(() => {
+    onDirectoryState?.({ ready: directoryReady, busy: busy || !!running });
+  }, [directoryReady, busy, running, onDirectoryState]);
   const preview =
     icon === undefined
       ? state?.project.icon
@@ -228,8 +254,8 @@ export function ProjectSetup({
             onChange={(e) => setRename(e.target.checked)}
           />
           {t(
-            "Rename this folder before building (never replaces an existing folder)",
-            "编译前重命名此文件夹（不会覆盖已有文件夹）",
+            "Rename this folder now, before configuring AI (never replaces an existing folder)",
+            "现在重命名文件夹，再配置 AI（不会覆盖已有文件夹）",
           )}
         </label>
         {state && !state.canRename && (
@@ -245,20 +271,25 @@ export function ProjectSetup({
           disabled={disabled || !name}
           onClick={() =>
             void action(async () => {
-              await save();
+              await prepare();
               setNotice(
                 t(
-                  "Project settings saved. Configure AI below, then compile the launcher.",
-                  "项目配置已保存。请在下方配置 AI，再编译启动器。",
+                  "Project folder confirmed. Configure AI below, then compile the launcher. Building and finishing setup will keep this folder in place.",
+                  "项目目录已确认。请在下方配置 AI，再编译启动器；构建和完成配置时不会再重命名文件夹。",
                 ),
               );
             })
           }
         >
-          {t("Save project settings", "保存项目配置")}
+          {t("Confirm folder & continue", "确认文件夹并继续")}
         </button>
+        {directoryReady && <p className="hint" role="status">{t("Final project folder confirmed. AI configuration will use this location.", "最终项目目录已确认，AI 配置将使用此位置。")}</p>}
+        {dirty && <p className="note">{t("Project settings changed. Confirm the folder again before configuring AI or building.", "项目设置已更改，请再次确认目录，再配置 AI 或构建。")}</p>}
       </section>
-      {children}
+      {!directoryReady && <p className="message progress" role="status">{t("Step 1: confirm the final project folder to enable AI setup. Existing credentials and conversations are retained.", "第 1 步：先确认最终项目目录，再进行 AI 配置；已有凭据和对话保留。")}</p>}
+      <fieldset className="ai-setup-fields" disabled={!directoryReady || busy || running || !state} aria-label={t("AI connection setup", "AI 接入配置")}>
+        {children}
+      </fieldset>
       <section className="card project-setup">
         <div className="project-build">
           <div className="eyebrow">
@@ -285,15 +316,13 @@ export function ProjectSetup({
             <button
               disabled={
                 disabled ||
+                !directoryReady ||
                 !aiReady ||
                 !name ||
                 state?.runtime.phase !== "stopped"
               }
               onClick={() =>
                 void action(async () => {
-                  await save();
-                  if (rename && state?.canRename)
-                    await request("project/rename", { folderName: folder });
                   await request("project/build", {});
                 })
               }

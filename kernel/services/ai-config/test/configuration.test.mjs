@@ -58,7 +58,8 @@ test('API rejects cross-site/tokenless writes, exposes no private files and clos
  const url=`http://127.0.0.1:${server.address().port}`;const html=await fetch(url).then(r=>r.text());const token=html.match(/content="([a-f0-9]+)"/)[1];
  assert.equal((await fetch(url+'/api/config/state')).status,401);assert.equal((await fetch(url+'/local-secrets/codex/auth.json')).status,404);
  const headers={'Content-Type':'application/json','X-Sapling-Config':token,Origin:'https://outside.example'};assert.equal((await fetch(url+'/api/config/profiles',{method:'POST',headers,body:JSON.stringify(draft)})).status,403);
- headers.Origin=url;const response=await fetch(url+'/api/config/profiles',{method:'POST',headers,body:JSON.stringify(draft)});assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');assert.doesNotMatch(await response.text(),/synthetic-only-key/);
+ headers.Origin=url;const preparation=await fetch(url+'/api/config/project/prepare',{method:'POST',headers,body:JSON.stringify({name:'HTTP fixture',folderName:path.basename(target),renameFolder:false})});assert.equal(preparation.status,200);
+ const response=await fetch(url+'/api/config/profiles',{method:'POST',headers,body:JSON.stringify(draft)});assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');assert.doesNotMatch(await response.text(),/synthetic-only-key/);
  const summary=await fetch(url+'/api/config/state',{headers:{'X-Sapling-Config':token}}).then(r=>r.json());assert.equal(summary.profiles[0].hasKey,true);
  await fetch(url+'/api/config/close',{method:'POST',headers,body:'{}'});await new Promise(resolve=>setTimeout(resolve,25));assert.equal(closed,true);
 });
