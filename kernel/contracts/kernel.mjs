@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import {ensureManagedDirectory} from "./local-storage.mjs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { PUBLIC_BRIDGE_FILES } from "../compat/paths.mjs";
@@ -135,11 +136,12 @@ export async function acquireKernelLock(root, purpose) {
 	catch (error) { if (error.code !== "ENOENT") throw new KernelError("KERNEL_BUSY", "Inspect the maintenance lease before starting."); }
 	if (job && (!job.jobId || process.env.SAPLING_MAINTENANCE_JOB !== job.jobId)) throw new KernelError("KERNEL_BUSY", "Kernel maintenance is active. Use its recovery page; inspect .runtime/kernel/active-job.json if its worker exited.");
 	const directory = path.join(root, ".runtime");
-	await fs.mkdir(directory, { recursive: true });
+	await ensureManagedDirectory(root, ".runtime");
 	const file = path.join(directory, "kernel-operation.lock"), id = randomUUID();
-	let handle;
+	let handle, identity;
 	try {
 		handle = await fs.open(file, "wx", 0o600);
+		identity = await handle.stat();
 		await handle.writeFile(JSON.stringify({
 			id,
 			pid: process.pid,
@@ -148,12 +150,15 @@ export async function acquireKernelLock(root, purpose) {
 		}));
 		await handle.sync();
 	} catch (error) {
-		await handle?.close();
+		await handle?.close().catch(()=>{});
+		const current = await fs.lstat(file).catch(()=>null);
+		if (identity && current?.isFile() && current.dev===identity.dev && current.ino===identity.ino) await fs.rm(file).catch(()=>{});
 		if (error.code === "EEXIST") throw new KernelError("KERNEL_BUSY", "A kernel/start operation lock exists. Wait; if its owner exited, inspect and remove .runtime/kernel-operation.lock manually.");
 		throw error;
 	}
-	return async () => {
+	return async ({preserve=false}={}) => {
 		await handle.close();
+		if(preserve)return; // Keep an inspection receipt when child ownership could not be recorded.
 		try {
 			if (JSON.parse(await fs.readFile(file, "utf8")).id === id) await fs.unlink(file);
 		} catch (error) {
