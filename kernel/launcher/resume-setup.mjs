@@ -14,6 +14,7 @@ async function launchManagement(root,job) {
   async function attempt(fixedPort) {
     const handle=await fs.open(path.join(root,'logs/project-launcher',`project-launcher-${new Date().toISOString().slice(0,10)}.log`),'a');
     const env={...buildEnv(root),SEED_ROOT:root,SAPLING_SETUP_JOB:job.id,SAPLING_LANG:job.language};
+    if(process.env.CODEX_HOME)env.CODEX_HOME=process.env.CODEX_HOME;
     if(fixedPort)env.SAPLING_MANAGEMENT_PORT=String(job.management.port);else delete env.SAPLING_MANAGEMENT_PORT;
     const open=!fixedPort&&!job.noOpen;
     env.SAPLING_NO_OPEN=open?'0':'1';

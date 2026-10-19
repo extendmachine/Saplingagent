@@ -16,6 +16,20 @@ export function systemTemporaryParent(platform=process.platform,env=process.env,
   if(platform==='win32')return path.win32.join(env.LOCALAPPDATA || path.win32.join(env.USERPROFILE || home,'AppData','Local'),'Temp');
   throw issue('UNSUPPORTED_DEVICE','Offline setup restart currently supports macOS and Windows.');
 }
+export function helperEnvironment(platform=process.platform, inherited=process.env) {
+  const env={};
+  for(const key of ['SystemRoot','SYSTEMROOT','ComSpec','COMSPEC','WINDIR','USERPROFILE','HOME','LANG','LC_ALL',
+    'CODEX_HOME','CLAUDE_CONFIG_DIR','XDG_CONFIG_HOME','XDG_DATA_HOME','XDG_CACHE_HOME','XDG_STATE_HOME',
+    'LOCALAPPDATA','APPDATA','ProgramFiles','ProgramFiles(x86)','ProgramW6432','PATHEXT'])
+    if(inherited[key])env[key]=inherited[key];
+  const system=platform==='win32' ? path.win32.join(inherited.SystemRoot || inherited.SYSTEMROOT || 'C:\\Windows','System32') : null;
+  const base=platform==='win32' ? [system,path.win32.join(system,'WindowsPowerShell','v1.0')] : ['/usr/bin','/bin','/usr/sbin','/sbin'];
+  // PATH is location metadata, not an authentication payload. Preserve user tools;
+  // resume rebases project-internal entries before running application commands.
+  if(inherited.PATH)base.push(inherited.PATH);
+  env.PATH=base.join(platform==='win32'?';':':');
+  return env;
+}
 // This helper receives paths and lifecycle IDs only. Credentials never leave the project.
 export async function beginFinalization(root, {project, management, language, fingerprint, connectionsFingerprint,
   tempParent, platform = process.platform, node = nodeForRoot(root), spawnHelper = spawn} = {}) {
@@ -56,9 +70,7 @@ export async function beginFinalization(root, {project, management, language, fi
     await writeJSON(path.join(temp,'job.json'),job);
     for (const file of platform==='win32'?['offline-helper.ps1']:['offline-helper.sh','offline-move.js'])
       await fs.copyFile(path.join(source,file),path.join(temp,file));
-    const env = {};
-    for (const key of ['SystemRoot','SYSTEMROOT','ComSpec','COMSPEC','WINDIR','USERPROFILE','HOME','LANG','LC_ALL']) if(process.env[key]) env[key]=process.env[key];
-    env.PATH = platform==='win32' ? path.win32.join(process.env.SystemRoot || 'C:\\Windows','System32') : '/usr/bin:/bin:/usr/sbin:/sbin';
+    const env = helperEnvironment(platform);
     env.SAPLING_SETUP_JOB=id;
     const executable=platform==='win32'?path.win32.join(process.env.SystemRoot||'C:\\Windows','System32/WindowsPowerShell/v1.0/powershell.exe'):'/bin/sh';
     const args=platform==='win32'?['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(temp,'offline-helper.ps1'),'-JobDirectory',temp]:[path.join(temp,'offline-helper.sh'),temp];

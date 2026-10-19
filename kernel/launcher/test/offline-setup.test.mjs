@@ -108,3 +108,10 @@ test('a failed new-root Node resume records failure before temporary helper clea
  const state=JSON.parse(await fs.readFile(path.join(after,'.runtime/setup-finalization.json')));assert.equal(state.id,job.id);assert.equal(state.error.code,'PROJECT_RESUME_FAILED');assert.equal(await fs.access(path.join(after,'.runtime/setup-restart-error.html')).then(()=>true,()=>false),true);
  assert.equal(JSON.parse(await fs.readFile(path.join(after,'.runtime/project-finalization.json'))).id,job.id);assert.equal(await fs.access(root).then(()=>true,()=>false),false);assert.equal(await fs.readFile(path.join(after,'business.txt'),'utf8'),'preserve application bytes');
 });
+test('Windows helper keeps PowerShell and customer tools on PATH without forwarding credential environment',async()=>{
+ const {helperEnvironment}=await import('../finalization.mjs');const env=helperEnvironment('win32',{SystemRoot:'C:\\Windows',USERPROFILE:'C:\\Users\\客户',PATH:'C:\\Program Files\\Git\\bin',CODEX_HOME:'C:\\Users\\客户\\external-auth',OPENAI_API_KEY:'synthetic-only',CODEX_ACCESS_TOKEN:'synthetic-only'});
+ assert.equal(env.PATH,'C:\\Windows\\System32;C:\\Windows\\System32\\WindowsPowerShell\\v1.0;C:\\Program Files\\Git\\bin');assert.equal(env.USERPROFILE,'C:\\Users\\客户');assert.equal(env.CODEX_HOME,'C:\\Users\\客户\\external-auth');assert.equal(env.OPENAI_API_KEY,undefined);assert.equal(env.CODEX_ACCESS_TOKEN,undefined);
+});
+test('PowerShell 5.1 helper explicitly decodes both Unicode job and status JSON as UTF-8',async()=>{
+ const code=await fs.readFile(new URL('../offline-helper.ps1',import.meta.url),'utf8');const reads=code.split('\n').filter(line=>line.includes('Get-Content'));assert.equal(reads.length,2);for(const line of reads)assert.match(line,/-Encoding UTF8/);assert.match(code,/\$LASTEXITCODE -ne 0/);assert.match(code,/\[Environment\]::CurrentDirectory = \$safeDirectory/);assert.match(code,/Start-Process -FilePath \$page -WorkingDirectory/);
+});

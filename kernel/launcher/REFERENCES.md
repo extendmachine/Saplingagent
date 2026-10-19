@@ -12,3 +12,7 @@ Checked2026-10-18, public documentation without login. Building/downloads requir
 
 - Apple Foundation FileManager `moveItem(atPath:toPath:)`: https://developer.apple.com/documentation/foundation/filemanager/moveitem(atpath:topath:). The temporary macOS helper uses `/usr/bin/osascript` with Foundation only, no Finder/System Events automation or project-local executable during the move. Its real isolated lifecycle and destination-race behavior are tested separately from Windows.
 - Microsoft System.IO.Directory.Move (Windows PowerShell 5.1/.NET Framework): https://learn.microsoft.com/en-us/dotnet/api/system.io.directory.move?view=netframework-4.8.1. Existing destinations and directories/files in use fail explicitly; the helper preserves the actual folder and resumes management without automatic rollback.
+
+- Windows PowerShell5.1 text encoding: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_character_encoding?view=powershell-5.1. Node writes UTF-8 JSON without BOM; the helper explicitly reads job/status as UTF-8 so Unicode customer paths are retained.
+
+- Windows PowerShell5.1 runspace and process locations: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/get-location?view=powershell-5.1. The helper changes both its provider location and [Environment]::CurrentDirectory before deleting its own temporary directory.

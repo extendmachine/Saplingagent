@@ -21,6 +21,7 @@ while kill -0 "$parent_pid" 2>/dev/null; do
   if [ "$count" -gt 300 ]; then
     printf '{"schemaVersion":1,"id":"%s","phase":"failed","error":{"code":"PROJECT_STOP_PENDING","message":"Management did not exit. Close this project and inspect the setup restart lease before retrying."}}\n' "$job_id" > "$source_root/.runtime/setup-finalization.json"
     error_page=$(/usr/bin/osascript -l JavaScript "$job_dir/offline-move.js" "$job_dir" failure PROJECT_STOP_PENDING 2>/dev/null) || true
+    cd /
     [ "$no_open" = true ] || [ -z "${error_page:-}" ] || /usr/bin/open "$error_page" >/dev/null 2>&1 || true
     exit 1
   fi
@@ -41,5 +42,6 @@ else
 fi
 if [ -n "$resume_failed" ]; then
   error_page=$(/usr/bin/osascript -l JavaScript "$job_dir/offline-move.js" "$job_dir" failure PROJECT_RESUME_FAILED 2>/dev/null) || true
-  [ "$no_open" = true ] || [ -z "${error_page:-}" ] || /usr/bin/open "$error_page" >/dev/null 2>&1 || true
+  cd /
+    [ "$no_open" = true ] || [ -z "${error_page:-}" ] || /usr/bin/open "$error_page" >/dev/null 2>&1 || true
 fi
