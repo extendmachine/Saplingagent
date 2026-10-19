@@ -1,6 +1,6 @@
 # External configuration capsule (A / B)
 
-TASK-20261019-031/034, updated by TASK-20261019-038. Kernel0.9.4, Node built-ins only. `launcher/entry.mjs` is A:
+TASK-20261019-031/034, updated by TASK-20261019-038. Kernel0.9.5, Node built-ins only. `launcher/entry.mjs` is A:
 `--launch` checks project dependencies and starts the application; its default
 configuration action prepares `kernel/.cache/configuration/`, copies the closed
 backend module graph and built UI plus a private Node executable to an external

@@ -7,9 +7,9 @@ test('installed kernel is authoritative over stale legacy metadata, malformed co
  assert.deepEqual(await readReleaseMetadata(root),{schemaVersion:1,version:'0.9.4'});
  await fs.writeFile(path.join(root,'kernel/manifest.json'),'{bad');await assert.rejects(readReleaseMetadata(root));
 });
-test('recognized historical labels can advance to0.9.4 without changing their baseline; true downgrades fail',async t=>{
- for(const version of ['0.90','0.91','0.92']){const root=await fixture(t,version),before=await fs.readFile(path.join(root,'kernel/manifest.json'));assert.equal((await checkKernel(root,{source})).target.version,'0.9.4');assert.deepEqual(await fs.readFile(path.join(root,'kernel/manifest.json')),before);}
- const newer=await fixture(t,'0.9.5');await assert.rejects(checkKernel(newer,{source}),{code:'KERNEL_INCOMPATIBLE'});
+test('historical labels and previous kernel can advance to current release without changing their baseline; true downgrades fail',async t=>{
+ for(const version of ['0.90','0.91','0.92','0.9.4']){const root=await fixture(t,version),before=await fs.readFile(path.join(root,'kernel/manifest.json'));assert.equal((await checkKernel(root,{source})).target.version,current.version);assert.deepEqual(await fs.readFile(path.join(root,'kernel/manifest.json')),before);}
+ const newer=await fixture(t,`${Number(current.version.split('.')[0])+1}.0.0`);await assert.rejects(checkKernel(newer,{source}),{code:'KERNEL_INCOMPATIBLE'});
 });
 test('new CLI explicitly targets old project rather than its downloaded tooling folder',async t=>{
  const root=await fixture(t);const {stdout}=await promisify(execFile)(process.execPath,[path.join(project,'kernel/cli.mjs'),'--root',root,'status'],{cwd:project});assert.match(stdout,/"version": "0\.9\.4"/);
@@ -20,7 +20,7 @@ test('legacy-number apply and explicit restore preserve app/data/Git and stale c
  const changed='kernel/control-page.mjs',before=Buffer.from('// historical custom-free core source\n');await fs.writeFile(path.join(root,changed),before);const item=old.files.find(f=>f.path===changed);item.bytes=before.length;item.sha256=createHash('sha256').update(before).digest('hex');
  const original=JSON.stringify(old);await fs.writeFile(path.join(root,'kernel/manifest.json'),original);
  const keep={'front/App.tsx':'customer app','data/session.json':'customer conversation','.git/config':'customer Git','config/release.json':'{"schemaVersion":1,"version":"0.9.3"}'};for(const [name,value]of Object.entries(keep)){await fs.mkdir(path.dirname(path.join(root,name)),{recursive:true});await fs.writeFile(path.join(root,name),value);}
- const plan=await prepareKernel(root,{source});assert.deepEqual(plan.conflicts,[]);const result=await applyKernel(root,plan.id,{acceptRisk:true});assert.equal(result.version,'0.9.4');assert.equal((await readReleaseMetadata(root)).version,'0.9.4');
+ const plan=await prepareKernel(root,{source});assert.deepEqual(plan.conflicts,[]);const result=await applyKernel(root,plan.id,{acceptRisk:true});assert.equal(result.version,current.version);assert.equal((await readReleaseMetadata(root)).version,current.version);
  for(const [name,value]of Object.entries(keep))assert.equal(await fs.readFile(path.join(root,name),'utf8'),value);
  await restoreKernel(root,result.backupId);assert.equal(await fs.readFile(path.join(root,'kernel/manifest.json'),'utf8'),original);assert.deepEqual(await fs.readFile(path.join(root,changed)),before);
 });

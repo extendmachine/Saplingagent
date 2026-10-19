@@ -136,7 +136,7 @@ old distributed layout; restoring an explicit backup remains available.
 
 ## One kernel version (2026-10-19)
 
-The current version is **kernel0.9.4**. There is no separate product version. kernel/manifest.json is authoritative for display, setup, installation, maintenance and packaging. Old API/receipt field names can remain compatibility aliases, but they must not establish a second current version. Missing metadata is unavailable, not a hardcoded historical baseline. Keep old version records/backups factual and handle their numeric migration deliberately without hiding local edits. See contracts/release.md and docs/kernel-version-migration.html.
+The current version is **kernel0.9.5**. There is no separate product version. kernel/manifest.json is authoritative for display, setup, installation, maintenance and packaging. Old API/receipt field names can remain compatibility aliases, but they must not establish a second current version. Missing metadata is unavailable, not a hardcoded historical baseline. Keep old version records/backups factual and handle their numeric migration deliberately without hiding local edits. See contracts/release.md and docs/kernel-version-migration.html.
 
 
 Owner storage clarification (2026-10-19): configuration execution uses a visible
