@@ -12,11 +12,11 @@ import {
   dailyLog,
   managementFingerprint,
 } from "./io.mjs";
-const root = await fs.realpath(
+let root = await fs.realpath(
   process.env.SEED_ROOT || fileURLToPath(new URL("../../", import.meta.url)),
 );
-const fingerprint = await managementFingerprint(root);
-const file = path.join(root, ".runtime/management-address.json"),
+let fingerprint = await managementFingerprint(root);
+let file = path.join(root, ".runtime/management-address.json"),
   lock = path.join(root, ".runtime/management.lock");
 await fs.mkdir(path.dirname(file), { recursive: true });
 async function existing() {
@@ -148,6 +148,13 @@ const controller = new ProjectLauncher(root);
 const instanceId = randomUUID();
 let server;
 async function publish() {
+  root = controller.root;
+  file = path.join(root, '.runtime/management-address.json');
+  lock = path.join(root, '.runtime/management.lock');
+  fingerprint = await managementFingerprint(root);
+  const owner = await json(path.join(lock, 'owner.json'));
+  if (owner?.pid === process.pid)
+    await writeJSON(path.join(lock, 'owner.json'), {...owner, root});
   await writeJSON(
     path.join(controller.root, ".runtime/management-address.json"),
     {

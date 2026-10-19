@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import {kernelStatus} from "../contracts/kernel.mjs";
 import { codexBinary } from "../contracts/local-process.mjs";
+import { relocationLedger, completeRelocation } from './relocation.mjs';
 import {
   exists,
   json,
@@ -74,43 +75,23 @@ export async function readProject(root) {
     icon: v.icon || null,
   };
 }
+function projectIcon(data) {
+  if (data == null) return null;
+  if (typeof data !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(data) || data.length > 1400000)
+    throw issue('INVALID_PROJECT_ICON', 'Choose a PNG image (up to 1 MiB).', 400);
+  const bytes = Buffer.from(data.split(',')[1], 'base64');
+  if (bytes.length < 33 || bytes.length > 1048576 || !bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])) || bytes.readUInt32BE(16) !== 256 || bytes.readUInt32BE(20) !== 256)
+    throw issue('INVALID_PROJECT_ICON', 'The project icon must be a 256×256 PNG. The setup page resizes uploaded images automatically.', 400);
+  return bytes;
+}
 export async function saveProject(root, input) {
   const previous = await readProject(root);
   const name = validateProjectName(input.name),
     folderName = validateProjectName(input.folderName || name);
   let icon = previous.icon || null;
-  if (input.iconData !== undefined) {
-    if (input.iconData === null) icon = null;
-    else {
-      if (
-        typeof input.iconData !== "string" ||
-        !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(input.iconData) ||
-        input.iconData.length > 1400000
-      )
-        throw issue(
-          "INVALID_PROJECT_ICON",
-          "Choose a PNG image (up to 1 MiB).",
-          400,
-        );
-      const bytes = Buffer.from(input.iconData.split(",")[1], "base64");
-      if (
-        bytes.length < 33 ||
-        bytes.length > 1048576 ||
-        !bytes
-          .subarray(0, 8)
-          .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ||
-        bytes.readUInt32BE(16) !== 256 ||
-        bytes.readUInt32BE(20) !== 256
-      )
-        throw issue(
-          "INVALID_PROJECT_ICON",
-          "The project icon must be a 256×256 PNG. The setup page resizes uploaded images automatically.",
-          400,
-        );
-      await atomic(path.join(root, "config/project-icon.png"), bytes);
-      icon = "config/project-icon.png";
-    }
-  }
+  const bytes = projectIcon(input.iconData);
+  if (input.iconData === null) icon = null;
+  else if (bytes) { await atomic(path.join(root, 'config/project-icon.png'), bytes); icon = 'config/project-icon.png'; }
   const project = {
     schemaVersion: 1,
     projectId: previous.projectId || randomUUID(),
@@ -199,6 +180,7 @@ export class ProjectLauncher {
       productVersion: kernel?.version || null,
       kernelVersion: kernel?.version || null,
       canRename: !linked && !maintainer,
+      directoryReady: await this.directoryReady(),
       project: await readProject(this.root),
       root: this.root,
       device: { platform: process.platform, arch: process.arch },
@@ -252,6 +234,29 @@ export class ProjectLauncher {
       this.busy = false;
     }
   }
+  async directoryReady() {
+    const project = await readProject(this.root);
+    const marker = await json(path.join(this.root, '.runtime/project-directory.json'));
+    return !!project.projectId && marker?.schemaVersion === 1 && marker.projectId === project.projectId
+      && marker.root === this.root && marker.folderName === project.folderName;
+  }
+  async prepare(input) {
+    this.assertIdle();
+    this.busy = true;
+    const before = this.root;
+    try {
+      validateProjectName(input.name);
+      projectIcon(input.iconData);
+      await readProject(this.root);
+      const folderName = input.renameFolder ? validateProjectName(input.folderName || input.name) : path.basename(this.root);
+      await this.renameDirectory(folderName);
+      const project = await saveProject(this.root, {...input, folderName});
+      await writeJSON(path.join(this.root, '.runtime/project-directory.json'), {
+        schemaVersion: 1, projectId: project.projectId, root: this.root, folderName,
+      });
+      return {root: this.root, renamed: before !== this.root, project};
+    } finally { this.busy = false; }
+  }
   startJob(kind, work) {
     this.assertIdle();
     this.busy = true;
@@ -304,6 +309,10 @@ export class ProjectLauncher {
     this.assertIdle();
     this.busy = true;
     try {
+      return await this.renameDirectory(folderName);
+    } finally { this.busy = false; }
+  }
+  async renameDirectory(folderName) {
       validateProjectName(folderName);
       const current = this.root;
       if (path.basename(current) === folderName)
@@ -345,6 +354,7 @@ export class ProjectLauncher {
             "PROJECT_BUSY",
             "Finish installation or kernel maintenance before renaming.",
           );
+      const ledger = await relocationLedger(current);
       try {
         await fs.rename(current, target);
       } catch {
@@ -354,12 +364,11 @@ export class ProjectLauncher {
         );
       }
       this.root = await fs.realpath(target);
+      await completeRelocation(current, this.root, ledger);
       return { root: this.root, renamed: true };
-    } finally {
-      this.busy = false;
-    }
   }
   async build() {
+    if (!await this.directoryReady()) throw issue('PROJECT_DIRECTORY_REQUIRED', 'Confirm the project folder in Step 1 before compiling.', 409);
     return this.startJob("build", async () => {
       const project = await readProject(this.root);
       if (!project.projectId)
