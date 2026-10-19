@@ -75,11 +75,20 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
 	} catch (error) {
 		if (error.code !== "ENOENT") throw error;
 	}
+
+ const version = previous.version;
+ if (!/^\d+\.\d+\.\d+$/.test(version || '')) throw Error("Declare the owner-selected three-part kernel version in kernel/manifest.json first.");
+ for (const name of ['kernel/package.json','kernel/package-lock.json','config/release.json']) {
+  const target=path.join(root,name), current=JSON.parse(await fs.readFile(target,'utf8'));
+  const valid=current.version===version && (name!=='kernel/package-lock.json'||current.packages?.['']?.version===version);
+  if (check && !valid) throw Error('Kernel version mirror is stale: '+name);
+  if (!check) { current.version=version;if(name==='kernel/package-lock.json')current.packages[''].version=version;await fs.writeFile(target,JSON.stringify(current,null,2)+'\n'); }
+ }
 	const files = await scanKernelFiles(root);
 	const manifest = validateKernelManifest({
 		schemaVersion: 3,
         layoutVersion: 1,
-		version: previous.version || "0.91",
+		version,
 		appApi: previous.appApi || 1,
 		minNode: previous.minNode || "24.11.0",
 		notes: "Independent platform kernel. Updates may invalidate custom applications; back up, inspect conflicts and verify after dependency repair.",

@@ -74,7 +74,7 @@ The primary Restart app action always requests scope all, including the frontend
 
 Accessing the sessionStorage property can itself be denied. RestartDraft catches that case before invoking its storage helpers, keeping the chat usable; draft recovery then remains unavailable, while full-restart reload uses its in-memory marker.
 
-## Kernel baseline version (2026-10-15)
+## Historical kernel baseline display (superseded below)
 
 The page footer always displays Kernel version 0.90, a source-owned string in front/features/version/VersionFooter.tsx. It records the original kernel baseline independently of Git branches, commits and custom version names, including when Git is unavailable. Keep the trailing zero; update this value only for an explicit kernel release. Existing Git version polling/refresh behavior is unchanged.
 
@@ -93,10 +93,16 @@ An independent PageContextBridge stays mounted for the open project page, regist
 Footer keeps the original0.90 baseline fallback while displaying installed version from read-only GET /api/kernel separately from Git/application version. Network/legacy metadata does not hide the baseline. Kernel source update/check/restore belongs to the launcher; interface changes do not add an HTTP overwrite or permission gate.
 
 
-## Product release versus kernel and workspace (TASK-20261017-002)
+## Historical product release versus kernel and workspace (superseded below) (TASK-20261017-002)
 
 Footer reads additive GET /api/release (Agent contract) and shows Saplingagent product release independently from GET /api/kernel and GET /api/git. It validates schema1 and a three-part version; loading/404/503/malformed metadata stays explicitly unavailable without an old-version fallback. Chat and other version controls remain usable if an older backend lacks this route. Product version is not read from Git tags and survives local-only Git initialization. No new HTTP write or permission policy.
 
 ## Product0.9.2 kernel host
 
 Default App no longer mounts optional legacy GitVersionPanel, Save version or workspace Git footer. It embeds application-owned iframes to the gateway's standalone kernel control/footer. Core UI/dependencies are independent of front's React/Vite/package manifests. Same-origin/source-checked postMessage handles panel sizing, before-restart draft save, successful reload and validated loopback maintenance navigation. The application can replace this host; direct /__saplingagent/kernel remains available. Current version control supersedes earlier default Git controls; legacy components remain optional app source, not kernel ownership.
+
+## Unified kernel version (2026-10-19)
+
+There is one current Saplingagent version: kernel0.9.4. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
+
+New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92→0.9.3; original manifests/backups stay byte-exact. Shipped old comparators cannot understand0.9.4. Stop the app, download new tooling into an isolated .cache subfolder, then run that tooling's kernel/cli.mjs --root ORIGINAL_APP check/update with the project-local Node. Default is preview; update requires existing explicit risk acknowledgement and refuses conflicts/live targets. Never overwrite/rebaseline local core edits or regenerate a customer manifest to hide them. Source recovery remains explicit.

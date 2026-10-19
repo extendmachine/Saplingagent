@@ -21,7 +21,7 @@ async function fixture(t) {
     const bytes = Buffer.from('Synthetic ' + name + '\n'); await write(name, bytes);
     files.push({ path: name, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), executable: false });
   }
-  await write('kernel/manifest.json', JSON.stringify({ schemaVersion: 3, version: '0.90', appApi: 1, minNode: '24.11.0', files }));
+  await write('kernel/manifest.json', JSON.stringify({ schemaVersion: 3, version: '0.9.1', appApi: 1, minNode: '24.11.0', files }));
   await write('config/release.json', JSON.stringify({ schemaVersion: 1, version: '0.9.1' }));
   git('add', '.'); git('commit', '-m', 'Freeze synthetic source');
   return { root, git, write, commit: git('rev-parse', 'HEAD'), verify: options => verifyRelease({ sourceRoot: root, ref: 'HEAD', version: '0.9.1', ...options }) };
@@ -31,7 +31,7 @@ test('gate reads committed version, validates source and immutable tag, ignoring
   const f = await fixture(t); f.git('tag', 'v0.9.1');
   await f.write('config/release.json', '{broken pending metadata');
   const result = f.verify({ tag: 'v0.9.1' });
-  assert.equal(result.commit, f.commit); assert.equal(result.version, '0.9.1'); assert.equal(result.kernelVersion, '0.90');
+  assert.equal(result.commit, f.commit); assert.equal(result.version, '0.9.1'); assert.equal(result.kernelVersion, '0.9.1');
   assert.throws(() => f.verify({ version: '0.9.0' }), /committed/);
   assert.match(f.git('status', '--porcelain'), /config\/release.json/);
 });
@@ -47,4 +47,8 @@ test('gate rejects stale kernel hashes even when version and main agree', async 
   const f = await fixture(t); await f.write('kernel/manager.mjs', 'Changed source without manifest');
   f.git('add', '.'); f.git('commit', '-m', 'Broken hash');
   assert.throws(() => f.verify({ main: 'HEAD' }), /Stale kernel source hash/);
+});
+
+test('publication refuses stale compatibility metadata instead of publishing two version identities',async t=>{
+ const f=await fixture(t);await f.write('config/release.json',JSON.stringify({schemaVersion:1,version:'0.9.2'}));f.git('add','.');f.git('commit','-m','Stale version mirror');assert.throws(()=>f.verify({main:'HEAD',version:'0.9.1'}),/compatibility mirror disagree/);
 });

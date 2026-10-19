@@ -80,3 +80,9 @@ The same-origin Agent GET /api/kernel supplies installed package metadata indepe
 ## Explicit distribution version (2026-10-17)
 
 Ship the complete source with config/release.json and the additive Agent GET /api/release. Rebuild/reload the frontend and restart changed Agent code. The footer labels Saplingagent product release, independently installed Kernel and Workspace Git version separately. Missing/old/offline metadata shows release unavailable instead of0.90. Product identity remains available without Git/authentication; a kernel-only update does not change the complete distribution declaration. No new process/dependency.
+
+## Unified kernel version (2026-10-19)
+
+There is one current Saplingagent version: kernel0.9.4. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
+
+New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92→0.9.3; original manifests/backups stay byte-exact. Shipped old comparators cannot understand0.9.4. Stop the app, download new tooling into an isolated .cache subfolder, then run that tooling's kernel/cli.mjs --root ORIGINAL_APP check/update with the project-local Node. Default is preview; update requires existing explicit risk acknowledgement and refuses conflicts/live targets. Never overwrite/rebaseline local core edits or regenerate a customer manifest to hide them. Source recovery remains explicit.

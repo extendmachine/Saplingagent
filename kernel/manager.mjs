@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { KernelError, KERNEL_MANIFEST, validateKernelManifest, kernelStatus, acquireKernelLock, isKernelPath } from "./contracts/kernel.mjs";
+import { KernelError, KERNEL_MANIFEST, validateKernelManifest, kernelStatus, acquireKernelLock, isKernelPath, comparableKernelVersion } from "./contracts/kernel.mjs";
 import { digest, readOwned, writeAtomic, safeFile, jsonRead, jsonWrite, validId, assertOffline, record } from "./storage.mjs";
 export { kernelStatus };
 const warning = "A kernel update can break custom applications, dependencies or integrations. Source backup does not back up business data or guarantee compatibility. Stop the app, review conflicts, and repair dependencies before restarting. Restore is manual.";
@@ -42,7 +42,9 @@ export function githubSource({ fetchImpl = fetch } = {}) {
 }
 function compatible(local, target) {
  if(local.layoutVersion===1&&target.layoutVersion!==1)throw new KernelError("KERNEL_INCOMPATIBLE","A contained kernel cannot downgrade to distributed source paths. Restore explicitly instead.");
-	const old = local.version.split(".").map(Number), next = target.version.split(".").map(Number);
+	const historical = /^0\.\d{2}$/.test(local.version) && /^0\.\d{2}$/.test(target.version);
+	const tuple = value => historical ? value.split(".").map(Number) : comparableKernelVersion(value);
+	const old = tuple(local.version), next = tuple(target.version);
 	for (let i = 0; i < 3; i++) {
 		const delta = (next[i] || 0) - (old[i] || 0);
 		if (delta > 0) break;

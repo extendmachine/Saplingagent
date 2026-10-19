@@ -7,7 +7,6 @@ type Project = {
   icon?: string | null;
 };
 type Snapshot = {
-  productVersion?: string;
   kernelVersion?: string;
   root: string;
   canRename: boolean;
@@ -160,7 +159,7 @@ export function ProjectSetup({
           )}
         </div>
         <p className="hint">
-          Saplingagent {state?.productVersion || "—"} · Kernel{" "}
+          Kernel{" "}
           {state?.kernelVersion || "—"}
         </p>
         <div className="project-fields">

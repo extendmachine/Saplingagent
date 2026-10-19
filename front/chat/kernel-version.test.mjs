@@ -91,24 +91,16 @@ test("kernel version comes from independent installed metadata even when applica
 	assert.match(value, /Kernel version 0\.91/);
 	assert.match(value, /Version unavailable/);
 });
-test("legacy or invalid kernel metadata retains original0.90 baseline", async () => {
-	for (const kernel of [{
-		state: "legacy",
-		version: "0.90"
-	}, {
-		state: "invalid",
-		version: "not-version"
-	}]) assert.match(text(await footer(kernel)), /Kernel version 0\.90/);
-});
-
-
-test("product release stays distinct from kernel and unavailable workspace Git", async () => {
- const value = text(await footer({state:"managed",version:"0.90"},{schemaVersion:1,version:"0.9.1"}));
- assert.match(value,/Saplingagent 0\.9\.1/); assert.match(value,/Kernel version 0\.90/); assert.match(value,/Workspace version Version unavailable/);
-});
-test("missing or malformed product metadata never falls back to the kernel version", async () => {
- for(const release of [undefined,{schemaVersion:1,version:"0.90"},{schemaVersion:2,version:"0.9.1"},{schemaVersion:1,version:92}]) {
-  const value=text(await footer({state:"managed",version:"0.90"},release));
-  assert.match(value,/Saplingagent Release unavailable/); assert.doesNotMatch(value,/Saplingagent 0\.90/);
+test("unavailable installed metadata never invents a baseline", async () => {
+ for(const kernel of [{state:"legacy",version:"0.90"},{state:"invalid",version:"not-version"}]) {
+  const value=text(await footer(kernel));assert.match(value,/Kernel version Unavailable/);assert.doesNotMatch(value,/Kernel version 0\.90/);
  }
+});
+test("only installed kernel0.9.4 is displayed even with stale compatibility metadata",async()=>{
+ const value=text(await footer({state:"managed",version:"0.9.4"},{schemaVersion:1,version:"0.9.1"}));
+ assert.match(value,/Kernel version 0\.9\.4/);assert.doesNotMatch(value,/Saplingagent 0\.9\.1|Release unavailable/);
+ assert.match(value,/Workspace revision Version unavailable/);
+});
+test("missing deprecated metadata cannot hide the installed kernel",async()=>{
+ const value=text(await footer({state:"managed",version:"0.9.4"}));assert.match(value,/Kernel version 0\.9\.4/);
 });

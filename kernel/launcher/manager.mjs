@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
+import {kernelStatus} from "../contracts/kernel.mjs";
 import { codexBinary } from "../contracts/local-process.mjs";
 import {
   exists,
@@ -191,10 +192,11 @@ export class ProjectLauncher {
       () => false,
     );
     const maintainer = await exists(path.join(git, "worktrees"));
-    const release = await json(path.join(this.root, "config/release.json"));
-    const kernel = await json(path.join(this.root, "kernel/manifest.json"));
+        const installed = await kernelStatus(this.root);
+    const kernel = installed.state === "managed" ? installed : null;
     return {
-      productVersion: release?.version || null,
+      // Deprecated alias for old setup clients; never a separate version.
+      productVersion: kernel?.version || null,
       kernelVersion: kernel?.version || null,
       canRename: !linked && !maintainer,
       project: await readProject(this.root),

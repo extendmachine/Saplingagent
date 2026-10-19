@@ -106,7 +106,7 @@ Office 支持基础编辑：Word 格式作用于整段，PowerPoint 以文字修
 
 ## 0.9.4：网页配置、本机启动器与内核归并
 
-当前源码版本为 **0.9.4 / Kernel 0.92**。请通过下方一行安装命令或 release 分支下载本版本。
+当前源码版本为 **内核 0.9.4**。请通过下方一行安装命令或 release 分支下载本版本。
 
 1. 运行 `bash Saplingagent.sh`，检测设备、安装最小管理内核后直接打开配置网页。
 2. 在网页设置项目名称、文件夹名称、图标和 AI 接口。独立客户文件夹可在编译前改名；不覆盖同名目录，开发工作树保留原位置。
@@ -220,7 +220,7 @@ bash Saplingagent.sh logout
 
 网页右上角 **Kernel → Check for kernel update → Upgrade kernel & restart**。升级器固定 release 提交并校验清单，显示变更和冲突，再停止当前应用、备份和替换内核、修复内核自己的依赖、完整重启并跳转到实际端口。页面、聊天、MCP、Skills、自定义业务和应用依赖声明保留。独立进度网页在原服务停止后继续工作，失败时可重试或手动恢复；不自动回退。
 
-当前 release 产品版本为 **0.9.4**，独立内核为 **0.92 / schema3**；release 分支同步本版本；GitHub Releases 的旧标签和附件另行管理。0.9.1 的 schema2 原型不能直接跨边界升级：请下载0.9.2到新目录，保留原目录，再人工迁移自己的应用/数据/配置；不要覆盖真实凭据或重新生成旧目录基线。之后同 schema3 内核可在网页升级。完整说明：[内核管理](docs/kernel-management.html)。
+当前内核版本为 **0.9.4 / schema3**；release 分支同步本版本；GitHub Releases 的旧标签和附件另行管理。0.9.1 的 schema2 原型不能直接跨边界升级：请下载0.9.2到新目录，保留原目录，再人工迁移自己的应用/数据/配置；不要覆盖真实凭据或重新生成旧目录基线。之后同 schema3 内核可在网页升级。完整说明：[内核管理](docs/kernel-management.html)。
 
 
 ## 导入已有的本地凭据
@@ -420,6 +420,10 @@ Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍
 
 ## 发布版本识别
 
-当前 release 源码的产品版本为 **Saplingagent 0.9.4**，唯一声明在 `config/release.json`。网页页脚和 Bash 菜单展示产品发布版本和独立的 **Kernel 0.92**；默认页面不再展示 Workspace Git 版本；信息缺失时明确显示不可用。重建本地 Git 不会清除产品标识，单独更新内核也不代表升级了整个应用。
+当前统一称为 **内核版本 0.9.4**，唯一依据为 `kernel/manifest.json`，不再区分产品版本。页面、配置、安装和更新均读取内核版本；数据不可用时如实显示不可用。旧 `config/release.json` 与 `releaseVersion` 字段仅为兼容别名，不作为运行时版本依据。
 
 源码 ZIP 的 `delivery.json` 同时记录 `releaseVersion` 和精确的 `sourceCommit`，文件名也包含二者。本次将0.9.4同步到 release 分支供验收，不移动旧标签或上传 GitHub Release 附件；下载本版本请使用 release 分支源码或一行安装命令。后续发布时，标签、发布页面、产品声明和下载回执必须对应同一份已核对源码；不得自行递增用户指定的版本号。维护者先核对并冻结代码，再核对版本声明、release 提交、不可移动的标签及下载包校验值。参见[发布检查表](docs/release-checklist.html)和[实际发布记录](https://github.com/extendmachine/Saplingagent/releases)；源码标签、GitHub Release、真机和真实模型验收分别记录。
+
+## 旧内核编号的一次性升级
+
+旧0.90/0.91/0.92更新器会把0.9.4误判为降级。需要在原应用的 .cache 内下载新版工具，用新版 CLI 的 --root 明确指向原应用再检查、更新。保留原始基线，仍需停止应用并处理冲突、备份和风险确认。不要整包覆盖业务文件或重新生成客户基线。操作说明：[内核版本迁移](docs/kernel-version-migration.html)。

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createMediaFixture } from './media-fixture.mjs';
 
-test('distribution identity works without Git/login and never invents an old product version', async t => {
+test('legacy version route stays compatible and follows installed kernel, without Git/login', async t => {
   const parent = fileURLToPath(new URL('../../../.cache/release-http/', import.meta.url));
   await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, 'app-'));
@@ -26,6 +26,10 @@ test('distribution identity works without Git/login and never invents an old pro
     assert.equal(response.status, 503);
     assert.doesNotMatch(await response.text(), /DO_NOT_EXPOSE|0\.90|release-http|SyntaxError/);
   }
+  await fs.mkdir(path.join(root,'kernel'),{recursive:true});
+  await fs.copyFile(new URL('../../../kernel/manifest.json',import.meta.url),path.join(root,'kernel/manifest.json'));
+  await fs.writeFile(metadata,JSON.stringify({schemaVersion:1,version:'0.9.1'}));
+  assert.deepEqual(await (await read()).json(),{release:{schemaVersion:1,version:'0.9.4'}});
   assert.equal(fixture.calls.filter(call => call.method === 'turn/start').length, 0);
   await assert.rejects(fs.access(path.join(root, '.git')));
 });

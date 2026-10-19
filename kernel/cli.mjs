@@ -4,7 +4,13 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { kernelStatus, prepareKernel, applyKernel, kernelBackups } from "./manager.mjs";
 import { restoreKernel } from "./recover.mjs";
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const cliArgs = process.argv.slice(2);
+let targetRoot;
+if (cliArgs[0] === "--root") {
+ if (!cliArgs[1] || cliArgs[1].startsWith("--")) throw Error("--root requires an explicit application directory.");
+ targetRoot = cliArgs[1]; cliArgs.splice(0,2);
+}
+const root = path.resolve(targetRoot || path.join(path.dirname(fileURLToPath(import.meta.url)), ".."));
 const t = (en, zh) => process.env.SAPLING_LANG === "zh" ? zh : en;
 async function question(text) {
 	const rl = createInterface({
@@ -72,7 +78,7 @@ export async function kernelCommand(action, args = []) {
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	try {
-		const [action, ...args] = process.argv.slice(2);
+		const [action, ...args] = cliArgs;
 		await kernelCommand(action, args);
 	} catch (error) {
 		console.error((error.code ? error.code + ": " : "") + error.message);

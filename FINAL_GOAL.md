@@ -1,6 +1,6 @@
 # Saplingagent Final Goal
 
-Updated: 2026-10-18. This document defines current product positioning and how future requirements are interpreted. History and implementation/acceptance status belong in TODO.md and AI_TASKS.md; live development records are authoritative in .worktrees/coordination/ when present. Public control rules remain in rules/README.md.
+Updated: 2026-10-19. This document defines current product positioning and how future requirements are interpreted. History and implementation/acceptance status belong in TODO.md and AI_TASKS.md; live development records are authoritative in .worktrees/coordination/ when present. Public control rules remain in rules/README.md.
 
 ## Product positioning
 
@@ -64,7 +64,7 @@ The user's current explicit instructions take priority within the project. This 
 
 ## Customer-local setup and launcher (0.9.3)
 
-The explicit owner workflow is script → device detection/local minimal management kernel → browser project name/folder/icon/AI configuration → local application build and native launcher compilation → double-click to develop. Go toolchain and all runtime/cache/source/data remain project-local. The tiny launcher calls the existing management core; business source remains editable. Renaming only affects the selected independent customer folder and launcher identity, not Saplingagent product/kernel metadata. Existing destination, Git history, customer data and maintainer worktree identities are preserved. Runtime ownership, actual selected ports and owned-process cleanup support independent folders. Rebuild stages and checks new output before replacement, reuses unchanged native launchers, and reports file locks/errors without deleting a known usable launcher first. macOS and Windows compilation/actual hardware acceptance are separately recorded. Keep explicit shell recovery actions.
+The explicit owner workflow is script → device detection/local minimal management kernel → browser project name/folder/icon/AI configuration → local application build and native launcher compilation → double-click to develop. Go toolchain and all runtime/cache/source/data remain project-local. The tiny launcher calls the existing management core; business source remains editable. Renaming only affects the selected independent customer folder and launcher identity, not Saplingagent kernel metadata. Existing destination, Git history, customer data and maintainer worktree identities are preserved. Runtime ownership, actual selected ports and owned-process cleanup support independent folders. Rebuild stages and checks new output before replacement, reuses unchanged native launchers, and reports file locks/errors without deleting a known usable launcher first. macOS and Windows compilation/actual hardware acceptance are separately recorded. Keep explicit shell recovery actions.
 
 ## Outside the current default scope
 
@@ -79,7 +79,7 @@ Cloud content upload/download, additional operating-system installers, commercia
 3. A representative user request can change the local interface or backend with a verifiable, reloadable result. The delivered project remains modifiable.
 4. Context, source and business data remain organized and identifiable. Restart/source switching preserve actual data/login state according to documented behavior, without silently resending a task.
 5. User-created functionality can remain application-specific. Common seed changes have a stated reuse need and avoid unnecessary default complexity.
-6. Before publishing, freeze and verify the actual code, then verify that the product version declaration, owner-selected product version, promoted release commit, tag and downloaded package receipts agree; do not independently increment the owner’s selected version. Public tag correction requires explicit owner instruction and saved provenance. Product release, kernel and customer Git versions are distinct; never treat a bare tag as complete release metadata.
+6. Before publishing, freeze and verify the actual code, then verify that the product version declaration, owner-selected product version, promoted release commit, tag and downloaded package receipts agree; do not independently increment the owner’s selected version. Public tag correction requires explicit owner instruction and saved provenance. The installed kernel version is the only Saplingagent version; Git source revisions and publication tags must identify the checked source. Never treat a bare tag as complete publication metadata.
 7. Rules, dependencies, installation and modification instructions agree with the complete-folder delivery boundary and the every-turn completion-review receipt; Full Access remains unchanged. Unsupported platforms/dependencies and unverified adaptation are clearly identified.
 
 These criteria define the desired product. Actual implementation, automated checks, human acceptance and branch synchronization are recorded separately in the authoritative TODO.md and AI_TASKS.md.
@@ -103,7 +103,7 @@ Kernel0.91/schema3 owns install/update, complete restart, AI configuration/engin
 
 The page offers Check for kernel update and Upgrade kernel & restart. Resolve official release to an immutable commit, stage and verify owned bytes, review conflicts, drain app tasks, copy a temporary maintenance worker, stop owned app processes, back up/apply only core, repair only core dependencies and restart all application services. The worker survives controller shutdown and shows actual progress/failures, manual source restore and retry. It returns to the selected live port after verified readiness; source success does not imply model/account readiness. No automatic rollback or Git merge. Application frontend and dependency manifests are preserved.
 
-Schema3 deliberately refuses older broad/schema2 baselines, plans and backup manifests; old updaters also reject3 before interpreting released files as deletions. Existing0.9.1 prototype installations require a deliberate complete-tooling transition in a new folder or manual reconciliation preserving application/data. Never regenerate a customer baseline to hide core edits. Product release metadata is distinct from independent installed kernel version.
+Schema3 deliberately refuses older broad/schema2 baselines, plans and backup manifests; old updaters also reject3 before interpreting released files as deletions. Existing0.9.1 prototype installations require a deliberate complete-tooling transition in a new folder or manual reconciliation preserving application/data. Never regenerate a customer baseline to hide core edits. The current installed kernel version is the single Saplingagent version.
 
 ## Contained platform implementation (2026-10-19)
 
@@ -131,3 +131,7 @@ for deliberate migration/recovery. Unmodified old schema3 installations can migr
 local core edits still cause conflicts and need a deliberate merge. Never regenerate
 a customer's baseline to hide them. A contained install cannot update back to the
 old distributed layout; restoring an explicit backup remains available.
+
+## One kernel version (2026-10-19)
+
+The current version is **kernel0.9.4**. There is no separate product version. kernel/manifest.json is authoritative for display, setup, installation, maintenance and packaging. Old API/receipt field names can remain compatibility aliases, but they must not establish a second current version. Missing metadata is unavailable, not a hardcoded historical baseline. Keep old version records/backups factual and handle their numeric migration deliberately without hiding local edits. See contracts/release.md and docs/kernel-version-migration.html.
