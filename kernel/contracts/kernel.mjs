@@ -4,6 +4,11 @@ import { randomUUID } from "node:crypto";
 import { PUBLIC_BRIDGE_FILES } from "../compat/paths.mjs";
 export { PUBLIC_BRIDGE_FILES };
 export const isContainedKernelPath = file => isKernelPath(file) && (file.startsWith("kernel/") || PUBLIC_BRIDGE_FILES.includes(file));
+// Historical display numbers are mapped only for comparison, never rewritten in backups.
+export function comparableKernelVersion(version) {
+ const legacy = {"0.90":"0.9.0", "0.91":"0.9.2", "0.92":"0.9.3"};
+ return (legacy[version] || version).split(".").map(Number);
+}
 export const KERNEL_BASELINE = "0.90";
 export const KERNEL_MANIFEST = "kernel/manifest.json";
 export class KernelError extends Error {
