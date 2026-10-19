@@ -446,8 +446,8 @@
     },
     {
       "path": "kernel/engines/test/opencode-messages.test.mjs",
-      "sha256": "729239f0f9ab771ca4fd18c77e7fc5008ef4827bb9a05c41c8c4b981c3457eed",
-      "bytes": 13466,
+      "sha256": "0867df37f1d3c1ab53b5270b2df285b9f5995e128b0217d5f81587903966b014",
+      "bytes": 13696,
       "executable": false
     },
     {
