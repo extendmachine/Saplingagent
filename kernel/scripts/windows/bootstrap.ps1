@@ -2,7 +2,7 @@
 $SaplingRoot = if ($env:SAPLING_BOOTSTRAP_ROOT) { $env:SAPLING_BOOTSTRAP_ROOT } else { [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..')) }
 $SaplingLanguage = $env:SAPLING_LANG
 # Scratch paths are project-derived before .NET downloads/extraction can run.
-foreach ($relative in @('.runtime', '.runtime/tmp', '.cache', '.cache/npm')) {
+foreach ($relative in @('.runtime', '.runtime/tmp', '.cache', '.cache/npm', '.cache/node-compile', '.cache/runtime', 'local-secrets', 'local-secrets/runtime', 'local-secrets/runtime/config', 'data', 'data/runtime', 'data/runtime-state')) {
     $directory = Join-Path $SaplingRoot $relative
     if (Test-Path -LiteralPath $directory) {
         $item = Get-Item -LiteralPath $directory -Force
@@ -13,6 +13,11 @@ $env:TMP = Join-Path $SaplingRoot '.runtime/tmp'
 $env:TEMP = $env:TMP
 $env:TMPDIR = $env:TMP
 $env:npm_config_cache = Join-Path $SaplingRoot '.cache/npm'
+$env:NODE_COMPILE_CACHE = Join-Path $SaplingRoot '.cache/node-compile'
+$env:XDG_CONFIG_HOME = Join-Path $SaplingRoot 'local-secrets/runtime/config'
+$env:XDG_DATA_HOME = Join-Path $SaplingRoot 'data/runtime'
+$env:XDG_STATE_HOME = Join-Path $SaplingRoot 'data/runtime-state'
+$env:XDG_CACHE_HOME = Join-Path $SaplingRoot '.cache/runtime'
 
 # Undo MSYS argument-conversion overrides before any application child starts.
 [Environment]::SetEnvironmentVariable('MSYS2_ARG_CONV_EXCL', $env:SAPLING_PREVIOUS_ARG_CONV, 'Process')

@@ -44,7 +44,7 @@ func projectEnvironment(root string) ([]string, error) {
 	env := os.Environ()
 	for _, item := range []struct{ name, relative string }{
 		{"TMPDIR", ".runtime/launcher-tmp"}, {"TMP", ".runtime/launcher-tmp"}, {"TEMP", ".runtime/launcher-tmp"},
-		{"npm_config_cache", ".cache/npm"}, {"XDG_CONFIG_HOME", "local-secrets/runtime/config"},
+		{"NODE_COMPILE_CACHE", ".cache/node-compile"}, {"npm_config_cache", ".cache/npm"}, {"XDG_CONFIG_HOME", "local-secrets/runtime/config"},
 		{"XDG_DATA_HOME", "data/runtime"}, {"XDG_STATE_HOME", "data/runtime-state"}, {"XDG_CACHE_HOME", ".cache/runtime"},
 	} {
 		directory, err := localDirectory(root, item.relative)

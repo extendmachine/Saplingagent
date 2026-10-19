@@ -103,3 +103,8 @@ retained. Original write errors remain observable instead of being masked by par
 an incomplete owner record. Rename paths check the compile lease; atomic staged
 replacement preserves the previous artifact on failure. Stale leases are reported,
 never guessed away. Windows native file locking still requires hardware acceptance.
+
+Native and both OS bootstrap entries also override inherited `NODE_COMPILE_CACHE`
+with `.cache/node-compile/` and bind all XDG directories before the first Node
+version probe or script starts. Setting these only inside JavaScript is too late
+for Node's startup cache. Redirected cache paths are rejected before invocation.

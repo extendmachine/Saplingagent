@@ -37,7 +37,7 @@ export function buildEnv(root) {
     GOMODCACHE: path.join(root, ".cache/go-mod"),
     GOPATH: path.join(root, ".runtime/go-path"),
     GOTOOLCHAIN: "local",
-    NODE_COMPILE_CACHE: path.join(root, ".cache/node"),
+    NODE_COMPILE_CACHE: path.join(root, ".cache/node-compile"),
     TEST_TELEMETRY_DIR: path.join(root, ".cache/go-telemetry"),
     XDG_CONFIG_HOME: path.join(root, "local-secrets/runtime/config"),
     XDG_CACHE_HOME: path.join(root, ".cache/runtime"),
@@ -76,7 +76,7 @@ async function managedDirectory(root,relative) {
 }
 export async function prepareBuildStorage(root) {
   root=await fs.realpath(root);
-  for(const relative of ['kernel/.cache','.runtime/launcher-tmp','.runtime/go-path','.runtime/launcher-build','.cache/npm','.cache/node','.cache/go-build','.cache/go-mod','.cache/go-telemetry','.cache/runtime','local-secrets/runtime/config','data/runtime','data/runtime-state'])await managedDirectory(root,path.normalize(relative));
+  for(const relative of ['kernel/.cache','.runtime/launcher-tmp','.runtime/go-path','.runtime/launcher-build','.cache/npm','.cache/node-compile','.cache/go-build','.cache/go-mod','.cache/go-telemetry','.cache/runtime','local-secrets/runtime/config','data/runtime','data/runtime-state'])await managedDirectory(root,path.normalize(relative));
   // Go1.27's compiler telemetry honors this directory for every build subprocess.
   // A private off marker prevents both counters and uploader subprocesses.
   const mode=path.join(root,'.cache/go-telemetry/mode');
