@@ -2,6 +2,7 @@
 
 ## 0.9.3 — Customer-local project setup and launcher (main, unreleased)
 
+- Repair0.9.2 kernel-update compatibility: keep the launcher public facade under an already recognized kernel path and regression-check the shipped legacy validator.
 - Install a local management kernel first and continue project name/icon/AI setup in the browser.
 - Compile named macOS/Windows launchers locally with a pinned checksum-verified project-local Go toolchain.
 - Explicit independent-folder rename, async progress, staged artifact replacement and unchanged-launcher reuse; preserve app/data/Git and previous usable output on failure.

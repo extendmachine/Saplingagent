@@ -121,8 +121,8 @@
     },
     {
       "path": "backend/ai-config/CONTRACT.md",
-      "sha256": "997339563bd2ed88a1fdcd48cf5d660704d4990dcc6d8d6b1753da2b03bc4f86",
-      "bytes": 7949,
+      "sha256": "f6532a5eb7e6dea026aa789733de4053ab17ad55a898cb5338f039a90808129b",
+      "bytes": 7945,
       "executable": false
     },
     {
@@ -145,8 +145,8 @@
     },
     {
       "path": "backend/ai-config/server.mjs",
-      "sha256": "0b6a5855665788600bd9e92381e0d9e48b5ed6eeec0c31ba917e02e653fc7603",
-      "bytes": 9994,
+      "sha256": "2cf33576774cd9e7c5719e3ec4ce5d703101e58cc8864da54f6cc48555639747",
+      "bytes": 9990,
       "executable": false
     },
     {
@@ -283,20 +283,14 @@
     },
     {
       "path": "contracts/kernel.mjs",
-      "sha256": "cd50b08e69488d244d091c738c7af17bf1446e535730f37360579a5e0e5a722d",
-      "bytes": 8236,
+      "sha256": "f087fa8a3aaf2ad9836d3acbfb73fab7aa2a6f9ba303f9bacd4b834787ecd709",
+      "bytes": 8302,
       "executable": false
     },
     {
       "path": "contracts/local-process.mjs",
       "sha256": "e70c8cc76126a9e3c2d7c205ccc97b4f504b427441c6ac1dd83d76d605b5c21d",
       "bytes": 4566,
-      "executable": false
-    },
-    {
-      "path": "contracts/project-launcher.mjs",
-      "sha256": "074131effb111aaf1cd1db25f57bfa12b5239c414f0c9b7c238c9946252c951b",
-      "bytes": 275,
       "executable": false
     },
     {
@@ -379,8 +373,8 @@
     },
     {
       "path": "kernel/CONTRACT.md",
-      "sha256": "1de1fbe03e331905e50c362ba8e390ba9f693b97e7dc61f2a8928cbaa460ede6",
-      "bytes": 7653,
+      "sha256": "ebe1c0042455fc8179828301ab742d78f70cf1554799f39fc4ed97fb00b138bb",
+      "bytes": 7649,
       "executable": false
     },
     {
@@ -391,8 +385,8 @@
     },
     {
       "path": "kernel/DEPLOY.md",
-      "sha256": "c5b88d30a6287cf60944cf253e9e85b9ab304a5973f520229fb8f8160df4e077",
-      "bytes": 6321,
+      "sha256": "dc6a77ee512514eb45ffdf1428879f9e970177389796763a16c070ef32d4d711",
+      "bytes": 7399,
       "executable": false
     },
     {
@@ -421,8 +415,8 @@
     },
     {
       "path": "kernel/launcher/CONTRACT.md",
-      "sha256": "724c47dfe191e931da11ae2cad0c14a0ed09f9d987a1ca36b1e102300dfdc0db",
-      "bytes": 3475,
+      "sha256": "4230db09a70387159fa85d20c97271a4796fa73c598451329652c1e6c854a8b0",
+      "bytes": 4040,
       "executable": false
     },
     {
@@ -459,6 +453,12 @@
       "path": "kernel/launcher/native/spawn_windows.go",
       "sha256": "6740248c86bb50d5db4d3f13debca104e80715f0dea1ff3ba4672f011d1d9517",
       "bytes": 181,
+      "executable": false
+    },
+    {
+      "path": "kernel/launcher/public.mjs",
+      "sha256": "2e6da6fbde98b9538874a83fd7dc1551f97ea5ab77552d1c9b38138df5b9efde",
+      "bytes": 241,
       "executable": false
     },
     {
@@ -511,8 +511,8 @@
     },
     {
       "path": "kernel/recover.mjs",
-      "sha256": "836e76c7c43a5b713b9ff83d29b7c8529368d164d72d880682cf5bdfafacb1bc",
-      "bytes": 9889,
+      "sha256": "dd2cb4162e797d8205692e4fb6ee9a64ad4f005e4e831816984a5a57d2bd7c86",
+      "bytes": 9924,
       "executable": false
     },
     {
@@ -534,6 +534,18 @@
       "executable": false
     },
     {
+      "path": "kernel/test/fixtures/kernel-contract-0.91.mjs",
+      "sha256": "c9323967fd91a63ad1500781fc43c4d6fa739c2f1d95bd490aa87ed50df258b8",
+      "bytes": 8118,
+      "executable": false
+    },
+    {
+      "path": "kernel/test/legacy-manifest.test.mjs",
+      "sha256": "98e9b6cb1257f95716f816eab9efbcc58fea8406c7c0ad14b079759a9a8e3e0c",
+      "bytes": 1737,
+      "executable": false
+    },
+    {
       "path": "kernel/test/maintenance.test.mjs",
       "sha256": "d2f4ef799942d0b7c12e35eb04e294f4d2b07240b5972f878b379978993842b4",
       "bytes": 10386,
@@ -541,8 +553,8 @@
     },
     {
       "path": "kernel/test/updates.test.mjs",
-      "sha256": "17b89b349611942e878f10d84f2a3636282921932271b4b543fd21ef3bda575c",
-      "bytes": 19066,
+      "sha256": "aad9891de2496e460b1ef3f4bbf5f8d3916e30d112ad2c3be6f3eca742221eff",
+      "bytes": 20187,
       "executable": false
     },
     {
@@ -571,14 +583,14 @@
     },
     {
       "path": "scripts/launcher/cli.mjs",
-      "sha256": "f5235e8ad6ee5d839958399af0751d678e49a9bff2f4749e55e95181c711ab78",
-      "bytes": 28796,
+      "sha256": "b87534adaca0758c57430add053c3e9a7dc50ef81f1b36588dfb1a7da4f744c9",
+      "bytes": 28788,
       "executable": false
     },
     {
       "path": "scripts/launcher/README.md",
-      "sha256": "57605385d8385f012e6a07751caa7abd9e1d91d07718734a9ad91d8b1033745a",
-      "bytes": 8423,
+      "sha256": "4711ce2e3e07a1a8b440be44a88827d68422c0a6651367e6e7a0d5d5cfe4e274",
+      "bytes": 8666,
       "executable": false
     },
     {
@@ -619,8 +631,8 @@
     },
     {
       "path": "scripts/package-macos.mjs",
-      "sha256": "883580b3da5d9fd63ff9aa33478709947532cefd0f420e9ef1e977477f33fa2a",
-      "bytes": 10025,
+      "sha256": "bad79c1908f46138a71fc2a53e07ea21f0978359b511e816dc67c7e55305d0ab",
+      "bytes": 10021,
       "executable": false
     },
     {
