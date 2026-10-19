@@ -6,6 +6,7 @@ import { randomUUID, randomBytes } from "node:crypto";
 import { createConfigurationServer } from "../services/ai-config/server.mjs";
 import {assertSetupAvailable} from "../contracts/kernel.mjs";
 import { ProjectLauncher, openExternal } from "./manager.mjs";
+import {prepareSetupUI} from './setup-ui.mjs';
 import {
   json,
   writeJSON,
@@ -17,6 +18,7 @@ let root = await fs.realpath(
   process.env.SEED_ROOT || fileURLToPath(new URL("../../", import.meta.url)),
 );
 await assertSetupAvailable(root);
+await prepareSetupUI(root);
 let fingerprint = await managementFingerprint(root);
 let file = path.join(root, ".runtime/management-address.json"),
   lock = path.join(root, ".runtime/management.lock");

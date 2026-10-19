@@ -169,7 +169,8 @@ async function configureAI(noOpen,launch=false) {
   if (!await coreInstalled()) throw new Error(t('Install the local kernel first: bash Saplingagent.sh install','请先安装本地内核：bash Saplingagent.sh install'));
   await localSetup();
   console.log(t('Preparing independent AI configuration and project setup…','正在准备独立 AI 与项目配置网页…'));
-  await required(process.execPath,[path.join(root,'kernel/node_modules/vite/bin/vite.js'),'build','--config',path.join(root,'kernel/ui/setup/vite.config.mjs')]);
+  const {prepareSetupUI}=await import('../../launcher/public.mjs');
+  await prepareSetupUI(root);
   const setupEnv={...env};if(process.env.CODEX_HOME)setupEnv.CODEX_HOME=process.env.CODEX_HOME;else delete setupEnv.CODEX_HOME;
   if(!await exists(path.join(root,'kernel/launcher/entry.mjs'))){await required(process.execPath,[path.join(root,'kernel/services/ai-config/server.mjs'),...(noOpen?['--no-open']:[])],{childEnv:setupEnv});return;}
   const {managementFingerprint}=await import('../../launcher/public.mjs');const expectedFingerprint=await managementFingerprint(root);

@@ -30,7 +30,10 @@ test('public setup saves first, releases old processes/log handles, moves and re
  await fs.writeFile(path.join(before,'kernel/scripts/launcher/cli.mjs'),"import fs from 'node:fs';import{fileURLToPath}from'node:url';fs.writeFileSync(fileURLToPath(new URL('../../../application-prepared',import.meta.url)),'prepared');");
  await fs.writeFile(path.join(before,'front/node_modules/vite/bin/vite.js'),"require('node:fs').writeFileSync('pages-built','built');");
  await fs.writeFile(path.join(before,'business.txt'),'preserve application bytes');await fs.writeFile(path.join(before,'.git/HEAD'),'ref: refs/heads/main\n');await fs.writeFile(path.join(before,'local-secrets/codex/sessions/history.jsonl'),'synthetic historical bytes\n');
- const assets=path.join(before,'kernel/.cache/setup');await fs.mkdir(assets,{recursive:true});await fs.writeFile(path.join(assets,'index.html'),'<meta name="config-token" content="__SAPLING_CONFIG_TOKEN__"><meta name="language" content="__SAPLING_CONFIG_LANGUAGE__">');
+ // Exercise cold native management and post-move preparation without real account,
+ // application dependencies or a Vite dependency shared with another project.
+ const vite=path.join(before,'kernel/node_modules/vite/bin');await fs.mkdir(vite,{recursive:true});
+ await fs.writeFile(path.join(vite,'vite.js'),`const fs=require('node:fs'),path=require('node:path');const out=process.argv[process.argv.indexOf('--outDir')+1];fs.mkdirSync(path.join(out,'assets'),{recursive:true});fs.writeFileSync(path.join(out,'assets/setup-fixture.js'),'/* synthetic setup */');fs.writeFileSync(path.join(out,'index.html'),'<meta name="config-token" content="__SAPLING_CONFIG_TOKEN__"><meta name="language" content="__SAPLING_CONFIG_LANGUAGE__"><script src="/assets/setup-fixture.js"></script>');`);
  let management,oldRuntime,jobId,helperDirectory;
  const runtimeMeta=root=>path.join(root,'.runtime/runtime-address.json'),managementMeta=root=>path.join(root,'.runtime/management-address.json');
  const roots=[before,after];

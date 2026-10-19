@@ -7,9 +7,11 @@ import {buildEnv, command, nodeForRoot} from './build.mjs';
 import {json, writeJSON, issue, dailyLog} from './io.mjs';
 import {completeRelocation, relocationLedger} from './relocation.mjs';
 import {releaseFinalization} from './finalization.mjs';
+import {prepareSetupUI} from './setup-ui.mjs';
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
 async function launchManagement(root,job) {
+  await prepareSetupUI(root);
   await dailyLog(root,'setup_management_resume',{jobId:job.id});
   async function attempt(fixedPort) {
     const handle=await fs.open(path.join(root,'logs/project-launcher',`project-launcher-${new Date().toISOString().slice(0,10)}.log`),'a');

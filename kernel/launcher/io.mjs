@@ -61,6 +61,7 @@ export async function managementFingerprint(root) {
     "kernel/launcher/manager.mjs",
     "kernel/launcher/build.mjs",
     "kernel/launcher/io.mjs",
+    "kernel/launcher/setup-ui.mjs",
     "kernel/services/ai-config/server.mjs",
   ])
     hash.update(await fs.readFile(path.join(root, file)));

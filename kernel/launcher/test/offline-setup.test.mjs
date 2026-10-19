@@ -120,7 +120,8 @@ test('actual management spawn completes readiness instead of losing its spawn ev
  let address;const previousJob=process.env.SAPLING_SETUP_JOB;
  try{
   await fs.cp(path.join(repo,'kernel'),path.join(root,'kernel'),{recursive:true,filter:file=>!file.split(path.sep).some(part=>['node_modules','.cache'].includes(part))});
-  await fs.mkdir(path.join(root,'kernel/.cache/setup'),{recursive:true});await fs.writeFile(path.join(root,'kernel/.cache/setup/index.html'),'<meta name="config-token" content="__SAPLING_CONFIG_TOKEN__">');
+  const vite=path.join(root,'kernel/node_modules/vite/bin');await fs.mkdir(vite,{recursive:true});
+  await fs.writeFile(path.join(vite,'vite.js'),`const fs=require('node:fs'),path=require('node:path');const out=process.argv[process.argv.indexOf('--outDir')+1];fs.mkdirSync(path.join(out,'assets'),{recursive:true});fs.writeFileSync(path.join(out,'assets/setup-fixture.js'),'/* synthetic setup */');fs.writeFileSync(path.join(out,'index.html'),'<meta name="config-token" content="__SAPLING_CONFIG_TOKEN__"><script src="/assets/setup-fixture.js"></script>');`);
   const {default:net}=await import('node:net');const probe=net.createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));
   const manager=new ProjectLauncher(root);await manager.stageSetup({name:'Before',renameFolder:false});const project=await readProject(root),id=randomUUID();process.env.SAPLING_SETUP_JOB=id;
   const job={schemaVersion:1,id,root,previousRoot:root,targetRoot:root,projectId:project.projectId,management:{port},language:'zh',noOpen:true,fingerprint:await manager.settingsFingerprint(),connectionsFingerprint:await manager.connectionsFingerprint()};
@@ -128,6 +129,7 @@ test('actual management spawn completes readiness instead of losing its spawn ev
   const {resumeSetup}=await import('../resume-setup.mjs');const result=await resumeSetup(root,id,null,{prepare:async()=>{},start:async()=>({phase:'ready'})});
   address=JSON.parse(await fs.readFile(path.join(root,'.runtime/management-address.json')));assert.equal(result.phase,'ready');assert.equal(address.port,port);assert.equal(address.root,root);assert.equal(await manager.exportReady(),true);
   const health=await fetch(`http://127.0.0.1:${port}/health/project-launcher`).then(r=>r.json());assert.equal(health.root,root);assert.equal(health.instanceId,address.instanceId);
+  assert.equal((await fetch(`http://127.0.0.1:${port}/`)).status,200);assert.equal((await fetch(`http://127.0.0.1:${port}/assets/setup-fixture.js`)).status,200);
  }finally{
   if(previousJob===undefined)delete process.env.SAPLING_SETUP_JOB;else process.env.SAPLING_SETUP_JOB=previousJob;
   if(!address)try{address=JSON.parse(await fs.readFile(path.join(root,'.runtime/management-address.json')));}catch{}
