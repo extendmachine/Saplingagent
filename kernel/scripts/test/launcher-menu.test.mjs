@@ -164,3 +164,8 @@ test('Chinese menu has install, AI setup and kernel management with no storage s
  const root=await fixture(t);const result=await execute(root,'0\n',[],'zh');
  assert.match(result.output,/安装 \/ 修复依赖/);assert.match(result.output,/内核管理/);assert.doesNotMatch(result.output,/存放配置|存储设置|跟随/);
 });
+
+test('menu shows only installed kernel version even when old compatibility metadata disagrees',async t=>{
+ const root=await fixture(t);await fs.writeFile(path.join(root,'kernel/manifest.json'),JSON.stringify({version:'0.9.4'}));await fs.mkdir(path.join(root,'config'));await fs.writeFile(path.join(root,'config/release.json'),JSON.stringify({version:'0.9.1'}));
+ const value=await execute(root,'0\n');assert.equal(value.code,0);assert.match(value.output,/Kernel version: 0\.9\.4/);assert.doesNotMatch(value.output,/Release:|0\.9\.1/);
+});

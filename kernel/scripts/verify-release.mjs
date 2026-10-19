@@ -11,8 +11,12 @@ export function verifyRelease({ sourceRoot, ref = 'release', main = 'main', vers
   const git = (...args) => execFileSync('git', args, { cwd: root, maxBuffer: 32 * 1024 * 1024, timeout: 30000 });
   const resolve = value => git('rev-parse', '--verify', `${value}^{commit}`).toString().trim();
   const commit = resolve(ref), mainCommit = resolve(main);
-  const release = parseReleaseMetadata(JSON.parse(git('show', `${commit}:config/release.json`)));
-  if (!version || version !== release.version) throw new Error('Requested release version does not match committed config/release.json.');
+  const declaredKernel = validateKernelManifest(JSON.parse(git('show', `${commit}:kernel/manifest.json`)));
+  const release = parseReleaseMetadata({schemaVersion:1,version:declaredKernel.version});
+  const mirror = parseReleaseMetadata(JSON.parse(git('show', `${commit}:config/release.json`)));
+  if(mirror.version!==release.version)throw new Error('Kernel version and compatibility mirror disagree.');
+  if(declaredKernel.layoutVersion===1)for(const name of ['kernel/package.json','kernel/package-lock.json']){const pkg=JSON.parse(git('show', `${commit}:${name}`));if(pkg.version!==release.version||(name.endsWith('lock.json')&&pkg.packages?.['']?.version!==release.version))throw new Error('Kernel package version mirror disagrees: '+name);}
+  if (!version || version !== release.version) throw new Error('Requested release version does not match committed kernel/manifest.json.');
   git('merge-base', '--is-ancestor', mainCommit, commit);
   const codeChanges = git('diff', '--name-only', '-z', mainCommit, commit).toString().split('\0').filter(Boolean)
     .filter(file => /^(front|backend|contracts|kernel|scripts|config)\//.test(file) || /^(Saplingagent\.sh|install\.sh)$/.test(file));

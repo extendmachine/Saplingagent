@@ -25,7 +25,11 @@ export async function packageSource({ ref = 'release', outputDir = path.join(roo
   if (!['darwin', 'win32'].includes(process.platform)) throw new Error('Source ZIP packaging requires macOS or Windows.');
   const git = args => execFileSync('git', args, { cwd: sourceRoot, maxBuffer: 64 * 1024 * 1024 });
   const commit = git(['rev-parse', '--verify', `${ref}^{commit}`]).toString().trim();
-  const release = parseReleaseMetadata(JSON.parse(git(['show', `${commit}:config/release.json`])));
+  const declaredKernel = validateKernelManifest(JSON.parse(git(['show', `${commit}:kernel/manifest.json`])));
+  const release = parseReleaseMetadata({schemaVersion:1,version:declaredKernel.version});
+  const mirror = parseReleaseMetadata(JSON.parse(git(['show', `${commit}:config/release.json`])));
+  if(mirror.version!==release.version)throw new Error('Kernel version and compatibility mirror disagree.');
+  if(declaredKernel.layoutVersion===1)for(const name of ['kernel/package.json','kernel/package-lock.json']){const pkg=JSON.parse(git(['show', `${commit}:${name}`]));if(pkg.version!==release.version||(name.endsWith('lock.json')&&pkg.packages?.['']?.version!==release.version))throw new Error('Kernel package version mirror disagrees: '+name);}
   const symbolic = git(['rev-parse', '--symbolic-full-name', ref]).toString().trim();
   const initialBranch = symbolic.startsWith('refs/heads/') ? symbolic.slice(11) : symbolic.startsWith('refs/remotes/') ? symbolic.split('/').slice(3).join('/') : 'release';
   const entries = git(['ls-tree', '-r', '-z', commit]).toString().split('\0').filter(Boolean).map(line => {
@@ -80,7 +84,7 @@ export async function packageSource({ ref = 'release', outputDir = path.join(roo
       manifestFiles.push({ path: file.path, bytes: content.length, sha256: createHash('sha256').update(content).digest('hex'), ...(generated.includes(file.path) ? { initializedForRecipient: true } : {}) });
     }
     const settings = JSON.parse(await fs.readFile(path.join(directory, `kernel/config/${platform === 'Windows' ? 'windows' : 'macos'}.json`), 'utf8'));
-    await fs.writeFile(path.join(directory, 'delivery.json'), JSON.stringify({ schemaVersion: 2, releaseVersion: release.version, sourceCommit: commit, sourceRef: ref, distribution: { source: 'release-archive', gitIncluded: false }, platform: platform === 'Windows' ? 'Windows 10/11 x64 and ARM64' : 'macOS 13.5+', architectures: platform === 'Windows' ? ['x64', 'arm64'] : ['arm64', 'x64'], runtimes: settings, files: manifestFiles }, null, 2) + '\n');
+    await fs.writeFile(path.join(directory, 'delivery.json'), JSON.stringify({ schemaVersion: 2, kernelVersion: release.version, releaseVersion: release.version, sourceCommit: commit, sourceRef: ref, distribution: { source: 'release-archive', gitIncluded: false }, platform: platform === 'Windows' ? 'Windows 10/11 x64 and ARM64' : 'macOS 13.5+', architectures: platform === 'Windows' ? ['x64', 'arm64'] : ['arm64', 'x64'], runtimes: settings, files: manifestFiles }, null, 2) + '\n');
     if (process.platform === 'win32') {
       const powershell = path.win32.join(process.env.SystemRoot || 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe');
       execFileSync(powershell, ['-NoProfile', '-NonInteractive', '-Command', '$ErrorActionPreference=\"Stop\"; Add-Type -AssemblyName System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::CreateFromDirectory($env:SAPLING_PACKAGE_FOLDER,$env:SAPLING_PACKAGE_ZIP,[IO.Compression.CompressionLevel]::Optimal,$true)'], { windowsHide: true, env: { ...process.env, SAPLING_PACKAGE_FOLDER: directory, SAPLING_PACKAGE_ZIP: tempZip } });

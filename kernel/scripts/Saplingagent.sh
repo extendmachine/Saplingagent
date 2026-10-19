@@ -101,14 +101,14 @@ if [ -f "$SAPLING_ROOT/kernel/launcher/entry.mjs" ] && [ "${SAPLING_LEGACY_MENU:
 fi
 while true; do
   printf '\n%s\n' 'Saplingagent'
-  SAPLING_PRODUCT_VERSION=''
-  if [ -f "$SAPLING_ROOT/config/release.json" ]; then
-    SAPLING_RELEASE_TEXT="$(cat "$SAPLING_ROOT/config/release.json")"
+  SAPLING_KERNEL_VERSION=''
+  if [ -f "$SAPLING_ROOT/kernel/manifest.json" ]; then
+    SAPLING_RELEASE_TEXT="$(cat "$SAPLING_ROOT/kernel/manifest.json")"
     SAPLING_VERSION_PATTERN='"version"[[:space:]]*:[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)"'
-    if [[ "$SAPLING_RELEASE_TEXT" =~ $SAPLING_VERSION_PATTERN ]]; then SAPLING_PRODUCT_VERSION="${BASH_REMATCH[1]}"; fi
+    if [[ "$SAPLING_RELEASE_TEXT" =~ $SAPLING_VERSION_PATTERN ]]; then SAPLING_KERNEL_VERSION="${BASH_REMATCH[1]}"; fi
   fi
-  if [ -n "$SAPLING_PRODUCT_VERSION" ]; then say "  Release: $SAPLING_PRODUCT_VERSION" "  发布版本：$SAPLING_PRODUCT_VERSION";
-  else say '  Release: unavailable' '  发布版本：不可用'; fi
+  if [ -n "$SAPLING_KERNEL_VERSION" ]; then say "  Kernel version: $SAPLING_KERNEL_VERSION" "  内核版本：$SAPLING_KERNEL_VERSION";
+  else say '  Kernel version: unavailable' '  内核版本：不可用'; fi
   say '  1. Install / repair dependencies' '  1. 安装 / 修复依赖'
   say '  2. Configure AI' '  2. 配置 AI 接口'
   say '  3. Start app' '  3. 启动应用'

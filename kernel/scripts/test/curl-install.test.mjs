@@ -14,7 +14,8 @@ async function fixture(t,{bad=false,link=false,os='Darwin',invalidVersion=false}
   for(const f of ['install.sh','AGENTS.md','FINAL_GOAL.md','TODO.md','AI_TASKS.md','rules/README.md','kernel/scripts/launcher/recipient-records.mjs','kernel/scripts/macos/bootstrap.sh','kernel/scripts/windows/bootstrap.sh']){await fs.mkdir(path.dirname(path.join(source,f)),{recursive:true});await fs.writeFile(path.join(source,f),'Synthetic '+f+'\n');}
   await fs.writeFile(path.join(source,'Saplingagent.sh'),`#!/bin/bash\nprintf '%s\\n' "$*" >> "${root}/actions.txt"\nif [ "\${3:-}" = install ]; then printf SYNTHETIC_CHOICE; read -r answer; printf '%s\\n' "$answer" >> "${root}/actions.txt"; fi\n`);
   await fs.mkdir(path.join(source,'config'),{recursive:true}); await fs.copyFile(path.join(project,'config/release.json'),path.join(source,'config/release.json'));
-  if(invalidVersion)await fs.writeFile(path.join(source,'config/release.json'),JSON.stringify({schemaVersion:1,version:'0.90'}));
+  await fs.copyFile(path.join(project,'kernel/manifest.json'),path.join(source,'kernel/manifest.json'));
+  if(invalidVersion)await fs.writeFile(path.join(source,'kernel/manifest.json'),JSON.stringify({version:'0.90'}));
   if(link)await fs.symlink('../../outside',path.join(source,'symlink'));
   const archive=path.join(root,'source.tar.gz');await exec('tar',['-czf',archive,'-C',path.dirname(source),path.basename(source)]);
   if(bad)await fs.writeFile(archive,'Not an archive');
@@ -73,6 +74,6 @@ finally:os.close(fd)
 });
 
 test('invalid distribution version is refused before reserving the customer destination',async t=>{
- const f=await fixture(t,{invalidVersion:true});await assert.rejects(f.run(['--download-only']),/Release metadata/);
+ const f=await fixture(t,{invalidVersion:true});await assert.rejects(f.run(['--download-only']),/Kernel version metadata/);
  await assert.rejects(fs.access(path.join(f.root,'Saplingagent')));
 });
