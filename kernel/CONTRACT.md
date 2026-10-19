@@ -93,3 +93,26 @@ bootstrap if Node is absent and does not need Git Bash for daily activation. A
 failed install does not claim application readiness. Retain the complete source
 folder. No global installation, model call, credential/Git rewrite or automatic
 rollback. See configuration/CONTRACT.md and launcher/DEPENDENCIES.md.
+
+
+## Relative storage and operation ownership (TASK-20261019-038–040)
+
+All Saplingagent-managed configuration, dependency, cache and temporary output
+locations derive from the actual project directory. The sole configuration
+execution exception is a session-owned direct sibling, `../sapling-config-*`,
+whose canonical module stays under kernel/. No system temporary/home directory
+is selected as a fallback. Internal canonical absolute paths serve OS identity
+checks, never arbitrary browser-selected output destinations. Shell/native/direct
+Node install/login/start entrypoints bind their managed temp and cache environment
+to the project; the B process binds its own transient caches to its sibling.
+The returning A rebinds to project storage before deleting B. Existing user account
+sources may be read on request; customer Agent Full Access is unchanged.
+
+Direct legacy install/login operations now participate in the shared kernel lease
+and require the project offline. Setup/profile ledger writers share an exclusive
+receipt and atomic publication. Live/unknown locks are retained with actionable
+errors. Symlinked managed output ancestors are refused before external writes.
+See configuration/CONTRACT.md and launcher/CONTRACT.md for sibling ownership,
+rename, native replacement and cleanup details; docs/configuration-storage.html
+is the human guide. OS-managed browser/system-tool behavior is not a project
+storage promise.

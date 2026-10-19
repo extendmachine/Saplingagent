@@ -400,3 +400,9 @@ All platform implementations, AI setup website, engine adapters, runtime manager
 ### Updating from historical kernel numbers
 
 Old0.90/0.91/0.92 updaters misread0.9.4 as a downgrade. Use the new updater once from an isolated in-folder download with an explicit target, retaining conflicts, backups and customer files. See [one-time version migration](docs/kernel-version-migration.html). Do not overwrite your whole app or regenerate its baseline.
+
+
+Configuration storage: temporary setup runs in a visible, session-owned
+`../sapling-config-*` folder beside the project and is cleaned after Finish setup.
+Persistent settings, credentials, tools and caches remain project-local.
+See [storage and process locks](docs/configuration-storage.html).

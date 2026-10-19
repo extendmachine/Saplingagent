@@ -98,3 +98,13 @@ bootstrap if Node is absent and does not need Git Bash for daily activation. A
 failed install does not claim application readiness. Retain the complete source
 folder. No global installation, model call, credential/Git rewrite or automatic
 rollback. See configuration/CONTRACT.md and launcher/DEPENDENCIES.md.
+
+
+TASK038–040: configuration helpers are direct siblings of the canonical project,
+not OS-temp copies. Ensure the project parent is writable. Complete setup and wait
+for the matching cleanup receipt; do not manually delete a live helper. Project
+cache/temp/config output remains local and direct installer/login entrypoints use
+shared operation leases. Preserve stale/unknown ownership records for inspection.
+This changes placement within kernel0.9.4; existing old external sessions should
+finish through their original process before updating. No automatic customer
+baseline regeneration or account/Git rewrite. See docs/configuration-storage.html.

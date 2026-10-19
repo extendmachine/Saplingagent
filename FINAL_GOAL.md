@@ -64,7 +64,7 @@ The user's current explicit instructions take priority within the project. This 
 
 ## Customer-local setup and launcher (0.9.3)
 
-The explicit owner workflow is script → local minimal kernel → copy a self-contained configuration capsule from kernel to a private external temporary folder → configuration B while original entry A exits → save identity/icon/AI settings, stop owned project processes, rename the full folder and compile the tiny native launcher → B hands back to A at the actual project root, exits, then A deletes its verified external capsule → user opens the app. The app checks and installs missing or changed local dependencies before starting the application. Normal app launches do not recreate the configuration capsule.
+The explicit owner workflow is script → local minimal kernel → copy a self-contained configuration capsule from kernel to a private temporary sibling folder → configuration B while original entry A exits → save identity/icon/AI settings, stop owned project processes, rename the full folder and compile the tiny native launcher → B hands back to A at the actual project root, exits, then A deletes its verified external capsule → user opens the app. The app checks and installs missing or changed local dependencies before starting the application. Normal app launches do not recreate the configuration capsule.
 
 Canonical management source and dependencies remain under kernel/ and in the complete project. Generated kernel/.cache/configuration contains the closed management backend and built frontend; a copied Node runtime lets the external B survive project renaming. B keeps configuration/data/authentication and build artifacts in the actual project, rebinds paths after moving, and uses an OS-assigned port. The external temporary execution and cleanup are explicitly owner-authorized. Only this project's owned services/authentication are stopped; existing destinations, unrelated processes, customer Git/data and original kernel baselines are preserved. A checks session ownership and waits for B exit before cleanup, including on Windows. Failed builds keep saved settings and the actual folder, with no automatic rollback. Native output is staged and replaced; unchanged executables are reused. The launcher remains a bootstrap for the accompanying source, not a packaged copy of business code or a global installation. Real Windows hardware/account acceptance remains separate from automated checks.
 
@@ -137,3 +137,14 @@ old distributed layout; restoring an explicit backup remains available.
 ## One kernel version (2026-10-19)
 
 The current version is **kernel0.9.4**. There is no separate product version. kernel/manifest.json is authoritative for display, setup, installation, maintenance and packaging. Old API/receipt field names can remain compatibility aliases, but they must not establish a second current version. Missing metadata is unavailable, not a hardcoded historical baseline. Keep old version records/backups factual and handle their numeric migration deliberately without hiding local edits. See contracts/release.md and docs/kernel-version-migration.html.
+
+
+Owner storage clarification (2026-10-19): configuration execution uses a visible
+`../sapling-config-*` directory beside the project. Persistent project configuration,
+credentials, dependencies, caches and output remain under the actual project; all
+managed destinations derive from this relative layout, with no hardcoded system
+temporary or user-home write location. Internal absolute OS identity checks and
+explicit read-only account imports remain valid. Existing customer Agent Full
+Access is unchanged. Locks must cover concurrent setup, install, rename, compilation
+and cleanup without retaining project handles across rename or deleting live or
+unrelated helper directories.
