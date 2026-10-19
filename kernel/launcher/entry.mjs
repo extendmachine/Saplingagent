@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID, randomBytes } from "node:crypto";
 import { createConfigurationServer } from "../services/ai-config/server.mjs";
+import {assertSetupAvailable} from "../contracts/kernel.mjs";
 import { ProjectLauncher, openExternal } from "./manager.mjs";
 import {
   json,
@@ -15,6 +16,7 @@ import {
 let root = await fs.realpath(
   process.env.SEED_ROOT || fileURLToPath(new URL("../../", import.meta.url)),
 );
+await assertSetupAvailable(root);
 let fingerprint = await managementFingerprint(root);
 let file = path.join(root, ".runtime/management-address.json"),
   lock = path.join(root, ".runtime/management.lock");
@@ -187,7 +189,14 @@ server = createConfigurationServer({
 });
 for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"])
   process.on(signal, () => void server.shutdown());
-server.listen(0, "127.0.0.1", async () => {
+const requestedPort = process.env.SAPLING_MANAGEMENT_PORT;
+if (requestedPort && (!/^\d+$/.test(requestedPort) || Number(requestedPort) < 1024 || Number(requestedPort) > 65535))
+  throw issue("PROJECT_MANAGEMENT_PORT", "The setup restart port is invalid.");
+server.on("error", async error => {
+  await dailyLog(root, "management_bind_failed", {code:error.code}).catch(()=>{});
+  await server.shutdown();
+});
+server.listen(requestedPort ? Number(requestedPort) : 0, "127.0.0.1", async () => {
   await publish();
   await dailyLog(root, "management_started", { pid: process.pid });
   const current = await existing();

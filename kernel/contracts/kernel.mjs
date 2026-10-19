@@ -121,7 +121,15 @@ export async function kernelStatus(root) {
 		};
 	}
 }
+export async function assertSetupAvailable(root) {
+  let job;
+  try { job=JSON.parse(await fs.readFile(path.join(root,'.runtime/project-finalization.json'),'utf8')); }
+  catch(error) { if(error.code==='ENOENT')return;throw new KernelError('PROJECT_BUSY','Inspect the setup restart lease before starting or installing.'); }
+  if(job?.schemaVersion!==1||typeof job.id!=='string'||!/^[a-f0-9-]{36}$/i.test(job.id)||process.env.SAPLING_SETUP_JOB!==job.id)
+    throw new KernelError('PROJECT_BUSY','Saved setup is restarting. Wait for it to finish; inspect .runtime/project-finalization.json if interrupted.');
+}
 export async function acquireKernelLock(root, purpose) {
+  await assertSetupAvailable(root);
 	let job;
 	try { job = JSON.parse(await fs.readFile(path.join(root, ".runtime/kernel/active-job.json"), "utf8")); }
 	catch (error) { if (error.code !== "ENOENT") throw new KernelError("KERNEL_BUSY", "Inspect the maintenance lease before starting."); }

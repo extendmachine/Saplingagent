@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { readConnections,defaultSelection,codexConnection,claudeConnections,openCodeConnections } from '../../contracts/ai-configuration.mjs';
 import { initializeDownloadedRecords } from './recipient-records.mjs';
 import { setup } from '../setup.mjs';
+import {assertSetupAvailable} from '../../contracts/kernel.mjs';
 import { codexBinary, claudeBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
 const t = (en, zh) => {
@@ -15,6 +16,7 @@ const t = (en, zh) => {
 };
 
 const root = path.resolve(fileURLToPath(new URL('../../../', import.meta.url)));
+await assertSetupAvailable(root);
 const windows = process.platform === 'win32';
 const platformName = windows ? 'windows' : 'macos';
 const launcher = 'Saplingagent.sh';
