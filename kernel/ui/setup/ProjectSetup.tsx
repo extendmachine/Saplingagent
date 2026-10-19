@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { restartedFinalization, setupAvailability, type SetupReadiness } from "./setup-flow";
 type T = (en: string, zh: string) => string;
 type Project = {
   name: string;
@@ -6,7 +7,7 @@ type Project = {
   projectId?: string;
   icon?: string | null;
 };
-type Snapshot = {
+type Snapshot = SetupReadiness & {
   kernelVersion?: string;
   root: string;
   canRename: boolean;
@@ -32,6 +33,10 @@ export function ProjectSetup({
   aiBusy = false,
   onDirectoryState,
   onPrepared,
+  onSaveSettings,
+  onValidateSettings,
+  aiDirty = false,
+  configurationRevision,
   children,
 }: {
   children?: React.ReactNode;
@@ -41,6 +46,10 @@ export function ProjectSetup({
   aiBusy?: boolean;
   onDirectoryState?: (state: { ready: boolean; busy: boolean }) => void;
   onPrepared?: () => Promise<void> | void;
+  onSaveSettings?: () => Promise<void>;
+  onValidateSettings?: () => void;
+  aiDirty?: boolean;
+  configurationRevision?: number;
 }) {
   const [state, setState] = useState<Snapshot | null>(null),
     [name, setName] = useState(""),
@@ -48,21 +57,27 @@ export function ProjectSetup({
     [icon, setIcon] = useState<string | null | undefined>(),
     [rename, setRename] = useState(true),
     [confirmedRename, setConfirmedRename] = useState(true),
+    [handoff, setHandoff] = useState<{ id: string; started: number } | null>(null),
+    [waitingLong, setWaitingLong] = useState(false),
+    [syncingRevision, setSyncingRevision] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   const initialized = useRef(false),
     localOperation = useRef(false),
+    previousRevision = useRef(configurationRevision),
     picker = useRef<HTMLInputElement>(null);
   const running = state?.job?.phase === "running";
   async function refresh() {
     const value: Snapshot = await request("project");
     setState(value);
+    if (["waiting-release", "restarting"].includes(value.finalization?.phase || "")) {
+      setHandoff((current) => current || { id: value.finalization!.id, started: Date.now() });
+    }
     if (!initialized.current) {
       setName(value.project.name);
       setFolder(value.project.folderName);
-      const renameFolder = value.canRename &&
-        (!value.directoryReady || value.project.folderName === value.root.split(/[\\/]/).pop());
+      const renameFolder = value.canRename;
       setRename(renameFolder);
       setConfirmedRename(renameFolder);
       initialized.current = true;
@@ -74,9 +89,9 @@ export function ProjectSetup({
     let timer: ReturnType<typeof setTimeout>;
     async function poll() {
       try {
-        if (!stopped && !localOperation.current) await refresh();
+        if (!stopped && !localOperation.current && !handoff) await refresh();
       } catch (e) {
-        if (!stopped && !localOperation.current) setError((e as Error).message);
+        if (!stopped && !localOperation.current && !handoff) setError((e as Error).message);
       }
       if (!stopped) timer = setTimeout(poll, 1500);
     }
@@ -85,7 +100,39 @@ export function ProjectSetup({
       stopped = true;
       clearTimeout(timer);
     };
-  }, []);
+  }, [handoff]);
+  useEffect(() => {
+    if (!handoff) return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    async function pollRestart() {
+      try {
+        const response = await fetch("/health/project-launcher", { cache: "no-store", signal: AbortSignal.timeout(3000) });
+        if (response.ok && restartedFinalization(await response.json(), handoff!.id)) {
+          if (!stopped) window.location.reload();
+          return;
+        }
+      } catch {
+        // The old management process must exit. Connection loss is expected
+        // until the external helper starts the new management instance.
+      }
+      if (!stopped) {
+        if (Date.now() - handoff!.started > 120_000) setWaitingLong(true);
+        timer = setTimeout(pollRestart, 1000);
+      }
+    }
+    void pollRestart();
+    return () => { stopped = true; clearTimeout(timer); };
+  }, [handoff]);
+  useEffect(() => {
+    if (previousRevision.current === configurationRevision) return;
+    previousRevision.current = configurationRevision;
+    if (handoff || localOperation.current) return;
+    let stopped = false;
+    setSyncingRevision(true);
+    void refresh().catch((e) => { if (!stopped) setError((e as Error).message); }).finally(() => { if (!stopped) setSyncingRevision(false); });
+    return () => { stopped = true; };
+  }, [configurationRevision, handoff]);
   async function action(work: () => Promise<void>) {
     localOperation.current = true;
     setBusy(true);
@@ -93,6 +140,7 @@ export function ProjectSetup({
     setNotice("");
     try {
       await work();
+      if (!localOperation.current) return;
       await refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -101,8 +149,8 @@ export function ProjectSetup({
       setBusy(false);
     }
   }
-  async function prepare() {
-    await request("project/prepare", {
+  async function saveIdentity() {
+    await request("project/save", {
       name,
       folderName: folder,
       renameFolder: rename && !!state?.canRename,
@@ -114,6 +162,24 @@ export function ProjectSetup({
     setFolder(value.project.folderName);
     setConfirmedRename(rename);
     await onPrepared?.();
+  }
+  function beginFinalization() {
+    // Validate while inputs are still enabled. HTML validation deliberately
+    // ignores controls inside the disabled fieldset used during the handoff.
+    try { onValidateSettings?.(); }
+    catch (e) { setError((e as Error).message); return; }
+    void action(finalize);
+  }
+  async function finalize() {
+    await saveIdentity();
+    await onSaveSettings?.();
+    const result = await request("project/finalize", {});
+    if (!result.finalization?.id)
+      throw Error(t("Restart was not accepted. Reload status before retrying.", "重启未被确认接收，请刷新状态后重试。"));
+    setHandoff({ id: result.finalization.id, started: Date.now() });
+    // The accepted handoff closes this server. Do not refresh with its expiring
+    // configuration token; only the unauthenticated readiness check is valid.
+    localOperation.current = false;
   }
   async function choose(file?: File) {
     if (!file) return;
@@ -153,11 +219,11 @@ export function ProjectSetup({
     });
   }
   const dirty = !!state && (name !== state.project.name || folder !== state.project.folderName || icon !== undefined || rename !== confirmedRename);
-  const directoryReady = !!state?.directoryReady && !dirty;
-  const disabled = busy || running || aiBusy || !state;
+  const availability = setupAvailability(state, dirty, aiDirty || syncingRevision, aiReady);
+  const disabled = busy || running || aiBusy || !!handoff || !state;
   useEffect(() => {
-    onDirectoryState?.({ ready: directoryReady, busy: busy || !!running });
-  }, [directoryReady, busy, running, onDirectoryState]);
+    onDirectoryState?.({ ready: availability.configureAI, busy: busy || !!running || !!handoff });
+  }, [availability.configureAI, busy, running, handoff, onDirectoryState]);
   const preview =
     icon === undefined
       ? state?.project.icon
@@ -248,14 +314,14 @@ export function ProjectSetup({
           <input
             type="checkbox"
             disabled={
-              disabled || !state?.canRename || state.runtime.phase !== "stopped"
+              disabled || !state?.canRename
             }
             checked={rename}
             onChange={(e) => setRename(e.target.checked)}
           />
           {t(
-            "Rename this folder now, before configuring AI (never replaces an existing folder)",
-            "现在重命名文件夹，再配置 AI（不会覆盖已有文件夹）",
+            "Apply this folder name when saving and restarting (never replaces an existing folder)",
+            "保存并重启时应用此文件夹名称（不会覆盖已有文件夹）",
           )}
         </label>
         {state && !state.canRename && (
@@ -271,55 +337,64 @@ export function ProjectSetup({
           disabled={disabled || !name}
           onClick={() =>
             void action(async () => {
-              await prepare();
+              await saveIdentity();
               setNotice(
                 t(
-                  "Project folder confirmed. Configure AI below, then compile the launcher. Building and finishing setup will keep this folder in place.",
-                  "项目目录已确认。请在下方配置 AI，再编译启动器；构建和完成配置时不会再重命名文件夹。",
+                  "Project settings saved. Configure AI below, then save settings and wait for restart before exporting your app.",
+                  "项目设置已保存。请在下方完成 AI 配置，再保存设置并等待重启，最后导出应用。",
                 ),
               );
             })
           }
         >
-          {t("Confirm folder & continue", "确认文件夹并继续")}
+          {t("Save project settings", "保存项目设置")}
         </button>
-        {directoryReady && <p className="hint" role="status">{t("Final project folder confirmed. AI configuration will use this location.", "最终项目目录已确认，AI 配置将使用此位置。")}</p>}
-        {dirty && <p className="note">{t("Project settings changed. Confirm the folder again before configuring AI or building.", "项目设置已更改，请再次确认目录，再配置 AI 或构建。")}</p>}
+        {availability.configureAI && <p className="hint" role="status">{t("Settings are saved at the current location. The folder will move only during Save settings & restart.", "设置已保存到当前位置，文件夹仅在“保存设置并重启”时移动。")}</p>}
+        {dirty && <p className="note">{t("You have unsaved project changes. Save them before leaving this page.", "项目有未保存的修改，离开页面前请保存。")}</p>}
       </section>
-      {!directoryReady && <p className="message progress" role="status">{t("Step 1: confirm the final project folder to enable AI setup. Existing credentials and conversations are retained.", "第 1 步：先确认最终项目目录，再进行 AI 配置；已有凭据和对话保留。")}</p>}
-      <fieldset className="ai-setup-fields" disabled={!directoryReady || busy || running || !state} aria-label={t("AI connection setup", "AI 接入配置")}>
+      {!availability.configureAI && <p className="message progress" role="status">{t("Save the project settings above to enable AI setup. No folder is moved yet.", "先保存上方项目设置，再配置 AI；此时不会移动文件夹。")}</p>}
+      <fieldset className="ai-setup-fields" disabled={!availability.configureAI || busy || !!handoff || running || !state} aria-label={t("AI connection setup", "AI 接入配置")}>
         {children}
       </fieldset>
+      <section className="card project-finalize" aria-label={t("Save settings and restart", "保存设置并重启")}>
+        <div className="eyebrow">{t("3 · SAVE & RESTART", "3 · 保存并重启")}</div>
+        <h3>{t("Finish your changes, then restart", "完成修改，保存后等待重启")}</h3>
+        <p className="hint">{t("Finish project and AI changes first. Save settings, wait for the app to restart, then export the app below. Keep this page open while the external helper closes project processes, applies the folder name and starts services again.", "请先完成项目和 AI 配置修改，保存设置后等待应用重启，再在下方导出应用。临时辅助进程将在文件夹外运行，关闭项目进程、应用文件夹名称并重新启动服务，请保持此页面打开。")}</p>
+        <ol className="setup-sequence"><li>{t("Finish changes", "完成修改")}</li><li>{t("Save settings & restart", "保存设置并重启")}</li><li>{t("Wait for restart", "等待重启")}</li><li>{t("Export app", "导出应用")}</li></ol>
+        <button disabled={disabled || !name || (!aiReady && !aiDirty)} onClick={beginFinalization}>{t("Save settings & restart", "保存设置并重启")}</button>
+        {handoff && <div className="message progress restart-wait" role="status" aria-live="polite"><strong>{t("Settings saved. Waiting for restart…", "设置已保存，正在等待重启…")}</strong><p>{t("The connection may briefly disappear. This page will reload after the new service reports its result. Do not repeat Save or export the app yet.", "连接会短暂中断；新服务返回结果后，页面将自动刷新。请勿重复保存，暂时不要导出应用。")}</p>{waitingLong && <p>{t("Restart is taking longer than expected. Keep waiting, or use the project script / launcher diagnostics if the page does not return. The settings have not been discarded; a failed rename does not replace an existing folder.", "重启耗时较长，请继续等待；若页面始终未恢复，可使用项目脚本／启动器进行诊断。已保存设置不会丢弃，改名失败不会覆盖已有文件夹。")}</p>}</div>}
+        {!handoff && state?.finalization?.phase === "failed" && <div className="message error" role="alert">{state.finalization.error?.message || state.finalization.message || t("Setup restart failed. Review the current folder and retry after resolving the reported issue.", "配置重启失败，请核对当前文件夹，处理错误后重试。")}</div>}
+        {!handoff && availability.exportApp && <p className="message success" role="status">{t("Restart verified. You can now export your app.", "重启已验证，现在可以导出应用。")}</p>}
+      </section>
       <section className="card project-setup">
         <div className="project-build">
           <div className="eyebrow">
-            {t("3 · BUILD ON THIS DEVICE", "3 · 在本机编译")}
+            {t("4 · EXPORT ON THIS DEVICE", "4 · 在本机导出")}
           </div>
           <h3>
             {t("A small launcher, editable source", "小型启动器，可编辑源码")}
           </h3>
           <p className="hint">
             {t(
-              "First connect your AI above. Building installs application dependencies and a verified local Go compiler. It does not send a model prompt. Failed builds retain the previous launcher.",
-              "请先在上方配置 AI。构建时安装应用依赖和经过校验的本地 Go 编译器，不发送模型请求；构建失败保留原启动器。",
+              "Export only after saving and verified restart. Export installs application dependencies and a verified local Go compiler, then builds the native launcher. It does not send a model prompt. Failed builds retain the previous launcher.",
+              "保存设置并验证重启后再导出。导出时安装应用依赖和经过校验的本地 Go 编译器，并生成原生启动器；不发送模型请求，构建失败保留原启动器。",
             )}
           </p>
           {!aiReady && (
             <p className="note">
               {t(
-                "Step 2: save and select an AI scheme above before compiling.",
+                "Step 2: save and select an AI scheme above.",
                 "第 2 步：请先在上方保存并选择一个 AI 方案。",
               )}
             </p>
           )}
+          {!availability.exportApp && <p className="note">{t("Finish your changes, save settings and wait for a verified restart before exporting.", "请先完成修改、保存设置并等待重启验证，再导出应用。")}</p>}
           <div className="buttons">
             <button
               disabled={
                 disabled ||
-                !directoryReady ||
-                !aiReady ||
-                !name ||
-                state?.runtime.phase !== "stopped"
+                !availability.exportApp ||
+                !name
               }
               onClick={() =>
                 void action(async () => {
@@ -328,8 +403,8 @@ export function ProjectSetup({
               }
             >
               {state?.launcher
-                ? t("Rebuild app & launcher", "重新构建应用与启动器")
-                : t("Install app & compile launcher", "安装应用并编译启动器")}
+                ? t("Export app again", "重新导出应用")
+                : t("Export app", "导出应用")}
             </button>
             {state?.launcher && (
               <button

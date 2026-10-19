@@ -7,3 +7,4 @@
 .ai-setup-fields{border:0;padding:0;margin:0;min-width:0}.ai-setup-fields:disabled .layout{opacity:.65}
 
 .credential-feedback .message{margin:14px 0 0}.message.progress{background:#edf3e9;border:1px solid #d8e4d2;color:#3b6045}
+.setup-sequence{display:flex;flex-wrap:wrap;gap:10px 30px;padding-left:22px;margin:18px 0 22px;font-size:13px;color:#4d6755}.project-finalize h3{margin:10px 0}.project-finalize>.hint{font-size:12px;max-width:850px}.restart-wait{margin:20px 0 0}.restart-wait p{margin:8px 0 0}.project-finalize>.success,.project-finalize>.error{margin:20px 0 0}
