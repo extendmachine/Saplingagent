@@ -1,6 +1,6 @@
 # Standalone React AI setup page
 
-TASK-20261012-002, Codex. Separate React/Vite entry; uses the existing frontend lockfile and adds no dependency. `node front/node_modules/vite/bin/vite.js build --config kernel/ui/setup/vite.config.mjs` emits only kernel/.cache/setup. backend/ai-config serves the compiled page on its own loopback port with the public setup HTTP contract. No Vite dev server/chat/auth prerequisites. Root main chat remains unchanged except using the saved default engine for a fresh session.
+Separate React/Vite entry, fully contained in the kernel and using kernel/package-lock.json without application dependencies. `node kernel/node_modules/vite/bin/vite.js build --config kernel/ui/setup/vite.config.mjs` emits only kernel/.cache/setup. kernel/services/ai-config serves the compiled page on its own loopback port with the public setup HTTP contract. No Vite dev server/chat/auth prerequisites. Root main chat remains unchanged except using the saved default engine for a fresh session.
 
 English default; follows launcher zh or user language toggle. Account/API tabs, saved schemes, explicit default activation, custom API base URL/protocol/model/key, optional discovery and model limits. Never read a saved key into the browser; blank edit retains it, typed keys are cleared after save/finish. No localStorage/sessionStorage for account or key. Official login opens separate provider page and polls completion; blocked popup has an explicit link. Finish setup closes only configuration service. No automatic paid model test, restart, send or conversion of existing sessions. UI references front CONTRACT and kernel/services/ai-config/CONTRACT; real provider/hardware acceptance stays pending.
 
@@ -13,3 +13,5 @@ Three steps: name/folder/icon; AI schemes; local build and runtime management. P
 ## Credential import feedback (TASK-20261018-007)
 
 Local and uploaded credential imports show pending text on the clicked button and a live status directly inside that engine's import panel. Success and errors stay beside the controls, including on the longer project-setup page, rather than above step1 outside the viewport. Existing Codex credentials offer Use saved account or an explicit replacement retry. Other actions clear the scoped result; no credential contents enter feedback. The HTTP and replacement contracts are unchanged; a successful import confirms storage/selection only, not provider access.
+
+Maintainer checks: run `npm --prefix kernel run typecheck` and `npm --prefix kernel run build:setup`. React types and the compiler are kernel-local development dependencies. Installation builds through the kernel Vite dependency; it does not require the application frontend.

@@ -45,7 +45,11 @@ func main() {
 	if runtime.GOOS == "windows" {
 		platform = "windows"
 	}
-	b, err := os.ReadFile(filepath.Join(root, "config", platform+".json"))
+	b, err := os.ReadFile(filepath.Join(root, "kernel", "config", platform+".json"))
+	// Source recovery can restore a pre-containment kernel; keep that launcher usable.
+	if os.IsNotExist(err) {
+		b, err = os.ReadFile(filepath.Join(root, "config", platform+".json"))
+	}
 	if err != nil || json.Unmarshal(b, &cfg) != nil {
 		problem("Project configuration is missing. Restore the complete project folder.")
 		return

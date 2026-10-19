@@ -37,3 +37,11 @@ test('contained installations reject updating backwards into distributed source 
 test('contained ownership still excludes private installed and historical task records',()=>{
  for(const file of ['kernel/services/ai-config/ai-tasks/handoff.md','kernel/.cache/setup/index.html','kernel/node_modules/react/index.js','kernel/data/customer.json','kernel/local-secrets/auth.json'])assert.equal(isContainedKernelPath(file),false,file);
 });
+
+test('old native launchers keep compatible Node metadata; canonical device defaults stay in kernel',async()=>{
+ for(const platform of ['macos','windows']){
+  const canonical=JSON.parse(await fs.readFile(path.join(root,'kernel/config/'+platform+'.json')));
+  const bridge=JSON.parse(await fs.readFile(path.join(root,'config/'+platform+'.json')));
+  assert.equal(bridge.nodeVersion,canonical.nodeVersion);assert.deepEqual(Object.keys(bridge).sort(),['$comment','nodeVersion']);
+ }
+});

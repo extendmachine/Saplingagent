@@ -52,7 +52,7 @@ can still modify the kernel with current-user Full Access: this is organization 
 update guidance, not a permission restriction or path lock.
 
 The public root Bash entries and a finite set of old import/command paths remain
-small forwarding adapters only. They contain no platform implementation or setup
+small forwarding adapters and two Node-version metadata files for existing native launchers only. They contain no platform implementation or setup
 page. `kernel/compat/paths.mjs` enumerates these compatibility entries, necessary so
 existing applications and the shipped0.9.2 updater keep working. New code uses
 canonical kernel paths. The schema3 manifest adds `layoutVersion:1`, restricts

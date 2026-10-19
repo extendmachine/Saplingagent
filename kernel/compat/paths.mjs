@@ -16,6 +16,8 @@ export const PUBLIC_BRIDGE_FILES = [
   "backend/runtime-manager/ports.mjs",
   "backend/runtime-manager/server.mjs",
   "backend/runtime-manager/services.mjs",
+  "config/macos.json",
+  "config/windows.json",
   "contracts/ai-configuration.mjs",
   "contracts/codex-rpc.mjs",
   "contracts/engine-dependencies.mjs",

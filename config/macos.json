@@ -1,0 +1,4 @@
+{
+  "$comment": "Compatibility metadata for existing native launchers. Canonical defaults: kernel/config/macos.json",
+  "nodeVersion": "24.21.0"
+}

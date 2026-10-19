@@ -41,7 +41,7 @@ Local App Server open source components do not need to be purchased separately, 
 Official public basis (2026-10-09 / TASK020; documents do not need to be logged in, and the actual call needs to be authenticated by yourself; current authentication/package document): https://learn.chatgpt.com/docs/auth, https://learn.chatgpt.com/docs/pricing. Business/hosting requires formal SIWC, and the project has not been realized; current qualification and partner scope: https://developers.openai.com/siwc/quickstart.
 
 ## Persistent runtime control
-`scripts/dev.mjs` now supervises frontend and backends using backend/runtime-manager. Public frontPort is a persistent same-origin gateway; internal Vite uses vitePort (default5174). Restart app reloads selected source; Restart backend preserves frontend. Optional services are discovered from the selected checkout. Recovery route `/__saplingagent/runtime` stays available during failure; manager/launcher/port changes require the Mac launcher. See kernel/services/runtime-manager/CONTRACT.md and DEPLOY.md.
+`scripts/dev.mjs` now supervises frontend and backends using kernel/services/runtime-manager. Public frontPort is a persistent same-origin gateway; internal Vite uses vitePort (default5174). Restart app reloads selected source; Restart backend preserves frontend. Optional services are discovered from the selected checkout. Recovery route `/__saplingagent/runtime` stays available during failure; manager/launcher/port changes require the Mac launcher. See kernel/services/runtime-manager/CONTRACT.md and DEPLOY.md.
 
 ## Unified entry contract (TASK-20261011-023)
 
@@ -57,7 +57,7 @@ Native Codex/OpenCode/npm/curl output is not translated. Provider setup remains 
 
 ## Windows extension (TASK028)
 
-The same Saplingagent.sh entry now routes Windows Git Bash to kernel/scripts/windows/bootstrap.sh. Both platform entries share kernel/scripts/launcher/cli.mjs; this directory retains Mac bootstrap/codex wrappers and a compatibility CLI import. kernel/config/macos.json remains the Mac version configuration. See ../windows/README.md and ../../docs/windows-install.html for native Windows x64 setup and honest pending validation. The source ZIP exporter is now cross-platform, with a separate package-windows.mjs target; no business API or Full Access change.
+The same Saplingagent.sh entry now routes Windows Git Bash to kernel/scripts/windows/bootstrap.sh. Both platform entries share kernel/scripts/launcher/cli.mjs; this directory retains Mac bootstrap/codex wrappers and a compatibility CLI import. kernel/config/macos.json remains the Mac version configuration. See ../windows/README.md and ../../../docs/windows-install.html for native Windows x64 setup and honest pending validation. The source ZIP exporter is now cross-platform, with a separate package-windows.mjs target; no business API or Full Access change.
 
 ## Native architecture detection (TASK032)
 
@@ -65,7 +65,7 @@ Bootstrap and codex.sh check hw.optional.arm64 before uname so Apple Silicon use
 
 ## Standalone AI setup (TASK-20261012-004; supersedes earlier selector/prerequisite descriptions)
 
-Menu Configure AI now opens an independent project-local React page through the shared launcher CLI and backend/ai-config. Installation must be complete; Node builds that UI with existing front dependencies, then an owned loopback service opens the browser. `configure --no-open` prints its URL instead. Finish setup returns to the Bash menu; tab close alone does not terminate the service. Windows configure runs directly through PowerShell, without winpty; native OAuth/device login uses an owned Codex App Server process.
+Menu Configure AI now opens an independent project-local React page through the shared launcher CLI and kernel/services/ai-config. Installation must be complete; Node builds that UI with independent kernel dependencies, then an owned loopback service opens the browser. `configure --no-open` prints its URL instead. Finish setup returns to the Bash menu; tab close alone does not terminate the service. Windows configure runs directly through PowerShell, without winpty; native OAuth/device login uses an owned Codex App Server process.
 
 Account tab uses the official Codex browser/device-code flow. API tab saves named custom endpoint/protocol/model/key schemes. Key files stay in local-secrets/api-keys; profiles in local-secrets/ai-config; account credentials in local-secrets/codex. No global import, automatic prompt or running-service restart. Saved OpenCode/API schemes satisfy startup access without requiring ChatGPT login. Explicit login/opencode commands remain recovery fallbacks; their legacy storage is retained. Diagnostics checks the selected scheme or legacy Codex login, without proving quota/network. Restart and use a new conversation after changing providers.
 

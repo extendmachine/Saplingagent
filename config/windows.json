@@ -1,0 +1,4 @@
+{
+  "$comment": "Compatibility metadata for existing native launchers. Canonical defaults: kernel/config/windows.json",
+  "nodeVersion": "24.21.0"
+}
