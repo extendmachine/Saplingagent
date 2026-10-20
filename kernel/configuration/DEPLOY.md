@@ -8,6 +8,14 @@ starts B and exits. Complete settings and choose Save & build app, wait for succ
 then Finish setup. Open the resulting .app/.exe inside the full project folder.
 It checks and installs missing/changed dependencies before starting the app.
 
+On macOS the generated app remains visible in the Dock. Save & build app first
+asks that project's app to exit and waits for its startup worker and process
+handles to close, then stops the existing project runtime before rename or
+replacement. A busy/uncertain native process leaves the saved settings and current
+folder in place with an error; inspect it and retry. After Finish setup, open the
+new app normally. Dock Quit stops that project's existing service cluster through
+the launcher; it does not stop other applications.
+
 Project data, settings, toolchains and output stay inside the project. Only the
 running management capsule is temporarily external beside the project under
 explicit owner policy. No system-temp destination, home installation or arbitrary

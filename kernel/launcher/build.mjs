@@ -285,13 +285,6 @@ export async function ensureGo(root, onProgress = () => {}) {
     await fs.rm(stage, { recursive: true, force: true });
   }
 }
-const xml = (s) =>
-  s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
 export async function publishArtifact(
   root,
   stage,
@@ -375,11 +368,13 @@ async function compileLauncherUnlocked(
   const source = Buffer.concat(
     await Promise.all(sources.map((f) => fs.readFile(path.join(sourceDir, f)))),
   );
+  const macShell = path.join(sourceDir, "macos.applescript");
   const icon = project.icon
     ? await fs.readFile(path.join(root, project.icon))
     : Buffer.alloc(0);
   const identity = createHash("sha256")
     .update(source)
+    .update(await fs.readFile(macShell))
     .update(
       await fs.readFile(path.join(root, "kernel/launcher/toolchain.json")),
     )
@@ -418,15 +413,34 @@ async function compileLauncherUnlocked(
   let artifact = path.join(base, relative),
     binary = artifact;
   if (process.platform === "darwin") {
+    // The system applet owns the Dock lifetime; the Go executable is its small
+    // cancellable dependency/bootstrap helper. No Xcode/CLT download is required.
+    await command(root, "/usr/bin/osacompile", ["-s", "-o", artifact, macShell]);
     binary = path.join(artifact, "Contents/MacOS/launcher");
     await fs.mkdir(path.dirname(binary), { recursive: true });
     await fs.mkdir(path.join(artifact, "Contents/Resources"), {
       recursive: true,
     });
-    await fs.writeFile(
-      path.join(artifact, "Contents/Info.plist"),
-      `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleExecutable</key><string>launcher</string><key>CFBundleName</key><string>${xml(project.name)}</string><key>CFBundleDisplayName</key><string>${xml(project.name)}</string><key>CFBundleIdentifier</key><string>local.saplingagent.p${project.projectId.replaceAll("-", "")}</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleVersion</key><string>1</string><key>LSUIElement</key><true/><key>CFBundleIconFile</key><string>project.icns</string></dict></plist>`,
-    );
+    const info = path.join(artifact, "Contents/Info.plist");
+    const plist = JSON.parse(await command(root, "/usr/bin/plutil", ["-convert", "json", "-o", "-", info]));
+    Object.assign(plist, {
+      CFBundleName: project.name,
+      CFBundleDisplayName: project.name,
+      CFBundleIdentifier: `local.saplingagent.p${project.projectId.replaceAll("-", "")}`,
+      CFBundleVersion: "1",
+      LSUIElement: false,
+      OSAAppletStayOpen: true,
+    });
+    // osacompile emits generic permissions for every scripting capability.
+    // This app only runs its own helper and never controls another application.
+    for (const key of Object.keys(plist))
+      if (key.endsWith("UsageDescription")) delete plist[key];
+    if (icon.length) {
+      plist.CFBundleIconFile = "project.icns";
+      delete plist.CFBundleIconName;
+    }
+    await writeJSON(info, plist);
+    await command(root, "/usr/bin/plutil", ["-convert", "xml1", info]);
     if (icon.length) {
       const set = path.join(base, "project.iconset");
       await fs.mkdir(set);
@@ -536,6 +550,8 @@ async function compilationLease(file,owner,message) {
 // Separate cross-process lease: two setup instances must not replace one artifact.
 export async function compileLauncher(root,project,options={}) {
   root=await fs.realpath(root);
+  const {closeDockForMaintenance}=await import('./dock.mjs');
+  await closeDockForMaintenance(root);
   const runtime=path.join(root,'.runtime');await fs.mkdir(runtime,{recursive:true});
   if((await fs.lstat(runtime)).isSymbolicLink())throw issue('PROJECT_STORAGE_LOCATION','Launcher runtime must be an ordinary project-local directory.');
   const file=path.join(runtime,'launcher-compile.lock'),operation=path.join(runtime,'kernel-operation.lock'),id=randomUUID();
@@ -546,6 +562,9 @@ export async function compileLauncher(root,project,options={}) {
     const setup=await json(path.join(runtime,'project-finalization.json'));
     if(setup && (!options.setupId||setup.id!==options.setupId||setup.pid!==process.pid))throw issue('LAUNCHER_BUILD_BUSY','A different setup operation owns this project. Wait before compiling.');
     if(await exists(path.join(runtime,'kernel/active-job.json')))throw issue('LAUNCHER_BUILD_BUSY','Kernel maintenance is active. Wait before compiling.');
+    // Recheck after claiming the operation lease: a reopen may have raced the
+    // first close, but no new startup can now register against this project.
+    await closeDockForMaintenance(root);
     for(const name of ['macos-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])if(await exists(path.join(runtime,name)))throw issue('LAUNCHER_BUILD_BUSY','Dependency installation is active. Wait before compiling.');
     await prepareBuildStorage(root);
     return await compileLauncherUnlocked(root,project,options);

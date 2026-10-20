@@ -18,3 +18,9 @@ Persistent event logs use logs/project-launcher/project-launcher-YYYY-MM-DD.log,
 settings are read/written only in the project's local-secrets. See CONTRACT.md and
 DEPLOY.md. This service is temporary management, not a business process in Restart
 app; its explicit start/close/cleanup handshake owns its lifetime.
+
+Before saving/building a renamed or replaced app, this service calls the public
+launcher native-close contract to release the resident macOS Dock process and any
+in-progress startup worker. It then uses the existing runtime stop/drain operation.
+Failures preserve settings and the current folder for inspection/retry. The Dock
+app is launched by the user after Finish setup; no new application service is added.

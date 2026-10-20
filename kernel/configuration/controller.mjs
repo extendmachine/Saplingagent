@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {ProjectLauncher,readProject} from '../launcher/manager.mjs';
+import {closeDockForMaintenance} from '../launcher/public.mjs';
 import {json,writeJSON,issue,exists} from '../launcher/io.mjs';
 import {relocationLedger,completeRelocation} from '../launcher/relocation.mjs';
 import {acquireConfigurationWrite} from '../contracts/configuration-write.mjs';
@@ -9,8 +10,8 @@ import {saveSession,waitForExit} from './session.mjs';
 import {moveProject} from './move.mjs';
 
 export class ConfigurationController extends ProjectLauncher {
-  constructor(root,{session,onRelocate=async()=>{},...options}={}) {
-    super(root,options);this.session=session;this.onRelocate=onRelocate;this.configurationHost='external';
+  constructor(root,{session,onRelocate=async()=>{},closeNative=closeDockForMaintenance,...options}={}) {
+    super(root,options);this.session=session;this.onRelocate=onRelocate;this.closeNative=closeNative;this.configurationHost='external';
   }
   async state(){return {...await super.state(),configurationHost:'external'};}
   async openProject(){throw issue('CONFIGURATION_FINISH_REQUIRED','Finish setup, then open the app to check dependencies and start the project.');}
@@ -30,6 +31,10 @@ export class ConfigurationController extends ProjectLauncher {
     try {
       this.progress('Waiting for the original launcher to exit…');
       await waitForExit(this.session.bootstrapPids||[]);
+      // Release the resident Dock app and any startup worker before taking the
+      // setup leases; the worker may still own a kernel operation lease itself.
+      this.progress('Closing this project’s app before saving and building…');
+      await this.closeNative(this.root);
       this.progress('Stopping this project before saving and building…');
       const runtime=await this.runtime();
       await this.stop({reserved:true});
@@ -47,6 +52,7 @@ export class ConfigurationController extends ProjectLauncher {
       const ledger=await relocationLedger(this.root);
       // Recheck under both leases: a competing app start could have won the
       // operation lock after the earlier idle check.
+      await this.closeNative(this.root);
       await assertKernelOffline(this.root);
       if(await exists(path.join(this.root,'.runtime/kernel/active-job.json')))throw issue('PROJECT_BUSY','Finish kernel maintenance first.');
       if(await exists(path.join(this.root,'.runtime/launcher-compile.lock')))throw issue('PROJECT_BUSY','A launcher compilation still owns this folder. Wait for it to finish before saving or renaming.');

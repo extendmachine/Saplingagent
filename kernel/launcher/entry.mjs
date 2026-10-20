@@ -8,9 +8,19 @@ import {openConfiguration,findConfiguration} from '../configuration/bootstrap.mj
 import {finishConfiguration} from '../configuration/handoff.mjs';
 import {ensureApplicationDependencies} from './dependencies.mjs';
 import {dailyLog} from './io.mjs';
+import {statusPageOpener,launchProgress} from './status.mjs';
 
 const root=await fs.realpath(process.env.SEED_ROOT||fileURLToPath(new URL('../../',import.meta.url)));
 try{
+  const dockAction=process.argv.find(value=>/^--dock-(start|open|stop|status)$/.test(value));
+  if(dockAction){
+    const {createDockController}=await import('./dock.mjs');
+    const arg=name=>process.argv[process.argv.indexOf(name)+1];
+    const owner={pid:Number(arg('--dock-pid')),nonce:arg('--dock-nonce')};
+    const dock=createDockController(root);
+    const result=await (dockAction==='--dock-stop'?dock.stop(owner):dockAction==='--dock-status'?dock.status(owner):dock.start(owner,{noOpen:process.env.SAPLING_NO_OPEN==='1'}));
+    console.log(result);
+  }else{
   const cleanup=process.argv.indexOf('--configuration-return');
   if(cleanup>=0){
     await finishConfiguration(root,path.resolve(process.argv[cleanup+1]));
@@ -18,22 +28,29 @@ try{
     await assertSetupAvailable(root);
     const noOpen=process.argv.includes('--no-open')||process.env.SAPLING_NO_OPEN==='1';
     if(process.argv.includes('--launch')){
+      launchProgress('checking');
       const configuration=await findConfiguration(root);
       if(configuration?.configurationHost==='external'){
         if(!noOpen)await openExternal(`http://127.0.0.1:${configuration.port}/`);
+        launchProgress('ready');
       }else{
-        await ensureApplicationDependencies(root,{onProgress:message=>console.log(message)});
+        let repairing=false;
+        await ensureApplicationDependencies(root,{onProgress:message=>{if(!repairing){repairing=true;launchProgress('installing');}console.log(message);}});
+        launchProgress('starting');
         const controller=new ProjectLauncher(root);
-        const state=await controller.startConfiguredProject();
-        if(!noOpen)await openExternal(state.url);
-        console.log('Project: '+state.url);
+        const onRuntime=statusPageOpener(openExternal,{noOpen});
+        const state=await controller.startConfiguredProject({onRuntime});
+        await onRuntime(state);
+        launchProgress('ready');
       }
     }else{
       const address=await openConfiguration(root,{noOpen});
       console.log(`Project setup: http://127.0.0.1:${address.port}/`);
     }
   }
+  }
 }catch(error){
+  if(process.argv.includes('--launch'))launchProgress('failed');
   await dailyLog(root,'launcher_failed',{code:error.code||'LAUNCHER_FAILED'}).catch(()=>{});
   console.error(error.code||'LAUNCHER_FAILED',error.status?error.message:'The project launcher could not finish. Inspect logs/project-launcher/ and retry Saplingagent.sh.');
   process.exitCode=1;

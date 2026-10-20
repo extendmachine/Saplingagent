@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {json, writeJSON, issue, exists} from './io.mjs';
 import {nodeForRoot} from './build.mjs';
 import {relocationLedger} from './relocation.mjs';
+import {assertKernelOffline} from '../contracts/kernel.mjs';
 
 const source = path.dirname(fileURLToPath(import.meta.url));
 const isInside = (root, file) => { const relative = path.relative(root, file); return relative && relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative); };
@@ -49,10 +50,13 @@ export async function beginFinalization(root, {project, management, language, fi
   for (const file of ['launcher-compile.lock','macos-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])
     if (await exists(path.join(root,'.runtime',file))) throw issue('PROJECT_BUSY','Finish dependency installation before restarting setup.');
   await relocationLedger(root); // Validate before any shutdown or physical move.
+  const {closeDockForMaintenance}=await import('./dock.mjs');
+  await closeDockForMaintenance(root);
   const id = randomUUID(), lease = path.join(root,'.runtime/project-finalization.json');
   const targetRoot = path.join(path.dirname(root), project.folderName);
   if (targetRoot !== root && await exists(targetRoot)) throw issue('PROJECT_FOLDER_EXISTS', 'The requested folder already exists. Choose another name.');
   const previous = await fs.open(lease,'wx',0o600).catch(error => { if(error.code==='EEXIST') throw issue('PROJECT_BUSY','A setup restart is already recorded. Inspect its status before retrying.'); throw error; });
+  const leaseIdentity=await previous.stat();
   let temp, child;
   const job = {schemaVersion:1,id,phase:'restarting',previousRoot:root,targetRoot,root,projectId:project.projectId,
     management, nodeRelative:path.relative(root,node),language:language==='zh'?'zh':'en',noOpen:process.env.SAPLING_NO_OPEN==='1',fingerprint,connectionsFingerprint,
@@ -62,6 +66,8 @@ export async function beginFinalization(root, {project, management, language, fi
     const operation=await fs.open(operationFile,'wx',0o600).catch(error=>{if(error.code==='EEXIST')throw issue('PROJECT_BUSY','A start or kernel operation is still active. Wait before restarting setup.');throw error;});
     try {await operation.writeFile(JSON.stringify({id,pid:process.pid,purpose:'setup-finalization',createdAt:job.createdAt})+'\n');} finally {await operation.close();}
     await previous.writeFile(JSON.stringify(job)+'\n'); await previous.close();
+    await closeDockForMaintenance(root);
+    await assertKernelOffline(root);
     await writeJSON(path.join(root,'.runtime/setup-finalization.json'),job);
     const tempBase=await fs.realpath(path.dirname(root));
     if(tempParent && await fs.realpath(tempParent)!==tempBase)throw issue('PROJECT_HELPER_LOCATION','Setup helpers must be direct siblings of this project.');
@@ -89,7 +95,8 @@ export async function beginFinalization(root, {project, management, language, fi
     await previous.close().catch(()=>{});
     // A helper that has acknowledged may already be waiting. Cancel only through its own flag.
     if(temp) {await fs.writeFile(path.join(temp,'cancel'),'1').catch(()=>{});if(!child?.pid)await fs.rm(temp,{recursive:true,force:true});}
-    const current=await json(lease).catch(()=>null);if(current?.id===id)await fs.rm(lease,{force:true});
+    const current=await json(lease).catch(()=>null),now=await fs.lstat(lease).catch(()=>null);
+    if(current?.id===id||(now?.isFile()&&now.ino===leaseIdentity.ino&&now.dev===leaseIdentity.dev))await fs.rm(lease,{force:true});
     const operation=path.join(root,'.runtime/kernel-operation.lock');if((await json(operation).catch(()=>null))?.id===id)await fs.rm(operation,{force:true});
     await writeJSON(path.join(root,'.runtime/setup-finalization.json'),{...job,phase:'failed',error:{code:error.code||'PROJECT_HANDOFF_FAILED',message:'The setup handoff failed. Settings are retained; inspect the local status and retry.'}}).catch(()=>{});
     throw error;

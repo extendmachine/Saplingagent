@@ -56,3 +56,41 @@ test('an in-progress AI configuration writer blocks relocation and retains its o
  const file=path.join(root,'local-secrets/ai-config/write.lock');await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,JSON.stringify({id:'other-writer',pid:process.pid}));
  const job=await manager.finalizeSetup();await manager.completion;assert.equal(job.phase,'failed');assert.equal(job.error.code,'CONFIG_BUSY');assert.equal(manager.root,root);assert.equal(JSON.parse(await fs.readFile(file,'utf8')).id,'other-writer');
 });
+
+test('configuration releases the native startup owner before leases and rechecks before compilation',async t=>{
+ const f=await fixture(t),{manager,root}=f;await manager.stageSetup({name:'Before',renameFolder:false});
+ const operation=path.join(root,'.runtime/kernel-operation.lock'),setup=path.join(root,'.runtime/project-finalization.json');
+ await fs.writeFile(operation,JSON.stringify({pid:process.pid,id:'native-startup'}));
+ const events=[];
+ manager.closeNative=async requestedRoot=>{
+  assert.equal(requestedRoot,root);events.push('close-native');
+  const record=JSON.parse(await fs.readFile(operation,'utf8'));
+  if(events.length===1){assert.equal(record.id,'native-startup');assert.equal(await fs.access(setup).then(()=>true,()=>false),false);await fs.rm(operation);}
+  else {assert.equal(record.id,manager.session.id);assert.equal(JSON.parse(await fs.readFile(setup,'utf8')).id,manager.session.id);}
+ };
+ manager.stop=async()=>{events.push('stop-runtime');assert.equal(await fs.access(operation).then(()=>true,()=>false),false);return {stopped:true};};
+ const compiler=manager.compiler;manager.compiler=async(...args)=>{events.push('compile');return compiler(...args);};
+ const job=await manager.finalizeSetup();await manager.completion;
+ assert.equal(job.phase,'completed',JSON.stringify(job.error));assert.deepEqual(events,['close-native','stop-runtime','close-native','compile']);assert.equal(f.compiled,1);
+ assert.equal(await fs.access(operation).then(()=>true,()=>false),false);assert.equal(await fs.access(setup).then(()=>true,()=>false),false);
+});
+
+test('a refused native handoff preserves the project and prevents runtime stop or compilation',async t=>{
+ const f=await fixture(t),{manager,root,temp}=f;await manager.stageSetup({name:'After',renameFolder:true});
+ const marker=path.join(root,'.runtime/native-app.json');await fs.writeFile(marker,JSON.stringify({fixture:'unverified-native-owner'}));
+ manager.closeNative=async()=>{throw Object.assign(new Error('Native ownership requires inspection.'),{code:'NATIVE_APP_OWNERSHIP',status:409});};
+ let stopped=false;manager.stop=async()=>{stopped=true;};
+ const job=await manager.finalizeSetup();await manager.completion;
+ assert.equal(job.phase,'failed');assert.equal(job.error.code,'NATIVE_APP_OWNERSHIP');assert.equal(stopped,false);assert.equal(f.compiled,0);
+ assert.equal(manager.root,root);assert.equal(await manager.settingsSaved(),true);assert.equal(await fs.access(path.join(temp,'After')).then(()=>true,()=>false),false);
+ assert.equal(JSON.parse(await fs.readFile(marker,'utf8')).fixture,'unverified-native-owner');
+});
+
+test('a second native handoff timeout releases owned setup leases without moving or compiling',async t=>{
+ const f=await fixture(t),{manager,root,temp}=f;await manager.stageSetup({name:'After',renameFolder:true});
+ let called=0;manager.closeNative=async()=>{if(++called===2)throw Object.assign(new Error('Native app is still exiting.'),{code:'NATIVE_APP_STOP_PENDING',status:409});};
+ const job=await manager.finalizeSetup();await manager.completion;
+ assert.equal(job.phase,'failed');assert.equal(job.error.code,'NATIVE_APP_STOP_PENDING');assert.equal(called,2);assert.equal(f.compiled,0);assert.equal(manager.root,root);
+ assert.equal(await fs.access(path.join(temp,'After')).then(()=>true,()=>false),false);assert.equal(await manager.settingsSaved(),true);
+ for(const name of ['kernel-operation.lock','project-finalization.json'])assert.equal(await fs.access(path.join(root,'.runtime',name)).then(()=>true,()=>false),false);
+});

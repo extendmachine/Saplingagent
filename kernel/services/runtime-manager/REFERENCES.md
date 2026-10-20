@@ -1,5 +1,19 @@
 # Runtime manager sources
 
+## Project status and confirmed stop (TASK-20261019-048)
+
+- https://nodejs.org/docs/latest-v24.x/api/http.html — Node official HTTP response
+  finish/close lifecycle; checked2026-10-19 (published24.22.0, project remains24.21.0).
+  The acknowledgement is sent after owned children exit; response finish only means
+  bytes handed to the transport, so the browser separately validates the receipt.
+- https://nodejs.org/docs/latest-v24.x/api/child_process.html — Node official argv,
+  spawn/error and unref reference. Recheck unavailable through the web reader on
+  2026-10-19; actual dispatch is exercised with injected process events and Mac-local
+  runtime lifecycle tests. No claim of Windows native Explorer/UI acceptance.
+
+These public references require no login. No new dependency or external service;
+the OS folder opener receives only the fixed project logs directory, without a shell.
+
 Implementation uses the project's installed Node 24.21.0 built-in HTTP, child_process, filesystem, crypto, net and AbortSignal APIs; no third-party service/API or model changes.
 
 - https://nodejs.org/docs/latest-v24.x/api/child_process.html — child ownership, detached process groups and exit events.

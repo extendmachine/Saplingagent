@@ -29,8 +29,10 @@ export class RuntimeManager {
     return { applicationRoot:path.resolve(this.root),instanceId: this.instanceId, generation: this.generation, phase: this.phase, busy: !!this.operation || !!this.maintenance, canRestart: !this.operation && !this.maintenance && !this.closed, jobId: this.jobId || null, scope: this.scope || 'all', error: this.error,
       ports: this.config ? Object.fromEntries(portKeys.map(key => [key, this.config[key]])) : null,
       services: [...this.children].map(([name, child]) => {
-        const definition = this.activeDefinitions.find(x => x.name === name);
-        return { name, pid: child.pid || null, running: !!alive(child), ...(definition?.project ? { project: true, ...(definition.port ? { port: definition.port } : {}) } : {}) };
+        const definition = name === 'front' ? this.frontDefinition : this.activeDefinitions.find(x => x.name === name);
+        const portKey = definition?.portKey || (name === 'front' ? 'frontPort' : null);
+        const port = portKey ? this.config?.[portKey] : definition?.port;
+        return { name, pid: child.pid || null, running: !!alive(child), healthCheck: definition?.healthCheck || 'http', ...(Number.isInteger(port) ? { port } : {}), ...(definition?.project ? { project: true } : {}) };
       }) };
   }
   async log(event, fields = {}) {
@@ -283,12 +285,18 @@ export class RuntimeManager {
   }
   async close() {
     if (this.closing) return this.closing;
-    this.closed = true; this.controlAbort.abort();
+    this.closed = true; this.phase = 'stopping'; this.controlAbort.abort();
     this.closing = (async () => {
       await this.operation;
       await this.stopBackends(); await this.stopChild('front');
+      this.phase = 'stopped'; this.error = null;
       await this.log('stop');
-    })();
+    })().catch(error => {
+      // Keep failed shutdown observable and retryable; never claim a live child stopped.
+      this.phase = 'failed'; this.error = { code: 'SERVICE_STOP_FAILED', message: 'An owned service could not stop. Retry Stop app or inspect local logs.' };
+      this.closing = null;
+      throw error;
+    });
     return this.closing;
   }
 }

@@ -3,7 +3,7 @@ import path from "node:path";
 import { randomUUID, createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import {kernelStatus, assertKernelOffline} from "../contracts/kernel.mjs";
-import { codexBinary } from "../contracts/local-process.mjs";
+import { codexBinary, terminateOwned } from "../contracts/local-process.mjs";
 import { beginFinalization } from "./finalization.mjs";
 import { relocationLedger, completeRelocation } from './relocation.mjs';
 import {
@@ -438,17 +438,27 @@ export class ProjectLauncher {
             "Finish installation or kernel maintenance before renaming.",
           );
       const ledger = await relocationLedger(current);
+      const {closeDockForMaintenance}=await import('./dock.mjs');
+      await closeDockForMaintenance(current);
+      const lease=path.join(current,'.runtime/kernel-operation.lock'),id=randomUUID();
+      const handle=await fs.open(lease,'wx',0o600).catch(error=>{if(error.code==='EEXIST')throw issue('PROJECT_BUSY','A project operation started before the rename. Wait and retry.');throw error;});
+      const owned=await handle.stat();
       try {
-        await fs.rename(current, target);
-      } catch {
-        throw issue(
-          "PROJECT_RENAME_FAILED",
-          "The folder could not be renamed. Close terminals or other programs using it and retry. The original folder is retained.",
-        );
+        await handle.writeFile(JSON.stringify({id,pid:process.pid,purpose:'project-rename'})+'\n');
+        await handle.close();
+        await closeDockForMaintenance(current);
+        await assertKernelOffline(current);
+        try {const {moveProject}=await import('../configuration/public.mjs');await moveProject(current,target);}
+        catch {throw issue('PROJECT_RENAME_FAILED','The folder could not be renamed. Close terminals or other programs using it and retry. The original folder is retained.');}
+        this.root = await fs.realpath(target);
+        await completeRelocation(current, this.root, ledger);
+        return { root: this.root, renamed: true };
+      } finally {
+        await handle.close().catch(()=>{});
+        const movedLease=path.join(this.root,'.runtime/kernel-operation.lock');
+        const now=await fs.lstat(movedLease).catch(()=>null);
+        if(now?.isFile()&&now.dev===owned.dev&&now.ino===owned.ino)await fs.rm(movedLease);
       }
-      this.root = await fs.realpath(target);
-      await completeRelocation(current, this.root, ledger);
-      return { root: this.root, renamed: true };
   }
   async build() {
     this.assertIdle();
@@ -499,8 +509,11 @@ export class ProjectLauncher {
       }
     });
   }
-  async startConfiguredProject({requireLauncher = false,ignoreCancellation = false} = {}) {
+  async startConfiguredProject({requireLauncher = false,ignoreCancellation = false,onRuntime} = {}) {
       let state = await this.runtime();
+      if (!ignoreCancellation) this.abortController?.signal.throwIfAborted();
+      if (state.phase !== 'stopped') await onRuntime?.(state);
+      let child;
       if (state.phase === "stopped") {
         if (requireLauncher && !(await exists(path.join(this.root, ".runtime/launcher.json"))))
           throw issue(
@@ -520,7 +533,7 @@ export class ProjectLauncher {
           ),
           "a",
         );
-        const child = spawn(
+        child = spawn(
           nodeForRoot(this.root),
           [path.join(this.root, "scripts/dev.mjs")],
           {
@@ -546,6 +559,8 @@ export class ProjectLauncher {
         this.appChild = child;
         await handle.close();
         child.unref();
+      }
+      if (state.phase !== 'ready') {
         const deadline = Date.now() + 150000;
         while (Date.now() < deadline) {
           if (!ignoreCancellation && this.abortController?.signal.aborted)
@@ -553,12 +568,13 @@ export class ProjectLauncher {
               "PROJECT_CANCELLED",
               "Management operation interrupted. Reopen the launcher to inspect this project.",
             );
-          if (child.spawnFailed || child.exitCode !== null || child.signalCode)
+          if (child && (child.spawnFailed || child.exitCode !== null || child.signalCode))
             throw issue(
               "APP_START_FAILED",
               "The app stopped during startup. Check its logs or repair dependencies.",
             );
           state = await this.runtime();
+          if (state.phase !== 'stopped') await onRuntime?.(state);
           if (state.phase === "ready") break;
           if (state.phase === "failed")
             throw issue(
@@ -573,12 +589,15 @@ export class ProjectLauncher {
             "APP_NOT_READY",
             "The app has not become ready. Check AI configuration and runtime recovery.",
           );
-      } else if (state.phase !== "ready")
-        throw issue(
-          "APP_NOT_READY",
-          "This project is already starting or recovering. Inspect its runtime page.",
-        );
+      }
       return state;
+  }
+  async cancelOwnedStartup() {
+    // The ChildProcess handle was created by this controller. Never signal a
+    // PID obtained from a stale runtime discovery record.
+    const child=this.appChild;
+    if(child && child.exitCode===null && child.signalCode===null)
+      await terminateOwned(child,{graceMs:15000,killMs:2000});
   }
   async openProject() {
     return this.startJob("open", async () => {

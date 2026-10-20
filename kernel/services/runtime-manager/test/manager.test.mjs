@@ -41,9 +41,9 @@ process.on('SIGTERM',()=>{server.close(()=>process.exit(0));server.closeAllConne
   const names = [['workspace','workspacePort'],['builder','builderPort'],['pdf-editor','pdfEditorPort'],['agent','agentPort']];
   const definitions=names.map(([name,portKey])=>({name,portKey,file:'fixture.mjs',env:{FIXTURE_NAME:name,FIXTURE_PORT:String(config[portKey])}}));
   const manager=new RuntimeManager({root,token:'fixture-token',definitions,frontDefinition:{name:'front',portKey:options.gateway?'vitePort':'frontPort',file:'fixture.mjs',env:{FIXTURE_NAME:'front',FIXTURE_PORT:String(options.gateway ? config.vitePort : config.frontPort)}},healthTimeout:1000,agentTimeout:300,stopTimeout:300,output:false,...options});
-  const server=createManagerServer({manager,token:'fixture-token',frontPort:config.frontPort,managerPort:config.runtimeManagerPort});
+  const server=createManagerServer({manager,token:'fixture-token',frontPort:config.frontPort,managerPort:config.runtimeManagerPort,onMaintenance:options.onMaintenance,openLogs:options.openLogs});
   await new Promise(r=>server.listen(config.runtimeManagerPort,'127.0.0.1',r));
-  let gateway; if(options.gateway) {gateway=createGateway({manager,token:'fixture-token',frontPort:config.frontPort,managerPort:config.runtimeManagerPort});await new Promise(r=>gateway.listen(config.frontPort,'127.0.0.1',r))}
+  let gateway; if(options.gateway) {gateway=createGateway({manager,token:'fixture-token',frontPort:config.frontPort,managerPort:config.runtimeManagerPort,onMaintenance:options.onMaintenance,openLogs:options.openLogs});await new Promise(r=>gateway.listen(config.frontPort,'127.0.0.1',r))}
   t.after(async()=>{gateway?.closeUpgrades();gateway?.closeAllConnections();if(gateway)await new Promise(r=>gateway.close(r));await manager.close();server.closeAllConnections();await new Promise(r=>server.close(r));await fs.rm(root,{recursive:true,force:true})});
   const request = (route, headers={}, method='GET',body)=>fetch(`http://127.0.0.1:${config.runtimeManagerPort}${route}`,{method,headers,...(body?{body:JSON.stringify(body)}:{})});
   await manager.start(); await manager.operation;
@@ -250,4 +250,96 @@ test('standalone kernel control works without an application frontend or Git',as
  assert.equal(response.status,200);assert.match(await response.text(),/Upgrade kernel & restart/);
  const unauthorized=await fetch(`http://127.0.0.1:${config.frontPort}/api/runtime/kernel/check`,{method:'POST',body:'{}'});
  assert.equal(unauthorized.status,401);
+});
+
+test('status reads project metadata without initializing it and lists effective built-in and worker ports', async t => {
+ const {root,manager,config,request}=await fixture(t,{gateway:true});
+ const first=await (await request('/api/runtime/status')).json();
+ assert.equal(first.projectName,path.basename(root));assert.equal(first.kernelVersion,null);assert.equal(first.canStop,true);
+ await assert.rejects(fs.access(path.join(root,'config/project.json')),{code:'ENOENT'});
+ await fs.writeFile(path.join(root,'config/project.json'),JSON.stringify({name:'A <sample> project',privateField:'never-return-this'}));
+ await fs.mkdir(path.join(root,'kernel'));await fs.writeFile(path.join(root,'kernel/manifest.json'),JSON.stringify({version:'0.9.5',files:[]}));
+ const current=await (await request('/api/runtime/status')).json();
+ assert.equal(current.projectName,'A <sample> project');assert.equal(current.kernelVersion,'0.9.5');assert.equal(current.url,`http://127.0.0.1:${config.frontPort}/`);
+ assert.equal(current.services.find(x=>x.name==='front').port,config.vitePort);assert.equal(current.services.find(x=>x.name==='agent').port,config.agentPort);
+ assert.ok(!JSON.stringify(current).includes('never-return-this'));
+ await fs.writeFile(path.join(root,'worker.mjs'),'setInterval(()=>{},1000)');
+ await manifest(root,[{name:'worker',file:'worker.mjs',healthCheck:'process'}]);manager.restart();await manager.operation;
+ const worker=(await (await request('/api/runtime/status')).json()).services.find(x=>x.name==='worker');
+ assert.equal(worker.healthCheck,'process');assert.equal(worker.port,undefined);assert.equal(worker.running,true);assert.ok(worker.pid>0);
+ const page=await (await fetch(`http://127.0.0.1:${config.frontPort}/__saplingagent/runtime`)).text();
+ assert.match(page,/Assigned port/);assert.match(page,/Closing this browser tab does not stop/);assert.match(page,/Stop app/);assert.match(page,/Open logs/);
+});
+
+test('confirmed stop waits for owned exits and preserves foreign listeners', async t => {
+ let callback=0;
+ const {root,manager,request}=await fixture(t,{gateway:true,onMaintenance:()=>{callback++;assert.equal(manager.children.size,0)}});
+ const pids=manager.state().services.map(x=>x.pid);
+ const foreign=net.createServer();await new Promise(resolve=>foreign.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>foreign.close(resolve)));
+ const body={instanceId:manager.instanceId}, headers={Authorization:'Bearer fixture-token'};
+ await fs.writeFile(path.join(root,'agent.busy'),'1');
+ assert.equal((await request('/api/runtime/stop-and-wait',headers,'POST',body)).status,409);assert.equal(callback,0);
+ for(const pid of pids)assert.doesNotThrow(()=>process.kill(pid,0));
+ await fs.unlink(path.join(root,'agent.busy'));
+ assert.equal((await request('/api/runtime/stop-and-wait',headers,'POST',{instanceId:'other-instance'})).status,409);
+ const response=await request('/api/runtime/stop-and-wait',headers,'POST',body);
+ assert.equal(response.status,200);assert.deepEqual(await response.json(),{stopped:true,instanceId:manager.instanceId});
+ for(const pid of pids)assert.throws(()=>process.kill(pid,0));assert.equal(foreign.listening,true);assert.equal(manager.phase,'stopped');
+ await until(()=>callback===1);
+});
+
+test('failed owned shutdown is not acknowledged and can be retried', async t => {
+ let callback=0;
+ const {manager,request}=await fixture(t,{onMaintenance:()=>{callback++}});
+ const stop=manager.stopChild.bind(manager);let failed=false;
+ manager.stopChild=async name=>{if(!failed){failed=true;throw Object.assign(new Error('private diagnostic'),{code:'SERVICE_STOP_FAILED'})}return stop(name)};
+ const headers={Authorization:'Bearer fixture-token'},body={instanceId:manager.instanceId};
+ const bad=await request('/api/runtime/stop-and-wait',headers,'POST',body);assert.equal(bad.status,503);
+ assert.ok(!JSON.stringify(await bad.json()).includes('private diagnostic'));assert.equal(callback,0);assert.ok(manager.children.size>0);
+ assert.equal((await(await request('/api/runtime/status')).json()).canStop,true);
+ const good=await request('/api/runtime/stop-and-wait',headers,'POST',body);assert.equal(good.status,200);assert.equal((await good.json()).stopped,true);await until(()=>callback===1);
+});
+
+test('a disconnected stop client does not abandon owned shutdown or the owner callback', async t => {
+ let callback=0;
+ const {manager,config}=await fixture(t,{onMaintenance:()=>{callback++}});
+ const stop=manager.stopChild.bind(manager);let held=false;
+ manager.stopChild=async name=>{if(!held){held=true;await delay(200)}return stop(name)};
+ const controller=new AbortController();
+ const response=fetch(`http://127.0.0.1:${config.runtimeManagerPort}/api/runtime/stop-and-wait`,{method:'POST',headers:{Authorization:'Bearer fixture-token','Content-Type':'application/json'},body:JSON.stringify({instanceId:manager.instanceId}),signal:controller.signal});
+ const aborted=assert.rejects(response,{name:'AbortError'});
+ await until(()=>held);controller.abort();await aborted;await until(()=>callback===1);
+ assert.equal(manager.phase,'stopped');assert.equal(manager.children.size,0);
+});
+
+test('legacy Dock stop retries a failed confirmed stop without closing recovery on another failure', async t => {
+ let callback=0;
+ const {manager,request}=await fixture(t,{onMaintenance:()=>{callback++;assert.equal(manager.children.size,0)}});
+ const pids=manager.state().services.map(service=>service.pid),stop=manager.stopChild.bind(manager);let failures=0;
+ manager.stopChild=async name=>{if(failures++<2)throw Object.assign(new Error('synthetic refusal'),{code:'SERVICE_STOP_FAILED'});return stop(name)};
+ const headers={Authorization:'Bearer fixture-token'};
+ assert.equal((await request('/api/runtime/stop-and-wait',headers,'POST',{instanceId:manager.instanceId})).status,503);
+ assert.equal(manager.closed,true);assert.equal(manager.closing,null);
+ assert.equal((await request('/api/runtime/stop',headers,'POST')).status,503);assert.equal(callback,0);
+ const failedStatus=await (await request('/api/runtime/status')).json();assert.equal(failedStatus.phase,'failed');assert.equal(failedStatus.canStop,true);
+ for(const pid of pids)assert.doesNotThrow(()=>process.kill(pid,0));
+ const success=await request('/api/runtime/stop',headers,'POST');assert.equal(success.status,202);assert.deepEqual(await success.json(),{stopping:true});
+ for(const pid of pids)assert.throws(()=>process.kill(pid,0));assert.equal(manager.children.size,0);
+ await until(()=>callback===1);
+});
+
+test('new controls enforce instance-only input, local auth and fixed logs destination; legacy stop remains202', async t => {
+ let opened=null,callback=0;
+ const {root,manager,request,config}=await fixture(t,{gateway:true,onMaintenance:()=>{callback++},openLogs:async directory=>{opened=directory;return{requested:true}}});
+ const body={instanceId:manager.instanceId},headers={Authorization:'Bearer fixture-token'};
+ assert.equal((await request('/api/runtime/restart',headers,'POST',{scope:'all',instanceId:'previous-project'})).status,409);
+ for(const endpoint of ['stop-and-wait','open-logs']) {
+   assert.equal((await request(`/api/runtime/${endpoint}`,{},'POST',body)).status,401);
+   assert.equal((await request(`/api/runtime/${endpoint}`,{Origin:'https://example.invalid'},'POST',body)).status,403);
+   for(const invalid of [{...body,path:'elsewhere'},{...body,command:'anything'},null])assert.equal((await request(`/api/runtime/${endpoint}`,headers,'POST',invalid)).status,400);
+   assert.equal((await request(`/api/runtime/${endpoint}?path=elsewhere`,headers,'POST',body)).status,400);
+ }
+ const openedResponse=await fetch(`http://127.0.0.1:${config.frontPort}/api/runtime/open-logs`,{method:'POST',headers:{Origin:`http://127.0.0.1:${config.frontPort}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+ assert.equal(openedResponse.status,200);assert.deepEqual(await openedResponse.json(),{requested:true});assert.equal(opened,root);
+ const response=await request('/api/runtime/stop',headers,'POST');assert.equal(response.status,202);assert.deepEqual(await response.json(),{stopping:true});await until(()=>callback===1);
 });

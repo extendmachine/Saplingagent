@@ -7,7 +7,7 @@ import {moduleClosure,prepareConfigurationBundle,copyConfigurationBundle} from '
 import {readSession,saveSession} from '../session.mjs';
 const repo=fileURLToPath(new URL('../../../',import.meta.url));
 test('configuration import closure is self-contained and includes frontend/backend handoff modules',async()=>{
- const files=await moduleClosure(repo);for(const name of ['kernel/configuration/host.mjs','kernel/services/ai-config/server.mjs','kernel/services/ai-config/auth.mjs','kernel/configuration/move.mjs','kernel/configuration/handoff.mjs'])assert.ok(files.has(name),name);
+ const files=await moduleClosure(repo);for(const name of ['kernel/configuration/host.mjs','kernel/services/ai-config/server.mjs','kernel/services/ai-config/auth.mjs','kernel/configuration/move.mjs','kernel/configuration/handoff.mjs','kernel/launcher/public.mjs','kernel/launcher/dock.mjs'])assert.ok(files.has(name),name);
  assert.ok(files.size<40);assert.equal([...files.keys()].some(name=>name.includes('node_modules')),false);
 });
 test('bundle rejects third-party and project-external imports instead of relying on a developer checkout',async t=>{
