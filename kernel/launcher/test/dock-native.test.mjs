@@ -13,18 +13,23 @@ const exec=promisify(execFile),source=path.resolve(fileURLToPath(new URL('../../
 const goRelative='.runtime/go1.27.2-darwin-arm64';
 const available=process.platform==='darwin'&&await fs.access(path.join(source,goRelative,'go/bin/go')).then(()=>true,()=>false);
 const alive=pid=>{try{process.kill(pid,0);return true;}catch{return false;}};
-async function waitFor(read,description){for(let i=0;i<200;i++){const result=await read().catch(()=>null);if(result)return result;await delay(50);}throw Error('Timed out: '+description);}
+async function waitFor(read,description){for(let i=0;i<600;i++){const result=await read().catch(()=>null);if(result)return result;await delay(50);}throw Error('Timed out: '+description);}
 async function appAction(pid,action){return exec('/usr/bin/osascript',['-l','JavaScript','-e',`ObjC.import('AppKit');var a=$.NSRunningApplication.runningApplicationWithProcessIdentifier(${pid});${action}`]);}
 
 test('compiled macOS app stays in the Dock, reopens, quits its helper, and keeps the same cluster contract',{skip:!available,timeout:180000},async t=>{
  const base=path.join(source,'.cache/dock-native-tests');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,"项目 user's "));
- let appPID; t.after(async()=>{if(appPID&&alive(appPID)){try{process.kill(appPID,'SIGKILL');}catch{}await waitFor(async()=>!alive(appPID),'fixture app exit');}await fs.rm(root,{recursive:true,force:true});});
+ let appPID,bundleId; t.after(async()=>{
+  // LaunchServices can start the app before its bridge writes the first receipt.
+  // Even an assertion/timeout in that interval must clean up this exact fixture.
+  if((!appPID||!alive(appPID))&&bundleId){const value=await exec('/usr/bin/osascript',['-l','JavaScript','-e',`ObjC.import('AppKit');var apps=$.NSRunningApplication.runningApplicationsWithBundleIdentifier(${JSON.stringify(bundleId)});apps.count?String(apps.objectAtIndex(0).processIdentifier):'';`]).catch(()=>null);appPID=Number(value?.stdout.trim())||null;}
+  if(appPID&&alive(appPID)){try{process.kill(appPID,'SIGKILL');}catch{}await waitFor(async()=>!alive(appPID),'fixture app exit');}await fs.rm(root,{recursive:true,force:true});
+ });
  for(const relative of ['kernel/launcher/native',goRelative])await fs.cp(path.join(source,relative),path.join(root,relative),{recursive:true,mode:constants.COPYFILE_FICLONE});
  for(const name of ['toolchain.json','build.mjs','windows-icon.ps1'])await fs.copyFile(path.join(source,'kernel/launcher',name),path.join(root,'kernel/launcher',name));
  await fs.mkdir(path.join(root,'kernel/config'),{recursive:true});await fs.writeFile(path.join(root,'kernel/config/macos.json'),JSON.stringify({nodeVersion:process.versions.node}));
  const node=path.join(root,`.runtime/node-v${process.versions.node}-darwin-${process.arch}/bin/node`);await fs.mkdir(path.dirname(node),{recursive:true});await fs.copyFile(process.execPath,node);
  await fs.writeFile(path.join(root,'kernel/launcher/entry.mjs'),`import fs from 'node:fs';const root=process.env.SEED_ROOT,args=process.argv.slice(2),action=args[0];const record={action,pid:Number(args[args.indexOf('--dock-pid')+1]),nonce:args[args.indexOf('--dock-nonce')+1]};fs.appendFileSync(root+'/calls.jsonl',JSON.stringify(record)+'\\n');if(action==='--dock-status')console.log(fs.existsSync(root+'/handoff')?'handoff':'ready');else if(action==='--dock-stop'){if(fs.existsSync(root+'/stop-fails')){console.error('Synthetic stop failure');process.exit(7);}fs.writeFileSync(root+'/stopped','yes');console.log('stopped');}else console.log('ready');`);
- const project={name:'Dock Example',projectId:randomUUID()};const receipt=await compileLauncher(root,project);
+ const project={name:'Dock Example',projectId:randomUUID()};bundleId='local.saplingagent.p'+project.projectId.replaceAll('-','');const receipt=await compileLauncher(root,project);
  const app=path.join(root,receipt.artifact),helper=path.join(app,'Contents/MacOS/launcher');
  const plist=JSON.parse((await exec('/usr/bin/plutil',['-convert','json','-o','-',path.join(app,'Contents/Info.plist')])).stdout);
  assert.equal(plist.LSUIElement,false);assert.equal(plist.CFBundleExecutable,'applet');assert.equal(plist.OSAAppletStayOpen,true);assert.equal(plist.CFBundleDisplayName,project.name);

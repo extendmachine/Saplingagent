@@ -146,3 +146,5 @@ its actual ChildProcess ownership; early runtime setup handles signals and relea
 its own start lease before exiting. An unrelated project's PID/port is never used
 as a signal target. Existing compiled apps need rebuilding to acquire the Dock
 behavior; a source/kernel update alone cannot replace customer-owned binaries.
+
+Direct compilation and legacy finalization/rename also close the Dock owner before acquiring an operation lease and recheck under that lease. Folder-moving paths require the runtime to be offline at that point. Native app registration refuses maintenance leases. Failed finalization removes only its own created lease, including a partial lease when a competing operation wins. Legacy rename uses the published configuration move operation so a destination appearing during the wait is never replaced.

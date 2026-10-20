@@ -50,6 +50,15 @@ test('offline helper refuses an arbitrary external parent before spawning and re
  assert.equal(spawned,false);assert.deepEqual(await fs.readdir(outside),[]);await assert.rejects(fs.access(path.join(root,'.runtime/project-finalization.json')));await assert.rejects(fs.access(path.join(root,'.runtime/kernel-operation.lock')));
 });
 
+for(const busy of ['operation','runtime'])test(`offline finalization preserves a competing ${busy} and removes its own lease`,async t=>{
+ const root=await fixture(t);await fs.mkdir(path.join(root,'.runtime'));const management={pid:process.pid,port:62025,instanceId:randomUUID()};await fs.writeFile(path.join(root,'.runtime/management-address.json'),JSON.stringify({...management,root}));
+ const foreign=path.join(root,'.runtime',busy==='operation'?'kernel-operation.lock':'runtime-address.json'),value=busy==='operation'?'foreign-operation':JSON.stringify({pid:process.pid,root,instanceId:randomUUID()});await fs.writeFile(foreign,value);
+ const {beginFinalization}=await import('../finalization.mjs');let spawned=false;
+ await assert.rejects(beginFinalization(root,{project:{projectId:randomUUID(),folderName:path.basename(root)},management,node:path.join(root,'.runtime/node'),platform:'darwin',spawnHelper:()=>{spawned=true;}}),e=>e.code===(busy==='operation'?'PROJECT_BUSY':'KERNEL_BUSY'));
+ assert.equal(spawned,false);assert.equal(await fs.readFile(foreign,'utf8'),value);await assert.rejects(fs.access(path.join(root,'.runtime/project-finalization.json')));
+ if(busy==='runtime')await assert.rejects(fs.access(path.join(root,'.runtime/kernel-operation.lock')));
+});
+
 test('pinned compiler runs with local disabled telemetry and cannot populate inherited configuration',async t=>{
  const root=await fixture(t),home=await fixture(t),go=path.join(repo,'.runtime/go1.27.2-darwin-arm64/go/bin/go');
  if(!await fs.access(go).then(()=>true,()=>false)){t.skip('Pinned local Go toolchain is unavailable');return;}

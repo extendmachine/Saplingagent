@@ -438,17 +438,27 @@ export class ProjectLauncher {
             "Finish installation or kernel maintenance before renaming.",
           );
       const ledger = await relocationLedger(current);
+      const {closeDockForMaintenance}=await import('./dock.mjs');
+      await closeDockForMaintenance(current);
+      const lease=path.join(current,'.runtime/kernel-operation.lock'),id=randomUUID();
+      const handle=await fs.open(lease,'wx',0o600).catch(error=>{if(error.code==='EEXIST')throw issue('PROJECT_BUSY','A project operation started before the rename. Wait and retry.');throw error;});
+      const owned=await handle.stat();
       try {
-        await fs.rename(current, target);
-      } catch {
-        throw issue(
-          "PROJECT_RENAME_FAILED",
-          "The folder could not be renamed. Close terminals or other programs using it and retry. The original folder is retained.",
-        );
+        await handle.writeFile(JSON.stringify({id,pid:process.pid,purpose:'project-rename'})+'\n');
+        await handle.close();
+        await closeDockForMaintenance(current);
+        await assertKernelOffline(current);
+        try {const {moveProject}=await import('../configuration/public.mjs');await moveProject(current,target);}
+        catch {throw issue('PROJECT_RENAME_FAILED','The folder could not be renamed. Close terminals or other programs using it and retry. The original folder is retained.');}
+        this.root = await fs.realpath(target);
+        await completeRelocation(current, this.root, ledger);
+        return { root: this.root, renamed: true };
+      } finally {
+        await handle.close().catch(()=>{});
+        const movedLease=path.join(this.root,'.runtime/kernel-operation.lock');
+        const now=await fs.lstat(movedLease).catch(()=>null);
+        if(now?.isFile()&&now.dev===owned.dev&&now.ino===owned.ino)await fs.rm(movedLease);
       }
-      this.root = await fs.realpath(target);
-      await completeRelocation(current, this.root, ledger);
-      return { root: this.root, renamed: true };
   }
   async build() {
     this.assertIdle();

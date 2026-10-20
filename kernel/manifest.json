@@ -218,20 +218,20 @@
     },
     {
       "path": "kernel/configuration/CONTRACT.md",
-      "sha256": "4a2a2566a9eff9be7ae2fdbdcb9d71051d5d4ea9c82e24d9f663574ff5508cad",
-      "bytes": 5392,
+      "sha256": "ff2a11900130bcba43d176f750127c9054b10ea7c5d311e387eef4c71a8b250b",
+      "bytes": 6674,
       "executable": false
     },
     {
       "path": "kernel/configuration/controller.mjs",
-      "sha256": "edfdca5ff9b8264c90fa9c4f87435e4f77a8f599f5e143b6465be186a681c6cf",
-      "bytes": 6840,
+      "sha256": "7ad239013966aeb23757b2f08e54b00ae17b9c9e3cfe6bea64be1caeed2f03e9",
+      "bytes": 7295,
       "executable": false
     },
     {
       "path": "kernel/configuration/DEPLOY.md",
-      "sha256": "4e568f4ab365abef4fa09912bbdfdd7a8cc16a1c53f49c264b4a421774ee9824",
-      "bytes": 2154,
+      "sha256": "c8cfb87d9a0dc24c49866fd5f817bffff922cf90ec8c5399a1efd7e5ea780f1e",
+      "bytes": 2684,
       "executable": false
     },
     {
@@ -259,9 +259,15 @@
       "executable": false
     },
     {
+      "path": "kernel/configuration/public.mjs",
+      "sha256": "2d4d6a7f9eddd2ef915839d43a8be274814cd31752fbaa29c71fb0ea3a7a6b2c",
+      "bytes": 196,
+      "executable": false
+    },
+    {
       "path": "kernel/configuration/SERVICE.md",
-      "sha256": "10eed08f91098cbf1cfe95d49a2e2a63f4a0495e33881bfd95b8b3307b2ee5c9",
-      "bytes": 1407,
+      "sha256": "1f2bc8a52ecd0203450e4c4d2685e57a2edfee6597589fdb5b562f707408222d",
+      "bytes": 1820,
       "executable": false
     },
     {
@@ -272,14 +278,14 @@
     },
     {
       "path": "kernel/configuration/test/closure.test.mjs",
-      "sha256": "1e99c1f7a2e060a5abd01d672b3ec9ea9ae5f8660e8bcff8b63f43bc045c3806",
-      "bytes": 2675,
+      "sha256": "b8369514d07294504b1ece1e62dc3ba00547ffd0d89c331828de0fcd14c061e1",
+      "bytes": 2731,
       "executable": false
     },
     {
       "path": "kernel/configuration/test/controller.test.mjs",
-      "sha256": "260db070b84542eeeaf8d0dd331a5d20a842c8802472237eea0f0c3f096f1347",
-      "bytes": 6365,
+      "sha256": "861f6c2f45a3827592ac8dc09a319bb71f2db92e9a7ba3079d96d93cc888156b",
+      "bytes": 9900,
       "executable": false
     },
     {
@@ -524,38 +530,44 @@
     },
     {
       "path": "kernel/launcher/build.mjs",
-      "sha256": "da1a158d6ecac7646b423d009d759a3f91b571703dc75e5e9edfcdc1ddc86ec3",
-      "bytes": 21150,
+      "sha256": "aa499a1901dc306ea85e5817ad0a4b6f1584c78a7d4c0bfbc6b7fbad935014ce",
+      "bytes": 21819,
       "executable": false
     },
     {
       "path": "kernel/launcher/CONTRACT.md",
-      "sha256": "2434da9d4c091d3323fa5e0e4eec0051d58479ff5dc70f54c4bac52ec89ea31a",
-      "bytes": 16779,
+      "sha256": "a34afd8c6e9a21528213b292ef07712272220e01fe3cd3bc37c4bd0bad9bfb84",
+      "bytes": 19819,
       "executable": false
     },
     {
       "path": "kernel/launcher/DEPENDENCIES.md",
-      "sha256": "2a3697d6d89d2518a0ac285e3549bd3b8026b0700ba67ef0f9e2dbfae2dcf1aa",
-      "bytes": 4341,
+      "sha256": "1145e0ed4eb913bd1c3b4396ec3b421deff2d923425c4a4036e049d4f34c015d",
+      "bytes": 6366,
       "executable": false
     },
     {
       "path": "kernel/launcher/dependencies.mjs",
-      "sha256": "72756e6fa5f35ec7e76f4bcc4b1f951b67e4dc189d41f9737bc01ee4d49944f0",
-      "bytes": 11444,
+      "sha256": "03b657a242740f1baa3150599bb4be674f9034c2d81aa8b468d10736718eb12f",
+      "bytes": 11572,
+      "executable": false
+    },
+    {
+      "path": "kernel/launcher/dock.mjs",
+      "sha256": "bcc0592582ed26ff7af8c16b345b35d1977528a061f797404e15e477ad0bb2d6",
+      "bytes": 13613,
       "executable": false
     },
     {
       "path": "kernel/launcher/entry.mjs",
-      "sha256": "e8d84c1b47aa3523ac7233e8eddb1e093cb26858d44a00bb642e7414e60dd098",
-      "bytes": 1981,
+      "sha256": "8f37833071ff8d2b15b4aa049eada8c6f7dd710c31ad11110dd34da8e4d5dbd8",
+      "bytes": 2553,
       "executable": false
     },
     {
       "path": "kernel/launcher/finalization.mjs",
-      "sha256": "5bd4728352eabbfb4a743f9c30b36c87b5d82630b9369300f9d7586a4fae7064",
-      "bytes": 9382,
+      "sha256": "29027bff209b2dd9e4119f190a5f20becef9e111d21282b6484a179abe3c636b",
+      "bytes": 9789,
       "executable": false
     },
     {
@@ -566,26 +578,32 @@
     },
     {
       "path": "kernel/launcher/manager.mjs",
-      "sha256": "97358f29e452b5ca705d8462f794962302309e5fcd35554226af7ede553bdf94",
-      "bytes": 23987,
+      "sha256": "27ca44711bcb9a15983c69d526917160e86cbbe7fd765c0cc2cfca268b0ad3a7",
+      "bytes": 25405,
+      "executable": false
+    },
+    {
+      "path": "kernel/launcher/native/macos.applescript",
+      "sha256": "26e128d1123587927b9c3d274db0b5a6f644f8f45bfeefd4947d6626772066f4",
+      "bytes": 4070,
       "executable": false
     },
     {
       "path": "kernel/launcher/native/main.go",
-      "sha256": "e769bcf40ba6eb01dd3b19f23ca92e44aced5513889da98e7da2231a608e9124",
-      "bytes": 4976,
+      "sha256": "382348a80e46fd4f58b39a29bbd591a5e61fa84333098c5e8b7c32b02a2c6a13",
+      "bytes": 6274,
       "executable": false
     },
     {
       "path": "kernel/launcher/native/spawn_darwin.go",
-      "sha256": "6fde9371009ae74d88be5d290c245aa668a2dd242d5965fbc3bfefc27dad9054",
-      "bytes": 352,
+      "sha256": "073f8869e86ef8012f35a58da8dfd3aef5f185dffc38481ed010376fa0db982d",
+      "bytes": 2089,
       "executable": false
     },
     {
       "path": "kernel/launcher/native/spawn_windows.go",
-      "sha256": "582a2c29d86a6084bc586550530307085a32f1f4405e124e8ed17246b31bad60",
-      "bytes": 672,
+      "sha256": "5b058cb1c716ee9d713c42338b145994cf24f056ff3216019420c36d02f45ebb",
+      "bytes": 951,
       "executable": false
     },
     {
@@ -608,14 +626,14 @@
     },
     {
       "path": "kernel/launcher/public.mjs",
-      "sha256": "cb976421a3b638d9da763aa634873c361d52db9d9b5fb311787c1daf24dbc64e",
-      "bytes": 290,
+      "sha256": "b1ead533ba4cde56812d92c483466fe9adba808f5c41a7cdae36b1d59a182438",
+      "bytes": 345,
       "executable": false
     },
     {
       "path": "kernel/launcher/REFERENCES.md",
-      "sha256": "e0a35933f286b55c062d54dd35c4347c913196ff5923497d6f7833c8bbde3d4d",
-      "bytes": 2859,
+      "sha256": "559e42a3039b651a6c20d7abc8fc216e6416dc9129375284bd4fd3b2abc9cbba",
+      "bytes": 4064,
       "executable": false
     },
     {
@@ -649,6 +667,24 @@
       "executable": false
     },
     {
+      "path": "kernel/launcher/test/dock-integration.test.mjs",
+      "sha256": "dc7894ebc5e636a64fb5c9c39db6c3c6f53b80febd4fdfc3e551097ea8c31382",
+      "bytes": 7259,
+      "executable": false
+    },
+    {
+      "path": "kernel/launcher/test/dock-native.test.mjs",
+      "sha256": "3c28182c8920f73ca6d628136f7978f12a21c2eb15a69cece9e9f538f8260574",
+      "bytes": 8710,
+      "executable": false
+    },
+    {
+      "path": "kernel/launcher/test/dock.test.mjs",
+      "sha256": "f2478ed1ee14bbed69d2a466446d233e065f7e5c2b093714dc0afce61c76ad31",
+      "bytes": 9436,
+      "executable": false
+    },
+    {
       "path": "kernel/launcher/test/native-bootstrap.test.mjs",
       "sha256": "fd17ef2233a33bb6af0aa865817254d8588f3bb078f12cebf0764b07d779efe7",
       "bytes": 7526,
@@ -668,8 +704,8 @@
     },
     {
       "path": "kernel/launcher/test/relative-storage.test.mjs",
-      "sha256": "3406474ba58b9064c5d12a15ded56ee6be84cc802c6058320f8bcf11e3c6d33a",
-      "bytes": 7638,
+      "sha256": "afffd4c22c472d02373a2d03ccbc4fcaa22318cfba159c038490eae8c1b2be71",
+      "bytes": 8912,
       "executable": false
     },
     {
@@ -722,8 +758,8 @@
     },
     {
       "path": "kernel/scripts/dev.mjs",
-      "sha256": "89cc5bc220b4a3003110b72efe58791ad08183f4cf3521ea978c7370959bdeaa",
-      "bytes": 4707,
+      "sha256": "6755f468b45b6349228a51606fdc571638e371c8552cd46521b472f446ad09b5",
+      "bytes": 5221,
       "executable": false
     },
     {
@@ -826,6 +862,12 @@
       "path": "kernel/scripts/test/curl-install.test.mjs",
       "sha256": "361b6e0f23d36edbeea24012814614bb5dd234c31925345c8b9a22ae6050c97c",
       "bytes": 9458,
+      "executable": false
+    },
+    {
+      "path": "kernel/scripts/test/dev-cancellation.test.mjs",
+      "sha256": "53cb9d40a2ae4eeb67cd3b49a1215af00b05eab96458ed8d7ad76967d1ecb50d",
+      "bytes": 2208,
       "executable": false
     },
     {

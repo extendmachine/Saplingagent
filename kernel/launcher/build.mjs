@@ -550,6 +550,8 @@ async function compilationLease(file,owner,message) {
 // Separate cross-process lease: two setup instances must not replace one artifact.
 export async function compileLauncher(root,project,options={}) {
   root=await fs.realpath(root);
+  const {closeDockForMaintenance}=await import('./dock.mjs');
+  await closeDockForMaintenance(root);
   const runtime=path.join(root,'.runtime');await fs.mkdir(runtime,{recursive:true});
   if((await fs.lstat(runtime)).isSymbolicLink())throw issue('PROJECT_STORAGE_LOCATION','Launcher runtime must be an ordinary project-local directory.');
   const file=path.join(runtime,'launcher-compile.lock'),operation=path.join(runtime,'kernel-operation.lock'),id=randomUUID();
@@ -560,6 +562,9 @@ export async function compileLauncher(root,project,options={}) {
     const setup=await json(path.join(runtime,'project-finalization.json'));
     if(setup && (!options.setupId||setup.id!==options.setupId||setup.pid!==process.pid))throw issue('LAUNCHER_BUILD_BUSY','A different setup operation owns this project. Wait before compiling.');
     if(await exists(path.join(runtime,'kernel/active-job.json')))throw issue('LAUNCHER_BUILD_BUSY','Kernel maintenance is active. Wait before compiling.');
+    // Recheck after claiming the operation lease: a reopen may have raced the
+    // first close, but no new startup can now register against this project.
+    await closeDockForMaintenance(root);
     for(const name of ['macos-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])if(await exists(path.join(runtime,name)))throw issue('LAUNCHER_BUILD_BUSY','Dependency installation is active. Wait before compiling.');
     await prepareBuildStorage(root);
     return await compileLauncherUnlocked(root,project,options);

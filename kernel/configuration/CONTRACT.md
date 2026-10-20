@@ -84,3 +84,5 @@ root rebinding; a competing CLI settings write cannot cross a rename. All lock
 descriptors are closed before folder movement. Renaming remains confined to the same parent
 and never replaces an existing destination. External editors or antivirus may
 still refuse a rename; report the error and retain saved state for retry.
+
+The published `configuration/public.mjs` operation `moveProject(previous, current)` is also used by the legacy launcher under its operation lease. It refuses an existing destination, including one created while the native app was closing, and never moves outside the current parent. This exposes the existing platform move behavior without adding another service.
