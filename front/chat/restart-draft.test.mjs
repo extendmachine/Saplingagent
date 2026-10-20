@@ -16,3 +16,12 @@ test('draft recovery rejects different sessions, stale/malformed data and unavai
  s.setItem(DRAFT_KEY,'broken');assert.equal(restoreDraft(s,'session','',101),null);
  const denied={getItem(){throw Error('denied')},setItem(){throw Error('denied')}};assert.doesNotThrow(()=>saveDraft(denied,null,'text'));assert.equal(restoreDraft(denied,null,''),null);
 });
+
+test('restart bridge records the displayed conversation, not another tab selection', async () => {
+ const {default:vm}=await import('node:vm');const{transformSync}=await import('rolldown/utils');const events=new EventTarget(),saved=storage();let effect,activeRef;
+ const mocks={react:{useRef(value){return activeRef||={current:value}},useEffect(fn){effect=fn}},'@assistant-ui/react':{useAui:()=>({composer:()=>({getState:()=>({text:'visible draft'}),setText(){}})})}};
+ const context=vm.createContext({window:events,sessionStorage:saved,localStorage:{getItem:()=> 'other-tab-session'},Date,JSON});
+ const modules=new Map();async function load(name){if(modules.has(name))return modules.get(name);if(mocks[name]){const mock=mocks[name];const mod=new vm.SyntheticModule(Object.keys(mock),function(){for(const[k,v]of Object.entries(mock))this.setExport(k,v)},{context});modules.set(name,mod);return mod;}const file=name==='entry'?'RestartDraft.tsx':'restart-draft.ts';const mod=new vm.SourceTextModule(transformSync(file,await fs.readFile(new URL(file,import.meta.url),'utf8'),{jsx:{runtime:'automatic'}}).code,{context});modules.set(name,mod);await mod.link(load);return mod;}
+ const mod=await load('entry');await mod.evaluate();mod.namespace.RestartDraft({sessionId:'displayed-a'});const cleanup=effect();events.dispatchEvent(new Event('pagehide'));assert.equal(JSON.parse(saved.getItem(DRAFT_KEY)).sessionId,'displayed-a');
+ mod.namespace.RestartDraft({sessionId:'displayed-b'});events.dispatchEvent(new Event('saplingagent:before-restart'));assert.equal(JSON.parse(saved.getItem(DRAFT_KEY)).sessionId,'displayed-b');cleanup();
+});

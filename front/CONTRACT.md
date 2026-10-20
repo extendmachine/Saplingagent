@@ -9,7 +9,7 @@ Version 4; 2026-10-09; TASK-20261009-013. SSE fields continue to be compatible w
 | GET /api/git |Nothing|Current repository, branch/HEAD, short version number and status fingerprint, work area change, local branch/Worktree occupation and recent submission; panel and bottom version bar regular refresh|
 | POST /api/git/commit |Nothing|The upper right panel saves the current non-neglected changes as local submission; does not push remote, running conversation returns 409|
 | POST /api/git/switch | branch |Only switch existing local branches safely; successfully return to the latest Git status and reload the page. 409 keeps the current version and displays the reason.|
-| GET /api/sessions |Nothing|The id/title/updatedAt of sessions; used to confirm that the session has been saved, and the session navigation is not preset.|
+| GET /api/sessions |Nothing|The id/title/updatedAt of sessions; used by the conversation selector and refresh action.|
 | GET /api/sessions/:id |sessionId saved by the browser|session.messages, running, activeRequestId; refresh and restore the same session|
 | POST /api/chat |Text, requestId, optional sessionId and new-session engine/provider/model|SSE session/text_delta/status/tool/approval/snapshot/done/error; real streaming display|
 | GET /api/events?sessionId=... |Current sessionId|Active session reconnect subscription, snapshot overwrites the next increment; read and save snapshots when the subscription is not possible|
@@ -106,3 +106,14 @@ Default App no longer mounts optional legacy GitVersionPanel, Save version or wo
 There is one current Saplingagent version: kernel0.9.5. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
 
 New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92→0.9.3; original manifests/backups stay byte-exact. Shipped old comparators cannot understand0.9.4. Stop the app, download new tooling into an isolated .cache subfolder, then run that tooling's kernel/cli.mjs --root ORIGINAL_APP check/update with the project-local Node. Default is preview; update requires existing explicit risk acknowledgement and refuses conflicts/live targets. Never overwrite/rebaseline local core edits or regenerate a customer manifest to hide them. Source recovery remains explicit.
+
+
+## Conversation history and context (TASK-20261019-055)
+
+GET /api/sessions supplies id/title/updatedAt/engine/providerId/modelId summaries. The chat lists them in title order (Chinese pinyin/English, numeric comparison), with date and id tie breakers. Selecting a conversation reads its snapshot, then subscribes if running, without cancelling its backend run or sending a prompt. Loading ends after the snapshot; other conversations remain selectable during streaming. PATCH /api/sessions/:id accepts only {title}, trimmed 1–200 characters; its saved session updates the title without changing bindings/messages. Stale list/title/transport results never overwrite the current selection.
+
+Session snapshots optionally include contextUsage {usedTokens,contextWindow,updatedAt}: nonnegative safe integer tokens, positive safe integer capacity and provider observation timestamp. Show only actual valid measurements, otherwise unavailable. Capacity warnings are display thresholds, not billing totals or a prediction of automatic compaction. Source engines that do not report capacity remain unavailable.
+
+Unsent text and attachments are kept in page memory per selected conversation during explicit switches. Completed uploads reuse their local IDs; unfinished files retry their upload only when restored. No switch sends a model request. Restart/pagehide recovery remains text-only and uses the displayed session identity, independent of another tab's stored selection. Attachments still require reselection after a full page reload.
+
+A refused runtime-busy switch restores the source composer and leaves the target draft untouched. While assistant-ui has a pending attachment submission awaiting upload, switching/new-chat is refused with a message until submission finishes, preserving the submitted content.

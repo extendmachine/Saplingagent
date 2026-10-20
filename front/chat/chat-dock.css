@@ -29,3 +29,11 @@
   .seed-page:has(.chat-dock[data-expanded="true"]) > .application-content { margin-right: 0; }
   .chat-dock.is-collapsed { top: 50%; }
 }
+
+.chat-dock-launcher { position: fixed; top: 50%; right: 0; transform: translateY(-50%); touch-action: none; user-select: none; cursor: grab; min-height: 92px; }
+.chat-dock-launcher.is-dragging { cursor: grabbing; }
+.chat-dock.is-collapsed { transform: none; }
+.chat-dock-launcher:focus-visible { outline: 2px solid #647954; outline-offset: -2px; }
+.session-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 18px 0; font-size: 10px; color: #9b5d46; }
+.session-actions button { display: flex; align-items: center; gap: 4px; border: 0; background: transparent; color: #718166; font-size: 11px; padding: 4px 0; }
+.session-actions button:disabled { opacity: .5; }

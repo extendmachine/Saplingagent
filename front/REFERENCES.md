@@ -35,3 +35,13 @@ Public documentation and npm metadata need no login; real inference/model catalo
 - https://github.com/bubkoo/html-to-image — official source/documentation for toPng,filter,pixelRatio,cacheBust,skipFonts. Exact1.11.13, MIT, frontend-only lazy import; npm lock records integrity. Public documentation and npm metadata require no account. DOM rendering cannot guarantee native screenshot parity for external/canvas/video content.
 
 No model SDK changes accompany this frontend dependency. UI previews use isolated local fixtures and synthetic replies, not paid model inference.
+
+
+## Chat mathematics and composer state (2026-10-19, TASK-055)
+
+- https://github.com/remarkjs/remark-math — official remark-math/rehype-katex repository, checked2026-10-19; math parsing and HTML pipeline. Locked remark-math6.0.0 / rehype-katex7.0.1.
+- https://katex.org/docs/options — official KaTeX options, checked2026-10-19; trust remains false. Local KaTeX0.19.0 CSS/fonts, MIT dependency.
+- https://www.assistant-ui.com/elements/markdown-text — official Markdown primitive, checked2026-10-19; installed0.14.20 source confirms preprocess/plugin support and math delimiter/currency helpers.
+- Installed @assistant-ui/core/runtime/api/composer-runtime and base implementation, resolved by locked @assistant-ui/react0.15.26, confirm reset cancels pending attachment-add operations and CreateAttachment descriptors reuse completed uploads. No additional package or private API is used.
+
+Public documentation requires no account; tests use synthetic text/uploads only. Existing user conversations and credentials are not imported.

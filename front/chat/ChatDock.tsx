@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
+import { ChevronRight, MessageSquare } from 'lucide-react';
+import { ChatLauncher } from './ChatLauncher';
 import { ChatPanel } from './ChatPanel';
 import './chat-dock.css';
 
@@ -17,9 +18,7 @@ export function ChatDock() {
   }
 
   return <aside className={`chat-dock${open ? '' : ' is-collapsed'}`} aria-label="AI chat" data-expanded={open}>
-    <button ref={launcher} type="button" className="chat-dock-launcher" hidden={open} aria-label="Open AI chat" aria-expanded={open} aria-controls="saplingagent-chat-panel" onClick={() => toggle(true)}>
-      <MessageSquare size={17} aria-hidden="true" /><span>AI chat</span><ChevronLeft size={14} aria-hidden="true" />
-    </button>
+    <ChatLauncher visible={!open} onOpen={() => toggle(true)} buttonRef={launcher} />
     <div ref={panel} id="saplingagent-chat-panel" className="chat-dock-surface" hidden={!open}>
       <header className="chat-dock-header">
         <div><MessageSquare size={17} aria-hidden="true" /><h2>AI chat</h2></div>

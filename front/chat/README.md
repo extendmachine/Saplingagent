@@ -24,3 +24,10 @@ Full restart includes auto-discovered/registered project services; see ../../doc
 ## Right-side collapsible AI chat (2026-10-15)
 
 The central conversation is now a right-edge AI chat panel, initially expanded. Collapse chat hides the panel and leaves an Open AI chat edge tab; reopening restores focus to the composer. The ChatPanel remains mounted while hidden, preserving draft text, messages, running response transport and session state. Desktop application content uses the remaining width; small screens use the available width. Existing App error isolation, Git/restart controls, Stop/Retry/New conversation and API semantics remain unchanged. The version footer is restored to its centered layout with kernel0.90, correcting the earlier footer-target assumption.
+
+
+## Saved conversations and measurements (TASK-20261019-055)
+
+The panel now exposes saved conversation selection/refresh/rename and a measured-context meter. ConversationControls preserves text/attachment drafts per session in memory; switchSession replaces only the displayed transport and allows switching away while a backend turn continues. Request epochs isolate old streams, cancellations, approvals and list/title reads. History endpoint failure no longer blocks restoring a known session. New session options appear immediately. RestartDraft receives the actual displayed session ID rather than another browser tab's storage pointer.
+
+ChatLauncher implements only the chat edge-tab preference; no shared business panel system is imported. Markdown adds local KaTeX mathematics while preserving GFM and currency. Context usage is unavailable until the provider reports both measured usage and capacity; warning colors do not claim a provider compaction threshold or cost. Main attachment/page inspection/kernel hosts are retained.

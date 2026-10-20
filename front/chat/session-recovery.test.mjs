@@ -304,9 +304,10 @@ test('a mismatched snapshot ID is rejected without binding a different conversat
 });
 
 test('a list failure about a different missing session does not invalidate the selected ID', async t => {
-  const h = await harness({ savedId: 'retained', list: missing, route: () => undefined }); t.after(() => h.close());
-  assert.equal(h.storage.get(KEY), 'retained'); assert.ok(h.current.error);
-  assert.equal(h.requests.filter(request => request.url === '/api/sessions/retained').length, 0);
+  const h = await harness({ savedId: 'retained', list: missing, route: () => json({ session: session('retained', [message('saved', 'saved text')]) }) }); t.after(() => h.close());
+  assert.equal(h.storage.get(KEY), 'retained'); assert.equal(h.current.error, ''); assert.ok(h.current.sessionsError);
+  assert.equal(h.current.messages[0].text, 'saved text');
+  assert.equal(h.requests.filter(request => request.url === '/api/sessions/retained').length, 1);
 });
 
 test('a header arriving after unmount cannot bind a session', async t => {
@@ -360,4 +361,80 @@ test('file-only sends retain attachment IDs and restored retries reuse the same 
  const h=await harness({route});t.after(()=>h.close());await h.current.onNew({content:[],attachments:[{id:attachment.id,type:'image',name:attachment.name,contentType:attachment.contentType,status:{type:'complete'},content:[{type:'image',image:'/api/attachments/'+attachment.id+'/content'}]}]});await h.settle();assert.equal(posted.length,1);assert.equal(posted[0].text,'');assert.deepEqual([...posted[0].attachmentIds],[attachment.id]);assert.equal(h.current.messages[0].attachments[0].id,attachment.id);
  const original=posted[0].requestId;saved.push({...message('failed-answer','Failed','assistant'),status:'failed'});
  const resumed=await harness({savedId:'files',route});t.after(()=>resumed.close());assert.equal(posted.length,1);await resumed.current.retry();await resumed.settle();assert.equal(posted.length,2);assert.equal(posted[1].requestId,original);assert.deepEqual([...posted[1].attachmentIds],[attachment.id]);
+});
+
+test('saved conversation list can switch the active chat without sending a model request', async t => {
+  const summaries = [
+    { id: 'recent-chat', title: 'Zulu notes', updatedAt: '2026-10-14T10:00:00.000Z' },
+    { id: 'older-chat', title: 'beta notes', updatedAt: '2026-10-13T10:00:00.000Z' },
+  ];
+  const h = await harness({
+    savedId: 'recent-chat',
+    list: () => json({ sessions: summaries }),
+    route: request => {
+      if (request.url === '/api/sessions/recent-chat') return json({ session: session('recent-chat', [message('recent-message', 'recent conversation')]) });
+      if (request.url === '/api/sessions/older-chat' && request.method === 'PATCH') return json({ session: { ...session('older-chat', [message('older-message', 'older conversation')]), title: request.input.title, updatedAt: '2026-10-15T10:00:00.000Z' } });
+      if (request.url === '/api/sessions/older-chat') return json({ session: session('older-chat', [message('older-message', 'older conversation')]) });
+    },
+  });
+  t.after(() => h.close());
+  assert.deepEqual([...h.current.sessions].map(item => item.id), ['older-chat', 'recent-chat']);
+  assert.equal(h.current.activeSessionId, 'recent-chat');
+  await h.current.switchSession('older-chat'); await h.settle();
+  assert.equal(h.storage.get(KEY), 'older-chat');
+  assert.equal(h.current.activeSessionId, 'older-chat');
+  assert.equal(h.current.messages[0].text, 'older conversation');
+  assert.equal(h.requests.filter(request => request.url === '/api/chat').length, 0);
+  assert.equal(await h.current.renameSession('older-chat', '  zzz reference  '), 'zzz reference'); await h.settle();
+  assert.deepEqual([...h.current.sessions].map(item => item.id), ['recent-chat', 'older-chat']);
+  assert.equal(h.current.sessions.at(-1).title, 'zzz reference');
+  assert.deepEqual(h.requests.find(request => request.method === 'PATCH').input, { title: 'zzz reference' });
+});
+
+
+test('running conversation switching releases loading before the stream ends and isolates late events', async t => {
+  let streamController;
+  const h = await harness({ savedId: 'idle', route: req => {
+    if (req.url === '/api/sessions/idle') return json({ session: session('idle', [message('idle-m', 'idle text')]) });
+    if (req.url === '/api/sessions/live') return json({ session: { ...session('live', [], true), contextUsage: { usedTokens: 500, contextWindow: 1000, updatedAt: '2026-10-19T10:00:00Z' } } });
+    if (req.url === '/api/events?sessionId=live') return new Response(new ReadableStream({ start(c) { streamController = c; } }));
+  } }); t.after(() => h.close());
+  const switching = h.current.switchSession('live'); await h.settle();
+  assert.equal(h.current.isRunning, true); assert.equal(h.current.isLoading, false); assert.equal(h.current.contextUsage.usedTokens, 500);
+  await h.current.switchSession('idle'); await h.settle();
+  streamController.enqueue(new TextEncoder().encode('data: '+JSON.stringify({ type: 'snapshot', session: session('live', [message('late','wrong thread')]) })+'\n\n')); streamController.close(); await switching; await h.settle();
+  assert.equal(h.current.activeSessionId, 'idle'); assert.equal(h.current.messages[0].text, 'idle text'); assert.equal(h.current.contextUsage, null);
+  assert.equal(h.requests.filter(req => req.method === 'POST').length, 0);
+});
+
+test('late session-list results do not undo a saved rename or a newer refresh', async t => {
+  const old = deferred(); let lists=0;
+  const h=await harness({ list:()=>++lists===2?old.promise:json({sessions:[{id:'saved',title:'Initial',engine:'codex'}]}), route:req=>req.method==='PATCH'?json({session:{...session('saved'),title:req.input.title}}):json({session:session('saved')}) });t.after(()=>h.close());
+  const refresh=h.current.refreshSessions();await h.settle();await h.current.renameSession('saved','Renamed');await h.settle();
+  old.resolve(json({sessions:[{id:'saved',title:'Old'}]}));await refresh;await h.settle();assert.equal(h.current.sessions[0].title,'Renamed');assert.equal(h.current.sessionsLoading,false);
+});
+
+test('a new session enters navigation while its first response is still streaming', async t => {
+  let controller;
+  const h=await harness({route:req=>req.url==='/api/chat'?new Response(new ReadableStream({start(c){controller=c;c.enqueue(new TextEncoder().encode('data: '+JSON.stringify({type:'session',sessionId:'new-live'})+'\n\n'));}}),{headers:{'X-Session-Id':'new-live'}}):json({session:session('new-live')})});t.after(()=>h.close());
+  const sending=h.current.onNew({content:[{type:'text',text:'Navigation title'}]});await h.settle();
+  assert.equal(h.current.activeSessionId,'new-live');assert.equal(h.current.sessions.find(item=>item.id==='new-live').title,'Navigation title');assert.equal(h.current.isRunning,true);
+  controller.enqueue(new TextEncoder().encode('data: '+JSON.stringify({type:'done',status:'completed'})+'\n\n'));controller.close();await sending;
+});
+
+test('late cancellation and approval responses cannot change another conversation', async t => {
+  const cancel=deferred(), approval=deferred();
+  const h=await harness({savedId:'a',route:req=>req.url.endsWith('/cancel')?cancel.promise:req.url.startsWith('/api/approvals/')?approval.promise:json({session:session(req.url.split('/').at(-1),[message('m','saved text')])})});t.after(()=>h.close());
+  const stop=h.current.onCancel(), answer=h.current.respondApproval('approval-a','accept');await h.settle();
+  await h.current.switchSession('b');await h.settle();cancel.resolve(json({error:{message:'Old failure'}},500));approval.resolve(json({ok:true}));await Promise.all([stop,answer]);await h.settle();
+  assert.equal(h.current.activeSessionId,'b');assert.equal(h.current.error,'');assert.equal(h.current.activity,'');assert.equal(h.current.approvalBusy,false);
+});
+
+
+test('repeated title edits are persisted in order and older completion cannot replace the latest intent',async t=>{
+ const first=deferred(),second=deferred();let patches=0;
+ const h=await harness({list:()=>json({sessions:[{id:'a',title:'Initial'}]}),route:()=>++patches===1?first.promise:second.promise});t.after(()=>h.close());
+ const old=h.current.renameSession('a','First');await h.settle();const fresh=h.current.renameSession('a','Second');await h.settle();assert.equal(patches,1);
+ first.resolve(json({session:{...session('a'),title:'First'}}));await old;await h.settle();assert.equal(patches,2);assert.equal(h.current.sessions[0].title,'Initial');
+ second.resolve(json({session:{...session('a'),title:'Second'}}));await fresh;await h.settle();assert.equal(h.current.sessions[0].title,'Second');
 });

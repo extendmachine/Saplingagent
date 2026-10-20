@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppendMessage } from '@assistant-ui/react';
-import { checkedFetch, cleanMessages, getSession, isMissingSession, readSessionId, rememberSession, type Approval, type EngineOption, type EngineSelection, type Message, type Request, type RuntimeStatus, type Session } from './runtime-api';
+import { checkedFetch, cleanMessages, getSession, getSessions, isMissingSession, readSessionId, rememberSession, renameSession as saveSessionTitle, sortSessionSummaries, type Approval, type ContextUsage, type EngineOption, type EngineSelection, type Message, type Request, type RuntimeStatus, type Session, type SessionSummary } from './runtime-api';
 import { consumeEvents, type ServerEvent } from './sse';
 
 type ToolActivity = { id: string; name: string; status: string };
@@ -20,6 +20,11 @@ export function useSeedRuntime() {
   const [approvalBusy, setApprovalBusy] = useState(false);
   const [engines, setEngines] = useState<EngineOption[]>([]);
   const [selection, setSelectionState] = useState<EngineSelection>({ engine: 'codex', providerId: null, modelId: null });
+  const [contextUsage, setContextUsage] = useState<ContextUsage | null>(null);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(() => readSessionId());
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState('');
   const selectionChosen = useRef(false);
   const setSelection = useCallback((value: EngineSelection) => { selectionChosen.current=true; setSelectionState(value); }, []);
   const session = useRef<string | null>(readSessionId());
@@ -28,6 +33,9 @@ export function useSeedRuntime() {
   const lastRequest = useRef<Request | null>(null);
   const messageAttachments = useRef(new Map<string, import('./runtime-api').AttachmentMetadata[]>());
   const stream = useRef<AbortController | null>(null);
+  const listEpoch = useRef(0);
+  const titleWrites = useRef(new Map<string, Promise<Session>>());
+  const titleVersions = useRef(new Map<string, number>());
   const epoch = useRef(0);
   const pending = useRef(new Map<string, string>());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,6 +69,7 @@ export function useSeedRuntime() {
     if (!id || !isMissingSession(failure) || !currentTarget(signal, expectedEpoch, id)) return false;
     flush();
     session.current = null;
+    setActiveSessionId(null);
     // Another same-origin tab may have already stored a different conversation.
     if (readSessionId() === id) rememberSession(null);
     if (lastRequest.current?.sessionId === id) {
@@ -78,9 +87,14 @@ export function useSeedRuntime() {
   const snapshot = useCallback((saved: Session) => {
     flush();
     session.current = saved.id;
+    setActiveSessionId(saved.id);
     rememberSession(saved.id);
+    setSessions(current => sortSessionSummaries(current.some(item => item.id === saved.id)
+      ? current.map(item => item.id === saved.id ? { ...item, title: saved.title ?? item.title, updatedAt: saved.updatedAt ?? item.updatedAt } : item)
+      : [...current, { id: saved.id, title: saved.title, updatedAt: saved.updatedAt, engine: saved.engine || 'codex', providerId: saved.providerId, modelId: saved.modelId }]));
     setMessages(cleanMessages(saved.messages));
     setApprovals(Array.isArray(saved.pendingApprovals) ? saved.pendingApprovals : []);
+    setContextUsage(saved.contextUsage && Number.isSafeInteger(saved.contextUsage.usedTokens) && saved.contextUsage.usedTokens >= 0 && Number.isSafeInteger(saved.contextUsage.contextWindow) && saved.contextUsage.contextWindow > 0 ? saved.contextUsage : null);
     setSelection({ engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null });
     if (!lastRequest.current) {
       const user = [...saved.messages].reverse().find(message => message.role === 'user');
@@ -91,6 +105,22 @@ export function useSeedRuntime() {
       setRetryable(Boolean(lastRequest.current));
     }
   }, [flush]);
+
+  const refreshSessions = useCallback(async (signal?: AbortSignal) => {
+    const request = ++listEpoch.current;
+    setSessionsLoading(true);
+    try {
+      const values = await getSessions(signal);
+      if (!signal?.aborted && request === listEpoch.current) {
+        setSessions(current => sortSessionSummaries([...values, ...current.filter(item => item.id === session.current && !values.some(value => value.id === item.id))]));
+        setSessionsError('');
+      }
+    } catch (failure) {
+      if (!signal?.aborted && request === listEpoch.current && !isAborted(failure)) setSessionsError(errorText(failure));
+    } finally {
+      if (!signal?.aborted && request === listEpoch.current) setSessionsLoading(false);
+    }
+  }, []);
 
   const refreshStatus = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -122,6 +152,9 @@ export function useSeedRuntime() {
       case 'session': {
         if (typeof event.sessionId === 'string') {
           session.current = event.sessionId;
+          setActiveSessionId(event.sessionId);
+          const id = event.sessionId;
+          setSessions(current => current.some(item => item.id === id) ? current : sortSessionSummaries([...current, { id, title: lastRequest.current?.text.slice(0, 60) || 'Untitled conversation', engine: lastRequest.current?.engine || 'codex' }]));
           rememberSession(event.sessionId);
           if (lastRequest.current) lastRequest.current.sessionId = event.sessionId;
         }
@@ -244,10 +277,8 @@ export function useSeedRuntime() {
       if (!currentTarget(bootstrap.signal, expectedEpoch, id)) return;
       statusTimer = setInterval(() => { void refreshStatus(bootstrap.signal); }, 10000);
       try {
-        // Confirm saved conversations through the public service; do not put
-        // conversation content into browser storage or create a second sidebar.
-        const response = await checkedFetch('/api/sessions', { signal: bootstrap.signal });
-        await response.json();
+        // History availability must not block restoring an already-known session.
+        void refreshSessions(bootstrap.signal);
         if (!currentTarget(bootstrap.signal, expectedEpoch, id)) return;
         if (id) {
           fetchingSavedSession = true;
@@ -280,7 +311,7 @@ export function useSeedRuntime() {
       if (timer.current) clearTimeout(timer.current);
       pending.current.clear();
     };
-  }, [currentTarget, detachMissingSession, recover, refreshEngines, refreshStatus, setRunning, snapshot]);
+  }, [currentTarget, detachMissingSession, recover, refreshEngines, refreshSessions, refreshStatus, setRunning, snapshot]);
 
   useEffect(() => {
     let signature = '', controller: AbortController | null = null;
@@ -339,6 +370,7 @@ export function useSeedRuntime() {
         const saved = await getSession(id, controller.signal);
         if (currentTarget(controller.signal, expectedEpoch, id)) snapshot(saved);
       }
+      if (currentTarget(controller.signal, expectedEpoch, id)) void refreshSessions();
     } catch (failure) {
       if (!currentTarget(controller.signal, expectedEpoch, id) || isAborted(failure)) return;
       if (detachMissingSession(failure, request.sessionId || id, controller.signal, expectedEpoch)) return;
@@ -353,7 +385,7 @@ export function useSeedRuntime() {
       setError(errorText(failure));
       setRetryable(true);
     }
-  }, [currentTarget, detachMissingSession, flush, receive, recover, setRunning, snapshot]);
+  }, [currentTarget, detachMissingSession, flush, receive, recover, refreshSessions, setRunning, snapshot]);
 
   const onNew = useCallback(async (message: AppendMessage) => {
     const text = message.content.filter(part => part.type === 'text').map(part => part.type === 'text' ? part.text : '').join('\n').trim();
@@ -370,20 +402,22 @@ export function useSeedRuntime() {
       setError('Creating the session. You can stop shortly.');
       return;
     }
+    const target = session.current, expected = epoch.current;
     setActivity('Stopping…');
     try {
-      await checkedFetch(`/api/sessions/${encodeURIComponent(session.current)}/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    } catch (failure) { setError(`Unable to stop:${errorText(failure)}`); }
+      await checkedFetch(`/api/sessions/${encodeURIComponent(target)}/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    } catch (failure) { if (epoch.current === expected && session.current === target) setError(`Unable to stop:${errorText(failure)}`); }
   }, []);
 
   const startNew = useCallback(() => {
-    if (running.current) return;
+    if (running.current || restarting.current) return false;
     ++epoch.current;
     stream.current?.abort();
     pending.current.clear();
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
     session.current = null;
+    setActiveSessionId(null);
     selectionChosen.current = false;
     void refreshEngines();
     lastRequest.current = null;
@@ -391,28 +425,105 @@ export function useSeedRuntime() {
     setMessages([]);
     setTools([]);
     setApprovals([]);
+    setApprovalBusy(false);
+    setContextUsage(null);
     setError('');
     setRetryable(false);
     setActivity('');
+    return true;
   }, [refreshEngines]);
+
+  const switchSession = useCallback((id: string) => {
+    if (!id || id === session.current || restarting.current) return false;
+    const expectedEpoch = ++epoch.current;
+    const controller = new AbortController();
+    stream.current?.abort();
+    stream.current = controller;
+    flush();
+    pending.current.clear();
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    setRunning(false);
+    session.current = id;
+    setActiveSessionId(id);
+    rememberSession(id);
+    lastRequest.current = null;
+    setMessages([]);
+    setTools([]);
+    setApprovals([]);
+    setApprovalBusy(false);
+    setContextUsage(null);
+    setError('');
+    setRetryable(false);
+    setIsLoading(true);
+    setActivity('Loading conversation…');
+    void (async () => {
+    try {
+      const saved = await getSession(id, controller.signal);
+      if (!currentTarget(controller.signal, expectedEpoch, id)) return;
+      snapshot(saved);
+      setIsLoading(false);
+      if (saved.running) {
+        setRunning(true);
+        await recover(controller.signal, expectedEpoch);
+      }
+    } catch (failure) {
+      if (!currentTarget(controller.signal, expectedEpoch, id) || isAborted(failure)) return;
+      if (!detachMissingSession(failure, id, controller.signal, expectedEpoch)) setError(`Unable to open conversation: ${errorText(failure)}`);
+      void refreshSessions();
+    } finally {
+      if (currentTarget(controller.signal, expectedEpoch, session.current)) {
+        setIsLoading(false);
+        if (!running.current) setActivity('');
+      }
+    }
+    })();
+    return true;
+  }, [currentTarget, detachMissingSession, flush, recover, refreshSessions, setRunning, snapshot]);
+
+  const renameSession = useCallback(async (id: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed || trimmed.length > 200) throw new Error('Conversation title must contain 1 to 200 characters.');
+    ++listEpoch.current; // Ignore history reads started before this mutation.
+    setSessionsLoading(false);
+    const version = (titleVersions.current.get(id) || 0) + 1;
+    titleVersions.current.set(id, version);
+    // Serialize writes for a conversation so cancellation of the editor cannot
+    // reorder persisted titles. Only the latest requested title updates the UI.
+    const previous = titleWrites.current.get(id);
+    const write = (previous ? previous.catch(() => undefined) : Promise.resolve()).then(() => saveSessionTitle(id, trimmed));
+    titleWrites.current.set(id, write);
+    let saved: Session;
+    try { saved = await write; }
+    finally { if (titleWrites.current.get(id) === write) titleWrites.current.delete(id); }
+    if (titleVersions.current.get(id) !== version) return saved.title || trimmed;
+    ++listEpoch.current; // Also invalidate reads that raced the write.
+    setSessionsLoading(false);
+    setSessions(current => sortSessionSummaries(current.some(item => item.id === id)
+      ? current.map(item => item.id === id ? { ...item, title: saved.title, updatedAt: saved.updatedAt || item.updatedAt } : item)
+      : [...current, { id, title: saved.title, updatedAt: saved.updatedAt, engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null }]));
+    return saved.title || trimmed;
+  }, []);
 
   const retry = useCallback(async () => {
     if (lastRequest.current) await runRequest({ ...lastRequest.current }, true);
   }, [runRequest]);
 
   const respondApproval = useCallback(async (id: string, decision: string) => {
+    const target = session.current, expected = epoch.current;
     setApprovalBusy(true);
     try {
       await checkedFetch(`/api/approvals/${encodeURIComponent(id)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision }) });
+      if (epoch.current !== expected || session.current !== target) return;
       setApprovals(current => current.filter(item => item.id !== id));
       setError('');
       setActivity('Continuing…');
-    } catch (failure) { setError(`Action not confirmed:${errorText(failure)}`); }
-    finally { setApprovalBusy(false); }
+    } catch (failure) { if (epoch.current === expected && session.current === target) setError(`Action not confirmed:${errorText(failure)}`); }
+    finally { if (epoch.current === expected && session.current === target) setApprovalBusy(false); }
   }, []);
 
   const selectedEngine = engines.find(engine => engine.id === selection.engine);
   const engineReady = selection.engine === 'codex' ? Boolean(status?.codexReady ?? status?.ready) : Boolean(selectedEngine?.ready && selectedEngine.authenticated && selection.providerId && selection.modelId);
   const engineError = selection.engine !== 'codex' && !selectedEngine?.authenticated ? 'Configure this agent provider in AI setup before starting this conversation' : selectedEngine?.error || '';
-  return { messages, status, engines, selection, setSelection, engineReady, engineError, canSelectEngine: !session.current && !isRunning, isLoading, isRunning, activity, tools, approvals, approvalBusy, error, retryable, onNew, onCancel, startNew, retry, respondApproval, refreshStatus, refreshEngines };
+  return { messages, status, engines, selection, setSelection, contextUsage, sessions, activeSessionId, sessionsLoading, sessionsError, refreshSessions, switchSession, renameSession, engineReady, engineError, canSelectEngine: !session.current && !isRunning, isLoading, isRunning, activity, tools, approvals, approvalBusy, error, retryable, onNew, onCancel, startNew, retry, respondApproval, refreshStatus, refreshEngines };
 }

@@ -5,11 +5,20 @@ export type EngineSelection = { engine: 'codex' | 'opencode' | 'claude'; provide
 export type ModelOption = { id: string; label: string };
 export type ProviderOption = { id: string; label: string; defaultModelId?: string | null; models: ModelOption[] };
 export type EngineOption = { id: 'codex' | 'opencode' | 'claude'; label: string; ready: boolean; authenticated: boolean; model?: string; providers?: ProviderOption[]; error?: string | null };
-export type Session = EngineSelection & { id: string; title?: string; messages: Message[]; running?: boolean; activeRequestId?: string | null; pendingApprovals?: Approval[] };
+export type ContextUsage = { usedTokens: number; contextWindow: number; updatedAt: string };
+export type Session = EngineSelection & { id: string; title?: string; updatedAt?: string; messages: Message[]; running?: boolean; activeRequestId?: string | null; pendingApprovals?: Approval[]; contextUsage?: ContextUsage | null };
+export type SessionSummary = EngineSelection & { id: string; title?: string; updatedAt?: string };
 export type RuntimeStatus = { ready: boolean; codexReady?: boolean; defaultEngine?: 'codex' | 'opencode' | 'claude'; authenticated: boolean; provider?: string; model?: string; skills?: { name: string; description: string }[]; mcp?: { ready: boolean; tools?: { name: string; description: string }[] }; error?: string };
 export type Request = EngineSelection & { requestId: string; sessionId?: string; text: string; attachmentIds?: string[] };
 
 export const SESSION_KEY = 'seedagent.active-session.v1';
+const sessionTitle = (item: SessionSummary) => item.title?.trim() || 'Untitled conversation';
+const sessionTitleCollator = new Intl.Collator(['zh-CN-u-co-pinyin', 'en'], { usage: 'sort', sensitivity: 'base', numeric: true });
+
+export function sortSessionSummaries(items: SessionSummary[]): SessionSummary[] {
+  return [...items].sort((left, right) => sessionTitleCollator.compare(sessionTitle(left), sessionTitle(right)) ||
+    (right.updatedAt || '').localeCompare(left.updatedAt || '') || left.id.localeCompare(right.id));
+}
 
 export class HttpError extends Error {
   readonly status: number;
@@ -71,6 +80,26 @@ export async function getSession(id: string, signal?: AbortSignal): Promise<Sess
   const response = await checkedFetch(`/api/sessions/${encodeURIComponent(id)}`, { signal });
   const body = await response.json();
   if (!body.session || body.session.id !== id || !Array.isArray(body.session.messages)) throw new Error('Invalid saved session format.');
+  return body.session;
+}
+
+export async function getSessions(signal?: AbortSignal): Promise<SessionSummary[]> {
+  const response = await checkedFetch('/api/sessions', { signal });
+  const body = await response.json();
+  if (!Array.isArray(body.sessions)) throw new Error('Invalid conversation list format.');
+  return sortSessionSummaries(body.sessions.filter((item: unknown): item is SessionSummary => {
+    if (!item || typeof item !== 'object') return false;
+    const value = item as Partial<SessionSummary>;
+    return typeof value.id === 'string' && /^[a-zA-Z0-9_-]{1,180}$/.test(value.id);
+  }));
+}
+
+export async function renameSession(id: string, title: string): Promise<Session> {
+  const response = await checkedFetch(`/api/sessions/${encodeURIComponent(id)}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }),
+  });
+  const body = await response.json();
+  if (!body.session || body.session.id !== id || typeof body.session.title !== 'string') throw new Error('Invalid renamed conversation format.');
   return body.session;
 }
 
