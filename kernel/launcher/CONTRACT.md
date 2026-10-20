@@ -159,6 +159,15 @@ stop/handoff requests. Stable startup PID identity survives status completion so
 maintenance waits for actual process exit, including final cache/log handles.
 Unknown/stale ambiguous ownership is reported rather than guessed away.
 
+Process identity queries run macOS `/bin/ps` with child-only `LANG` and `LC_ALL`
+set to `en_US.UTF-8` (TASK-20261019-052). Finder can omit locale variables,
+causing `ps` to escape a Unicode executable path; inherited time locales can
+also change the start timestamp. The fixed query locale preserves the actual
+path and a stable English timestamp without changing the application's or OS
+environment. Exact executable, timestamp, project and nonce checks still apply.
+This JavaScript bridge fix also serves existing exported apps without rebuilding
+their native binaries.
+
 `closeDockForMaintenance(root, {timeoutMs})`, exported by launcher/public.mjs,
 requests startup cancellation and native handoff exit, waits owned worker/native
 processes, and removes only matching receipts. It leaves a ready backend for the

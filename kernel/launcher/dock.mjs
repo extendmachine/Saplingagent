@@ -16,7 +16,9 @@ const fail=(code,message)=>issue(code,message);
 export async function processIdentity(pid){
   if(!Number.isSafeInteger(pid)||pid<2)return null;
   try{
-    const {stdout}=await run('/bin/ps',['-ww','-p',String(pid),'-o','lstart=','-o','comm='],{timeout:2000});
+    // Finder may omit locale variables; ps then escapes Unicode paths under C.
+    // Fix both path encoding and the timestamp locale only for this child.
+    const {stdout}=await run('/bin/ps',['-ww','-p',String(pid),'-o','lstart=','-o','comm='],{timeout:2000,env:{...process.env,LANG:'en_US.UTF-8',LC_ALL:'en_US.UTF-8'}});
     const match=stdout.trim().match(/^(.{24})\s+(.+)$/);
     return match?{stamp:match[1],executable:match[2]}:null;
   }catch(error){if(error.code===1)return null;throw fail('DOCK_PROCESS_UNKNOWN','Cannot verify the project launcher process. Retry after checking local processes.');}

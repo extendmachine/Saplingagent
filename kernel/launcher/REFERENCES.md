@@ -71,3 +71,14 @@ without a browser runtime bundle or another persistent service.
 
 Actual macOS native checks and Windows x64/ARM64 cross-compilation are separate
 from Windows hardware/GUI/file-lock acceptance, which remains unverified here.
+
+## Finder process identity locale (TASK-20261019-052)
+
+Checked2026-10-19 against the installed Apple system manuals
+`/usr/share/man/man1/ps.1` (`comm`, `lstart`) and
+`/usr/share/man/man1/locale.1` (`LANG`, `LC_ALL`, `LC_CTYPE`, `LC_TIME`).
+The latter documents C as the unset default and `LC_ALL` overriding category
+settings. `locale -a` confirms `en_US.UTF-8` and `fr_FR.UTF-8` on the test Mac.
+Actual child-process regression verifies Unicode executable paths and stable
+timestamps in unset, C and French environments. Only the `ps` child receives the
+fixed locale; no system setting or parent environment is changed.

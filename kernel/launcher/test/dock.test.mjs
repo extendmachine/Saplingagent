@@ -49,7 +49,11 @@ test('handoff aborts startup and waits for its cleanup before native exit',async
  assert.equal(cleaned,true);f.identities.delete(f.input.pid);await close;assert.equal(await start,'handoff');assert.equal(f.calls.start,0);
 });
 test('different project PID, duplicate live app and mismatched nonce are rejected',async t=>{
- const f=await fixture(t);await f.dock().start(f.input);
+ const f=await fixture(t);
+ f.identities.set(91005,{stamp:'foreign',executable:process.execPath});
+ await assert.rejects(f.dock().start({pid:91005,nonce:randomUUID()}),{code:'DOCK_OWNER_INVALID'});
+ assert.equal(f.calls.prepare,0);
+ await f.dock().start(f.input);
  await assert.rejects(f.dock().stop({...f.input,nonce:randomUUID()}),{code:'DOCK_OWNER_MISMATCH'});
  f.identities.set(91003,{stamp:'other',executable:f.identities.get(f.input.pid).executable});
  await assert.rejects(f.dock().start({pid:91003,nonce:randomUUID()}),{code:'DOCK_ALREADY_RUNNING'});
