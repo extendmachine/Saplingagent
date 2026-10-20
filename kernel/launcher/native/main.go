@@ -12,7 +12,13 @@ import (
 	"time"
 )
 
+var dockCommand bool
+
 func problem(message string) {
+	if dockCommand {
+		fmt.Fprintln(os.Stderr, message)
+		os.Exit(1)
+	}
 	if runtime.GOOS == "darwin" {
 		exec.Command("/usr/bin/osascript", "-e", `display alert "Project launcher" message "The local runtime could not start. Open Saplingagent.sh and repair the project installation."`).Run()
 	} else {
@@ -59,6 +65,13 @@ func projectEnvironment(root string) ([]string, error) {
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--verify" {
 		return
+	}
+	if len(os.Args) > 1 && runtime.GOOS == "darwin" {
+		switch os.Args[1] {
+		case "--dock-start", "--dock-open", "--dock-status", "--dock-stop":
+			dockCommand = true
+			enableDockSignals()
+		}
 	}
 	exe, err := os.Executable()
 	if err != nil {
@@ -117,12 +130,28 @@ func main() {
 	}
 	defer f.Close()
 	if _, err = os.Stat(node); err != nil {
+		if dockCommand && os.Args[1] == "--dock-status" {
+			fmt.Println("bootstrapping")
+			return
+		}
+		if dockCommand && os.Args[1] == "--dock-stop" {
+			if runtimeMayBeRunning(root) {
+				problem("The project runtime may still be running, but its Node executable is missing. Restore the local runtime before stopping this project.")
+			}
+			fmt.Println("stopped")
+			return
+		}
 		f.WriteString("Preparing the missing project-local runtime…\n")
 		bootstrap := runtimeBootstrap(root, env)
 		bootstrap.Dir = filepath.Dir(root)
 		bootstrap.Stdout = f
 		bootstrap.Stderr = f
-		if err = bootstrap.Run(); err != nil {
+		if dockCommand {
+			err = dockForeground(bootstrap, true)
+		} else {
+			err = bootstrap.Run()
+		}
+		if err != nil {
 			f.WriteString("Runtime preparation failed; inspect this log and retry with network access.\n")
 			problem("Project runtime installation failed. Check logs/project-launcher and open the app again after resolving the error.")
 			return
@@ -132,11 +161,27 @@ func main() {
 			return
 		}
 	}
-	cmd := exec.Command(node, filepath.Join(root, "kernel", "launcher", "entry.mjs"), "--launch")
+	args := []string{filepath.Join(root, "kernel", "launcher", "entry.mjs"), "--launch"}
+	if dockCommand {
+		args = append([]string{filepath.Join(root, "kernel", "launcher", "entry.mjs")}, os.Args[1:]...)
+	}
+	cmd := exec.Command(node, args...)
 	cmd.Dir = filepath.Dir(root)
 	cmd.Stdout = f
 	cmd.Stderr = f
 	cmd.Env = env
+	if dockCommand {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err = dockForeground(cmd, false); err != nil {
+			f.WriteString("Dock lifecycle command did not complete. Inspect the project runtime and retry.\n")
+			if exit, ok := err.(*exec.ExitError); ok {
+				os.Exit(exit.ExitCode())
+			}
+			problem("The project operation did not complete. Inspect logs/project-launcher and retry.")
+		}
+		return
+	}
 	background(cmd)
 	if err = cmd.Start(); err != nil {
 		f.WriteString("Launcher could not start the project-local Node runtime. Repair using Saplingagent.sh.\n")

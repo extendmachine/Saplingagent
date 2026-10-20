@@ -24,3 +24,21 @@ Go1.27.2 distributed source, `src/cmd/internal/telemetry/telemetry.go` and
 locally. The compiler and counters honor `TEST_TELEMETRY_DIR`; its local `mode`
 file accepts `off`. Builds use this pinned behavior to avoid both global telemetry
 writes and upload subprocesses. No remote account or model invocation was used.
+
+## Ordinary macOS Dock lifetime (TASK-20261019-043)
+
+Checked2026-10-19 against public Apple documentation and the installed macOS
+`osacompile` help. No account, Automation access to another application or global
+tool installation is required by the launcher. Real local compile/open/reopen/quit
+checks are distinct from Windows and real model acceptance.
+
+- AppleScript stay-open application run, idle, reopen and quit handlers:
+  https://developer.apple.com/library/archive/documentation/AppleScript/Conceptual/AppleScriptLangGuide/conceptual/ASLR_about_handlers.html.
+  Normal Quit reaches `on quit`; `continue quit` is used only after owned shutdown
+  or explicit configuration handoff.
+- Calling command-line tools, quoting and exit/error behavior:
+  https://developer.apple.com/library/archive/documentation/LanguagesUtilities/Conceptual/MacAutomationScriptingGuide/CallCommandLineUtilities.html.
+  The applet invokes only its bundle-relative helper with quoted arguments.
+- Ordinary versus UI-element activation:
+  https://developer.apple.com/documentation/bundleresources/information-property-list/lsuielement.
+  The generated app sets false and stays alive, exposing the native Dock Quit action.

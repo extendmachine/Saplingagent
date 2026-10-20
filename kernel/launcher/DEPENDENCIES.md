@@ -10,9 +10,12 @@ without Git Bash. The Bash Windows installer encodes this same private script.
 No global Node, compiler or shell configuration is installed. Official download
 checks and project-local runtime locking remain in the platform bootstraps.
 
-After preparation, the native executable starts project Node with
-`kernel/launcher/entry.mjs --launch` and exits. It contains no embedded application
-or dependency installer. Runtime preparation failures are recorded under
+On Windows, the native executable starts project Node with
+`kernel/launcher/entry.mjs --launch` and exits. On macOS, a system-compiled
+stay-open applet owns an ordinary Dock application and calls the same small Go
+helper for lifecycle commands. The helper remains cancellable while preparing
+Node and awaiting application startup; the applet remains responsive. Neither
+contains embedded application source or a second dependency installer. Runtime preparation failures are recorded under
 `logs/project-launcher/` and shown as a launcher error; a missing full source
 folder cannot be repaired by downloading Node alone. Concurrent Node downloads
 retain the existing installer lock behavior and ask the user to retry.
@@ -64,3 +67,30 @@ network/extraction tools. Native launch rejects redirected managed directories.
 The pinned Go1.27.2 toolchain receives `TEST_TELEMETRY_DIR` pointing at the project
 and an `off` mode marker; this is verified against that pinned compiler's source
 and a real local invocation. Future compiler pin changes must recheck this behavior.
+
+## macOS Dock application (TASK-20261019-043)
+
+macOS compilation uses the built-in `/usr/bin/osacompile` to produce a stay-open
+AppleScriptObjC applet. Foundation supplies its real PID, per-launch nonce and
+asynchronous task handle. `LSUIElement=false` gives it regular Dock activation.
+The helper remains CGO-free Go; no Xcode, Command Line Tools, Electron or new
+business service is installed. The existing project services and browser UI stay
+unchanged. The system applet and helper are ad-hoc signed together after icon and
+metadata preparation. This does not represent Developer ID signing/notarization.
+
+Opening/reopening calls the public Node lifecycle bridge through the helper.
+Normal Quit requests cancellation and shutdown from that bridge, then waits for
+the pending helper to exit. A failed stop leaves the Dock app running with an
+error so the user can retry. A configuration handoff exits without issuing a
+second stop. Force Quit and OS crashes bypass normal cleanup; open the app again
+and use normal Quit to request the owned runtime shutdown. The configuration
+coordinator must close the Dock application and startup helper before replacing
+the bundle or renaming the folder.
+
+Only start/open may bootstrap missing Node. Status/stop never download anything.
+During the initial download, native cancellation signals only its newly created
+bootstrap process group and waits; the script first gets time to release its
+installation lease. Once Node is running, its own signal handler performs service
+and installer cleanup. The helper does not kill unrelated Node processes. If
+Node is missing while recorded project runtime metadata still identifies a live
+PID, Quit reports the damaged installation rather than claiming the runtime stopped.
