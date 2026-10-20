@@ -312,6 +312,22 @@ test('a disconnected stop client does not abandon owned shutdown or the owner ca
  assert.equal(manager.phase,'stopped');assert.equal(manager.children.size,0);
 });
 
+test('legacy Dock stop retries a failed confirmed stop without closing recovery on another failure', async t => {
+ let callback=0;
+ const {manager,request}=await fixture(t,{onMaintenance:()=>{callback++;assert.equal(manager.children.size,0)}});
+ const pids=manager.state().services.map(service=>service.pid),stop=manager.stopChild.bind(manager);let failures=0;
+ manager.stopChild=async name=>{if(failures++<2)throw Object.assign(new Error('synthetic refusal'),{code:'SERVICE_STOP_FAILED'});return stop(name)};
+ const headers={Authorization:'Bearer fixture-token'};
+ assert.equal((await request('/api/runtime/stop-and-wait',headers,'POST',{instanceId:manager.instanceId})).status,503);
+ assert.equal(manager.closed,true);assert.equal(manager.closing,null);
+ assert.equal((await request('/api/runtime/stop',headers,'POST')).status,503);assert.equal(callback,0);
+ const failedStatus=await (await request('/api/runtime/status')).json();assert.equal(failedStatus.phase,'failed');assert.equal(failedStatus.canStop,true);
+ for(const pid of pids)assert.doesNotThrow(()=>process.kill(pid,0));
+ const success=await request('/api/runtime/stop',headers,'POST');assert.equal(success.status,202);assert.deepEqual(await success.json(),{stopping:true});
+ for(const pid of pids)assert.throws(()=>process.kill(pid,0));assert.equal(manager.children.size,0);
+ await until(()=>callback===1);
+});
+
 test('new controls enforce instance-only input, local auth and fixed logs destination; legacy stop remains202', async t => {
  let opened=null,callback=0;
  const {root,manager,request,config}=await fixture(t,{gateway:true,onMaintenance:()=>{callback++},openLogs:async directory=>{opened=directory;return{requested:true}}});

@@ -30,7 +30,10 @@ after flushing this acknowledgement does the existing owner shutdown callback cl
 the controller/gateway. Busy work returns409; shutdown failures return503 and remain
 retryable. A changed instance returns409 `RUNTIME_INSTANCE_CHANGED`. Lost transport
 or a client timeout never establishes stopped; reconnect explicitly to inspect the
-live runtime. The original POST `/api/runtime/stop` retains its202 contract.
+live runtime. The original POST `/api/runtime/stop` retains its202 contract. If an
+earlier close failed, that legacy/Dock action retries owned termination before202
+and before the owner callback; another failure keeps the controller available and
+returns503 instead of permanently refusing on the closed manager's drain gate.
 
 POST `/api/runtime/open-logs` accepts the same instance-only body and requests that
 macOS Finder or Windows Explorer open only this project's existing logs directory.

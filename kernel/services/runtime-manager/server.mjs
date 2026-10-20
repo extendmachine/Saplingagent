@@ -68,7 +68,10 @@ export function createControlHandler(options) {
       }
       if (req.method === 'POST' && route === '/api/runtime/stop') {
         if(!options.onMaintenance)return send(res,503,{error:{code:'STOP_UNAVAILABLE',message:'Stop this legacy runtime from its launcher.'}});
-        await manager.prepareMaintenance();
+        // Failed close has already drained and closed the mutation gate. Retry its
+        // owned children before the owner callback can close the recovery listeners.
+        if (manager.closed) await manager.close();
+        else await manager.prepareMaintenance();
         send(res,202,{stopping:true});setTimeout(()=>void options.onMaintenance(),30);return;
       }
       if (req.method === 'POST' && route === '/api/runtime/restart') {
