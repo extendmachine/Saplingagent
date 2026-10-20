@@ -27,9 +27,15 @@ test('legacy version route stays compatible and follows installed kernel, withou
     assert.doesNotMatch(await response.text(), /DO_NOT_EXPOSE|0\.90|release-http|SyntaxError/);
   }
   await fs.mkdir(path.join(root,'kernel'),{recursive:true});
-  await fs.copyFile(new URL('../../../kernel/manifest.json',import.meta.url),path.join(root,'kernel/manifest.json'));
-  await fs.writeFile(metadata,JSON.stringify({schemaVersion:1,version:'0.9.1'}));
-  assert.deepEqual(await (await read()).json(),{release:{schemaVersion:1,version:'0.9.4'}});
+  const manifest = JSON.parse(await fs.readFile(new URL('../../../kernel/manifest.json', import.meta.url), 'utf8'));
+  await fs.writeFile(metadata, JSON.stringify({schemaVersion:1, version:'0.9.1'}));
+  // Synthetic installed versions test precedence without depending on this checkout's release.
+  for (const version of ['7.8.9', '8.0.0']) {
+    await fs.writeFile(path.join(root, 'kernel/manifest.json'), JSON.stringify({...manifest, version}));
+    response = await read();
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {release:{schemaVersion:1, version}});
+  }
   assert.equal(fixture.calls.filter(call => call.method === 'turn/start').length, 0);
   await assert.rejects(fs.access(path.join(root, '.git')));
 });
