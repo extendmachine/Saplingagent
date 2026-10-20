@@ -69,3 +69,36 @@ test('same-project replacement is visible and restart uses the newly observed in
   await h.flush();changed=true;await h.run('update()');assert.match(h.elements.get('message').textContent,/new runtime/);
   await h.elements.get('restart').onclick();assert.deepEqual(body,{scope:'all',instanceId:'new-instance'});
 });
+
+test('an older failed poll cannot overwrite confirmed stop or restart polling', async()=>{
+  let statusRequests=0,rejectPoll;
+  const deferred=new Promise((resolve,reject)=>{rejectPoll=reject});
+  const h=pageHarness(async route=>{
+    if(route.endsWith('/status'))return ++statusRequests===1?response(state):deferred;
+    return response({stopped:true,instanceId:state.instanceId});
+  });
+  await h.flush();
+  const oldPoll=h.run('update()');
+  await h.elements.get('stop').onclick();
+  assert.equal(h.elements.get('phase').textContent,'Stopped');
+  rejectPoll(Error('Host exited after confirmed stop'));
+  await oldPoll;
+  assert.equal(h.elements.get('phase').textContent,'Stopped');
+  assert.match(h.elements.get('message').textContent,/all managed project services exited/);
+  assert.equal(h.timers.filter(x=>!x.cancelled).length,0);
+  assert.equal(h.elements.get('stop').disabled,true);
+  assert.equal(h.elements.get('open').attrs['aria-disabled'],'true');
+});
+
+test('an older failed poll does not replace progress while stop confirmation is pending', async()=>{
+  let statusRequests=0,rejectPoll,confirmStop;
+  const deferredPoll=new Promise((resolve,reject)=>{rejectPoll=reject});
+  const deferredStop=new Promise(resolve=>{confirmStop=resolve});
+  const h=pageHarness(async route=>route.endsWith('/status')?(++statusRequests===1?response(state):deferredPoll):deferredStop);
+  await h.flush();const oldPoll=h.run('update()');const stopping=h.elements.get('stop').onclick();
+  rejectPoll(Error('Connection closed during shutdown'));await oldPoll;
+  assert.match(h.elements.get('message').textContent,/Waiting for confirmed exit/);
+  assert.equal(h.elements.get('stop').disabled,true);
+  confirmStop(response({stopped:true,instanceId:state.instanceId}));await stopping;
+  assert.equal(h.elements.get('phase').textContent,'Stopped');assert.equal(h.timers.filter(x=>!x.cancelled).length,0);
+});
