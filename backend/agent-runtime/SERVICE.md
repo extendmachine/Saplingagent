@@ -88,3 +88,15 @@ GET /api/kernel returns the safe installed kernel status from contracts/kernel.m
 GET /api/release exposes only validated public distribution schema/version, independently of model readiness and Git; no source mutation. Its contract is separate from /api/kernel and /api/git.
 
 Product0.9.2: engine SDKs/native executables now install once in kernel/node_modules. The application Agent package/lock stay customer-owned and are not overwritten by kernel upgrades. Shared resolver supports their ESM exports. No model protocol or permission change; existing optional Git API remains application code with no default UI/installer invocation.
+
+
+## Chat controls and provider usage (TASK-20261019-056)
+
+The application Agent exposes title-only conversation renaming and forwards the
+current Codex turn's native context measurement through session snapshots. Workspace
+persists this optional metadata. Counts are not inferred for unsupported engines,
+and the Agent neither triggers compaction nor promises its timing. Per-session
+rename ordering keeps active snapshots consistent without starting or stopping
+inference. Existing attachments, page reading, provider bindings and Full Access
+are retained. No extra service, dependency, process or persistent port is added.
+See CONTRACT.md and test/chat-controls.test.mjs for shape, failure and race handling.

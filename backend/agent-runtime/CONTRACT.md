@@ -117,3 +117,31 @@ GET /api/kernel remains the installed kernel contract. The legacy GET /api/relea
 ## Stop during native session relocation
 
 Stop cancels the same thread's pending native resume even before a turnId exists. A cancelled setup finishes as interrupted, or preserves a pre-existing abort cause as failed, without starting/resending a model turn or replacing the saved thread. The new optional transport cancelResume hook complements normal turn/interrupt; older injected transports remain compatible. Native missing-rollout recovery itself belongs to kernel/engines and verifies local history identity. It does not rewrite customer history or reduce Full Access.
+
+
+## Conversation controls and context usage (TASK-20261019-056)
+
+`PATCH /api/sessions/:id` accepts `{title:string}` and returns200 `{session}`.
+Trim the title; require1–200characters, otherwise400 `INVALID_TITLE`.
+Only the title is forwarded to workspace; client-supplied message, engine, thread
+or usage fields do not mutate a session. Missing sessions return404 `NOT_FOUND`.
+Existing same-origin/Bearer and runtime-drain checks also cover this mutation.
+Renaming an active conversation updates its in-memory title and broadcasts the
+existing `snapshot` event without canceling or issuing a model turn. Concurrent
+renames serialize per session, including the workspace write and cache update.
+
+Public session/snapshot adds optional `contextUsage:{usedTokens,contextWindow,
+updatedAt}|null`. Counts are safe integers, usedTokens>=0 and contextWindow>=1;
+updatedAt is an ISO timestamp recording receipt. Codex's current matching
+`thread/tokenUsage/updated` notification supplies `last.totalTokens` and
+`modelContextWindow`, never cumulative `total.totalTokens`. Wrong-thread,
+wrong-turn, pre-confirmation and finished-run events cannot update another turn.
+Unavailable native usage/window clears a previous value to null; malformed counts
+are ignored. The latest valid count can decrease. This is provider-reported
+context occupancy, not billing totals or proof of a compaction threshold/event.
+Other engines currently provide no usage value; absence/null means unknown.
+
+Usage persists with message snapshots, including dirty-session retries and explicit
+null clearing. Old sessions remain compatible without migrations. Token events do
+not extend the effective-progress timer. Session listing/switching remains read-only;
+closing a browser subscription does not interrupt its backend turn or send a prompt.

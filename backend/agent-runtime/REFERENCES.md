@@ -78,3 +78,19 @@ Git project-root correctness (TASK-20261012-011), checked 2026-10-12: https://gi
 - https://code.claude.com/docs/en/agent-sdk/streaming-vs-single-mode — official structured streaming-input approach. Installed @anthropic-ai/claude-agent-sdk0.3.296 SDKUserMessage allows image/base64 content; native SDK test sends an image through a synthetic local Messages API and resumes the existing session.
 
 Public sources need no login. Exact installed schema/types take precedence over evolving examples. No SDK upgrade or real inference/account validation is implied.
+
+
+## Context usage bridge (2026-10-19, TASK-20261019-056)
+
+- Official App Server protocol: https://developers.openai.com/codex/app-server .
+  Existing installed-schema basis; public documentation is not re-fetched by this
+  local port. Model inference separately requires the user's account and quota.
+- Rechecked the project's previously generated local CLI schema in
+  `.cache/chat-media-page/codex-schema/v2/`: ThreadTokenUsageUpdatedNotification
+  contains threadId, turnId and tokenUsage; ThreadTokenUsage contains total, last
+  and nullable modelContextWindow; TokenUsageBreakdown contains totalTokens.
+  This bridge uses last.totalTokens and modelContextWindow only. The schema cache
+  is verification evidence, not a distribution dependency or committed artifact.
+- Synthetic HTTP/notification tests verify attribution and optional persistence.
+  No provider-specific compression threshold, billing cost, unsupported engine
+  count or new external protocol behavior is claimed.
