@@ -536,8 +536,8 @@
     },
     {
       "path": "kernel/launcher/CONTRACT.md",
-      "sha256": "f39058f7b05a89fe87036c2c4acbb828e67d101991d3500a9447e48e943ea9f8",
-      "bytes": 21543,
+      "sha256": "47d394bb90d0d17af1e62de6ffbf72288fd94a8242b1113c865e258450b33702",
+      "bytes": 22116,
       "executable": false
     },
     {
@@ -554,8 +554,8 @@
     },
     {
       "path": "kernel/launcher/dock.mjs",
-      "sha256": "fd5c68fb58f2df89f536134d18ecea215f1e12e68fddd88d2754cd4b70759cca",
-      "bytes": 13716,
+      "sha256": "7548a7afcec3790718f94a3452a10acfba43396615ed27041b0a0cbba1bea111",
+      "bytes": 13933,
       "executable": false
     },
     {
@@ -644,8 +644,8 @@
     },
     {
       "path": "kernel/launcher/REFERENCES.md",
-      "sha256": "3304b1ffa289ef4a4969f10fc1e11437452b2254d7035a202fdee0d27eee90c4",
-      "bytes": 5774,
+      "sha256": "58715057f9bc156b2a6f712a6bb87f1a04aafa3a064613ff0f81b770bc592700",
+      "bytes": 6396,
       "executable": false
     },
     {
@@ -691,6 +691,12 @@
       "executable": false
     },
     {
+      "path": "kernel/launcher/test/dock-locale.test.mjs",
+      "sha256": "2e3e899f528509ecc8cc331acf530ce32f5ff2bae2bc7ac56fe0815bfd574521",
+      "bytes": 2555,
+      "executable": false
+    },
+    {
       "path": "kernel/launcher/test/dock-native.test.mjs",
       "sha256": "3c28182c8920f73ca6d628136f7978f12a21c2eb15a69cece9e9f538f8260574",
       "bytes": 8710,
@@ -698,8 +704,8 @@
     },
     {
       "path": "kernel/launcher/test/dock.test.mjs",
-      "sha256": "f2478ed1ee14bbed69d2a466446d233e065f7e5c2b093714dc0afce61c76ad31",
-      "bytes": 9436,
+      "sha256": "aae8697a1aa3e87c80ee40412aa0f2d380cfaf9dbacf2e9ef9c83f572da76dd6",
+      "bytes": 9643,
       "executable": false
     },
     {
