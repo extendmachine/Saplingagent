@@ -8,7 +8,7 @@
 | GET /sessions |Nothing|{sessions:[{id,title,updatedAt,engine,providerId,modelId}]}, update time in reverse order|
 | POST /sessions | {title?,engine?,providerId?,modelId?} | 201 {session} |
 | GET /sessions/:id |UUID/Security ID| {session} |
-| PATCH /sessions/:id | {threadId?,messages?,title?,running?,activeRequestId?,requests?,expectedRevision?} | {session} |
+| PATCH /sessions/:id | {threadId?,messages?,title?,running?,activeRequestId?,requests?,contextUsage?,expectedRevision?} | {session} |
 | GET /preferences |Nothing| {preferences} |
 | POST /preferences | {key,value,evidence} | 201 {preference} |
 | DELETE /preferences/:id |Security ID| {ok:true} |
@@ -18,6 +18,17 @@ Messages: up to 10,000, {id,role:'user'|'assistant'|'system'|'tool',text,status?
 Requests: up to 500, {id,status:'inProgress'|'completed'|'failed'|'interrupted',startedAt,completedAt?,error?}, ID is unique, time must be parsable, error up to 1000 characters. The account book is used for retrying, and the actual retry status is decided by the agent.
 Title up to 200 characters; threadId up to 300 characters. Preference {id,key,value,evidence,createdAt}; key up to 256 characters, value JSON up to 64KiB, evidence required non-blank, up to 8192 characters, up to 5000 items, total JSON up to 4MiB. Long-term preferences are not automatically inferred.
 HTTP request up to 5MiB, the first 10 seconds/request timeout 30 seconds. Unknown supplementary fields are not persistent.
+
+`contextUsage` is optional on sessions: omitted on legacy records, explicitly
+`null` when unavailable, or `{usedTokens,contextWindow,updatedAt}`. Counts must be
+safe integers: usedTokens >= 0 and contextWindow > 0; updatedAt is a nonempty
+parseable timestamp of at most 80 characters, supplied by Agent as ISO 8601.
+Usage can exceed the window or decrease between measurements; Workspace does
+not infer compaction, billing, or a model's capacity. PATCH omission preserves
+the previous measurement; null clears it. Only these three fields are retained.
+Invalid patches return INVALID_INPUT without changing the record or revision.
+Partial title/message/usage writes remain serialized and preserve other fields.
+No migration or rewrite is performed when reading old sessions.
 
 Error {error:{code,message,requestId}}: 400 INVALID_INPUT/INVALID_JSON, 401 UNAUTHORIZED, 404 NOT_FOUND, 409 CONFLICT/UNSAFE_STORAGE, 413 PAYLOAD_TOO_LARGE, 500 CORRUPT_STORAGE/INTERNAL_ERROR. The error does not return the stack or private path.
 Serial modification, reading waiting queue, JSON atomic replacement; optional expectedRevision to enable optimistic concurrency check. Contract compatibility extension retains existing fields. If the self-inspection is passed, the manual and real agent coordination will be recorded by the root coordinator, and the non-Git will be submitted without testing.

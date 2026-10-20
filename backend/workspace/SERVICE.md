@@ -16,6 +16,13 @@ Health check GET /health. Stop the terminal Ctrl+C; the unified process is manag
 data/workspace/sessions/<uuid>.json, data/workspace/preferences.json, directory 700, JSON600; single-process global queue serialization modification, temporary file fsync with the same directory rename. expectedRevision can be transmitted to prevent expiration coverage; multi-process co-writing is not supported. Directory and file reject symbolic links.
 The model continuation chat can only be read and written through the contract, and it is forbidden to import other services for private implementation. The session business data is saved in the application directory, and the secret value only reads local-secrets/runtime/service-token. The service will not output the token/request body.
 
+Sessions may persist the latest validated `contextUsage` measurement from
+agent-runtime, so context counters survive reloads. Workspace validates counts
+and timestamps without estimating model usage, cost or compaction. Older records
+remain unchanged; an omitted patch retains the value and explicit null clears it.
+Concurrent title, message and usage patches keep unrelated fields intact through
+the existing serialized store.
+
 ## Daily record
 
 logs/workspace/workspace-YYYY-MM-DD.log, info/warn/error, field requestId/code; start and cross-day clean up the ordinary log 30 days ago, do not enter Git. The log does not record messages, preferences, request bodies or credentials.
