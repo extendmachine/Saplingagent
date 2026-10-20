@@ -52,6 +52,8 @@ Run `bash Saplingagent.sh`. The script installs the minimal local kernel and ope
 
 Open the generated `.app` or `.exe` inside the complete project folder. It checks and installs missing/changed project dependencies before starting the application. It stays a small bootstrap; your editable source and data remain in the folder. Reopen `bash Saplingagent.sh configure` to change settings or rebuild the launcher. Normal app startup does not reopen configuration. See the [A/B lifecycle and recovery guide](docs/project-launcher.html).
 
+On macOS, the app stays in the Dock while the existing project services run. Click its Dock icon to reopen the project; choose **Quit** or press **Command-Q** to stop this project's backend and exit. Closing the browser alone leaves services running. If shutdown fails, the Dock app stays open so you can inspect `logs/project-launcher/` and retry. Configuration waits for the native app and startup helper to exit before renaming or replacing the launcher. After updating an existing installation, use **Save & build app** once to rebuild an older exported `.app` with this behavior. The browser interface and service cluster remain unchanged.
+
 ## Install, configure, start
 
 ### 1. Get the complete application
