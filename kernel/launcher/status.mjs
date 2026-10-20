@@ -19,10 +19,11 @@ export function statusPageOpener(open, { noOpen = false, report = console.log } 
       try { await open(url); }
       catch { report('Could not open the browser. Open the project status address above.'); }
     }
+    launchProgress('status');
   };
 }
 
 export function launchProgress(phase) {
-  if (['checking', 'installing', 'starting', 'ready', 'failed'].includes(phase))
+  if (['checking', 'installing', 'starting', 'status', 'ready', 'failed'].includes(phase))
     console.log(`SAPLING_PROGRESS:${phase}`);
 }

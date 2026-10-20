@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project status · Saplingagent</title>
+<style>body{font:16px/1.65 system-ui;color:#26352d;background:#fafbf8;max-width:850px;margin:40px auto;padding:24px}a{color:#316443}table{border-collapse:collapse;width:100%}td,th{text-align:left;vertical-align:top;padding:12px;border-bottom:1px solid #dce4dc}code{overflow-wrap:anywhere}</style>
+<main><nav><a href="index.html">Overview</a> · <a href="project-launcher.html">Launcher</a> · <a href="api-interfaces.html">Interfaces</a></nav>
+<h1>Project status on app launch</h1>
+<p>Open your compiled app inside its complete project folder. The launcher checks project-local dependencies and shows preparation progress. Once this project's runtime gateway responds, the browser opens its small kernel-owned status page. Application services can still be starting; the page refreshes every two seconds. No new fixed port or business service is required.</p>
+<p>The page displays the saved project name, installed kernel version, actual directory, runtime phase, selected public URL and service process/port information. A live process is not proof that a remote AI account or model works. A configured service port is not an independent continuous health probe. Workers without an HTTP listener do not need a port.</p>
+<table><thead><tr><th>Control</th><th>Behavior</th></tr></thead><tbody>
+<tr><td>Open app</td><td>Open the project's application page. Keep status available while using the application.</td></tr>
+<tr><td>Restart app / Restart backend</td><td>Use the existing owned service manager and wait for restart status. Finish active work first; a busy project can refuse.</td></tr>
+<tr><td>Stop app</td><td>Wait for owned application processes to exit. Only an explicit completion response confirms shutdown; a timeout or broken connection is unconfirmed. Reopen the compiled app to start again.</td></tr>
+<tr><td>Open logs</td><td>Open this project's logs folder in Finder or File Explorer. No log body or account credential is sent to the browser.</td></tr>
+</tbody></table>
+<h2>Window and process behavior</h2>
+<p>Closing the browser or hiding the startup progress display does not stop the project. On macOS, normal Dock Quit / Command-Q retains its graceful owned-service shutdown. Windows users use Stop app. Repeated activation reuses the project's runtime. Separately installed projects have independent identities and selected ports; no process-name or port-based kill is used.</p>
+<p>The status page depends on the runtime gateway, but not on the application's React build. Before Node/gateway startup, native progress reports preparation. If the gateway exits unexpectedly, the page reports connection loss instead of claiming that the services stopped. Inspect local launcher logs and reopen the app or repair dependencies through Saplingagent.sh.</p>
+<p>macOS can ask a newly built application for permission to access a project stored on Desktop or in Documents. Until that system prompt is resolved, startup can pause before project logs exist. Resolve the macOS prompt for the app you opened; rebuilding does not grant system permissions automatically.</p>
+<h2>Updating an existing launcher</h2>
+<p>Source updates supply the new status page and launcher logic. Use Configure AI → Save &amp; build app to rebuild an existing exported .app/.exe for its new native progress display. Keep the full project directory together. Existing customer configuration, data and Git remain unchanged.</p>
+<p>Windows native window behavior requires Windows hardware acceptance; cross-compilation and macOS tests alone do not establish that result. The local Mac build is ad-hoc signed, not Developer ID notarized.</p>
+<p><small>Kernel 0.9.5 · TASK-20261019-048–051 · Implementation and self-check results are recorded separately from human acceptance.</small></p></main></html>

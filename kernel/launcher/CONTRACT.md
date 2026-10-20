@@ -12,10 +12,12 @@ connection does not prove shutdown. Browser-opening failure prints the exact
 local status URL and does not stop an otherwise usable runtime.
 
 The native startup helper consumes only the fixed stdout records
-`SAPLING_PROGRESS:checking|installing|starting|ready|failed`; dependency output is
+`SAPLING_PROGRESS:checking|installing|starting|status|ready|failed`; dependency output is
 not the native progress protocol. Dock status retains its single phase response.
-macOS retains its ordinary Dock owner and graceful Quit; Windows activation waits
-for its detached startup task to finish before dismissing progress. Closing the
+macOS retains its ordinary Dock owner and graceful Quit; Windows dismisses its
+progress helper once the verified gateway/status page takes over, or when its
+detached startup task finishes. The `status` phase does not claim that application
+services are ready. Closing the
 status webpage or progress display is not the Stop app action. The gateway's
 explicit stop response confirms owned application children have exited before
 its own shutdown; reopening the compiled app starts the project again.

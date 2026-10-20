@@ -10,8 +10,11 @@ without Git Bash. The Bash Windows installer encodes this same private script.
 No global Node, compiler or shell configuration is installed. Official download
 checks and project-local runtime locking remain in the platform bootstraps.
 
-On Windows, the native executable starts project Node with
-`kernel/launcher/entry.mjs --launch` and exits. On macOS, a system-compiled
+On Windows, the native executable shows lightweight preparation progress, starts
+project Node with `kernel/launcher/entry.mjs --launch` in its own process group,
+and follows startup until the verified gateway/status page takes over or the
+startup task exits. The helper then exits; the existing service manager remains.
+Closing the progress window only hides the display. On macOS, a system-compiled
 stay-open applet owns an ordinary Dock application and calls the same small Go
 helper for lifecycle commands. The helper remains cancellable while preparing
 Node and awaiting application startup; the applet remains responsive. Neither
@@ -94,3 +97,18 @@ installation lease. Once Node is running, its own signal handler performs servic
 and installer cleanup. The helper does not kill unrelated Node processes. If
 Node is missing while recorded project runtime metadata still identifies a live
 PID, Quit reports the damaged installation rather than claiming the runtime stopped.
+
+
+## Native startup feedback (TASK-20261019-049–050)
+
+macOS uses a small nonmodal AppKit window within the existing Dock applet. Windows
+uses a small Win32 window in the existing Go helper. There is no additional UI
+framework, terminal tail process, HTTP server or global install. The progress
+display covers preparation before the runtime gateway is available. Native
+Windows consumes fixed semantic phase markers only; arbitrary dependency output
+stays in the local launcher log. The gateway's project status page takes over
+while application services may still be starting; a browser-open failure leaves a printed local URL for retry. The native
+window can be hidden without stopping services. Stop app and normal Mac Quit are
+the explicit shutdown actions. Rebuild an older exported launcher to use the
+new native display. Windows hardware acceptance remains distinct from compiling
+the x64/ARM64 artifacts.
