@@ -25,6 +25,8 @@
 
 **开发分支：main。** 本分支用于维护者的开发和测试。共享修改先在 main 实现并验证，再按发布要求同步到 release。
 
+右侧聊天支持历史会话切换与改名、各会话独立草稿、附件、GFM 表格和数学公式。收起面板后可拖动聊天入口，并记住位置。上下文条显示 Codex 最近报告的 token 数量和上下文容量；没有报告时显示未知。它不是费用统计，也不承诺自动压缩阈值。这些组件属于用户可编辑的应用部分，独立于内核升级。
+
 项目对外介绍、演示视频与应用案例统一维护在 [release](https://github.com/extendmachine/Saplingagent/tree/release)。查看[中文演示](https://github.com/extendmachine/Saplingagent/blob/release/README.zh-CN.md#demo)或[文档工作台案例](https://github.com/extendmachine/Saplingagent/blob/release/README.zh-CN.md#document-workspace)。
 
 <details>

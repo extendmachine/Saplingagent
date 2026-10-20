@@ -14,7 +14,8 @@ POST /api/git/commit -> {git}. Temporarily store the source changes of the curre
 POST /api/git/switch {branch} -> {git,reloadRecommended:true}. Only existing local branches are accepted; the current named branch will be automatically submitted when there are unsubmitted changes, and 409 will be returned when the AI dialogue is running, another switch is in progress or the target branch is occupied by other Worktree. The interface does not perform stash, force, discard, fetch, pull, push or remote branch creation.
 GET /api/engines -> {defaultEngine:'codex'|'opencode'|'claude',defaultSelection,engines:[...]}. Codex reports its selected project model. OpenCode reports only locally connected providers and their tool-capable models; credentials are never returned.
 GET /api/sessions -> {sessions:[{id,title,updatedAt,engine,providerId,modelId}]}。
-GET /api/sessions/:id -> {session:{id,title,engine,providerId,modelId,threadId,messages,updatedAt,running,activeRequestId,requests,pendingApprovals:[],progress?}}。
+GET /api/sessions/:id -> {session:{id,title,engine,providerId,modelId,threadId,messages,updatedAt,running,activeRequestId,requests,pendingApprovals:[],progress?,contextUsage?}}。
+PATCH /api/sessions/:id {title} -> {session}. Title is trimmed, nonempty and at most 200 characters. Other input fields are not forwarded. Rename does not change the engine, resend a prompt or cancel an active response; the latest title is also broadcast in its session snapshot. The existing Host/Origin/token and runtime-drain checks apply.
 POST /api/chat {sessionId?,text,requestId?,engine?,providerId?,modelId?} -> SSE: session, snapshot, text_delta, status, tool, error, done. A new session defaults to Codex. OpenCode and Claude Agent require all three selection fields. A saved session is permanently bound to its selection; changing it returns 409 and requires a new conversation.
 POST /api/sessions/:id/cancel -> {ok:true}; GET /api/events? sessionId=... -> snapshot+follow-up SSE. Running disconnection will not stop automatically. Session persistence, request deduping, real cancellation/error status maintenance. Stop cannot undo the side effects of documents or commands that have been generated.
 
@@ -26,7 +27,15 @@ POST /internal/register-task {tool,fingerprint} -> {taskId:'RUN-<requestId>'}. B
 
 ## agent/MCP -> workspace
 
-GET /health，GET /sessions -> {sessions}；POST /sessions {title?,engine?,providerId?,modelId?} -> {session}；GET /sessions/:id -> {session}；PATCH /sessions/:id {threadId?,messages?,title?,running?,activeRequestId?,requests?,expectedRevision?} -> {session}. Existing records without engine fields normalize to Codex. Engine/provider/model are immutable after creation.
+GET /health，GET /sessions -> {sessions}；POST /sessions {title?,engine?,providerId?,modelId?} -> {session}；GET /sessions/:id -> {session}；PATCH /sessions/:id {threadId?,messages?,title?,running?,activeRequestId?,requests?,expectedRevision?,contextUsage?} -> {session}. Existing records without engine fields normalize to Codex. Engine/provider/model are immutable after creation.
+
+## Conversation controls and context reporting (2026-10-19)
+
+The application chat sorts conversation names naturally (including Chinese pinyin and numeric names), using the latest update and ID as tie breakers. It can refresh/switch/rename them and keeps drafts separate while switching in the same page. Switching disconnects that browser's event subscription, not the model turn. Reopening a running conversation restores its snapshot and subscribes without waiting for the turn to finish before enabling navigation. The draggable collapsed chat opener retains its position in browser storage; it remains independent of kernel controls.
+
+`contextUsage` is absent on legacy/unreported sessions, null when explicitly unknown, or `{usedTokens,contextWindow,updatedAt}`. Codex `thread/tokenUsage/updated` supplies `last.totalTokens` and `modelContextWindow`; only the current thread/turn/run can update it. Safe integer counts are required, used tokens must be nonnegative, and the window must be positive. Cumulative `total` is not used. Invalid measurements are ignored; explicit null usage/window clears the last reading. Workspace writes serialize this field with other partial updates and reject invalid values without changing the file or revision.
+
+The frontend displays the latest reported context occupancy, not money spent or all-time billed tokens. A lower later reading is valid; an older persisted reading can remain after a turn or refresh. Unsupported OpenCode/Claude reporting displays an unknown state. The capacity gauge does not promise an automatic compaction threshold or control provider compaction. Counts above the window remain visible while the visual gauge is bounded.
 
 ## Provider-neutral sessions (2026-10-11)
 

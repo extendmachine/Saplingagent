@@ -17,7 +17,14 @@
 <a href="seedagent-plan.html">Early plan</a>
 </nav>
 <h1>Callable interface v2</h1>
-<p>Open machine contract<a href="../contracts/runtime-api.md">contracts/runtime-api.md</a>, each service CONTRACT.md is the basis for execution. The front-end same source 5173 agent Agent4310; workspace4311 and builder4312 are internal Bearer interfaces. All addresses are 127.0.0.1, no cloud.</p>
+<section>
+<h2>Conversation controls and context reporting</h2>
+<p>The right-hand application chat can refresh, switch and rename saved conversations. Switching preserves separate drafts and leaves an active model response running. GFM tables and math render in assistant replies. The collapsed chat opener is draggable; kernel controls remain separate.</p>
+<p><code>PATCH /api/sessions/:id {title}</code> returns <code>{session}</code>. The Agent trims a nonempty title of up to 200 characters and forwards only that field. Renaming an active conversation updates its snapshot without resending or cancelling the turn. Existing same-origin, authentication and restart-drain checks apply.</p>
+<p>Session snapshots and workspace patches accept optional <code>contextUsage: {usedTokens, contextWindow, updatedAt} | null</code>. Omitted data remains unchanged; null means unknown. Counts must be safe integers, used tokens nonnegative and the window positive, with a valid timestamp. Invalid workspace input does not partially save other fields. Legacy records require no migration.</p>
+<p>The Agent binds Codex <code>thread/tokenUsage/updated</code> to the current thread and turn, using <code>last.totalTokens</code> and <code>modelContextWindow</code>. This is the latest reported context occupancy, not cumulative billing. Counts can fall after provider context reduction. OpenCode/Claude without this report remain unknown. The gauge does not promise a compaction threshold.</p>
+</section>
+<p>The machine-readable contract is <a href="../contracts/runtime-api.md">contracts/runtime-api.md</a>; each service's CONTRACT.md defines its interface. The browser uses the project's same-origin gateway. Internal workspace and builder requests use Bearer authentication. Read the runtime's selected local addresses from Project status; example ports are not fixed reservations.</p>
 <section>
 <h2>Front-end → Agent</h2>
 <table>
