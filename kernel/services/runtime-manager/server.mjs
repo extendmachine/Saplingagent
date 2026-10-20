@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { kernelRequest } from '../../http.mjs';
 import { timingSafeEqual } from 'node:crypto';
+import { projectStatus, openProjectLogs } from './status.mjs';
 
 export function localAccess(req, { token, frontPort, managerPort }) {
   const hosts = [`127.0.0.1:${frontPort}`, `localhost:${frontPort}`, `127.0.0.1:${managerPort}`, `localhost:${managerPort}`];
@@ -17,15 +18,54 @@ export const send = (res, status, value) => {
   if (res.destroyed || res.headersSent) return;
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(value));
 };
+async function instanceRequest(req, manager) {
+  let bytes = 0; const chunks = [];
+  for await (const chunk of req) {
+    bytes += chunk.length;
+    if (bytes > 1024) throw Object.assign(new Error('Request too large.'), { code: 'INVALID_REQUEST', status: 400 });
+    chunks.push(chunk);
+  }
+  let input;
+  try { input = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch {}
+  if (new URL(req.url, 'http://127.0.0.1').search || !input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).length !== 1 || typeof input.instanceId !== 'string') {
+    throw Object.assign(new Error('Use only the observed runtime instance identifier.'), { code: 'INVALID_REQUEST', status: 400 });
+  }
+  if (input.instanceId !== manager.instanceId) throw Object.assign(new Error('The runtime changed. Reconnect before using its controls.'), { code: 'RUNTIME_INSTANCE_CHANGED', status: 409 });
+}
 export function createControlHandler(options) {
   const { manager } = options;
+  let stopping = false;
   return async (req, res) => {
     try {
       localAccess(req, options);
       const route = new URL(req.url, 'http://127.0.0.1').pathname;
       if (await kernelRequest(req,res,options,route,send)) return;
       if (req.method === 'GET' && route === '/health') return send(res, 200, { ready: true, service: 'runtime-manager' });
-      if (req.method === 'GET' && route === '/api/runtime/status') return send(res, 200, manager.state());
+      if (req.method === 'GET' && route === '/api/runtime/status') return send(res, 200, await projectStatus(manager));
+      if (req.method === 'POST' && route === '/api/runtime/open-logs') {
+        await instanceRequest(req, manager);
+        return send(res, 200, await (options.openLogs || openProjectLogs)(manager.root));
+      }
+      if (req.method === 'POST' && route === '/api/runtime/stop-and-wait') {
+        await instanceRequest(req, manager);
+        if (!options.onMaintenance) return send(res, 503, { error: { code: 'STOP_UNAVAILABLE', message: 'Stop this legacy runtime from its launcher.' } });
+        if (stopping || manager.closing) return send(res, 409, { error: { code: 'RUNTIME_BUSY', message: 'A stop operation is already in progress.' } });
+        stopping = true;
+        try {
+          if (!manager.closed) await manager.prepareMaintenance();
+          await manager.close();
+          if (manager.state().services.some(service => service.running)) throw Object.assign(new Error('Owned services have not stopped.'), { code: 'SERVICE_STOP_FAILED' });
+          let scheduled = false;
+          const finish = () => {
+            if (scheduled) return; scheduled = true;
+            setImmediate(() => Promise.resolve().then(() => options.onMaintenance()).catch(() => manager.log('shutdown_callback_failed')));
+          };
+          res.once('finish', finish); res.once('close', finish);
+          if (res.destroyed) finish();
+          send(res, 200, { stopped: true, instanceId: manager.instanceId });
+        } finally { stopping = false; }
+        return;
+      }
       if (req.method === 'POST' && route === '/api/runtime/stop') {
         if(!options.onMaintenance)return send(res,503,{error:{code:'STOP_UNAVAILABLE',message:'Stop this legacy runtime from its launcher.'}});
         await manager.prepareMaintenance();
@@ -36,11 +76,22 @@ export function createControlHandler(options) {
         for await (const chunk of req) { bytes += chunk.length; if (bytes > 1024) return send(res, 413, { error: { code: 'PAYLOAD_TOO_LARGE', message: 'Restart request is too large.' } }); chunks.push(chunk); }
         let input;
         try { input = bytes ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}; } catch { return send(res, 400, { error: { code: 'INVALID_SCOPE', message: 'Use scope all or backend.' } }); }
-        if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(key => key !== 'scope') || input.scope !== undefined && !['all', 'backend'].includes(input.scope)) return send(res, 400, { error: { code: 'INVALID_SCOPE', message: 'Use scope all or backend.' } });
+        if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(key => !['scope', 'instanceId'].includes(key)) || input.scope !== undefined && !['all', 'backend'].includes(input.scope) || input.instanceId !== undefined && typeof input.instanceId !== 'string') return send(res, 400, { error: { code: 'INVALID_SCOPE', message: 'Use scope all or backend and, optionally, the observed instanceId.' } });
+        if (input.instanceId !== undefined && input.instanceId !== manager.instanceId) return send(res, 409, { error: { code: 'RUNTIME_INSTANCE_CHANGED', message: 'The runtime changed. Reconnect before using its controls.' } });
         return send(res, 202, { jobId: manager.restart({ scope: input.scope || 'all' }), status: manager.state() });
       }
       send(res, 404, { error: { code: 'NOT_FOUND', message: 'Endpoint does not exist.' } });
-    } catch (error) { send(res, error.status || 503, { error: { code: error.code || 'MANAGER_UNAVAILABLE', message: error.status ? 'Local endpoint authentication failed.' : 'Runtime manager could not accept the operation.' } }); }
+    } catch (error) {
+      const messages = {
+        INVALID_REQUEST: 'Use only the observed runtime instance identifier.',
+        RUNTIME_INSTANCE_CHANGED: 'The runtime changed. Reconnect before using its controls.',
+        KERNEL_BUSY: 'Wait for startup, restart or active work to finish before stopping.',
+        RUNTIME_BUSY: 'A task or file operation is still running. Finish it before stopping.',
+        SERVICE_STOP_FAILED: 'An owned service could not stop. Retry Stop app or inspect local logs.',
+        LOGS_UNAVAILABLE: 'The project logs folder could not be opened. Inspect logs in this project folder.'
+      };
+      send(res, error.status || 503, { error: { code: error.code || 'MANAGER_UNAVAILABLE', message: messages[error.code] || (error.status ? 'Local endpoint authentication failed.' : 'Runtime manager could not accept the operation.') } });
+    }
   };
 }
 export function createManagerServer(options) {

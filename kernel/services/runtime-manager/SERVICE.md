@@ -2,6 +2,13 @@
 
 Owns application child-process lifecycle as the persistent parent launched by `scripts/dev.mjs`. Uses Node built-ins with no new npm dependency. `manager.mjs` supervises owned processes; `server.mjs` provides authenticated lifecycle control; `gateway.mjs` streams same-origin frontend/API/WebSocket traffic and provides the independent recovery page. Tests exercise real synthetic child processes, Git source transitions, HTTP gates, SSE and upgrades.
 
+`status-page.mjs` renders the shared macOS/Windows project-status page and its small
+browser controller; `status.mjs` reads optional project/kernel metadata without
+initialization and dispatches the fixed project logs folder to the system opener.
+The existing gateway and controller host this page and its APIs. Confirmed stop waits
+for owned child exit before the owner callback shuts down listeners. This introduces
+no additional persistent process or business-service registration.
+
 The gateway starts from configured frontPort5173 and manager control from4314; the unified launcher chooses available ascending ports for every service. Selected gateway/control ports survive complete restarts. Internal Vite starts from vitePort5174. Core backends start workspace, builder, optional PDF (when source exists), then Agent; Agent owns model engines/MCP. services.mjs adds discovered Node backends and config/services.json registrations in dependency order on every restart. Reverse-order shutdown only signals manager-created process groups. Full restart replaces frontend and backend; backend mode keeps frontend. Current checkout source, service registrations and config are read again. Internal port edits apply in-page; public/control preferences keep the current origin until a cold launch. The persistent controller is loaded by the launcher. Busy work refuses preparation and releases acquired gates. Older source without drain support has the limits in CONTRACT.md.
 
 Logs: logs/runtime-manager/runtime-manager-YYYY-MM-DD.log, lifecycle metadata only, 30-day retention. Child diagnostics stay in the terminal. Project commands use argv without an implicit shell; Node/npm resolve via the running project runtime. HTTP readiness does not send the internal token to ordinary project health endpoints. Existing internal token is read from local-secrets; never returned to browsers. This service adds no directory restrictions, root access, automatic rollback, chat resend or inference.

@@ -1,5 +1,20 @@
 # Runtime deployment
 
+The native launcher opens `/__saplingagent/runtime` at the actual allocated public
+port. This lightweight page is served by the existing gateway; it needs no Vite
+build, extra service or fixed port. It shows project metadata and owned process
+status, not live per-service health monitoring. Use Open app for the business UI.
+Restart remains on the status page. Stop app waits for owned exits before reporting
+success; a lost connection means shutdown is unconfirmed. After a confirmed stop,
+reopen the native app to start again. Closing a browser tab does not stop services.
+Open logs requests Finder/Explorer for this project's logs folder, without exposing
+log contents through HTTP. Missing log folders and failed open requests are reported.
+An old page refuses a different project if the OS reuses its port; reopen the right
+native app to obtain its current address. These changes require one normal cold
+restart to load the new runtime controller; native activation changes require the
+launcher rebuild documented by that service. Windows folder dispatch has automated
+argv tests; native Windows desktop acceptance remains separate.
+
 Launch via `Saplingagent.sh start` after project installation/login, or project-local Node `scripts/dev.mjs` for development. First adoption requires stopping the previous launcher and starting the new one once. The manager itself has no install step. Keep the launch window open.
 
 Configured loopback listeners: public gateway frontPort5173, internal Vite vitePort5174, control runtimeManagerPort4314, Agent4310, workspace4311, builder4312, optional PDF4313. These are starting values: unified startup selects the next available distinct loopback port for each listener; foreign owners are never killed. Follow the actual URL printed by the launcher. PDF is unnecessary on main and only launched when its selected source exists. New branch/project dependencies must be installed first by the installer or the AI adding the feature; restarting does not run package installation implicitly. The gateway keeps the same browser origin during frontend/backend restart, streams SSE, and forwards Vite WebSocket upgrades.

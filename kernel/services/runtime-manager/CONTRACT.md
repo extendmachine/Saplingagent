@@ -1,10 +1,53 @@
 # Runtime lifecycle and gateway contract
 
+## Project status page (TASK-20261019-048)
+
+The existing GET `/__saplingagent/runtime` is the lightweight launcher status page,
+independent of application Vite. It refreshes every two seconds, shows project name,
+installed kernel version, actual project directory/public URL, runtime phase and
+managed service process IDs/ports. Running means the owned process has not exited;
+it is not a continuous health claim. Overall ready means startup checks passed.
+Assigned ports are configuration, not assertions that listeners are healthy.
+The page stays open after restart; Open app opens the business page separately.
+Restart additionally accepts optional `instanceId`; the page always sends its
+observed identifier and mismatches return409, while old scope-only callers remain
+compatible. This prevents stale tabs operating a different runtime at a reused port.
+The HTML response pins its owning applicationRoot. A later status from another
+project at the reused port disables all actions and never rebinds the old page.
+
+GET `/api/runtime/status` preserves existing fields and adds `projectName` (read-only
+config/project.json name, falling back to the folder name), `kernelVersion` (installed
+kernel/manifest.json version or null), `url` and `canStop` (idle or retryable failed
+shutdown). `services[].port` now also covers
+built-in services, using the effective runtime port mapping; `healthCheck` identifies
+process-only workers. No environment, commands, credentials or log contents appear.
+Metadata reads never initialize or repair project configuration.
+
+POST `/api/runtime/stop-and-wait` accepts exactly `{instanceId:string}` for the
+instance observed by the page. After the existing busy/drain checks it waits for
+owned child process termination, then returns200 `{stopped:true,instanceId}`. Only
+after flushing this acknowledgement does the existing owner shutdown callback close
+the controller/gateway. Busy work returns409; shutdown failures return503 and remain
+retryable. A changed instance returns409 `RUNTIME_INSTANCE_CHANGED`. Lost transport
+or a client timeout never establishes stopped; reconnect explicitly to inspect the
+live runtime. The original POST `/api/runtime/stop` retains its202 contract.
+
+POST `/api/runtime/open-logs` accepts the same instance-only body and requests that
+macOS Finder or Windows Explorer open only this project's existing logs directory.
+It returns200 `{requested:true}` after dispatch; no folder UI visibility guarantee.
+The system folder opener starts with the project parent as its working directory
+so it does not retain the project directory as a rename-blocking working directory.
+Paths, commands, PID arguments, query parameters and additional fields are rejected.
+An unavailable/symlinked logs directory or unsupported platform returns503. All
+actions keep the existing Host/Origin/script-token checks; no browser token or new
+daemon is introduced. Closing the browser does not stop the project. After verified
+stop the page stops polling and tells the user to reopen the native app to start it.
+
 The operating-system launcher owns one persistent runtime manager. `frontPort` (5173) is its same-origin streaming HTTP/WebSocket gateway; Vite runs on `vitePort` (5174). `runtimeManagerPort` (4314) also exposes loopback control. The gateway survives frontend and backend restarts. No arbitrary commands, paths or PIDs are accepted through HTTP; project-owned startup metadata is read from disk.
 
 - GET `/api/runtime/status`: instanceId, generation, phase, busy, canRestart, jobId, scope, services [{name,pid,running}], error {code,message,service?}.
 - POST `/api/runtime/restart`: optional JSON `{scope: "all" | "backend"}`; defaults to all. 202 returns jobId/status. Concurrent requests share one job. All stops/relaunches frontend and all owned backends; backend preserves frontend. Generation advances only after selected components, authenticated Agent and MCP are ready.
-- GET `/__saplingagent/runtime`: persistent English recovery/control page with status, restart choices and Open app. It works even if a selected older UI has no restart button or Vite fails. Non-control `/api/*` streams to Agent; other HTTP/WebSocket traffic goes to internal Vite without buffering SSE.
+- GET `/__saplingagent/runtime`: persistent English project-status/recovery page with status, restart choices, confirmed stop, logs-folder action and Open app. It works even if a selected older UI has no restart button or Vite fails. Non-control `/api/*` streams to Agent; other HTTP/WebSocket traffic goes to internal Vite without buffering SSE.
 - Internal POST `/internal/runtime/prepare` and `/internal/runtime/release`: existing Bearer token required on each backend. Prepare atomically refuses active writes, AI, Git operations or unsaved sessions; prepared services reject new mutations with 503. Shared gate is `kernel/contracts/runtime-drain.mjs`.
 
 While preparing/restarting, the gateway rejects new ordinary mutations. Outstanding gateway writes refuse restart; supported services also gate direct authenticated callers. Legacy versions lacking drain endpoints use Agent session-running checks and gateway accounting. This fallback cannot observe direct legacy backend callers; finish their work first. A branch switch is a separate Git operation; choose a version first, then Restart app. Dirty files are saved by the existing Git switch API. No automatic chat resend, rollback, root elevation or new MCP protections.
