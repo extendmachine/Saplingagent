@@ -10,6 +10,7 @@ import {buildContext} from './build.mjs';
 import {ensureApplicationDependencies} from './dependencies.mjs';
 import {assertSetupAvailable} from '../contracts/kernel.mjs';
 import {ensureManagedDirectory} from '../contracts/local-storage.mjs';
+import {statusPageOpener} from './status.mjs';
 const run=promisify(execFile), validNonce=value=>typeof value==='string'&&/^[a-f0-9-]{36}$/i.test(value);
 const fail=(code,message)=>issue(code,message);
 export async function processIdentity(pid){
@@ -145,9 +146,10 @@ export function createDockController(projectRoot,overrides={}){
       }
       await buildContext.run({signal:abort.signal},()=>prepare(root,{signal:abort.signal,onProgress:message=>console.log(message)}));
       await poll();abort.signal.throwIfAborted();
-      const state=await controller.startConfiguredProject();
+      const onRuntime=statusPageOpener(open,{noOpen});
+      const state=await controller.startConfiguredProject({onRuntime});
       await poll();abort.signal.throwIfAborted();
-      if(!noOpen)await open(state.url);
+      await onRuntime(state);
       await writeState(record,{phase:'ready',url:state.url});return 'ready';
     }catch(error){
       if(abort.signal.aborted){

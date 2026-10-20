@@ -1,5 +1,30 @@
 # Customer-compiled project launcher v1
 
+## Project status on activation (TASK-20261019-050)
+
+Native activation opens the kernel-owned `/__saplingagent/runtime` page at this
+project's verified gateway URL. `startConfiguredProject({onRuntime})` reports a
+verified live runtime while waiting for readiness, including a reused starting
+instance; it does not spawn a second cluster. It also invokes the callback for a
+ready existing runtime. The callback uses runtime discovery plus root/instance
+verification, never preferred ports. Failed startup remains an error; losing a
+connection does not prove shutdown. Browser-opening failure prints the exact
+local status URL and does not stop an otherwise usable runtime.
+
+The native startup helper consumes only the fixed stdout records
+`SAPLING_PROGRESS:checking|installing|starting|ready|failed`; dependency output is
+not the native progress protocol. Dock status retains its single phase response.
+macOS retains its ordinary Dock owner and graceful Quit; Windows activation waits
+for its detached startup task to finish before dismissing progress. Closing the
+status webpage or progress display is not the Stop app action. The gateway's
+explicit stop response confirms owned application children have exited before
+its own shutdown; reopening the compiled app starts the project again.
+
+This changes no application service registration, model authentication, Agent
+permissions, configuration storage or kernel version. Updated native progress
+requires rebuilding an existing exported launcher. No terminal tail or log-file
+viewer is kept open across configuration handoff, folder moves or compilation.
+
 TASK-20261018-001 / Codex. Current kernel0.9.5; original launcher implementation0.9.3. The management module is kernel-owned; project identity, icons, compiled binaries, toolchains, caches, app source, credentials and customer Git are not update-owned. Full Access is unchanged.
 
 `config/project.json` stores schemaVersion1, projectId UUID, name, folderName and optional icon reference `config/project-icon.png`. Customer project identity is independent of the single kernel version. Names are Unicode single filesystem components,1–60characters, rejecting controls, separators, Windows reserved characters/device names and trailing dots/spaces. Existing destinations are never replaced. Linked worktrees/maintainer checkouts are not automatically renamed. Complete customer folders including ordinary customer Git can be renamed without resetting history. All processes use absolute current root and the native launcher derives root relative to itself, never a compiled developer path.

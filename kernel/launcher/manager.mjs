@@ -509,9 +509,11 @@ export class ProjectLauncher {
       }
     });
   }
-  async startConfiguredProject({requireLauncher = false,ignoreCancellation = false} = {}) {
+  async startConfiguredProject({requireLauncher = false,ignoreCancellation = false,onRuntime} = {}) {
       let state = await this.runtime();
       if (!ignoreCancellation) this.abortController?.signal.throwIfAborted();
+      if (state.phase !== 'stopped') await onRuntime?.(state);
+      let child;
       if (state.phase === "stopped") {
         if (requireLauncher && !(await exists(path.join(this.root, ".runtime/launcher.json"))))
           throw issue(
@@ -531,7 +533,7 @@ export class ProjectLauncher {
           ),
           "a",
         );
-        const child = spawn(
+        child = spawn(
           nodeForRoot(this.root),
           [path.join(this.root, "scripts/dev.mjs")],
           {
@@ -557,6 +559,8 @@ export class ProjectLauncher {
         this.appChild = child;
         await handle.close();
         child.unref();
+      }
+      if (state.phase !== 'ready') {
         const deadline = Date.now() + 150000;
         while (Date.now() < deadline) {
           if (!ignoreCancellation && this.abortController?.signal.aborted)
@@ -564,12 +568,13 @@ export class ProjectLauncher {
               "PROJECT_CANCELLED",
               "Management operation interrupted. Reopen the launcher to inspect this project.",
             );
-          if (child.spawnFailed || child.exitCode !== null || child.signalCode)
+          if (child && (child.spawnFailed || child.exitCode !== null || child.signalCode))
             throw issue(
               "APP_START_FAILED",
               "The app stopped during startup. Check its logs or repair dependencies.",
             );
           state = await this.runtime();
+          if (state.phase !== 'stopped') await onRuntime?.(state);
           if (state.phase === "ready") break;
           if (state.phase === "failed")
             throw issue(
@@ -584,11 +589,7 @@ export class ProjectLauncher {
             "APP_NOT_READY",
             "The app has not become ready. Check AI configuration and runtime recovery.",
           );
-      } else if (state.phase !== "ready")
-        throw issue(
-          "APP_NOT_READY",
-          "This project is already starting or recovering. Inspect its runtime page.",
-        );
+      }
       return state;
   }
   async cancelOwnedStartup() {
