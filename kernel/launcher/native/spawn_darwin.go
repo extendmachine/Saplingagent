@@ -13,6 +13,11 @@ import (
 
 func background(cmd *exec.Cmd) { cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} }
 
+// The macOS applet owns the visible AppKit progress window and Dock lifetime.
+func showNativeProgress(name string) {}
+func setNativeProgress(phase string) {}
+func closeNativeProgress()           {}
+
 // One cancellation context spans runtime bootstrap and Node startup, so a Quit
 // between those phases cannot accidentally start a new service cluster.
 var dockContext = context.Background()

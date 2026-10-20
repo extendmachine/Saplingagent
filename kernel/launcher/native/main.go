@@ -13,8 +13,10 @@ import (
 )
 
 var dockCommand bool
+var launcherRoot string
 
 func problem(message string) {
+	setNativeProgress("failed")
 	if dockCommand {
 		fmt.Fprintln(os.Stderr, message)
 		os.Exit(1)
@@ -24,7 +26,15 @@ func problem(message string) {
 	} else {
 		c := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", `Add-Type -AssemblyName PresentationFramework;[System.Windows.MessageBox]::Show($env.SAPLING_ERROR,'Project launcher')`)
 		c.Env = append(os.Environ(), "SAPLING_ERROR="+message)
-		c.Run()
+		if launcherRoot != "" {
+			c.Dir = filepath.Dir(launcherRoot)
+		}
+		// The system-owned error prompt must not keep this project executable or
+		// log open while the user repairs configuration or renames the folder.
+		background(c)
+		if c.Start() == nil {
+			c.Process.Release()
+		}
 	}
 }
 
@@ -83,10 +93,14 @@ func main() {
 	if runtime.GOOS == "darwin" {
 		root = filepath.Clean(filepath.Join(root, "../../.."))
 	}
+	launcherRoot = root
 	if len(os.Args) > 1 && os.Args[1] == "--root" {
 		fmt.Println(root)
 		return
 	}
+	showNativeProgress(filepath.Base(root))
+	defer closeNativeProgress()
+	setNativeProgress("checking")
 	var cfg struct {
 		NodeVersion string `json:"nodeVersion"`
 	}
@@ -123,7 +137,8 @@ func main() {
 		problem("Project-local logs are unavailable.")
 		return
 	}
-	f, err := os.OpenFile(filepath.Join(logs, "project-launcher-"+time.Now().UTC().Format("2006-01-02")+".log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	logPath := filepath.Join(logs, "project-launcher-"+time.Now().UTC().Format("2006-01-02")+".log")
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		problem("The project folder is not writable.")
 		return
@@ -142,6 +157,7 @@ func main() {
 			return
 		}
 		f.WriteString("Preparing the missing project-local runtime…\n")
+		setNativeProgress("installing")
 		bootstrap := runtimeBootstrap(root, env)
 		bootstrap.Dir = filepath.Dir(root)
 		bootstrap.Stdout = f
@@ -183,6 +199,25 @@ func main() {
 		return
 	}
 	background(cmd)
+	setNativeProgress("starting")
+	if runtime.GOOS == "windows" {
+		// Keep the small progress window alive until the entry has opened the
+		// status page. Children are detached from the display's OS lifecycle.
+		offset := int64(0)
+		if info, e := f.Stat(); e == nil {
+			offset = info.Size()
+		}
+		if err = cmd.Start(); err != nil {
+			problem("The project-local runtime could not start. Check logs/project-launcher.")
+			return
+		}
+		done := make(chan error, 1)
+		go func() { done <- cmd.Wait() }()
+		if err = followProgress(logPath, offset, done, setNativeProgress); err != nil {
+			problem("Project startup did not complete. Check logs/project-launcher, then open the app to retry.")
+		}
+		return
+	}
 	if err = cmd.Start(); err != nil {
 		f.WriteString("Launcher could not start the project-local Node runtime. Repair using Saplingagent.sh.\n")
 		problem("The project-local runtime could not start.")

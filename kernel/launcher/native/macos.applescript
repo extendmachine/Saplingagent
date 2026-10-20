@@ -1,4 +1,5 @@
 use framework "Foundation"
+use framework "AppKit"
 use scripting additions
 
 property helperPath : missing value
@@ -7,6 +8,37 @@ property ownerNonce : missing value
 property startupTask : missing value
 property permitExit : false
 property reportedFailure : false
+property progressWindow : missing value
+property progressLabel : missing value
+
+on showProgress(messageText)
+	if progressWindow is missing value then
+		set appName to (current application's NSBundle's mainBundle()'s objectForInfoDictionaryKey:"CFBundleDisplayName") as text
+		set progressWindow to current application's NSWindow's alloc()'s initWithContentRect:{{0, 0}, {520, 170}} styleMask:3 backing:2 defer:false
+		progressWindow's setReleasedWhenClosed:false
+		progressWindow's setTitle:(appName & " — Starting project")
+		set progressLabel to current application's NSTextField's labelWithString:messageText
+		progressLabel's setFrame:{{24, 95}, {472, 50}}
+		progressLabel's setFont:(current application's NSFont's systemFontOfSize:15)
+		(progressWindow's contentView())'s addSubview:progressLabel
+		set detailLabel to current application's NSTextField's wrappingLabelWithString:("The project status page will open when the local service is available." & return & "Closing this window hides it. Use Dock → Quit to stop the project.")
+		detailLabel's setFrame:{{24, 20}, {472, 65}}
+		detailLabel's setTextColor:(current application's NSColor's secondaryLabelColor())
+		(progressWindow's contentView())'s addSubview:detailLabel
+		progressWindow's |center|()
+	end if
+	progressLabel's setStringValue:messageText
+	progressWindow's makeKeyAndOrderFront:me
+end showProgress
+
+on updateProgress(messageText)
+	-- Updating hidden windows must not reopen a display the user closed.
+	if progressLabel is not missing value then progressLabel's setStringValue:messageText
+end updateProgress
+
+on hideProgress()
+	if progressWindow is not missing value then progressWindow's orderOut:me
+end hideProgress
 
 on initializeOwner()
 	if helperPath is missing value then
@@ -24,9 +56,13 @@ end invokeHelper
 on beginLaunch(actionName)
 	my initializeOwner()
 	if startupTask is not missing value then
-		if (startupTask's isRunning()) as boolean then return
+		if (startupTask's isRunning()) as boolean then
+			my showProgress("Preparing dependencies and starting the project…")
+			return
+		end if
 	end if
 	set reportedFailure to false
+	my showProgress("Preparing dependencies and starting the project…")
 	set startupTask to current application's NSTask's alloc()'s init()
 	startupTask's setLaunchPath:helperPath
 	startupTask's setArguments:{actionName, "--dock-pid", ownerPID, "--dock-nonce", ownerNonce}
@@ -37,6 +73,7 @@ on beginLaunch(actionName)
 end beginLaunch
 
 on reportFailure(messageText)
+	my updateProgress("Startup could not complete. Check logs/project-launcher.")
 	display alert "Project launcher" message messageText buttons {"OK"} default button "OK"
 end reportFailure
 
@@ -69,6 +106,12 @@ on idle
 		else if currentState is "failed" and reportedFailure is false then
 			set reportedFailure to true
 			my reportFailure("The project could not start. Check logs/project-launcher in the project folder, then click the Dock icon to retry.")
+		else if currentState is "ready" or currentState is "stopped" then
+			my hideProgress()
+		else if currentState is "bootstrapping" then
+			my updateProgress("Installing the missing local runtime. This may take a few minutes…")
+		else if currentState is "starting" then
+			my updateProgress("Preparing dependencies and starting the project…")
 		end if
 		if startupTask is not missing value and reportedFailure is false then
 			if not ((startupTask's isRunning()) as boolean) then
