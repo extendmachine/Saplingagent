@@ -8,7 +8,13 @@ import { createManagerServer } from "../services/runtime-manager/server.mjs";
 import { createGateway } from "../services/runtime-manager/gateway.mjs";
 import { acquireKernelLock, assertKernelOffline } from "../contracts/kernel.mjs";
 async function launch() {
+  let startupInterrupted=false;
+  const earlySignals=['SIGINT','SIGTERM','SIGHUP'];
+  const earlyStop=()=>{startupInterrupted=true;};
+  for(const signal of earlySignals)process.on(signal,earlyStop);
+  const checkStartup=()=>{if(startupInterrupted)throw Object.assign(new Error('Project startup cancelled.'),{code:'PROJECT_START_CANCELLED'});};
 	Object.assign(process.env, await prepareManagedEnvironment(root));
+	checkStartup();
 	const lease = await acquireKernelLock(root, "runtime-start");
 	let released = false;
 	const release = async () => {
@@ -18,8 +24,10 @@ async function launch() {
 		}
 	};
 	try {
+		checkStartup();
 		await assertKernelOffline(root);
 		await setup();
+		checkStartup();
 		const token = (await fs.readFile(path.join(root, "local-secrets/runtime/service-token"), "utf8")).trim();
 		const definitions = [
 			{
@@ -86,6 +94,8 @@ async function launch() {
 			"SIGTERM",
 			"SIGHUP"
 		]) process.once(signal, () => void stop());
+    for(const signal of earlySignals)process.off(signal,earlyStop);
+    if(startupInterrupted){await stop();return;}
 		try {
 			const configured = await manager.loadConfig();
 			const ports = await selectRuntimePorts(configured);

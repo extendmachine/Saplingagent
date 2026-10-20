@@ -11,6 +11,15 @@ import {dailyLog} from './io.mjs';
 
 const root=await fs.realpath(process.env.SEED_ROOT||fileURLToPath(new URL('../../',import.meta.url)));
 try{
+  const dockAction=process.argv.find(value=>/^--dock-(start|open|stop|status)$/.test(value));
+  if(dockAction){
+    const {createDockController}=await import('./dock.mjs');
+    const arg=name=>process.argv[process.argv.indexOf(name)+1];
+    const owner={pid:Number(arg('--dock-pid')),nonce:arg('--dock-nonce')};
+    const dock=createDockController(root);
+    const result=await (dockAction==='--dock-stop'?dock.stop(owner):dockAction==='--dock-status'?dock.status(owner):dock.start(owner,{noOpen:process.env.SAPLING_NO_OPEN==='1'}));
+    console.log(result);
+  }else{
   const cleanup=process.argv.indexOf('--configuration-return');
   if(cleanup>=0){
     await finishConfiguration(root,path.resolve(process.argv[cleanup+1]));
@@ -32,6 +41,7 @@ try{
       const address=await openConfiguration(root,{noOpen});
       console.log(`Project setup: http://127.0.0.1:${address.port}/`);
     }
+  }
   }
 }catch(error){
   await dailyLog(root,'launcher_failed',{code:error.code||'LAUNCHER_FAILED'}).catch(()=>{});

@@ -8,3 +8,5 @@ export {
 
 export { managementFingerprint } from "./io.mjs";
 export { prepareSetupUI } from "./setup-ui.mjs";
+
+export { closeDockForMaintenance } from './dock.mjs';

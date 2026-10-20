@@ -3,7 +3,7 @@ import path from "node:path";
 import { randomUUID, createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import {kernelStatus, assertKernelOffline} from "../contracts/kernel.mjs";
-import { codexBinary } from "../contracts/local-process.mjs";
+import { codexBinary, terminateOwned } from "../contracts/local-process.mjs";
 import { beginFinalization } from "./finalization.mjs";
 import { relocationLedger, completeRelocation } from './relocation.mjs';
 import {
@@ -501,6 +501,7 @@ export class ProjectLauncher {
   }
   async startConfiguredProject({requireLauncher = false,ignoreCancellation = false} = {}) {
       let state = await this.runtime();
+      if (!ignoreCancellation) this.abortController?.signal.throwIfAborted();
       if (state.phase === "stopped") {
         if (requireLauncher && !(await exists(path.join(this.root, ".runtime/launcher.json"))))
           throw issue(
@@ -579,6 +580,13 @@ export class ProjectLauncher {
           "This project is already starting or recovering. Inspect its runtime page.",
         );
       return state;
+  }
+  async cancelOwnedStartup() {
+    // The ChildProcess handle was created by this controller. Never signal a
+    // PID obtained from a stale runtime discovery record.
+    const child=this.appChild;
+    if(child && child.exitCode===null && child.signalCode===null)
+      await terminateOwned(child,{graceMs:15000,killMs:2000});
   }
   async openProject() {
     return this.startJob("open", async () => {

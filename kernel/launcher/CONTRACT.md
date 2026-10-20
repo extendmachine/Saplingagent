@@ -108,3 +108,41 @@ Native and both OS bootstrap entries also override inherited `NODE_COMPILE_CACHE
 with `.cache/node-compile/` and bind all XDG directories before the first Node
 version probe or script starts. Setting these only inside JavaScript is too late
 for Node's startup cache. Redirected cache paths are rejected before invocation.
+
+
+## Ordinary macOS Dock lifecycle (TASK-20261019-043–046)
+
+The customer-compiled macOS bundle is an ordinary, stay-open Dock application. It
+uses the system applet runtime and a small Go helper; the browser remains the app
+interface and runtime-manager retains the same service cluster. Reopening an app
+reuses its native owner and project runtime. Quit / Command-Q asks the public
+launcher bridge to cancel in-progress preparation and stop the verified project
+cluster; it exits only after shutdown succeeds. A busy/refusing/unverifiable
+backend keeps the Dock app available with an error. Closing a browser is not Quit.
+Force Quit, crashes and power loss cannot execute this graceful lifecycle.
+
+`entry.mjs --dock-start|--dock-open|--dock-status|--dock-stop --dock-pid PID
+--dock-nonce UUID` is the local native-helper protocol. Start/open may prepare
+dependencies and return after readiness; native UI runs this asynchronously.
+Status returns starting/ready/stopped/failed/handoff. No provider keys are passed
+as arguments. Project-local native-app owner/state/request records bind project
+identity, directory identity, exact app executable, PID start identity and nonce.
+A short exclusive native control lease serializes registration, startup claims and
+stop/handoff requests. Stable startup PID identity survives status completion so
+maintenance waits for actual process exit, including final cache/log handles.
+Unknown/stale ambiguous ownership is reported rather than guessed away.
+
+`closeDockForMaintenance(root, {timeoutMs})`, exported by launcher/public.mjs,
+requests startup cancellation and native handoff exit, waits owned worker/native
+processes, and removes only matching receipts. It leaves a ready backend for the
+existing configuration controller to stop. Configuration calls it before taking
+maintenance locks and again under those locks; compilation also closes the native
+app before replacing its artifact. The native host waits its own helper exit. No
+application service, default port or Agent permission boundary is added.
+
+Startup cancellation uses AbortSignal for dependency commands and retains their
+normal lease cleanup. A runtime child spawned before discovery is stopped through
+its actual ChildProcess ownership; early runtime setup handles signals and releases
+its own start lease before exiting. An unrelated project's PID/port is never used
+as a signal target. Existing compiled apps need rebuilding to acquire the Dock
+behavior; a source/kernel update alone cannot replace customer-owned binaries.

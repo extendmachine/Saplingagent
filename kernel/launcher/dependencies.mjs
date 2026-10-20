@@ -103,13 +103,14 @@ async function repairGroup(root,group,settings,onProgress){
   }finally{await fs.rm(stage,{recursive:true,force:true});}
 }
 
-export async function ensureApplicationDependencies(root,{onProgress=()=>{},install=repairGroup,waitMs=120000}={}){
-  root=path.resolve(root);await assertSetupAvailable(root);
+export async function ensureApplicationDependencies(root,{onProgress=()=>{},install=repairGroup,waitMs=120000,signal}={}){
+  signal?.throwIfAborted();root=path.resolve(root);await assertSetupAvailable(root);
   const initial=await applicationDependencyStatus(root);
   if(initial.ready)return {changed:false,signature:initial.signature};
   await fs.mkdir(path.join(root,'.runtime'),{recursive:true});
   const lock=path.join(root,`.runtime/${platformName()}-install.lock`),id=randomUUID(),deadline=Date.now()+waitMs;
   while(true){
+    signal?.throwIfAborted();
     try{await fs.mkdir(lock);break;}catch(e){if(e.code!=='EEXIST')throw e;}
     const owner=await json(path.join(lock,'owner.json'));
     if(owner?.pid&&!alive(owner.pid))throw issue('DEPENDENCY_INSTALL_INTERRUPTED','A previous dependency installer stopped. Inspect its local install lock before retrying.');
@@ -127,10 +128,12 @@ export async function ensureApplicationDependencies(root,{onProgress=()=>{},inst
     const receipt=await json(path.join(root,'.runtime/dependencies.json'))||{schemaVersion:1,groups:{}};
     receipt.groups||={};let changed=false;
     for(const group of state.groups){
+      signal?.throwIfAborted();
       if(!group.ready){
         onProgress(`Preparing dependencies: ${group.name}…`);
         await dailyLog(root,'dependency-install',{group:group.name});
         await install(root,group,state.settings,onProgress);
+        signal?.throwIfAborted();
         const checked=await applicationDependencyStatus(root),actual=checked.groups.find(g=>g.name===group.name);
         if(actual?.signature!==group.signature)throw issue('DEPENDENCY_SOURCE_CHANGED','Dependency declarations changed during installation. Save your edits, then open the app again.');
         if(group.name==='codex'?!actual.ready:!actual.present)throw issue('DEPENDENCY_INSTALL_INCOMPLETE',`Installed files for ${group.name} are incomplete. Check the local launcher log and retry.`);
