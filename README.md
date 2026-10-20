@@ -96,6 +96,8 @@ Office editing covers basic changes. Word controls format whole paragraphs; Powe
 
 ## Configure and launch
 
+The right-hand chat supports saved-conversation switching and renaming, per-conversation drafts, attachments, GFM tables and math formulas. Collapse the panel and drag its small chat opener to a convenient position. The context gauge shows the latest token count and window reported by Codex; unavailable readings stay unknown. It is not a billing meter or a promise of automatic context compaction. These controls belong to the editable application, independently of kernel updates.
+
 Run `bash Saplingagent.sh`. The script installs the minimal local kernel and opens configuration in a temporary process outside the project. Save the project name, folder, icon and AI connection, then choose **Save & build app**. Wait for completion and choose **Finish setup**. The returning launcher removes the external configuration files after that process exits.
 
 Open the generated `.app` or `.exe` inside the complete project folder. It checks and installs missing/changed project dependencies, displays startup progress, then opens the **Project status** page at the runtime's actual selected address. This page shows your project, kernel version, service processes and ports; choose **Open app** to enter the application. It stays a small bootstrap; your editable source and data remain in the folder. Reopen `bash Saplingagent.sh configure` to change settings or rebuild the launcher. Normal app startup does not reopen configuration. See the [project status guide](docs/project-status.html) and [A/B lifecycle and recovery guide](docs/project-launcher.html).

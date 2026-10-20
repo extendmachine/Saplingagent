@@ -1,10 +1,16 @@
+import { useState } from 'react';
 import { attachmentAdapter, completeAttachment } from './attachments';
 import { AttachmentDropzone, AttachFilesButton, ComposerAttachments, MessageAttachment } from './AttachmentControls';
 import { RestartDraft } from './RestartDraft';
 import { AssistantRuntimeProvider, ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useExternalStoreRuntime, type ThreadMessageLike } from '@assistant-ui/react';
-import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown';
+import { escapeCurrencyDollars, MarkdownTextPrimitive, normalizeMathDelimiters } from '@assistant-ui/react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowUp, Check, LoaderCircle, Plus, RotateCcw, Square, Wrench } from 'lucide-react';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+import { ConversationControls } from './ConversationControls';
+import { ContextUsageCounter } from '../features/context-usage/ContextUsageCounter';
+import { ArrowUp, Check, LoaderCircle, RotateCcw, Square, Wrench } from 'lucide-react';
 import { useSeedRuntime } from './useSeedRuntime';
 import type { Message } from './runtime-api';
 
@@ -12,8 +18,9 @@ const convertMessage = (message: Message): ThreadMessageLike => ({
   id: message.id, role: message.role, ...(message.attachments?.length ? { attachments: message.attachments.map(completeAttachment) } : {}), content: [{ type: 'text', text: message.text }],
   ...(message.role === 'assistant' && { status: message.status === 'streaming' ? { type: 'running' as const } : message.status === 'interrupted' ? { type: 'incomplete' as const, reason: 'cancelled' as const } : message.status === 'failed' ? { type: 'incomplete' as const, reason: 'error' as const } : { type: 'complete' as const, reason: 'stop' as const } }),
 });
+const preprocessMarkdown = (text: string) => escapeCurrencyDollars(normalizeMathDelimiters(text));
 function MarkdownText() {
-  return <MarkdownTextPrimitive className="markdown-text" defer remarkPlugins={[remarkGfm]} components={{
+  return <MarkdownTextPrimitive className="markdown-text" defer preprocess={preprocessMarkdown} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[[rehypeKatex, { trust: false }]]} components={{
     a: ({ children, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer">{children}</a>,
     img: ({ alt }) => <span className="image-description">{alt || 'Image'}</span>,
   }} />;
@@ -33,7 +40,8 @@ const decisionLabel = (decision: string) => ({ accept: 'Allow', decline: 'Declin
 
 export function ChatPanel() {
   const agent = useSeedRuntime();
-  const runtime = useExternalStoreRuntime({ messages: agent.messages, convertMessage, onNew: agent.onNew, onCancel: agent.onCancel, isRunning: agent.isRunning, isLoading: agent.isLoading, isSendDisabled: agent.isLoading || !agent.engineReady, adapters: { attachments: attachmentAdapter } });
+  const [changingSession, setChangingSession] = useState(false);
+  const runtime = useExternalStoreRuntime({ messages: agent.messages, convertMessage, onNew: agent.onNew, onCancel: agent.onCancel, isRunning: agent.isRunning, isLoading: agent.isLoading, isSendDisabled: changingSession || agent.isLoading || !agent.engineReady, adapters: { attachments: attachmentAdapter } });
   const selectedEngine = agent.engines.find(engine => engine.id === agent.selection.engine);
   const selectedProvider = selectedEngine?.providers?.find(provider => provider.id === agent.selection.providerId);
   const offline = !agent.isLoading && !agent.engineReady;
@@ -49,6 +57,8 @@ export function ChatPanel() {
   };
 
   return <AssistantRuntimeProvider runtime={runtime}>
+    <ConversationControls agent={agent} composer={runtime.thread.composer} onChanging={setChangingSession} />
+    <ContextUsageCounter usage={agent.contextUsage} />
     <AttachmentDropzone><ThreadPrimitive.Root className={`conversation ${agent.messages.length === 0 ? 'conversation-empty' : ''}`}>
       <ThreadPrimitive.Viewport className="message-viewport">
         {agent.messages.length === 0 && <div className="welcome"><h1>Start with a conversation.</h1><p>Tell Saplingagent what you want to build.</p></div>}
@@ -65,7 +75,7 @@ export function ChatPanel() {
       </ThreadPrimitive.Viewport>
       <div className="composer-area">
         {agent.error && <div className="chat-error" role="alert"><span>{agent.error}</span>{agent.retryable && <button type="button" disabled={agent.isRunning} onClick={() => { void agent.retry(); }}><RotateCcw size={12} />Retry</button>}</div>}
-        <ComposerPrimitive.Root className="composer"><RestartDraft /><ComposerAttachments />
+        <ComposerPrimitive.Root className="composer"><RestartDraft sessionId={agent.activeSessionId} /><ComposerAttachments />
           <ComposerPrimitive.Input addAttachmentOnPaste={false} className="composer-input" placeholder="Describe your idea…" aria-label="Chat with Saplingagent" rows={2} autoFocus />
           <div className="composer-bottom"><div className="composer-meta"><AttachFilesButton />{agent.canSelectEngine && <div className="engine-picker">
             <select aria-label="Agent engine" value={agent.selection.engine} onChange={event => selectEngine(event.target.value as 'codex' | 'opencode' | 'claude')}><option value="codex">Codex</option><option value="opencode">OpenCode</option><option value="claude">Claude Agent</option></select>
@@ -73,7 +83,7 @@ export function ChatPanel() {
           </div>}<span className="input-hint">Enter to send · Shift + Enter for a new line</span></div>{agent.isRunning ? <ComposerPrimitive.Cancel className="send-button stop-button" aria-label="Stop response"><Square size={14} fill="currentColor" /></ComposerPrimitive.Cancel> : <ComposerPrimitive.Send className="send-button" aria-label="Send message"><ArrowUp size={19} /></ComposerPrimitive.Send>}</div>
         </ComposerPrimitive.Root>
         <div className="runtime-footer"><span className={`runtime-caption ${offline ? 'runtime-offline' : ''}`} role="status">{agent.isRunning || agent.isLoading ? <LoaderCircle size={11} className="spinning" /> : <span className="connection-dot" />}{caption}</span>
-          <div className="conversation-actions">{offline && <button type="button" title="Reconnect to local Agent" onClick={() => { void agent.refreshStatus(); void agent.refreshEngines(); }}><RotateCcw size={12} />Reconnect</button>}<button type="button" disabled={agent.isRunning || agent.isLoading} onClick={() => { agent.startNew(); void runtime.thread.composer.reset(); }}><Plus size={12} />New conversation</button></div>
+          <div className="conversation-actions">{offline && <button type="button" title="Reconnect to local Agent" onClick={() => { void agent.refreshStatus(); void agent.refreshEngines(); }}><RotateCcw size={12} />Reconnect</button>}</div>
         </div>
       </div>
     </ThreadPrimitive.Root></AttachmentDropzone>

@@ -1,10 +1,10 @@
 # Frontend service
 
-React single-page chat and requested application components. `main.tsx` mounts `ChatDock`/`ChatPanel` independently from lazy `App`, wrapped in `ApplicationBoundary`; `App` currently mounts `GitVersionPanel`, `RestartServices` and `VersionFooter`. Previous empty-App descriptions in task records are historical.
+React single-page chat and requested application components. `main.tsx` mounts `ChatDock`/`ChatPanel` independently from lazy `App`, wrapped in `ApplicationBoundary`; `App` hosts independent kernel controls/version frames. Previous empty-App descriptions in task records are historical.
 
 ## Responsibilities and boundaries
 
-- Render streaming text, GFM Markdown, tool activity, real errors, Stop/Retry/New conversation and session recovery.
+- Render streaming text, GFM/KaTeX Markdown, tool activity, real errors, Stop/Retry/New conversation, conversation history and recovery.
 - Call the public agent-runtime HTTP/SSE API; never read workspace files, credentials or internal service tokens directly.
 - Read local Git versions, request save/switch operations and display source-refresh reminders. Backend Git is authoritative; frontend does not run shell commands or offer force/discard actions.
 - Application features normally belong in `front/features/`. This is organization, not a protected-directory policy. Full Access permits chat/backend/MCP/Skills edits within user authorization.
@@ -13,7 +13,7 @@ React single-page chat and requested application components. `main.tsx` mounts `
 
 React/React DOM 19.3.0; assistant-ui React 0.15.26 and Markdown 0.14.20; remark-gfm 4.0.1; lucide-react 1.54.0; TypeScript 7.0.2; Vite 8.3.4. Exact versions and direct license metadata are locked in this service's package files. Mac delivery installs Node 24.21.0 locally. Dependencies/cache/build artifacts remain local and ignored.
 
-Markdown uses `remarkPlugins={[remarkGfm]}` with deferred rendering, external-link isolation and textual image descriptions. No raw HTML execution is enabled. Table styling in `chat/chat.css` applies to parsed GFM tables.
+Markdown uses remark-gfm4.0.1, remark-math6.0.0 and rehype-katex7.0.1 with locally bundled KaTeX0.19.0 CSS/fonts, deferred rendering, normalized math delimiters/currency handling, external-link isolation and textual image descriptions. KaTeX trust remains false. No raw HTML execution is enabled. Table styling in `chat/chat.css` applies to parsed GFM tables.
 
 ## Lifecycle
 
@@ -81,3 +81,10 @@ Product release label reads the additive Agent /api/release route from the same 
 There is one current Saplingagent version: kernel0.9.5. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
 
 New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92→0.9.3; original manifests/backups stay byte-exact. Shipped old comparators cannot understand0.9.4. Stop the app, download new tooling into an isolated .cache subfolder, then run that tooling's kernel/cli.mjs --root ORIGINAL_APP check/update with the project-local Node. Default is preview; update requires existing explicit risk acknowledgement and refuses conflicts/live targets. Never overwrite/rebaseline local core edits or regenerate a customer manifest to hide them. Source recovery remains explicit.
+
+
+## Conversation navigation (TASK-20261019-055)
+
+ConversationControls owns selection/title UI and page-memory draft preservation; useSeedRuntime owns snapshots, history ordering and stale-result isolation. ContextUsageCounter displays only measured tokens/capacity and a visual capacity warning, never spending or a guaranteed compaction trigger. ChatLauncher stores only its vertical screen position and retains keyboard/pointer operation, focus return and existing main layout spacing. This is application-owned chat, not a new kernel service. No customer files, provider account state or business features are shipped by this port.
+
+Validation: 54 frontend tests and TypeScript/Vite build pass in the isolated candidate. Tests exercise state/transport, real Markdown rendering and simulated composer controls; live-account and native Windows browser acceptance remain separate. Build retains the existing large-chunk warning. Main integration/browser checks belong to TASK058.

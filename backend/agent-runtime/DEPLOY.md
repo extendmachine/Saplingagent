@@ -71,3 +71,14 @@ Ship contracts/kernel.mjs and kernel/manifest.json with the complete folder. GET
 ## Distribution metadata deployment (2026-10-17)
 
 Ship config/release.json and kernel/contracts/release.mjs with the complete source; restart Agent to load GET /api/release. No model or credential is needed to read public distribution identity. Missing/invalid metadata returns503, without changing chat/Git/kernel behavior. An independent kernel update preserves the product declaration and may leave old application HTTP code without this additive route; frontend handles404 explicitly.
+
+
+## Conversation controls adoption (TASK-20261019-056)
+
+Deploy the Agent together with the Workspace contextUsage persistence extension and
+matching chat UI, then Restart app. Existing saved sessions need no migration;
+missing usage remains unknown. No dependency change, account import, provider
+reconfiguration or model request is needed for these routes. Source rollback keeps
+sessions and optional metadata intact. The isolated chat-controls tests use a fake
+App Server and loopback Workspace with synthetic data under .cache/chat-controls-test;
+they do not demonstrate real model entitlement or native Windows operation.

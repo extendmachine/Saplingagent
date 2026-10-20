@@ -22,6 +22,21 @@ const engine = (value) => {
 };
 const providerId = (value) => value === null ? null : text(value, 'providerId', 160);
 const modelId = (value) => value === null ? null : text(value, 'modelId', 240);
+const tokenCount = (value, name, minimum = 0) => {
+  if (!Number.isSafeInteger(value) || value < minimum) fail(`${name} must be a safe integer of at least ${minimum}`);
+  return value;
+};
+const contextUsage = (value) => {
+  if (value === null) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail('contextUsage must be an object or null');
+  const result = {
+    usedTokens: tokenCount(value.usedTokens, 'contextUsage.usedTokens'),
+    contextWindow: tokenCount(value.contextWindow, 'contextUsage.contextWindow', 1),
+    updatedAt: text(value.updatedAt, 'contextUsage.updatedAt', 80),
+  };
+  if (!Number.isFinite(Date.parse(result.updatedAt))) fail('contextUsage.updatedAt must be a valid timestamp');
+  return result;
+};
 const normalizeSession = (session) => ({
   ...session,
   engine: session.engine === undefined ? 'codex' : engine(session.engine),
@@ -151,6 +166,7 @@ export async function createStore(applicationRoot) {
           session.running = input.running;
         }
         if (input.activeRequestId !== undefined) session.activeRequestId = input.activeRequestId === null ? null : text(input.activeRequestId, 'activeRequestId', 160);
+        if (input.contextUsage !== undefined) session.contextUsage = contextUsage(input.contextUsage);
         if (input.requests !== undefined) {
           if (!Array.isArray(input.requests) || input.requests.length > 500) fail('requests must contain at most 500 items');
           const requestIds = new Set();

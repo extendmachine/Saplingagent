@@ -32,6 +32,13 @@ async function readBody(req, limit = 128 * 1024) {
   try { return JSON.parse(Buffer.concat(parts).toString('utf8')); } catch { throw new ApiError('INVALID_JSON', 'Invalid request format'); }
 }
 const validId = id => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(id);
+const contextUsage = tokenUsage => {
+  if (tokenUsage === null || tokenUsage?.modelContextWindow === null) return null;
+  const usedTokens = tokenUsage?.last?.totalTokens, contextWindow = tokenUsage?.modelContextWindow;
+  if (!Number.isSafeInteger(usedTokens) || usedTokens < 0 || !Number.isSafeInteger(contextWindow) || contextWindow < 1) return undefined;
+  return { usedTokens, contextWindow, updatedAt: new Date().toISOString() };
+};
+const usagePatch = session => session.contextUsage === undefined ? {} : { contextUsage: structuredClone(session.contextUsage) };
 
 export async function createAgentServer({ root = process.env.SEED_ROOT || defaultRoot, AppServerClass = AppServer, OpenCodeProviderClass = OpenCodeProvider, ClaudeProviderClass = ClaudeProvider, progressClock } = {}) {
   root = await fs.realpath(root);
@@ -83,7 +90,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   let status = { ready: false, authenticated: false, provider: 'Codex App Server', model: '', skills: [], mcp: { ready: false, tools: [] }, permissions };
   let openCodeStatus = { id: 'opencode', label: 'OpenCode', ready: false, authenticated: false, providers: [], error: null };
   let claudeStatus = { id: 'claude', label: 'Claude Agent', ready: false, authenticated: false, providers: [], error: null };
-  const active = new Map(), threads = new Map(), resumed = new Set(), subscribers = new Map(), approvals = new Map(), requestSessions = new Map(), dirtySessions = new Map();
+  const active = new Map(), threads = new Map(), resumed = new Set(), subscribers = new Map(), approvals = new Map(), requestSessions = new Map(), dirtySessions = new Map(), titleWrites = new Map();
   const currentRun = run => !run.finished && run.session && active.get(run.session.id) === run;
   let effort = config.reasoningEffort;
   const publicSession = session => {
@@ -103,7 +110,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     return event => { if (!res.destroyed && !res.writableEnded) res.write(`data: ${JSON.stringify(event)}\n\n`); };
   }
   function save(run) {
-    const snapshot = { messages: structuredClone(run.session.messages), requests: structuredClone(run.session.requests), running: !run.finished, activeRequestId: run.finished ? null : run.requestId, threadId: run.session.threadId };
+    const snapshot = { messages: structuredClone(run.session.messages), requests: structuredClone(run.session.requests), running: !run.finished, activeRequestId: run.finished ? null : run.requestId, threadId: run.session.threadId, ...usagePatch(run.session) };
     run.saving = run.saving.catch(() => {}).then(() => ws(`/sessions/${run.session.id}`, 'PATCH', snapshot)).then(value => { run.session.updatedAt = value.session.updatedAt; });
     return run.saving;
   }
@@ -160,6 +167,12 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     if (turnId !== run.turnId) return;
     if (!run.cancelRequested) run.progress?.notification(message.method, p);
     if (message.method === 'turn/started') { if (run.cancelRequested) await interrupt(run); }
+    else if (message.method === 'thread/tokenUsage/updated') {
+      const usage = contextUsage(p.tokenUsage);
+      if (usage === undefined) return;
+      run.session.contextUsage = usage;
+      broadcast(run.session.id, { type: 'snapshot', session: publicSession(run.session) }); scheduleSave(run);
+    }
     else if (message.method === 'item/agentMessage/delta') {
       if (typeof p.delta !== 'string' || typeof p.itemId !== 'string' || !p.itemId) return;
       assistant(run, p.itemId).text += p.delta;
@@ -534,6 +547,28 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       if (req.method === 'GET' && url.pathname === '/api/kernel') return send(res,200,{kernel:await kernelStatus(root)});
       if (req.method === 'GET' && url.pathname === '/api/sessions') return send(res, 200, await ws('/sessions'));
       const sessionId = url.pathname.match(/^\/api\/sessions\/([a-zA-Z0-9_-]+)$/)?.[1];
+      if (req.method === 'PATCH' && sessionId) {
+        const input = await readBody(req, 16 * 1024);
+        const title = typeof input?.title === 'string' ? input.title.trim() : '';
+        if (!title || title.length > 200) throw new ApiError('INVALID_TITLE', 'Conversation title must contain 1 to 200 characters');
+        // Keep disk and active cache ordered even when two clients rename together.
+        const writing = (titleWrites.get(sessionId) || Promise.resolve()).catch(() => {}).then(async () => {
+          const loading = active.get(sessionId); if (loading?.loaded) await loading.loaded;
+          const value = await ws(`/sessions/${sessionId}`, 'PATCH', { title });
+          // A turn can finish or a replacement can start while the write is pending.
+          let run;
+          do { run = active.get(sessionId); if (run?.loaded) await run.loaded; }
+          while (active.get(sessionId) !== run);
+          const current = run?.session || dirtySessions.get(sessionId);
+          if (current) { current.title = value.session.title; current.updatedAt = value.session.updatedAt; }
+          if (run?.session && !run.finished) broadcast(sessionId, { type: 'snapshot', session: publicSession(run.session) });
+          return { session: publicSession(current || value.session) };
+        });
+        titleWrites.set(sessionId, writing);
+        try { return send(res, 200, await writing); }
+        finally { if (titleWrites.get(sessionId) === writing) titleWrites.delete(sessionId); }
+      }
+
       if (req.method === 'GET' && sessionId) { const run = active.get(sessionId); if (run?.loaded) await run.loaded; const session = run?.session || dirtySessions.get(sessionId) || (await ws(`/sessions/${sessionId}`)).session; return send(res, 200, { session: publicSession(session) }); }
       if (req.method === 'GET' && url.pathname === '/api/events') {
         const id = url.searchParams.get('sessionId'); if (!validId(id)) throw new ApiError('INVALID_SESSION', 'Invalid session ID');
@@ -600,7 +635,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         const run = { requestId, attachments: resolvedAttachments, session: null, saving: Promise.resolve(), finished: false, cancelRequested: false, loaded: new Promise(resolve => { loaded = resolve; }) }; active.set(id, run);
         try {
           const dirty = dirtySessions.get(id);
-          if (dirty) { await ws(`/sessions/${id}`, 'PATCH', { messages: dirty.messages, requests: dirty.requests, threadId: dirty.threadId, running: false, activeRequestId: null }); dirtySessions.delete(id); }
+          if (dirty) { await ws(`/sessions/${id}`, 'PATCH', { messages: dirty.messages, requests: dirty.requests, threadId: dirty.threadId, running: false, activeRequestId: null, ...usagePatch(dirty) }); dirtySessions.delete(id); }
           run.session = (await ws(`/sessions/${id}`)).session;
           assertSessionSelection(run.session, requestedSelection);
           if ((run.session.engine || 'codex') === 'codex' && (!status.ready || startup)) throw new ApiError('AGENT_NOT_READY', status.error || 'Codex is starting. Try again shortly', 503);
