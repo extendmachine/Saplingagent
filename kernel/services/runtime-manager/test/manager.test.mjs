@@ -343,3 +343,22 @@ test('new controls enforce instance-only input, local auth and fixed logs destin
  assert.equal(openedResponse.status,200);assert.deepEqual(await openedResponse.json(),{requested:true});assert.equal(opened,root);
  const response=await request('/api/runtime/stop',headers,'POST');assert.equal(response.status,202);assert.deepEqual(await response.json(),{stopping:true});await until(()=>callback===1);
 });
+
+
+test('external-only MCP mode starts healthy services without built-in model authentication', async t=>{
+ const {root,manager}=await fixture(t);
+ await fs.writeFile(path.join(root,'agent.not-ready'),'no model account');
+ manager.restart();await manager.operation;assert.equal(manager.phase,'failed');
+ await fs.writeFile(path.join(root,'config/mcp-access.json'),JSON.stringify({schemaVersion:1,revision:1,enabled:true,externalOnly:true}));
+ manager.restart();await manager.operation;assert.equal(manager.phase,'ready');assert.equal(manager.state().aiConnection,'external-mcp');
+ assert.equal(manager.state().services.find(s=>s.name==='agent').running,true);
+ await fs.writeFile(path.join(root,'config/mcp-access.json'),JSON.stringify({schemaVersion:1,revision:2,enabled:true,externalOnly:false}));
+ manager.restart();await manager.operation;assert.equal(manager.phase,'failed');
+});
+
+test('invalid MCP settings preserve current services and do not silently skip model readiness', async t=>{
+ const {root,manager}=await fixture(t);const before=manager.state();
+ await fs.writeFile(path.join(root,'config/mcp-access.json'),'{bad');
+ manager.restart();await manager.operation;assert.equal(manager.phase,'failed');assert.equal(manager.error.code,'INVALID_MCP_CONFIG');
+ assert.deepEqual(manager.state().services,before.services);
+});

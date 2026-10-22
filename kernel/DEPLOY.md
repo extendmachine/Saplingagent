@@ -108,3 +108,7 @@ shared operation leases. Preserve stale/unknown ownership records for inspection
 This changes placement within kernel0.9.4; existing old external sessions should
 finish through their original process before updating. No automatic customer
 baseline regeneration or account/Git rewrite. See docs/configuration-storage.html.
+
+## External AI / MCP
+
+Install/repair includes the pinned MCP SDK in kernel dependencies. Enable External AI / MCP in web setup and export client JSON after the final folder name is established. External-only mode needs no built-in account. The external client starts the local stdio process; no extra HTTP port or global client configuration is created. Disconnect this project's MCP connections before kernel update/restore, project rename or dependency repair. See `services/mcp-access/DEPLOY.md` and `../docs/mcp-access.html`. Kernel version remains0.9.5; Git SHA identifies this source update.

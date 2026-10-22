@@ -5,12 +5,14 @@ import { fork } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { KernelError, acquireKernelLock, isKernelPath } from './contracts/kernel.mjs';
 import { jsonWrite, safeFile } from './storage.mjs';
+import { assertMcpClientsStopped } from './contracts/mcp-access.mjs';
 export async function startMaintenance(root, action, id) {
   const jobId = randomUUID(), prefix = `.runtime/kernel/jobs/${jobId}`;
   const release = await acquireKernelLock(root, 'maintenance-handoff');
   let child;
   try {
-    const sources=['kernel/worker.mjs','kernel/manager.mjs','kernel/storage.mjs','kernel/recover.mjs','kernel/install-dependencies.mjs','kernel/contracts/kernel.mjs','kernel/contracts/local-storage.mjs','kernel/contracts/local-process.mjs','kernel/contracts/engine-dependencies.mjs','kernel/compat/paths.mjs'];
+    await assertMcpClientsStopped(root);
+    const sources=['kernel/worker.mjs','kernel/manager.mjs','kernel/storage.mjs','kernel/recover.mjs','kernel/install-dependencies.mjs','kernel/contracts/kernel.mjs','kernel/contracts/mcp-access.mjs','kernel/contracts/configuration-write.mjs','kernel/contracts/local-storage.mjs','kernel/contracts/local-process.mjs','kernel/contracts/engine-dependencies.mjs','kernel/compat/paths.mjs'];
     for (const file of sources) {
       const source=await safeFile(root,file);
       const target=await safeFile(root,`${prefix}/runner/${file}`,{internal:true});

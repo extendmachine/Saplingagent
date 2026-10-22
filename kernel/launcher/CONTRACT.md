@@ -184,3 +184,9 @@ as a signal target. Existing compiled apps need rebuilding to acquire the Dock
 behavior; a source/kernel update alone cannot replace customer-owned binaries.
 
 Direct compilation and legacy finalization/rename also close the Dock owner before acquiring an operation lease and recheck under that lease. Folder-moving paths require the runtime to be offline at that point. Native app registration refuses maintenance leases. Failed finalization removes only its own created lease, including a partial lease when a competing operation wins. Legacy rename uses the published configuration move operation so a destination appearing during the wait is never replaced.
+
+## External MCP configuration and maintenance (2026-10-21)
+
+Saved enabled + externalOnly MCP settings satisfy setup completion without a model profile. Runtime health remains mandatory. The setup connections fingerprint retains the original provider hash when the MCP settings file is absent; when present, it hashes its bytes with a domain separator. Changing either saved connection invalidates readiness. Client JSON is derived from the final project path after relocation; do not persist capsule paths or edit global client settings.
+
+Legacy rename checks active MCP receipts while holding kernel-operation.lock after the normal offline check. Current capsule finalization checks before stopping the app and again under its maintenance lease. Live or unverified ownership blocks relocation with MCP_CLIENTS_ACTIVE and releases only the operation's own leases. Dependency replacement checks after taking the install lock; server registration checks these same installer/maintenance locks. Configuration finalization also asks clients to disconnect before rebuilding; no external AI host is terminated. The terminal Start path trusts external-mcp runtime readiness and a healthy frontend, without polling built-in model authentication.

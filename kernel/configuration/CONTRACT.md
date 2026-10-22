@@ -86,3 +86,7 @@ and never replaces an existing destination. External editors or antivirus may
 still refuse a rename; report the error and retain saved state for retry.
 
 The published `configuration/public.mjs` operation `moveProject(previous, current)` is also used by the legacy launcher under its operation lease. It refuses an existing destination, including one created while the native app was closing, and never moves outside the current parent. This exposes the existing platform move behavior without adding another service.
+
+## External MCP connection during relocation (2026-10-21)
+
+The builtin-only MCP configuration contract is part of the copied configuration capsule; the SDK and standalone stdio server are not capsule dependencies. B can save enabled/externalOnly settings without a provider account. An active or unverifiable MCP ownership receipt blocks finalization before stopping app services and again after maintenance leases are held. The user disconnects this project's MCP connection, then retries. No external client host is killed. Exported MCP command/args are regenerated against the final root after relocation.

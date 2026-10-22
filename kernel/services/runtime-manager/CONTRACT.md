@@ -102,3 +102,9 @@ Kernel control routes and payloads are defined in kernel/CONTRACT.md v3. Gateway
 ## Project launcher lifecycle (0.9.3)
 
 GET /api/runtime/status additionally returns applicationRoot (canonical absolute root). Discovery records also contain root; root/instanceId matching prevents another copied application's metadata from claiming ownership. Authenticated POST /api/runtime/stop drains work through prepareMaintenance then invokes the owned launcher shutdown callback, returning202; busy work returns409. The independent management page uses the control port and service token; it never kills by port/name. Cold-start internal bind collisions retry allocation at most8 times while retaining bound public/control listeners and stopping only previously owned children. Existing restart address stability remains; non-port failures are reported rather than retried indefinitely.
+
+## External AI / MCP readiness (2026-10-21)
+
+Runtime status adds `aiConnection: builtin | external-mcp`. The latter is derived only from saved `config/mcp-access.json` with both enabled and externalOnly true. In that mode the Agent HTTP service and all app services still start, but Agent readiness uses its ordinary /health endpoint rather than requiring a model login and application MCP initialization. Built-in mode retains its existing authenticated readiness. Malformed MCP settings fail with INVALID_MCP_CONFIG before replacing existing service processes. A settings change takes effect on restart. Embedded chat still requires a configured provider; external MCP conversations run in the user's external client.
+
+External stdio MCP processes are owned by their AI clients and remain independent of Restart app and Dock Quit. Kernel maintenance rejects active MCP connections before its handoff; it never terminates the external client host.
