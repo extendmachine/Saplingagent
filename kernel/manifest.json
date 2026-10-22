@@ -1064,20 +1064,20 @@
     },
     {
       "path": "kernel/services/runtime-manager/CONTRACT.md",
-      "sha256": "cf67679f936cb31876b0f1d15409fe7f6bd874694843b95f1308dacf5ba2d8d9",
-      "bytes": 13433,
+      "sha256": "ffbd16d4f866d55cae66a617f2a5bcd4c4f60628087a02dda23c27452a35c360",
+      "bytes": 14242,
       "executable": false
     },
     {
       "path": "kernel/services/runtime-manager/DEPLOY.md",
-      "sha256": "ca71ad9a42cde371485094de907e471b6b2aa2a192b64ad74faf0ef1bf81a7fb",
-      "bytes": 6533,
+      "sha256": "be7d8ba78fdcf4666a17f90e0e7b2861290f026ab95d29e2a41a4b1ab37722fd",
+      "bytes": 7243,
       "executable": false
     },
     {
       "path": "kernel/services/runtime-manager/gateway.mjs",
-      "sha256": "af5a79fafd3d660f17e6d7251df6811b46d1607e60208cd38c0e0db743f0e460",
-      "bytes": 4359,
+      "sha256": "fa7ca86e90c846f178542cb10bc368107ed95777b3ddb115b32fa648bf67b79f",
+      "bytes": 4922,
       "executable": false
     },
     {
@@ -1100,8 +1100,8 @@
     },
     {
       "path": "kernel/services/runtime-manager/REFERENCES.md",
-      "sha256": "b86824f77c35b05a838354080a059f81a27f3e90e4dc0d3ee5e35f4470ded85b",
-      "bytes": 3859,
+      "sha256": "a6e5196587689432ed2ffbdaaff122b594a7607cf45ebece20ccba1d0be1e845",
+      "bytes": 4491,
       "executable": false
     },
     {
@@ -1132,6 +1132,12 @@
       "path": "kernel/services/runtime-manager/status.mjs",
       "sha256": "aab08e937d3b2052f222d0e986889571d648ac27188923cf3380cd6d48cb6208",
       "bytes": 2182,
+      "executable": false
+    },
+    {
+      "path": "kernel/services/runtime-manager/test/gateway-drain.test.mjs",
+      "sha256": "0319987245b18e052f3d898d05a61abc63dea1a130b73b6ae3289b87706cb4af",
+      "bytes": 5857,
       "executable": false
     },
     {
