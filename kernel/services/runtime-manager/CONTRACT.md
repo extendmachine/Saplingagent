@@ -55,6 +55,17 @@ The operating-system launcher owns one persistent runtime manager. `frontPort` (
 
 While preparing/restarting, the gateway rejects new ordinary mutations. Outstanding gateway writes refuse restart; supported services also gate direct authenticated callers. Legacy versions lacking drain endpoints use Agent session-running checks and gateway accounting. This fallback cannot observe direct legacy backend callers; finish their work first. A branch switch is a separate Git operation; choose a version first, then Restart app. Dirty files are saved by the existing Git switch API. No automatic chat resend, rollback, root elevation or new MCP protections.
 
+A disconnected browser does not complete a mutation. The gateway continues consuming
+its upstream response, including when the browser left before response headers,
+until that response ends or the upstream transport fails/closes. Aborted uploads
+that receive no response also release their accounting when the upstream request
+terminates. Each request releases its count once; browser disconnect and request
+upload completion alone do not release it. This avoids both stranded busy counts
+and premature maintenance while a streamed write still runs. An upstream transport
+failure is not proof of business completion: existing service preparation/drain
+checks remain required before any stop or restart. GET/HEAD cancellation still
+closes its upstream request. No endpoint, payload or ownership rule changes.
+
 The current checkout determines service entrypoints on every restart. PDF is optional and launched only if its source exists. Restart app applies changed internal ports while keeping the live public/control addresses. The persistent controller itself loads with the launcher; ordinary project/frontend/backend changes do not require exiting it. Dependencies newly introduced by a branch must be installed with its installer before restarting. Older frontend versions may not implement draft restoration; persisted sessions and project credentials remain on disk.
 
 `openCodePort` defaults to 4315 and is reserved as a distinct loopback port. OpenCode remains an Agent-owned child process, so backend/all restart and Agent shutdown terminate only that owned process group. The manager passes the selected port to Agent and does not expose OpenCode directly through the public gateway.

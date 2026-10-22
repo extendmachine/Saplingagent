@@ -22,17 +22,30 @@ export function createGateway(options) {
     const finish = () => { if (done) return; done = true; if (mutation) manager.gatewayWrites--; };
     const api = route.startsWith('/api/');
     const port = api ? manager.config.agentPort : manager.config.vitePort;
+    let upstreamResponse;
     const upstream = http.request({ hostname: '127.0.0.1', port, path: req.url, method: req.method, headers: req.headers }, response => {
-      if (res.destroyed) { response.destroy(); finish(); return; }
+      upstreamResponse = response;
+      response.once('end', finish);
+      response.once('close', finish);
+      const failed = () => { finish(); res.destroy(); };
+      response.once('aborted', failed);
+      response.once('error', failed);
+      if (res.destroyed) { if (mutation) response.resume(); else response.destroy(); return; }
       res.writeHead(response.statusCode, response.headers);
       response.pipe(res);
-      response.once('end', finish);
-      response.once('error', () => { finish(); res.destroy(); });
     });
-    upstream.once('error', () => { finish(); if (res.headersSent) return res.destroy(); if (!api && req.method === 'GET' && (req.headers.accept || '').includes('text/html')) return page(); send(res, 503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'App service is unavailable. Use the runtime control to restart.', control: '/__saplingagent/runtime' } }); });
+    upstream.once('error', () => { finish(); if (res.destroyed) return; if (res.headersSent) return res.destroy(); if (!api && req.method === 'GET' && (req.headers.accept || '').includes('text/html')) return page(); send(res, 503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'App service is unavailable. Use the runtime control to restart.', control: '/__saplingagent/runtime' } }); });
+    // An aborted upload can close the request before any response/error arrives.
+    upstream.once('close', () => { if (!upstreamResponse) finish(); });
     req.once('aborted', () => upstream.destroy());
     // Keep write accounting until the upstream operation completes, even if the browser disconnects.
-    res.once('close', () => { if (!res.writableEnded && !mutation) upstream.destroy(); });
+    res.once('close', () => {
+      if (res.writableEnded) return;
+      if (!mutation) return upstream.destroy();
+      // pipe() stops consuming when its destination closes; drain to receive end.
+      upstreamResponse?.unpipe(res);
+      upstreamResponse?.resume();
+    });
     req.pipe(upstream);
   });
   server.on('upgrade', (req, socket, head) => {
