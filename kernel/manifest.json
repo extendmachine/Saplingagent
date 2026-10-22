@@ -302,14 +302,14 @@
     },
     {
       "path": "kernel/CONTRACT.md",
-      "sha256": "d883fd9e1543969a52d9c12a9b4c4144109256602f919e59dfd288e663f800fd",
-      "bytes": 16548,
+      "sha256": "931aa422a430c02ef221fc6e5a2114bccf491d6b13189ee47fe909c8e0d00aec",
+      "bytes": 17868,
       "executable": false
     },
     {
       "path": "kernel/contracts/ai-configuration.mjs",
-      "sha256": "2f6bc2da6fc51f515db9baa380eecc5a397d751fa197aadeb7653b0ed48d2077",
-      "bytes": 6096,
+      "sha256": "9282548caaa73ed3dd66b1a73493818fbd8dfbb7af64ceb9eaff68847cec55ed",
+      "bytes": 6868,
       "executable": false
     },
     {
@@ -385,6 +385,18 @@
       "executable": false
     },
     {
+      "path": "kernel/engines/CONTRACT.md",
+      "sha256": "6ae2f8027da320a0e62f993579b7e3b688142d15694625fcc8303d648e4c4efc",
+      "bytes": 1627,
+      "executable": false
+    },
+    {
+      "path": "kernel/engines/DEPLOY.md",
+      "sha256": "730073c350e1774508646d9d786f5875f55497097546a2c125ebd5825e4e0958",
+      "bytes": 1719,
+      "executable": false
+    },
+    {
       "path": "kernel/engines/permissions.mjs",
       "sha256": "43ebd6dc060cd71c6fa002dd6c8680ff77f716ff916a2d52c86fe8b4bcc1d2f7",
       "bytes": 1252,
@@ -392,8 +404,8 @@
     },
     {
       "path": "kernel/engines/providers/claude.mjs",
-      "sha256": "ee16722bb7b13abe85d51d0290ed78d5c08a34ad46f16a9502e3700ebb077a4d",
-      "bytes": 10958,
+      "sha256": "d90243b6f6656bb74ceb9067775ba74c3ff526efa07be69a7b8808df06a05f7d",
+      "bytes": 13138,
       "executable": false
     },
     {
@@ -410,20 +422,26 @@
     },
     {
       "path": "kernel/engines/README.md",
-      "sha256": "a11d77021a7f204948f60d07024355b1cb99c5bb5c6811b2127ebb6d1370b194",
-      "bytes": 3161,
+      "sha256": "10e26eb993eb42fc0f38b84277bd7a47241ef2153badf743f1b8403e80fc2806",
+      "bytes": 3670,
       "executable": false
     },
     {
       "path": "kernel/engines/REFERENCES.md",
-      "sha256": "70f2afc21d8e709dcc1903995ecb5bdbca8d454b38e16f0caf8bc273eb6edafe",
-      "bytes": 1379,
+      "sha256": "ba4328466931ce1ecb5262a86b5b5f29054c7af3228f242ed8ac8a571015298a",
+      "bytes": 3974,
       "executable": false
     },
     {
       "path": "kernel/engines/rpc.mjs",
       "sha256": "d59e1cc2195b4026faf0078524fd51f87944fd9fba87aa8ea7c1c5ecb30cfc2e",
       "bytes": 5622,
+      "executable": false
+    },
+    {
+      "path": "kernel/engines/SERVICE.md",
+      "sha256": "35440d1bff978276f151d76331c30fdfffa32ec0926a9d1e513784dcbb6a79bf",
+      "bytes": 1390,
       "executable": false
     },
     {
@@ -439,9 +457,15 @@
       "executable": false
     },
     {
+      "path": "kernel/engines/test/claude-subscription.test.mjs",
+      "sha256": "ed093e723891d07afd9bfd352847d526b13c5dff9e7dc96305d4e248d5bdf2ad",
+      "bytes": 9256,
+      "executable": false
+    },
+    {
       "path": "kernel/engines/test/claude.test.mjs",
-      "sha256": "eb7d7aa0742e9cda9da1dbf64071068a30f5ef551688c678a368cbf235436f1a",
-      "bytes": 14568,
+      "sha256": "9447c543e5058eaf1dfef1b224cd0abf71ef8e952802a5f5cd403839d0e5e778",
+      "bytes": 15022,
       "executable": false
     },
     {
@@ -824,14 +848,14 @@
     },
     {
       "path": "kernel/scripts/launcher/cli.mjs",
-      "sha256": "328afc113c20701ccd93f17e4bbcdfe59e5de04cd7d1ac3ab600fc0ba7ce26f8",
-      "bytes": 28497,
+      "sha256": "1a1a9c6f9820174db56af1916f7f693ea9eee0771280a815f6d15f99573e43c6",
+      "bytes": 28559,
       "executable": false
     },
     {
       "path": "kernel/scripts/launcher/README.md",
-      "sha256": "a02ee3776004b6e04025a6381334ec1520abd26c4a2aa2f9c080ac717be1b341",
-      "bytes": 8997,
+      "sha256": "07fd6617f7df853d34632405a54ab3ba1aea5a798110fd4ea548d5f0f5def802",
+      "bytes": 9353,
       "executable": false
     },
     {
@@ -938,8 +962,8 @@
     },
     {
       "path": "kernel/scripts/test/mcp-start.test.mjs",
-      "sha256": "50edc468c762374f76177584d9a19ea79e8954688ac1281bd8bb3036a09f4f2b",
-      "bytes": 6733,
+      "sha256": "dbf0f205fb6b235dabab65113d3262c6e5f4755c7a89141a9e69ebb69ce4d5d6",
+      "bytes": 7878,
       "executable": false
     },
     {
@@ -1010,8 +1034,8 @@
     },
     {
       "path": "kernel/services/ai-config/CONTRACT.md",
-      "sha256": "280f6771a2ba7e3e41b335f963662bdfe93c1d051ac2f226b6502b7e94c2a245",
-      "bytes": 18096,
+      "sha256": "8d879f2cc140033c4e2a1884d38f1ada983bc3baaa92f693d0c06acb5bb357ec",
+      "bytes": 20567,
       "executable": false
     },
     {
@@ -1022,14 +1046,14 @@
     },
     {
       "path": "kernel/services/ai-config/DEPLOY.md",
-      "sha256": "52ff4c4611cac75fed011cf1576316ae12fac5dc557d7cfae9203c169760ac95",
-      "bytes": 9908,
+      "sha256": "26f92ef9881cf972f8fa776aace47016a19a3dac346a14b863728bb7cd52bd89",
+      "bytes": 11398,
       "executable": false
     },
     {
       "path": "kernel/services/ai-config/REFERENCES.md",
-      "sha256": "731cd2c96e64e00fdf9779061d1a73c6c300740a486db28d2072dc544b74a259",
-      "bytes": 4419,
+      "sha256": "560b7fa7bd67f7e11f21ba11a4bb76e55f9c2a125fb07820f91e80482271f3e8",
+      "bytes": 5709,
       "executable": false
     },
     {
@@ -1040,14 +1064,14 @@
     },
     {
       "path": "kernel/services/ai-config/SERVICE.md",
-      "sha256": "1947b4c830576fe673fdc632eedf7fe1800f6e051136dadd52a9c5eb64797898",
-      "bytes": 6025,
+      "sha256": "12ea01715328bc4990b88a96d6e073322318f15b8675c0ede4c5912ea9f49b0a",
+      "bytes": 6598,
       "executable": false
     },
     {
       "path": "kernel/services/ai-config/store.mjs",
-      "sha256": "4de3e8b172e5b059294501a2654a3dbab527a10237ef02ddf7bb93b65c8d4d45",
-      "bytes": 13018,
+      "sha256": "65147b54e32a4c9410dec695dc823a8d3a40407cdcd80a85f3aa951f2a6b000f",
+      "bytes": 15251,
       "executable": false
     },
     {
@@ -1084,6 +1108,12 @@
       "path": "kernel/services/ai-config/test/static.test.mjs",
       "sha256": "71c9d479873ef925a2bc9b91e9e5898c500b96a31428476c95003300381b4020",
       "bytes": 1464,
+      "executable": false
+    },
+    {
+      "path": "kernel/services/ai-config/test/subscription.test.mjs",
+      "sha256": "1f54b08ca6ef6c129e54f36c4168afdc9c8e20f6f79f4dd3603ad750c7ec8d51",
+      "bytes": 12982,
       "executable": false
     },
     {
@@ -1243,6 +1273,12 @@
       "executable": false
     },
     {
+      "path": "kernel/test/claude-subscription-contract.test.mjs",
+      "sha256": "ae96a6af2b0f6b315d57e12a0659c6f811803a836e7171e11be697e6c9c4ae13",
+      "bytes": 3339,
+      "executable": false
+    },
+    {
       "path": "kernel/test/fixtures/kernel-contract-0.91.mjs",
       "sha256": "c9323967fd91a63ad1500781fc43c4d6fa739c2f1d95bd490aa87ed50df258b8",
       "bytes": 8118,
@@ -1304,8 +1340,8 @@
     },
     {
       "path": "kernel/ui/setup/main.tsx",
-      "sha256": "0d9d1d7d6344e3ba8ee300ddd062e3d57e3f8a84666f0afa85cba288da7c4c51",
-      "bytes": 30063,
+      "sha256": "eb636aa3760239b29c9c0a6e83d661fc259635e481c63c4d85a88aca68119560",
+      "bytes": 33617,
       "executable": false
     },
     {
@@ -1333,6 +1369,12 @@
       "executable": false
     },
     {
+      "path": "kernel/ui/setup/profile-draft.ts",
+      "sha256": "4ac902ea6cd8a9cec595cc8ad4a9214a951c77db0d62fc00364a5c07550581f6",
+      "bytes": 2230,
+      "executable": false
+    },
+    {
       "path": "kernel/ui/setup/ProjectSetup.tsx",
       "sha256": "f8dd7fd48a07307ad397e482540424dc599200f62827ea4660dadfb0d6f770bc",
       "bytes": 26053,
@@ -1340,8 +1382,8 @@
     },
     {
       "path": "kernel/ui/setup/README.md",
-      "sha256": "bc100ac4728fe7e5371e2071423e8e2136075060bcc376063e2f49f58796a676",
-      "bytes": 8355,
+      "sha256": "bd4ebafb95588a24fd349b0299c288bf89aea72164630725c36c9b403afc88cb",
+      "bytes": 10624,
       "executable": false
     },
     {
@@ -1360,6 +1402,12 @@
       "path": "kernel/ui/setup/styles.css",
       "sha256": "50bdbc80825e08bb203420702636b08d2942826a24a750537c5d74c35e8aa058",
       "bytes": 8222,
+      "executable": false
+    },
+    {
+      "path": "kernel/ui/setup/subscription-component.test.mjs",
+      "sha256": "29f545dbc0199c6fdc526fa109a1f1d9d9a35bde13ac30566762aa8594742eb8",
+      "bytes": 10708,
       "executable": false
     },
     {

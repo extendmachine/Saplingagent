@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-import os from 'node:os';
+import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import { readConnections, readCredential, claudeConnections, defaultSelection } from '../contracts/ai-configuration.mjs';
 const subscription = {id:'personal-claude',label:'Personal Claude',engine:'claude',kind:'subscription',model:'fixture-model'};
 async function fixture(t, profile=subscription, credential={oauthToken:'synthetic-personal-token'}) {
-  const root=await fs.mkdtemp(path.join(os.tmpdir(),'claude-contract-'));
+  const directory=fileURLToPath(new URL('../../.cache/claude-contract-tests/',import.meta.url));
+  await fs.mkdir(directory,{recursive:true});
+  const root=await fs.mkdtemp(path.join(directory,'fixture-'));
   t.after(()=>fs.rm(root,{recursive:true,force:true}));
   await fs.mkdir(path.join(root,'local-secrets/ai-config'),{recursive:true});
   await fs.mkdir(path.join(root,'local-secrets/api-keys'),{recursive:true});
@@ -28,7 +30,7 @@ test('saved subscription rejects API endpoint/auth fields and non-Claude engines
   }
 });
 test('subscription never reuses an API key or accepts damaged token storage',async t=>{
-  for(const credential of [{apiKey:'synthetic-api-only'},{oauthToken:''},{oauthToken:' '},{oauthToken:123},{oauthToken:'synthetic\nline'},{oauthToken:'a'.repeat(8193)}]){
+  for(const credential of [{apiKey:'synthetic-api-only'},{oauthToken:''},{oauthToken:' '},{oauthToken:123},{oauthToken:'synthetic\nline'},{oauthToken:'synthetic space'},{oauthToken:'a'.repeat(8193)}]){
     const root=await fixture(t,subscription,credential);
     await assert.rejects(readCredential(root,subscription),/credential is unavailable/);
   }

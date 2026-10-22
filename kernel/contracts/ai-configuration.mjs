@@ -33,7 +33,7 @@ export async function readCredential(root, profile) {
     const data = JSON.parse(await fs.readFile(credentialPath(root, profile.id), 'utf8'));
     const value = profile.kind === 'subscription' ? data.oauthToken : data.apiKey;
     if (typeof value !== 'string' || !value) throw new Error();
-    if (profile.kind === 'subscription' && (profile.engine !== 'claude' || !value.trim() || value.length > 8192 || /[\x00-\x1f\x7f]/.test(value))) throw new Error();
+    if (profile.kind === 'subscription' && (profile.engine !== 'claude' || !value.trim() || value.length > 8192 || /[\s\x00-\x1f\x7f]/.test(value))) throw new Error();
     return value;
   } catch { throw new Error('A saved AI credential is unavailable. Reconfigure that scheme in the setup page.'); }
 }

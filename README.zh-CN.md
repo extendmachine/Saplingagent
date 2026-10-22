@@ -185,7 +185,9 @@ bash Saplingagent.sh logout
 
 在 **配置 AI → ChatGPT 账号**选择 **Use local Codex login**或 **Upload auth.json**。本地文件来自调用者的 `CODEX_HOME`，否则使用 `~/.codex/auth.json`；Windows 对应 `%USERPROFILE%\.codex\auth.json`。所选登录复制到此应用的 `local-secrets/codex/auth.json` 并启用；已有项目账号需要显式勾选 **Replace existing credentials**才会替换。只有系统钥匙串或桌面端登录时，可能没有可导入的文件，此时使用官方登录按钮。不会修改全局登录或配置。
 
-Claude 使用 **Claude API**，填写服务地址与模型，再选择 **Import local Claude API credentials**或 **Upload API credential JSON**。本地导入读取启动终端继承的 `ANTHROPIC_API_KEY`，或 `CLAUDE_CONFIG_DIR` / `~/.claude/settings.json` 中的 API 环境字段。JSON 支持 `apiKey`、`ANTHROPIC_API_KEY`、`env.ANTHROPIC_API_KEY`，可附带 `baseUrl` / `model`；非空表单优先。替换已有方案密钥也需要明确选择。
+Claude 使用 **Claude → API 密钥**，填写服务地址与模型，再选择 **Import local Claude API credentials**或 **Upload API credential JSON**。本地导入读取启动终端继承的 `ANTHROPIC_API_KEY`，或 `CLAUDE_CONFIG_DIR` / `~/.claude/settings.json` 中的 API 环境字段。JSON 支持 `apiKey`、`ANTHROPIC_API_KEY`、`env.ANTHROPIC_API_KEY`，可附带 `baseUrl` / `model`；非空表单优先。替换已有方案密钥也需要明确选择。
+
+个人本机使用 Claude 套餐时，在 **Claude → 订阅 Token（本人自用）** 选择独立认证方式，在官方 CLI 运行 `claude setup-token`，然后填写 Token 和模型 ID。此方式不填写自定义 API 地址，也不读取模型列表。Token 仅存于项目 `local-secrets/`；编辑同类方案时留空可保留，切换认证方式需要新凭据。保存不验证额度、有效性或免费使用；仍适用 Anthropic 的账号和集成条件，不代表第三方产品已获批准。详见[个人订阅 Token 指南](docs/claude-subscription.html)。
 
 导入不读取 Claude 订阅 OAuth 文件、系统钥匙串或可执行凭据助手。文件最大 32KiB，只发送给受保护的本地配置服务。密钥保存在 Git 忽略的项目文件中，不写入状态响应或浏览器存储。导入只验证本地结构与保存，不验证有效期、额度或模型推理；保存并构建应用、完成配置后再打开 App；更换服务商后新建对话。详见 [AI 配置指南](docs/ai-configuration.html)。
 
@@ -216,7 +218,7 @@ Claude Agent 通过官方 **Claude Agent SDK**作为独立的本地引擎运行�
 
 SDK 固定为 `0.3.296`，原生二进制安装在应用文件夹内，无需全局安装 Claude Code。共享 API key 位于 `local-secrets/api-keys/`，Claude 状态和会话位于 `local-secrets/claude/`。项目 `CLAUDE.md` 引入 `AGENTS.md`，`.agents/` 作为本地 `saplingagent` 插件加载现有 Skills。
 
-本项目提供客户自己的 API 方案，不提供或导入 claude.ai 订阅登录。第三方产品使用该认证需遵循 Anthropic 的事先批准要求；SDK 组件遵循其自身条款。参见 [SDK 概览](https://code.claude.com/docs/en/agent-sdk/overview)和[快速开始与认证](https://code.claude.com/docs/en/agent-sdk/quickstart)。
+本项目支持客户自己的 API 方案，以及本人手动提供 `claude setup-token` 的本机订阅方案；不自动登录或导入订阅 OAuth 文件。第三方产品使用订阅认证需遵循 Anthropic 的集成条件和适用批准要求；SDK 组件遵循其自身条款。参见 [SDK 概览](https://code.claude.com/docs/en/agent-sdk/overview)和[快速开始与认证](https://code.claude.com/docs/en/agent-sdk/quickstart)。
 
 每个对话始终绑定最初的引擎与模型；切换请新建对话，不会自动回退、重发或静默替换丢失会话。Claude 原生问题对话框 / MCP elicitation 表单暂未渲染，Agent 通过普通聊天提问。本地启动只证明原生初始化及项目 MCP / Skills 可用；付费模型、第三方网关和原生 Windows 行为仍需实际验证。OpenCode 的 Anthropic 服务商可独立使用。
 
