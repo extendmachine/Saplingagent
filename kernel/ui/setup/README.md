@@ -8,12 +8,39 @@ loopback port; no chat page or Vite development server is needed.
 
 English is the default; the page follows the launcher language and offers a
 Chinese toggle. Account/API tabs support saved schemes, default activation,
-custom API URL/protocol/model/key and optional model discovery. A blank key when
-editing keeps the saved key. Typed keys are cleared after save/finish; saved keys
+custom API URL/protocol/model/key and optional model discovery. A blank credential
+when editing the same saved authentication kind keeps its credential. Changing
+authentication kind or engine requires a new credential. Typed credentials are
+cleared after save/finish and when changing tabs, presets, engines or authentication
+choices; saved keys
 are never returned to the browser. Account/key data never enters browser storage.
 Official login opens the provider page and polls status, with an explicit link if
 the popup is blocked. Saving settings/building does not send a model prompt or
 change the engine of existing conversations.
+
+## Personal Claude subscription token (TASK-20261022-003)
+
+The Claude tab offers separate API-key and Subscription token (personal use)
+choices. The subscription form contains a scheme name, password input and model
+ID/alias. It does not offer an API URL, protocol, no-auth option, model discovery
+or API-credential import. It directs the account owner to run `claude setup-token`
+in their own terminal and manually paste the result; this page does not initiate
+subscription sign-in or read subscription login files. See the
+[official token guide](https://code.claude.com/docs/en/authentication#generate-a-long-lived-token).
+Access and billing follow Anthropic's current conditions. Saving does not verify
+the token, plan eligibility, model access or quota, and does not establish permission
+to offer subscription authentication to other users.
+
+`profile-draft.ts` explicitly constructs POST `profiles` payloads. Subscription
+sends only `id?`, `label`, `engine:'claude'`, `kind:'subscription'`, `model`,
+write-only `apiKey`, `revision` and `activate`. API-only fields and `hasKey` are
+omitted. Saved subscription metadata retains its kind when opened for editing.
+Only an unchanged saved kind with `hasKey:true` permits a blank password; crossing
+API/subscription modes clears both the typed credential and the saved-credential
+hint. The service independently validates credential types and saved revisions.
+The draft uses the existing dirty-state, form validity and Save & build ordering.
+Saved scheme labels distinguish API, account and subscription token. Labels,
+guidance and relevant errors follow the English/Chinese toggle.
 
 ## External AI / MCP (TASK-20261021-005)
 
@@ -112,6 +139,8 @@ browser storage. Replacement requires its explicit checkbox. Protected imports
 reject pending OAuth/stale revisions and never restart or call a model. Both
 languages explain keychain/subscription limits and local-storage-only success.
 Import progress, errors and success appear next to the relevant controls.
+These API imports are hidden for a subscription draft; subscription tokens are
+entered only in the separate password input described above.
 
 ## Verification
 
@@ -129,6 +158,10 @@ refresh without a live model or client configuration write. Kernel-local TypeScr
 dependencies. Production installation builds with the kernel Vite dependency.
 Integration/browser checks and native process/Windows/provider acceptance are
 reported separately; source tests and compilation do not establish those results.
+Subscription component tests execute the actual setup App in an isolated React
+hook/DOM fixture. They check payload omission, API/subscription conversion, saved
+subscription editing, secret clearing across tabs/presets/engines, build validation
+and Chinese errors without any real credential, login or model call.
 Shared API details belong to `kernel/services/ai-config/CONTRACT.md` and
 `kernel/launcher/CONTRACT.md`; project-facing guides are maintained by the parent
 integration task.
