@@ -836,8 +836,8 @@
     },
     {
       "path": "kernel/scripts/launcher/recipient-records.mjs",
-      "sha256": "b9fa2f32fc226399730d74ed65bb67567c75ad16647294f91950f87f6acacd92",
-      "bytes": 7429,
+      "sha256": "7cf427e94a7924717fccdf8ec1c3d1477ca16e3de325ab218ae99c0502789e2f",
+      "bytes": 7779,
       "executable": false
     },
     {
