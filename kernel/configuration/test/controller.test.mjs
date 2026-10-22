@@ -94,3 +94,15 @@ test('a second native handoff timeout releases owned setup leases without moving
  assert.equal(await fs.access(path.join(temp,'After')).then(()=>true,()=>false),false);assert.equal(await manager.settingsSaved(),true);
  for(const name of ['kernel-operation.lock','project-finalization.json'])assert.equal(await fs.access(path.join(root,'.runtime',name)).then(()=>true,()=>false),false);
 });
+
+
+test('configuration refuses a live external MCP client before stopping or renaming the project',async t=>{
+ const f=await fixture(t),{manager,root,temp}=f;await manager.stageSetup({name:'After',renameFolder:true});
+ const id=randomUUID(),directory=path.join(root,'.runtime/mcp-access/clients');await fs.mkdir(directory,{recursive:true});
+ const file=path.join(directory,id+'.json');await fs.writeFile(file,JSON.stringify({schemaVersion:1,id,root:await fs.realpath(root),pid:process.pid}));
+ let stopped=false;manager.stop=async()=>{stopped=true;};
+ const job=await manager.finalizeSetup();await manager.completion;
+ assert.equal(job.phase,'failed');assert.equal(job.error.code,'MCP_CLIENTS_ACTIVE');assert.equal(stopped,false);assert.equal(f.compiled,0);
+ assert.equal(manager.root,root);assert.equal(await fs.access(path.join(temp,'After')).then(()=>true,()=>false),false);
+ assert.equal(await fs.access(file).then(()=>true,()=>false),true);
+});

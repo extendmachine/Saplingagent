@@ -161,3 +161,22 @@ test('copied discovery for a different project never blocks local dependency rep
   const f=await fixture(t);await write(path.join(f.root,'.runtime/runtime-address.json'),{pid:process.pid,root:path.join(f.root,'other-project')});
   assert.equal((await ensureApplicationDependencies(f.root,{install:f.install})).changed,true);
 });
+
+
+test('dependency replacement refuses active external MCP before any installer writes',async t=>{
+ const f=await fixture(t),id='01234567-1234-4321-8234-123456789abc';
+ const file=path.join(f.root,'.runtime/mcp-access/clients',id+'.json');
+ await write(file,{schemaVersion:1,id,root:await fs.realpath(f.root),pid:process.pid});
+ await assert.rejects(ensureApplicationDependencies(f.root,{install:f.install}),{code:'MCP_CLIENTS_ACTIVE'});
+ assert.deepEqual(f.calls,[]);assert.equal(await fs.access(file).then(()=>true,()=>false),true);
+ assert.equal(await fs.access(path.join(f.root,`.runtime/${platform}-install.lock`)).then(()=>true,()=>false),false);
+});
+
+test('standalone kernel dependency repair also refuses connected MCP clients',async t=>{
+ const f=await fixture(t),id='01234567-1234-4321-8234-123456789abc';
+ await write(path.join(f.root,'.runtime/mcp-access/clients',id+'.json'),{schemaVersion:1,id,root:await fs.realpath(f.root),pid:process.pid});
+ const before=await fs.readFile(path.join(f.root,'kernel/package-lock.json'));
+ await assert.rejects(promisify(execFile)(process.execPath,[path.join(source,'kernel/install-dependencies.mjs'),f.root],{timeout:10000}),error=>error.code===1&&error.stderr.includes('MCP_CLIENTS_ACTIVE'));
+ assert.deepEqual(await fs.readFile(path.join(f.root,'kernel/package-lock.json')),before);
+ assert.equal(await fs.access(path.join(f.root,'.runtime/kernel-operation.lock')).then(()=>true,()=>false),false);
+});

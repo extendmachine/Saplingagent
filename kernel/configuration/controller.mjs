@@ -6,6 +6,7 @@ import {json,writeJSON,issue,exists} from '../launcher/io.mjs';
 import {relocationLedger,completeRelocation} from '../launcher/relocation.mjs';
 import {acquireConfigurationWrite} from '../contracts/configuration-write.mjs';
 import {assertKernelOffline} from '../contracts/kernel.mjs';
+import {assertMcpClientsStopped} from '../contracts/mcp-access.mjs';
 import {saveSession,waitForExit} from './session.mjs';
 import {moveProject} from './move.mjs';
 
@@ -29,6 +30,7 @@ export class ConfigurationController extends ProjectLauncher {
     let ownsLease=false,ownsOperation=false,releaseConfiguration;
     const removeOwned=async name=>{const file=path.join(this.root,'.runtime',name);if((await json(file))?.id===id)await fs.rm(file);};
     try {
+      await assertMcpClientsStopped(this.root);
       this.progress('Waiting for the original launcher to exit…');
       await waitForExit(this.session.bootstrapPids||[]);
       // Release the resident Dock app and any startup worker before taking the
@@ -49,6 +51,7 @@ export class ConfigurationController extends ProjectLauncher {
         try{await handle.writeFile(JSON.stringify({schemaVersion:1,id,pid:process.pid,purpose,projectId:project.projectId})+'\n');}finally{await handle.close();}
       }
       releaseConfiguration=await acquireConfigurationWrite(this.root);
+      await assertMcpClientsStopped(this.root);
       const ledger=await relocationLedger(this.root);
       // Recheck under both leases: a competing app start could have won the
       // operation lock after the earlier idle check.

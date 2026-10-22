@@ -1,5 +1,22 @@
 # Setup service deployment
 
+External AI / MCP (TASK-20261021-004): after saving the project settings, enable
+MCP access and explicitly select external-only mode when no built-in AI account
+is needed. Save & build app can then finish without a provider profile. Existing
+profiles remain available and unchanged. Obtain the generated client configuration
+after the build/folder rename; a saved export from the old path must be regenerated.
+Copying that configuration does not write the external client's global settings.
+The standalone kernel MCP process uses stdio; configuration B's temporary HTTP
+URL is not an MCP endpoint. Read availability warnings and repair local kernel
+dependencies when required. A saved scheme is not a connection acceptance test.
+
+MCP setting edits invalidate setup/export readiness and need another completed
+build. Project maintenance/rename refuses live or unverifiable MCP client owners;
+disconnect this project's MCP in the external client first, without terminating
+the external AI host. There are no new model credentials or private tokens to
+export. Source rollback must preserve config/mcp-access.json and customer data;
+older sources may not understand external-only mode.
+
 Installed complete folder, Mac Terminal or Windows Git Bash. Run bash Saplingagent.sh; Configure AI builds kernel/ui/setup using the project-local Vite and opens the configuration URL. Main chat need not be started or authenticated. `configure --no-open` prints the URL for manual opening. The script may exit after opening setup; continue in the browser. Browser reload works on the same running service; reopen launcher after stopping it.
 
 Choose ChatGPT browser/device login or save a custom Codex Responses/OpenCode Chat Completions/Responses/Anthropic scheme. Use provider API Base URL, model ID and your own API key; a marketing website is not an API endpoint. Save & use selects the default. Model discovery only runs on button press and never generates a prompt. Then save settings and wait for restart before exporting the app. Restart an existing app and start a new conversation to apply a newly selected scheme; old sessions stay bound to their engine. Do not reuse a saved Codex thread with a different configured provider.

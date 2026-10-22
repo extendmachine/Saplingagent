@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { prepareManagedEnvironment } from './contracts/local-storage.mjs';
 import { npmCommand, codexBinary } from './contracts/local-process.mjs';
 import { acquireKernelLock, assertKernelOffline } from './contracts/kernel.mjs';
+import { assertMcpClientsStopped } from './contracts/mcp-access.mjs';
 const root=path.resolve(process.argv[2]||fileURLToPath(new URL('../',import.meta.url)));
 const childEnv=await prepareManagedEnvironment(root);
 const release=await acquireKernelLock(root,'kernel-dependencies');
@@ -16,6 +17,7 @@ function run(command,args,cwd){return new Promise((resolve,reject)=>{const child
 try {
  await fs.access(npmCLI);
  await assertKernelOffline(root);
+ await assertMcpClientsStopped(root);
  await run(npm.command,[...npm.args,'ci','--include=optional','--no-audit','--no-fund'],path.join(root,'kernel'));
  const config=JSON.parse(await fs.readFile(path.join(root,`kernel/config/${process.platform==='win32'?'windows':'macos'}.json`),'utf8'));
  const stage=`.runtime/codex-maintenance-${randomUUID()}`;const directory=path.join(root,stage);

@@ -9,6 +9,7 @@ import { initializeDownloadedRecords } from './recipient-records.mjs';
 import { setup } from '../setup.mjs';
 import {prepareManagedEnvironment} from '../../contracts/local-storage.mjs';
 import {assertSetupAvailable} from '../../contracts/kernel.mjs';
+import {readMcpAccess,assertMcpClientsStopped} from '../../contracts/mcp-access.mjs';
 import { codexBinary, claudeBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
 const t = (en, zh) => {
@@ -97,6 +98,7 @@ async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
   try {
     if(await exists(path.join(root,'.runtime/kernel/active-job.json')))throw new Error('Kernel maintenance is active. Use its recovery page before installing.');
     if(await exists(path.join(root,'.runtime/kernel-operation.lock')))throw new Error('A kernel/start operation is active. Finish it before installing dependencies.');
+    await assertMcpClientsStopped(root);
     await initializeDownloadedRecords(root);
     console.log(t('Release snapshot installed locally. Git and application source are not changed; upgrade only the kernel from the web control.', 'release 快照安装在本地。不修改 Git 或应用源码；请在网页内升级内核。'));
     if (!windows) for (const file of ['Saplingagent.sh', 'kernel/scripts/macos/bootstrap.sh', 'kernel/scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
@@ -190,6 +192,8 @@ async function installKernelAndConfigure(repair=false){
  await configureAI(process.env.SAPLING_NO_OPEN==='1');
 }
 async function configuredAccess() {
+  const mcp = await readMcpAccess(root);
+  if (mcp.enabled && mcp.externalOnly) return true;
   const connections = await readConnections(root);
   const selection = defaultSelection(connections);
   const profile = connections.profiles.find(p=>p.id===connections.activeId);
@@ -204,7 +208,7 @@ async function configuredAccess() {
 async function start(noOpen) {
   if (!await installed()) throw new Error(t('Installation is incomplete or dependency lockfiles have changed. Run: bash Saplingagent.sh install --repair', "安装未完成或依赖锁文件已变化。请运行：bash Saplingagent.sh install --repair"));
   await localSetup();
-  if (!await configuredAccess()) throw new Error(t('Choose Configure AI in Saplingagent.sh and save an account or API scheme first.', '请先选择配置 AI 接口，在网页中保存账号或 API 方案。'));
+  if (!await configuredAccess()) throw new Error(t('Choose Configure AI in Saplingagent.sh and save an account/API scheme or enable external-only MCP access.', '请先选择配置 AI 接口，保存账号/API 方案或启用仅外部 AI 的 MCP 接入。'));
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   const child = spawn(process.execPath, [path.join(root, 'scripts/dev.mjs')], { cwd: root, env, detached: false, stdio: ['inherit', 'pipe', 'pipe'] });
   let ended = false, interrupted = false, stopRequested = false, launched = false, startupOutput = '', frontPort = config.frontPort;
@@ -232,13 +236,13 @@ async function start(noOpen) {
         const lifecycle = await lifecycleResponse.json();
         if (lifecycle.phase === 'failed' && !lifecycle.busy) break;
         if (lifecycle.phase !== 'ready' || lifecycle.busy) { await delay(300); continue; }
-        const response = await fetch(`http://127.0.0.1:${frontPort}/api/status`, { signal: AbortSignal.timeout(1500) });
-        const status = await response.json();
-        if (status.ready && status.authenticated && status.mcp?.ready) {
+        const externalMcp = lifecycle.aiConnection === 'external-mcp';
+        const status = externalMcp ? null : await fetch(`http://127.0.0.1:${frontPort}/api/status`, { signal: AbortSignal.timeout(1500) }).then(response => response.ok ? response.json() : null);
+        if (externalMcp || (status?.ready && status.authenticated && status.mcp?.ready)) {
           const front = await fetch(`http://127.0.0.1:${frontPort}/`, { signal: AbortSignal.timeout(1500) });
           if (front.ok) {
             ready = true;
-            console.log(status.provider === 'OpenCode' ? t(`Connected to OpenCode: ${status.model}; project MCP connected.`, `已连接 OpenCode：${status.model}；项目 MCP 已连接。`) : t(`Connected to ${status.provider || 'Agent'}: ${status.model}; ${status.mcp.tools.length} MCP tools; ${status.skills.length} Skills.`, `已连接 ${status.provider || 'Agent'}：${status.model}；${status.mcp.tools.length} 个 MCP 工具；${status.skills.length} 个 Skills。`));
+            console.log(externalMcp ? t('External AI / MCP mode: app services are ready. Connect from your own AI client; no built-in model login is required.', '外部 AI / MCP 模式：应用服务已就绪。请从自己的 AI 客户端连接，无需内置模型登录。') : status.provider === 'OpenCode' ? t(`Connected to OpenCode: ${status.model}; project MCP connected.`, `已连接 OpenCode：${status.model}；项目 MCP 已连接。`) : t(`Connected to ${status.provider || 'Agent'}: ${status.model}; ${status.mcp.tools.length} MCP tools; ${status.skills.length} Skills.`, `已连接 ${status.provider || 'Agent'}：${status.model}；${status.mcp.tools.length} 个 MCP 工具；${status.skills.length} 个 Skills。`));
             console.log(t(`Web page: http://127.0.0.1:${frontPort}/\nKeep this window open; press Control+C to stop these services.`, `网页：http://127.0.0.1:${frontPort}/\n请保持终端窗口打开；按 Control+C 停止这些服务。`));
             if (!noOpen) {
               if (windows) await run('powershell.exe', ['-NoProfile', '-Command', `Start-Process 'http://127.0.0.1:${frontPort}/'`], { capture: true });
@@ -251,7 +255,7 @@ async function start(noOpen) {
       await delay(300);
     }
     if (!ready && !ended && !interrupted) {
-      console.error(t(`Model/authentication/MCP is not ready. Keep this window open, inspect local diagnostics and retry at http://127.0.0.1:${frontPort}/__saplingagent/runtime. Choose Diagnostics in Saplingagent.sh to check installation/login.`, `模型、认证或 MCP 尚未就绪。请保持终端窗口打开，检查诊断，并在 http://127.0.0.1:${frontPort}/__saplingagent/runtime 重试。选择服务诊断可检查安装和登录状态。`));
+      console.error(t(`Application services or the selected AI connection are not ready. Keep this window open, inspect local diagnostics and retry at http://127.0.0.1:${frontPort}/__saplingagent/runtime.`, `应用服务或所选 AI 接入尚未就绪。请保持终端窗口打开，检查诊断，并在 http://127.0.0.1:${frontPort}/__saplingagent/runtime 重试。`));
     }
     const result = await exit;
     if (result.code !== 0 && !interrupted) throw new Error(t(`Services stopped (exit code ${result.code}). Check for port, installation or authentication errors.`, `服务已停止（退出码 ${result.code}）。请检查端口、安装或认证错误。`));

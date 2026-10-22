@@ -23,7 +23,7 @@
 
 <p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 & ARM64 · Source available for noncommercial use</sub></p>
 
-**Saplingagent · Kernel 0.9.5 · Contained kernel layout.** Use the release-branch download or one-line installer below for this source version. See [project setup and local compilation](docs/project-launcher.html).
+**Saplingagent · Kernel 0.9.6 · Contained kernel layout.** Use the release-branch download or one-line installer below for this source version. See [project setup and local compilation](docs/project-launcher.html).
 
 <a id="demo"></a>
 
@@ -202,9 +202,9 @@ The Git-free delivery workflow downloads the release snapshot without `.git`. In
 
 ## Upgrade the kernel and restart
 
-Open **Kernel → Check for kernel update → Upgrade kernel & restart**. Review the verified release SHA, paths and conflicts, then accept the compatibility warning. A copied temporary progress process stops owned services, backs up/applies core, repairs its own dependencies and restarts the complete application at its actual selected port. App/chat pages, MCP, Skills, demos, business code, application dependency manifests, configuration, data and customer Git are retained. Restart app/backend remains available without an upgrade. Recovery is explicit; no automatic rollback. Direct control: `/__saplingagent/kernel`.
+Open **Kernel → Check for kernel update → Upgrade kernel & restart**. Review the verified release SHA, paths and conflicts, then accept the compatibility warning. A copied temporary progress process stops owned services, backs up/applies core, repairs its own dependencies and restarts the complete application at its actual selected port. App/chat pages, application-owned MCP, Skills, demos, business code, application dependency manifests, configuration, data and customer Git are retained. Restart app/backend remains available without an upgrade. Recovery is explicit; no automatic rollback. Direct control: `/__saplingagent/kernel`.
 
-This source declares **Kernel0.9.5 / schema3 / layout1**, the single Saplingagent version. Release promotion is separate from main development; inspect the committed release metadata before downloading. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
+This source declares **Kernel0.9.6 / schema3 / layout1**, the single Saplingagent version. Release promotion is separate from main development; inspect the committed release metadata before downloading. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
 
 ## Import existing local credentials
 
@@ -242,6 +242,12 @@ The SDK is pinned to `0.3.296` and installs its native binary inside the applica
 Claude API usage uses the customer's own account and provider billing. This application does not import or offer claude.ai subscription login: Anthropic's SDK documentation requires prior approval for third-party products offering that authentication. SDK components follow Anthropic's terms, separately from this project's license. See [SDK overview](https://code.claude.com/docs/en/agent-sdk/overview) and [quickstart / authentication](https://code.claude.com/docs/en/agent-sdk/quickstart).
 
 Local startup proves native initialization, project MCP and Skills availability; a saved key is not a quota or inference check. Native question dialogs/MCP elicitation forms are not rendered for Claude; the agent is instructed to ask questions in ordinary chat. Windows native install, paid-provider calls and third-party gateway compatibility still require recipient testing. OpenCode's Anthropic provider remains available independently; Claude Desktop is not used as an inference backend.
+
+## Connect your own AI through MCP
+
+Choose **External AI / MCP** in web setup. Enable access, optionally choose **Use external AI only**, then save and build the project. Copy/download the client JSON after any folder rename finishes, and add it to your external AI client's stdio MCP configuration. No built-in model account is required in external-only mode.
+
+The standalone kernel endpoint provides eight native file, shell, project-context and Skills tools with the same current-OS-user Full Access boundary as built-in Codex. Your external client supplies the AI and its own approvals. App preview services and external conversations are independent; the embedded chat still needs a provider. Disconnect MCP before rename, dependency replacement or kernel maintenance. See the [external MCP guide](docs/mcp-access.html).
 
 ## How Codex App Server connects
 
@@ -441,13 +447,13 @@ Use the paperclip, drop files into AI chat or paste an image. Attachments stay i
 
 ## Release identity
 
-The installed **Kernel0.9.5** is the only Saplingagent version, read from `kernel/manifest.json`. Setup, footer, Bash and packages use it. There is no separate product version. Missing/invalid metadata is unavailable. Legacy `config/release.json` and `releaseVersion` receipt names remain compatibility mirrors/aliases; they are not runtime authority.
+The installed **Kernel0.9.6** is the only Saplingagent version, read from `kernel/manifest.json`. Setup, footer, Bash and packages use it. There is no separate product version. Missing/invalid metadata is unavailable. Legacy `config/release.json` and `releaseVersion` receipt names remain compatibility mirrors/aliases; they are not runtime authority.
 
-Downloadable source ZIPs record `releaseVersion` and the exact `sourceCommit` in `delivery.json`; their filenames contain both. For **0.9.5**, use the `release` branch source or one-line installer above. GitHub Releases entries/assets are separate and can still refer to older versions. This branch promotion preserves existing tags and does not publish new GitHub Release assets; a future formal publication must align its tag, page and receipts with the checked source. Do not increment that version without the owner’s instruction. See the [release checklist](docs/release-checklist.html) for code-first verification and the [published releases](https://github.com/extendmachine/Saplingagent/releases) for the actual publication status. Source tags, published Releases and real-device/model acceptance are separate facts.
+Downloadable source ZIPs record `kernelVersion` and the exact `sourceCommit` in `delivery.json`; `releaseVersion` remains an equal compatibility alias. For **0.9.6**, use the [v0.9.6 release](https://github.com/extendmachine/Saplingagent/releases/tag/v0.9.6) for pinned macOS/Windows source ZIPs and SHA-256 checksums, or the one-line installer for the current `release` branch. The immutable tag, release page and package receipts must identify the same checked source. Existing tags are preserved. See the [release checklist](docs/release-checklist.html). Source packages are not signed native installers; real-device/model acceptance is recorded separately.
 
 ### Kernel source boundary
 
-All platform implementations, AI setup website, engine adapters, runtime manager, device defaults and installer/build helpers are contained in `kernel/`. Setup source: `kernel/ui/setup/`; generated setup assets: `kernel/.cache/setup/`. Application pages/services/MCP/Skills remain outside and are freely editable. Add business services through `config/services.json`. Small root and legacy-path adapters (including two Node-version JSON files for existing native launchers) only forward into the kernel to keep existing installations compatible; they contain no implementation. See [kernel boundary](kernel/CONTRACT.md#contained-platform-implementation-2026-10-19). Explicit kernel maintenance remains possible under Full Access. Relocation preserves conflict detection for locally edited old kernel files.
+All platform implementations, AI setup website, engine adapters, runtime manager, device defaults and installer/build helpers are contained in `kernel/`. Setup source: `kernel/ui/setup/`; generated setup assets: `kernel/.cache/setup/`. Application pages/services, the existing application MCP and Skills remain outside and are freely editable. Add business services through `config/services.json`. Small root and legacy-path adapters (including two Node-version JSON files for existing native launchers) only forward into the kernel to keep existing installations compatible; they contain no implementation. See [kernel boundary](kernel/CONTRACT.md#contained-platform-implementation-2026-10-19). Explicit kernel maintenance remains possible under Full Access. Relocation preserves conflict detection for locally edited old kernel files.
 
 ### Updating from historical kernel numbers
 

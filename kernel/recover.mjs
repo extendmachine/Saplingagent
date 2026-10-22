@@ -94,6 +94,24 @@ async function atomic(root, file, bytes, mode = 0o600) {
 		await fs.rm(temp, { force: true });
 	}
 }
+// Recovery must also work when the newly installed kernel cannot be imported.
+// This intentionally duplicates only the conservative ownership-file check.
+async function assertRecoveryMcpStopped(root) {
+ const fail=()=>Object.assign(new Error('Close this project\'s MCP connections before restoring. Inspect .runtime/mcp-access/clients if a client crashed.'),{code:'MCP_CLIENTS_ACTIVE'});
+ let directory=root;
+ for(const part of ['.runtime','mcp-access','clients']) {
+  directory=path.join(directory,part);
+  const stat=await fs.lstat(directory).catch(error=>{if(error.code==='ENOENT')return null;throw error;});
+  if(!stat)return;
+  if(!stat.isDirectory()||stat.isSymbolicLink())throw fail();
+ }
+ for(const entry of await fs.readdir(directory,{withFileTypes:true})) {
+  if(!entry.isFile()||!idOk(entry.name.replace(/\.json$/,''))||!entry.name.endsWith('.json'))throw fail();
+  let value;try{value=JSON.parse(await fs.readFile(path.join(directory,entry.name),'utf8'));}catch{throw fail();}
+  if(value.schemaVersion!==1||value.id+'.json'!==entry.name||value.root!==root||!Number.isSafeInteger(value.pid)||value.pid<=0)throw fail();
+  try{process.kill(value.pid,0);throw fail();}catch(error){if(error.code!=='ESRCH')throw fail();}
+ }
+}
 export async function restoreKernel(root, id) {
 	root = await fs.realpath(root);
 	if (!idOk(id)) throw Error("Invalid kernel backup ID.");
@@ -115,6 +133,7 @@ export async function restoreKernel(root, id) {
 		throw Error(error.code === "EEXIST" ? "An app/kernel operation lock exists. Verify its owner before manual recovery." : error.message);
 	}
 	try {
+		await assertRecoveryMcpStopped(root);
 		let address;
 		try {
 			address = JSON.parse(await fs.readFile(path.join(root, ".runtime/runtime-address.json"), "utf8"));

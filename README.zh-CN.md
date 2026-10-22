@@ -104,9 +104,9 @@ Office 支持基础编辑：Word 格式作用于整段，PowerPoint 以文字修
 
 <a id="quick-start"></a>
 
-## 0.9.5：网页配置、本机启动器与内核归并
+## 0.9.6：网页配置、本机启动器与内核归并
 
-当前源码版本为 **内核 0.9.5**。请通过下方一行安装命令或 release 分支下载本版本。
+当前源码版本为 **内核 0.9.6**。请通过下方一行安装命令或 release 分支下载本版本。
 
 右侧聊天支持历史会话切换与改名、各会话独立草稿、附件、GFM 表格和数学公式。收起面板后可拖动聊天入口，并记住位置。上下文条显示 Codex 最近报告的 token 数量和上下文容量；没有报告时显示未知。它不是费用统计，也不承诺自动压缩阈值。这些组件属于用户可编辑的应用部分，独立于内核升级。
 
@@ -166,7 +166,7 @@ bash Saplingagent.sh --lang zh
 
 直接运行 `bash Saplingagent.sh` 时，首先选择 English 或 中文，回车默认 English。不要用 `sh` 执行，也不以双击脚本作为标准启动方式。
 
-脚本安装最小管理内核后，直接打开配置网页；按上方内核0.9.5流程保存名称、图标和 AI 配置，再保存并构建应用、完成配置。日常双击生成的启动器，检查并安装缺少或变更的依赖后启动项目；更改设置时重新打开配置。
+脚本安装最小管理内核后，直接打开配置网页；按上方内核0.9.6流程保存名称、图标和 AI 配置，再保存并构建应用、完成配置。日常双击生成的启动器，检查并安装缺少或变更的依赖后启动项目；更改设置时重新打开配置。
 
 如需旧版终端菜单，运行 `SAPLING_LEGACY_MENU=1 bash Saplingagent.sh --lang zh`。显式恢复命令仍可使用 `configure --no-open`、`install --repair`、`start`、`doctor` 和 `kernel`。
 
@@ -220,13 +220,13 @@ bash Saplingagent.sh logout
 
 ## 无 Git 的应用文件夹
 
-内核0.9.5 下载的是 release 源码快照，不包含 `.git`，安装时不创建 Git、不询问存放方式、不连接作者仓库。默认网页不再显示分支、Git 版本和 Save version。以后可自行创建仓库；重新安装或升级内核不会删除已有 Git、应用源码、数据和配置。
+内核0.9.6 下载的是 release 源码快照，不包含 `.git`，安装时不创建 Git、不询问存放方式、不连接作者仓库。默认网页不再显示分支、Git 版本和 Save version。以后可自行创建仓库；重新安装或升级内核不会删除已有 Git、应用源码、数据和配置。
 
 ## 独立内核升级
 
 网页右上角 **Kernel → Check for kernel update → Upgrade kernel & restart**。升级器固定 release 提交并校验清单，显示变更和冲突，再停止当前应用、备份和替换内核、修复内核自己的依赖、完整重启并跳转到实际端口。页面、聊天、MCP、Skills、自定义业务和应用依赖声明保留。独立进度网页在原服务停止后继续工作，失败时可重试或手动恢复；不自动回退。
 
-当前内核版本为 **0.9.5 / schema3**；release 分支同步本版本；GitHub Releases 的旧标签和附件另行管理。0.9.1 的 schema2 原型不能直接跨边界升级：请下载0.9.2到新目录，保留原目录，再人工迁移自己的应用/数据/配置；不要覆盖真实凭据或重新生成旧目录基线。之后同 schema3 内核可在网页升级。完整说明：[内核管理](docs/kernel-management.html)。
+当前内核版本为 **0.9.6 / schema3**；release 分支同步本版本；GitHub Releases 的旧标签和附件另行管理。0.9.1 的 schema2 原型不能直接跨边界升级：请下载0.9.2到新目录，保留原目录，再人工迁移自己的应用/数据/配置；不要覆盖真实凭据或重新生成旧目录基线。之后同 schema3 内核可在网页升级。完整说明：[内核管理](docs/kernel-management.html)。
 
 
 ## 导入已有的本地凭据
@@ -426,9 +426,9 @@ Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍
 
 ## 发布版本识别
 
-当前统一称为 **内核版本 0.9.5**，唯一依据为 `kernel/manifest.json`，不再区分产品版本。页面、配置、安装和更新均读取内核版本；数据不可用时如实显示不可用。旧 `config/release.json` 与 `releaseVersion` 字段仅为兼容别名，不作为运行时版本依据。
+当前统一称为 **内核版本 0.9.6**，唯一依据为 `kernel/manifest.json`，不再区分产品版本。页面、配置、安装和更新均读取内核版本；数据不可用时如实显示不可用。旧 `config/release.json` 与 `releaseVersion` 字段仅为兼容别名，不作为运行时版本依据。
 
-源码 ZIP 的 `delivery.json` 同时记录 `releaseVersion` 和精确的 `sourceCommit`，文件名也包含二者。本次将0.9.5同步到 release 分支供验收，不移动旧标签或上传 GitHub Release 附件；下载本版本请使用 release 分支源码或一行安装命令。后续发布时，标签、发布页面、产品声明和下载回执必须对应同一份已核对源码；不得自行递增用户指定的版本号。维护者先核对并冻结代码，再核对版本声明、release 提交、不可移动的标签及下载包校验值。参见[发布检查表](docs/release-checklist.html)和[实际发布记录](https://github.com/extendmachine/Saplingagent/releases)；源码标签、GitHub Release、真机和真实模型验收分别记录。
+源码 ZIP 的 `delivery.json` 记录 `kernelVersion` 和精确的 `sourceCommit`，`releaseVersion` 是同值兼容别名。固定下载 **0.9.6** 请使用 [v0.9.6 发布页面](https://github.com/extendmachine/Saplingagent/releases/tag/v0.9.6) 中的 macOS/Windows 源码 ZIP 和 SHA-256 校验文件；一行安装命令下载当前 release 分支。不可移动的标签、发布页面和包内回执必须对应同一份已核对源码，旧标签保持不变。参见[发布检查表](docs/release-checklist.html)。源码包不是已签名的原生安装器；真机和真实模型验收单独记录。
 
 ## 旧内核编号的一次性升级
 

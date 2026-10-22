@@ -400,3 +400,20 @@ test('explicit recovery restores the historical0.92 public facade after relocati
  await assert.rejects(fs.access(path.join(root,'kernel/launcher/public.mjs')));
  await preserved(root);
 });
+
+
+test('live external MCP prevents source upgrade and standalone recovery without deleting ownership',async t=>{
+ const {root,source}=await fixture(t),plan=await prepareKernel(root,{source});
+ const id='01234567-1234-4321-8234-123456789abc',file=path.join(root,'.runtime/mcp-access/clients',id+'.json');
+ const original=await fs.readFile(path.join(root,'kernel/manifest.json'),'utf8');
+ await text(root,'.runtime/mcp-access/clients/'+id+'.json',JSON.stringify({schemaVersion:1,id,root:await fs.realpath(root),pid:process.pid}));
+ await assert.rejects(applyKernel(root,plan.id,{acceptRisk:true}),{code:'MCP_CLIENTS_ACTIVE'});
+ assert.equal(await fs.readFile(path.join(root,'kernel/manifest.json'),'utf8'),original);
+ await fs.unlink(file);
+ const applied=await applyKernel(root,plan.id,{acceptRisk:true});
+ await text(root,'.runtime/mcp-access/clients/'+id+'.json',JSON.stringify({schemaVersion:1,id,root:await fs.realpath(root),pid:process.pid}));
+ await assert.rejects(restoreKernel(root,applied.backupId),{code:'MCP_CLIENTS_ACTIVE'});
+ assert.equal(await fs.access(file).then(()=>true,()=>false),true);
+ assert.equal(await fs.access(path.join(root,'.runtime/kernel-operation.lock')).then(()=>true,()=>false),false);
+ await fs.unlink(file);await restoreKernel(root,applied.backupId);await preserved(root);
+});

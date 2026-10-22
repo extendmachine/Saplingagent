@@ -64,9 +64,16 @@ test('unknown or stale plans are refused before runtime draining',async()=>{
  const {inspectKernelPlan}=await import('../manager.mjs');await assert.rejects(inspectKernelPlan(project,randomUUID()),{code:'INVALID_PLAN'});
 });
 
+test('connected external MCP refuses maintenance before spawning or stopping the app',async t=>{
+ const f=await fixture(t),id=randomUUID();t.after(()=>fs.rm(f.root,{recursive:true,force:true}));
+ await write(f.root,`.runtime/mcp-access/clients/${id}.json`,JSON.stringify({schemaVersion:1,id,root:await fs.realpath(f.root),pid:process.pid}));
+ await assert.rejects(startMaintenance(f.root,'apply',f.plan.id),{code:'MCP_CLIENTS_ACTIVE'});
+ for(const relative of ['.runtime/kernel/active-job.json','.runtime/kernel-operation.lock','.runtime/kernel/jobs'])assert.equal(await fs.access(path.join(f.root,relative)).then(()=>true,()=>false),false);
+});
+
 test('real HTTP202 handoff closes the controller and independent progress reaches new app',async t=>{
  const f=await fixture(t);
- for(const name of ['manager.mjs','services.mjs','ports.mjs','server.mjs','gateway.mjs'])await write(f.root,'kernel/services/runtime-manager/'+name,await fs.readFile(path.join(project,'kernel/services/runtime-manager',name)));
+ for(const name of ['manager.mjs','services.mjs','ports.mjs','server.mjs','gateway.mjs','status.mjs','status-page.mjs'])await write(f.root,'kernel/services/runtime-manager/'+name,await fs.readFile(path.join(project,'kernel/services/runtime-manager',name)));
  const controller=`import fs from 'node:fs/promises';import http from 'node:http';import {randomUUID} from 'node:crypto';import {RuntimeManager} from './kernel/services/runtime-manager/manager.mjs';import {createGateway} from './kernel/services/runtime-manager/gateway.mjs';
 const root=process.cwd(),instanceId=randomUUID();const manager=new RuntimeManager({root,token:'fixture-token',definitions:[],output:false});manager.instanceId=instanceId;manager.phase='ready';manager.config={frontPort:0,vitePort:1,agentPort:1};const options={manager,token:'fixture-token',frontPort:0,managerPort:1,onMaintenance:async()=>{await manager.close();server.closeAllConnections();await new Promise(r=>server.close(r));await fs.unlink('.runtime/runtime-address.json');process.exit(0)}};const server=createGateway(options);await new Promise(r=>server.listen(0,'127.0.0.1',r));options.frontPort=server.address().port;const url='http://127.0.0.1:'+options.frontPort+'/';await fs.writeFile('.runtime/runtime-address.json',JSON.stringify({pid:process.pid,instanceId,url}));process.send({url});`;
  await write(f.root,'controller.mjs',controller);

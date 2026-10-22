@@ -6,6 +6,7 @@ import { terminateOwned } from '../../contracts/local-process.mjs';
 import { randomUUID } from 'node:crypto';
 import { portKeys,selectRuntimePorts } from './ports.mjs';
 import { loadProjectServices, assignProjectPorts, serviceCommand, servicePortEnv } from './services.mjs';
+import { readMcpAccess } from '../../contracts/mcp-access.mjs';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const failure = (code, message, service) => Object.assign(new Error(message), { code, service });
@@ -27,6 +28,7 @@ export class RuntimeManager {
   }
   state() {
     return { applicationRoot:path.resolve(this.root),instanceId: this.instanceId, generation: this.generation, phase: this.phase, busy: !!this.operation || !!this.maintenance, canRestart: !this.operation && !this.maintenance && !this.closed, jobId: this.jobId || null, scope: this.scope || 'all', error: this.error,
+      aiConnection: this.config?.externalMcpOnly ? 'external-mcp' : 'builtin',
       ports: this.config ? Object.fromEntries(portKeys.map(key => [key, this.config[key]])) : null,
       services: [...this.children].map(([name, child]) => {
         const definition = name === 'front' ? this.frontDefinition : this.activeDefinitions.find(x => x.name === name);
@@ -120,7 +122,8 @@ export class RuntimeManager {
     this.nextSourcePorts = Object.fromEntries(ports.map(key => [key, config[key]]));
     const overrides = Object.fromEntries(Object.entries(this.portOverrides || {}).filter(([key]) => ['frontPort', 'runtimeManagerPort'].includes(key) || !this.sourcePorts || config[key] === this.sourcePorts[key]));
     this.sourcePorts ??= Object.fromEntries(ports.map(key => [key, config[key]]));
-    const effective = { ...config, ...overrides };
+    const mcp = await readMcpAccess(this.root);
+    const effective = { ...config, ...overrides, externalMcpOnly: mcp.enabled && mcp.externalOnly };
     if (new Set(ports.map(key => effective[key])).size !== ports.length) throw failure('INVALID_CONFIG', 'Internal ports must differ from the current public and control addresses.');
     return effective;
   }
@@ -140,16 +143,18 @@ export class RuntimeManager {
   }
   async startBackends(config, plan) {
     this.activeDefinitions = [];
+    const requireAgentAuthentication = !config.externalMcpOnly;
     for (const definition of plan) {
       this.activeDefinitions.push(definition);
       if (definition.port) await availablePort(definition.port);
       this.phase = 'starting'; this.launch(definition, config);
       if (definition.name === 'agent') this.phase = 'connecting';
-      await this.waitHealth(definition, definition.name === 'agent' ? this.agentTimeout : definition.timeoutMs || this.healthTimeout, definition.name === 'agent');
+      const authenticatedAgent = definition.name === 'agent' && requireAgentAuthentication;
+      await this.waitHealth(definition, authenticatedAgent ? this.agentTimeout : definition.timeoutMs || this.healthTimeout, authenticatedAgent);
     }
     this.phase = 'connecting';
     const agent = this.activeDefinitions.find(x => x.name === 'agent');
-    if (agent) await this.waitHealth(agent, this.agentTimeout, true);
+    if (agent) await this.waitHealth(agent, requireAgentAuthentication ? this.agentTimeout : this.healthTimeout, requireAgentAuthentication);
     if (this.phase === 'failed' || this.closed || this.activeDefinitions.some(x => !alive(this.children.get(x.name)))) throw failure('SERVICE_EXITED', 'A backend stopped during startup. Check local diagnostics.');
     this.config = config;
   }

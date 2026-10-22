@@ -21,7 +21,7 @@ function enable(){
 }
 function render(s){
   byId('name').textContent=s.projectName||'Your project';document.title=(s.projectName||'Saplingagent')+' · Runtime';
-  byId('version').textContent='Kernel '+(s.kernelVersion||'version unavailable');
+  byId('version').textContent='Kernel '+(s.kernelVersion||'version unavailable')+(s.aiConnection==='external-mcp'?' · External AI / MCP':'');
   byId('folder').textContent=s.applicationRoot||'Unavailable';byId('control-port').textContent=s.ports?.runtimeManagerPort||'Unavailable';
   const url=s.url&&new URL(s.url);const valid=url&&url.protocol==='http:'&&url.hostname==='127.0.0.1';
   byId('address').textContent=valid?s.url:'Unavailable';for(const id of ['address','open']){if(valid)byId(id).href=s.url;else byId(id).removeAttribute('href')}

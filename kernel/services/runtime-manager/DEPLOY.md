@@ -21,6 +21,16 @@ Configured loopback listeners: public gateway frontPort5173, internal Vite viteP
 
 Select a branch or historical version, then Restart app. Restart backend retains Vite. Recovery URL: `/__saplingagent/runtime`; it remains available if frontend/Agent startup fails or an older UI lacks controls. Repair the selected source, dependency installation, configuration or login then retry. Restart app reloads project/frontend/backend source, registrations and internal port settings without closing the launcher. The persistent manager/bootstrap is loaded at launch; installing a different controller version requires that version’s initial launch.
 
+TASK-20261021-001 fixes a gateway count that could remain busy after the browser
+disconnected from a streamed mutation. The gateway now drains that response until
+upstream termination, while keeping pending writes and service drain checks active.
+Load this change with a normal cold restart of the owned runtime; Restart app does
+not replace its persistent gateway. An already stranded counter in an old process
+is not reset by changing files. Inspect active work and ownership before any manual
+recovery; do not delete maintenance locks or kill foreign services. No launcher
+rebuild, dependency installation, application-data migration or version bump is
+required for this JavaScript-only controller change.
+
 Startup health budgets are 20 seconds per service and 120 seconds for authenticated Agent/MCP; they do not limit AI turns. Shutdown terminates only owned groups with TERM, four-second wait and bounded KILL fallback. Manual SIGKILL cannot guarantee cleanup. No automatic restoration of source or application data. Legacy direct backend callers are outside gateway accounting; finish their operations before restarting an older version. Current UI restores an unsent draft; older UIs may not. Persisted workspace sessions and credentials are retained.
 
 ## Windows x64 candidate (TASK-20261011-030)

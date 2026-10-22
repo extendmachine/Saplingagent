@@ -1,8 +1,48 @@
 # AI configuration contract v1.1
 
+## External MCP access (TASK-20261021-004)
+
+`GET /api/config/mcp` returns the public kernel MCP-access state:
+`{schemaVersion:1,revision,enabled,externalOnly,transport:'stdio',permissionMode:'full-access',configuration,available,warnings}`.
+`configuration` is a generated `mcpServers.saplingagent` client entry with the
+current project's local Node command and kernel entry arguments. It contains no
+provider credentials, setup token or permanent external path setting. Read it
+again after a project rename/build before copying it into an external client.
+`configuration` is null when the local runtime path cannot be determined;
+`available:false` and `warnings:[{code,message}]` report missing local prerequisites.
+These fields do not claim a successful external-client connection.
+
+`POST /api/config/mcp` accepts exactly `{revision,enabled,externalOnly}` and returns
+the same complete state. The booleans are explicit; externalOnly requires enabled.
+The revision belongs to MCP settings, independently of provider profiles. The
+kernel MCP-access public contract atomically persists `config/mcp-access.json`
+under the shared configuration writer lease. Stale revisions return409
+`CONFIG_CHANGED`; invalid input400 `INVALID_CONFIG`. Successful saves invalidate
+the prior setup/export receipt. An I/O failure can follow persistence; reload the
+actual state instead of assuming rollback.
+
+Both endpoints retain Host/Origin/Fetch Metadata and `X-Sapling-Config` checks.
+Writes require saved project settings, use the64KiB JSON limit and count as active
+configuration requests so directory changes, build and close cannot race them.
+Pending login/import and active project operations refuse MCP changes. No model
+request, global client-config write, HTTP MCP listener or new credential is added.
+
+`GET /api/config/state` and provider/import mutation replies additionally contain
+`mcp:{revision,enabled,externalOnly,available}`. Saving/activating a provider does
+not change MCP access. Finalize/build accepts either an active provider profile
+or enabled externalOnly MCP access; this never fabricates a model profile. Setup
+fingerprints include MCP configuration bytes when present; existing receipts keep
+their original hash when the MCP file is absent. Enabling, disabling or editing
+MCP configuration therefore requires another completed setup/build.
+
+The configuration service imports the Node-builtin-only shared contract at
+`kernel/contracts/mcp-access.mjs`; the protocol server and SDK are not included in
+configuration B's module closure. Provider setup remains available while MCP is
+enabled, and provider mutations do not select or disable external-only mode.
+
 TASK-20261012-001, Codex. The standalone setup service binds 127.0.0.1 at an OS-assigned port; it serves the compiled kernel/ui/setup entry independently of chat. No persistent supervisor slot. Same-origin requests with X-Sapling-Config token from the HTML meta tag; reject other Host, Origin and cross-site Fetch Metadata. Token only protects setup HTTP and does not change Agent Full Access.
 
-- GET /api/config/state: {revision,activeId,profiles,codex,login}. Profile summaries contain hasKey, never key material, credentials, email or arbitrary headers.
+- GET /api/config/state: {revision,activeId,profiles,codex,login,mcp}. Profile summaries contain hasKey, never key material, credentials, email or arbitrary headers. MCP summary fields are defined above.
 - POST /api/config/profiles: {revision?,id?,label,engine:codex|opencode|claude,kind:api|chatgpt,protocol:responses|chat|anthropic,baseUrl,model,apiKey?,noAuth?,contextWindow?,maxOutput?,activate?}. Blank key retains a saved key; noAuth disables it for that edited profile while retaining the old private key. ChatGPT profile needs locally saved ChatGPT credentials. Creates/updates one scheme; no model request. Returns sanitized state. Version mismatch 409 CONFIG_CHANGED; invalid input 400 INVALID_CONFIG. Configuration is stored in local-secrets/ai-config/connections.json; API keys are local-secrets/api-keys/ai-<id>.json and referenced in the ledger. No key in public runtime config/TOML/CLI argv.
 - POST /api/config/activate {revision?,id}: select an existing saved scheme; no current service restart/session mutation. New runtime/new conversation uses it.
 - POST /api/config/models: profile draft fields above, saved id and optional apiKey. Explicit, bounded GET of <baseUrl>/models with matching auth. No prompt; no persistence. {models:[{id,name}]}; HTTP failure 502 PROVIDER_HTTP_ERROR with status, no raw body/key; timeout/transport 502 PROVIDER_UNREACHABLE; redirects not followed. IDs manual when endpoint lacks discovery.
@@ -35,7 +75,7 @@ This owner-requested flow supersedes TASK019's immediate directory rename. `POST
 
 `GET /api/config/project` adds `settingsSaved`, `exportReady` and `finalization:{id?,phase,message?,error?}`. AI configuration requires saved settings (`PROJECT_SETTINGS_REQUIRED`409); export requires a verified restart (`PROJECT_RESTART_REQUIRED`409). Profile/activation/import/login mutations invalidate export readiness before any possible credential write, including partial failures and asynchronous login completion. Model discovery is read-only and does not invalidate readiness. Credentials remain in the project, never in the temporary helper plan or a browser redirect.
 
-`POST /api/config/project/finalize` accepts only `{}`. After settings and a selected AI scheme exist, it waits for owned auth to close and delegates to `ProjectLauncher.finalizeSetup` with the actual server PID, instance ID and bound loopback port. The launcher stops only verified owned idle runtime services and stages a short-lived external system helper. A busy application, pending OAuth/import, concurrent configuration request, install/update or another finalization returns409 without a directory move. The response is202 `{finalization:{id,phase,targetRoot,previousRoot,managementPort,readyUrl}}`; then the old management process closes. There is no client-supplied PID, arbitrary command or executable path.
+`POST /api/config/project/finalize` accepts only `{}`. After settings and a selected AI scheme (or enabled external-only MCP access) exist, it waits for owned auth to close and delegates to `ProjectLauncher.finalizeSetup` with the actual server PID, instance ID and bound loopback port. The launcher stops only verified owned idle runtime services and stages a short-lived external system helper. A busy application, pending OAuth/import, concurrent configuration request, install/update or another finalization returns409 without a directory move. The response is202 `{finalization:{id,phase,targetRoot,previousRoot,managementPort,readyUrl}}`; then the old management process closes. There is no client-supplied PID, arbitrary command or executable path.
 
 The helper waits for the old process to release project-local Node/log handles, moves the folder, resumes at the actual root and starts the application plus management. It attempts to reuse the management port. The old page polls unauthenticated `GET /health/project-launcher` for a matching finalization ID with phase `ready` or `failed`, then reloads to acquire the new per-process token. Health exposes root, instance ID, busy and sanitized finalization status only. New management opens its page as a recovery route when old-page reconnection fails. A failed move keeps the source directory; a later failure retains the actual current root, failed receipt and explicit retry instructions, with no automatic rollback.
 
@@ -43,7 +83,7 @@ Save → wait for verified restart → export App. Export never renames; when ne
 
 ## Unified kernel version (2026-10-19)
 
-There is one current Saplingagent version: kernel0.9.5. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
+There is one current Saplingagent version: kernel0.9.6. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
 
 New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92→0.9.3; original manifests/backups stay byte-exact. Shipped old comparators cannot understand0.9.4. Stop the app, download new tooling into an isolated .cache subfolder, then run that tooling's kernel/cli.mjs --root ORIGINAL_APP check/update with the project-local Node. Default is preview; update requires existing explicit risk acknowledgement and refuses conflicts/live targets. Never overwrite/rebaseline local core edits or regenerate a customer manifest to hide them. Source recovery remains explicit.
 

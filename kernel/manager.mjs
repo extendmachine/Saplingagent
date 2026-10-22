@@ -3,6 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { KernelError, KERNEL_MANIFEST, validateKernelManifest, kernelStatus, acquireKernelLock, isKernelPath, comparableKernelVersion } from "./contracts/kernel.mjs";
 import { digest, readOwned, writeAtomic, safeFile, jsonRead, jsonWrite, validId, assertOffline, record } from "./storage.mjs";
+import { assertMcpClientsStopped } from "./contracts/mcp-access.mjs";
 export { kernelStatus };
 const warning = "A kernel update can break custom applications, dependencies or integrations. Source backup does not back up business data or guarantee compatibility. Stop the app, review conflicts, and repair dependencies before restarting. Restore is manual.";
 async function bounded(response, limit) {
@@ -185,6 +186,7 @@ export async function applyKernel(root, id, { acceptRisk = false } = {}) {
 	let backupId;
 	try {
 		await assertOffline(root);
+		await assertMcpClientsStopped(root);
 		const prefix = ".runtime/kernel/plans/" + id, plan = validPlan(await jsonRead(root, prefix + "/plan.json"), id);
 		if (plan.conflicts.length) throw new KernelError("KERNEL_CONFLICT", "Locally changed kernel files require deliberate merging: " + plan.conflicts.join(", "));
 		const installed = await readOwned(root, KERNEL_MANIFEST);

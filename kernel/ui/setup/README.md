@@ -15,6 +15,36 @@ Official login opens the provider page and polls status, with an explicit link i
 the popup is blocked. Saving settings/building does not send a model prompt or
 change the engine of existing conversations.
 
+## External AI / MCP (TASK-20261021-005)
+
+A parallel External AI / MCP tab configures the standalone kernel stdio service;
+it is not another model provider. Enable access and optionally choose external-only
+mode to skip built-in model login. MCP supplies no model for web chat; without a
+configured built-in provider users converse in their own AI client. Existing
+account/API schemes remain saved and usable by web chat, and saving a scheme never
+changes MCP choices. The page explains current
+OS-user Full Access, accessible external paths, no root/admin elevation and the
+external client's own approval policy. The MCP service does not require the app
+to be running.
+
+`McpAccess.tsx` reads GET `/api/config/mcp`, saves exactly
+`{revision,enabled,externalOnly}` to POST `/api/config/mcp`, and handles its independent
+revision. No generated path is saved in settings. Dirty MCP choices block Finish;
+Save & build saves them before finalization. A conflict leaves the choices dirty
+until the user explicitly reloads the saved settings and reviews them. Built-in
+readiness is a selected profile OR saved enabled/externalOnly MCP settings; actual
+export readiness and launcher artifact remain server-owned requirements.
+
+Project root/artifact/compile-time changes refresh the generated client configuration
+after rename/build. Copy JSON and Download JSON each fetch it again at click time,
+so they cannot reuse the pre-rename path. Exports require enabled, available access
+and clean settings; clipboard failure never reports a successful copy. Downloads
+contain only the MCP client configuration, not private profile/settings state. No
+global AI-client file is written. The user adds the configuration to their own
+client and replaces old paths after moving/exporting. Disconnect the MCP server in
+that client before maintenance/rename, particularly for Windows process/file locks.
+All managed controls and workflow explanations follow the English/Chinese toggle.
+
 ## External configuration workflow (TASK-20261019-033)
 
 The management frontend/backend runs in the temporary external configuration
@@ -41,8 +71,9 @@ the working folder. Canonical source remains inside the complete project.
    before opening the project. Keep the launcher with the complete project folder.
 
 The same steps and timing are explained in both languages. Finish requires
-server `exportReady`, a real launcher artifact, a selected AI scheme, clean
-identity/API forms and no active or failed job. A new configuration revision
+server `exportReady`, a real launcher artifact, a selected AI scheme or saved
+enabled/externalOnly MCP access, clean identity/API/MCP forms and no active or
+failed job. A new AI or MCP configuration revision
 refreshes readiness. Failed builds stay visible and can be retried through
 Save & build app without replacing the prior usable launcher. Rebuild app uses
 `POST /api/config/project/build` when current settings are ready. Show launcher
@@ -86,13 +117,15 @@ Import progress, errors and success appear next to the relevant controls.
 
 Use the project Node runtime with:
 
-- `node --test kernel/ui/setup/setup-flow.test.mjs kernel/ui/setup/import-file.test.mjs`
+- `node --experimental-vm-modules --test kernel/ui/setup/*.test.mjs`
 - `npm --prefix kernel run typecheck`
 - `npm --prefix kernel run build:setup`
 
-The flow tests cover saved identity access, dirty/readiness/artifact/job gating,
+The flow and MCP tests cover saved identity access, dirty/readiness/artifact/job gating,
 external configure acceptance and cleanup-handoff acknowledgement, plus legacy
-restart receipt identity. Kernel-local TypeScript/React types are development
+restart receipt identity. Component interaction tests cover MCP toggles, revision
+conflicts, late refresh isolation, copy failure, download dispatch and current-path
+refresh without a live model or client configuration write. Kernel-local TypeScript/React types are development
 dependencies. Production installation builds with the kernel Vite dependency.
 Integration/browser checks and native process/Windows/provider acceptance are
 reported separately; source tests and compilation do not establish those results.

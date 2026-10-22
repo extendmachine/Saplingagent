@@ -7,6 +7,7 @@ import {command,nodeForRoot,buildEnv} from './build.mjs';
 import {json,writeJSON,exists,issue,dailyLog} from './io.mjs';
 import {codexBinary,openCodeBinary,claudeBinary,npmCommand} from '../contracts/local-process.mjs';
 import {assertSetupAvailable} from '../contracts/kernel.mjs';
+import {assertMcpClientsStopped} from '../contracts/mcp-access.mjs';
 
 const alive=pid=>{if(!Number.isSafeInteger(pid)||pid<=0)return false;try{process.kill(pid,0);return true;}catch(e){return e.code!=='ESRCH';}};
 const digest=(...values)=>{const h=createHash('sha256');for(const value of values)h.update(value);return h.digest('hex');};
@@ -122,6 +123,7 @@ export async function ensureApplicationDependencies(root,{onProgress=()=>{},inst
     await assertSetupAvailable(root);
     const state=await applicationDependencyStatus(root);
     if(state.ready)return {changed:false,signature:state.signature};
+    await assertMcpClientsStopped(root);
     if(await exists(path.join(root,'.runtime/kernel-operation.lock'))||await exists(path.join(root,'.runtime/kernel/active-job.json')))throw issue('DEPENDENCY_MAINTENANCE_BUSY','Finish kernel maintenance before installing dependencies.');
     const runtime=await json(path.join(root,'.runtime/runtime-address.json'));
     if((!runtime?.root||path.resolve(runtime.root)===root)&&alive(runtime?.pid))throw issue('DEPENDENCY_APP_RUNNING','Dependencies changed or are missing. Stop this project, then open the app again to install them.');

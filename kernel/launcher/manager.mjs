@@ -3,6 +3,7 @@ import path from "node:path";
 import { randomUUID, createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import {kernelStatus, assertKernelOffline} from "../contracts/kernel.mjs";
+import {assertMcpClientsStopped} from '../contracts/mcp-access.mjs';
 import { codexBinary, terminateOwned } from "../contracts/local-process.mjs";
 import { beginFinalization } from "./finalization.mjs";
 import { relocationLedger, completeRelocation } from './relocation.mjs';
@@ -259,7 +260,13 @@ export class ProjectLauncher {
     const bytes = await fs.readFile(path.join(this.root, 'local-secrets/ai-config/connections.json')).catch(e => {
       if (e.code === 'ENOENT') return Buffer.from(''); throw e;
     });
-    return createHash('sha256').update(bytes).digest('hex');
+    const hash = createHash('sha256').update(bytes);
+    const mcp = await fs.readFile(path.join(this.root, 'config/mcp-access.json')).catch(e => {
+      if (e.code === 'ENOENT') return null; throw e;
+    });
+    // Preserve old receipts until external MCP is explicitly configured.
+    if (mcp !== null) hash.update('\0mcp-access\0').update(mcp);
+    return hash.digest('hex');
   }
   async invalidateSetup() {
     const old = await json(path.join(this.root, '.runtime/setup-finalization.json'));
@@ -448,6 +455,7 @@ export class ProjectLauncher {
         await handle.close();
         await closeDockForMaintenance(current);
         await assertKernelOffline(current);
+        await assertMcpClientsStopped(current);
         try {const {moveProject}=await import('../configuration/public.mjs');await moveProject(current,target);}
         catch {throw issue('PROJECT_RENAME_FAILED','The folder could not be renamed. Close terminals or other programs using it and retry. The original folder is retained.');}
         this.root = await fs.realpath(target);

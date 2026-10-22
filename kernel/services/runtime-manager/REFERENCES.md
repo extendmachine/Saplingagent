@@ -1,5 +1,15 @@
 # Runtime manager sources
 
+## Disconnected mutation accounting (TASK-20261021-001)
+
+- https://nodejs.org/docs/latest-v24.x/api/http.html#class-httpclientrequest —
+  official Node HTTP response consumption and request/response termination events;
+  checked2026-10-21 (page24.22.1; project remains24.21.0). With a response handler,
+  the body must be consumed for end to fire; resume discards bytes after the browser
+  leaves. Request finish only describes the outgoing upload, not business completion.
+  Public documentation, no login or external service. Real loopback regression tests
+  exercise the pinned project runtime; no runtime/dependency upgrade.
+
 ## Project status and confirmed stop (TASK-20261019-048)
 
 - https://nodejs.org/docs/latest-v24.x/api/http.html — Node official HTTP response

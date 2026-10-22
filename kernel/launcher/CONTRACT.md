@@ -27,7 +27,7 @@ permissions, configuration storage or kernel version. Updated native progress
 requires rebuilding an existing exported launcher. No terminal tail or log-file
 viewer is kept open across configuration handoff, folder moves or compilation.
 
-TASK-20261018-001 / Codex. Current kernel0.9.5; original launcher implementation0.9.3. The management module is kernel-owned; project identity, icons, compiled binaries, toolchains, caches, app source, credentials and customer Git are not update-owned. Full Access is unchanged.
+TASK-20261018-001 / Codex. Current kernel0.9.6; original launcher implementation0.9.3. The management module is kernel-owned; project identity, icons, compiled binaries, toolchains, caches, app source, credentials and customer Git are not update-owned. Full Access is unchanged.
 
 `config/project.json` stores schemaVersion1, projectId UUID, name, folderName and optional icon reference `config/project-icon.png`. Customer project identity is independent of the single kernel version. Names are Unicode single filesystem components,1–60characters, rejecting controls, separators, Windows reserved characters/device names and trailing dots/spaces. Existing destinations are never replaced. Linked worktrees/maintainer checkouts are not automatically renamed. Complete customer folders including ordinary customer Git can be renamed without resetting history. All processes use absolute current root and the native launcher derives root relative to itself, never a compiled developer path.
 
@@ -43,7 +43,7 @@ The public JS facade is kernel/launcher/public.mjs. New update-owned files must 
 
 ## Unified kernel version (2026-10-19)
 
-There is one current Saplingagent version: kernel0.9.5. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
+There is one current Saplingagent version: kernel0.9.6. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
 
 New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92→0.9.3; original manifests/backups stay byte-exact. Shipped old comparators cannot understand0.9.4. Stop the app, download new tooling into an isolated .cache subfolder, then run that tooling's kernel/cli.mjs --root ORIGINAL_APP check/update with the project-local Node. Default is preview; update requires existing explicit risk acknowledgement and refuses conflicts/live targets. Never overwrite/rebaseline local core edits or regenerate a customer manifest to hide them. Source recovery remains explicit.
 
@@ -184,3 +184,9 @@ as a signal target. Existing compiled apps need rebuilding to acquire the Dock
 behavior; a source/kernel update alone cannot replace customer-owned binaries.
 
 Direct compilation and legacy finalization/rename also close the Dock owner before acquiring an operation lease and recheck under that lease. Folder-moving paths require the runtime to be offline at that point. Native app registration refuses maintenance leases. Failed finalization removes only its own created lease, including a partial lease when a competing operation wins. Legacy rename uses the published configuration move operation so a destination appearing during the wait is never replaced.
+
+## External MCP configuration and maintenance (2026-10-21)
+
+Saved enabled + externalOnly MCP settings satisfy setup completion without a model profile. Runtime health remains mandatory. The setup connections fingerprint retains the original provider hash when the MCP settings file is absent; when present, it hashes its bytes with a domain separator. Changing either saved connection invalidates readiness. Client JSON is derived from the final project path after relocation; do not persist capsule paths or edit global client settings.
+
+Legacy rename checks active MCP receipts while holding kernel-operation.lock after the normal offline check. Current capsule finalization checks before stopping the app and again under its maintenance lease. Live or unverified ownership blocks relocation with MCP_CLIENTS_ACTIVE and releases only the operation's own leases. Dependency replacement checks after taking the install lock; server registration checks these same installer/maintenance locks. Configuration finalization also asks clients to disconnect before rebuilding; no external AI host is terminated. The terminal Start path trusts external-mcp runtime readiness and a healthy frontend, without polling built-in model authentication.

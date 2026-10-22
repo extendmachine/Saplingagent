@@ -7,6 +7,7 @@ import {json, writeJSON, issue, exists} from './io.mjs';
 import {nodeForRoot} from './build.mjs';
 import {relocationLedger} from './relocation.mjs';
 import {assertKernelOffline} from '../contracts/kernel.mjs';
+import {assertMcpClientsStopped} from '../contracts/mcp-access.mjs';
 
 const source = path.dirname(fileURLToPath(import.meta.url));
 const isInside = (root, file) => { const relative = path.relative(root, file); return relative && relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative); };
@@ -50,6 +51,7 @@ export async function beginFinalization(root, {project, management, language, fi
   for (const file of ['launcher-compile.lock','macos-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])
     if (await exists(path.join(root,'.runtime',file))) throw issue('PROJECT_BUSY','Finish dependency installation before restarting setup.');
   await relocationLedger(root); // Validate before any shutdown or physical move.
+  await assertMcpClientsStopped(root);
   const {closeDockForMaintenance}=await import('./dock.mjs');
   await closeDockForMaintenance(root);
   const id = randomUUID(), lease = path.join(root,'.runtime/project-finalization.json');
@@ -65,6 +67,7 @@ export async function beginFinalization(root, {project, management, language, fi
     const operationFile=path.join(root,'.runtime/kernel-operation.lock');
     const operation=await fs.open(operationFile,'wx',0o600).catch(error=>{if(error.code==='EEXIST')throw issue('PROJECT_BUSY','A start or kernel operation is still active. Wait before restarting setup.');throw error;});
     try {await operation.writeFile(JSON.stringify({id,pid:process.pid,purpose:'setup-finalization',createdAt:job.createdAt})+'\n');} finally {await operation.close();}
+    await assertMcpClientsStopped(root);
     await previous.writeFile(JSON.stringify(job)+'\n'); await previous.close();
     await closeDockForMaintenance(root);
     await assertKernelOffline(root);

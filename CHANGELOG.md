@@ -1,5 +1,13 @@
 # Saplingagent changelog
 
+## 0.9.6 — External AI / MCP access
+
+- Add an External AI / MCP option alongside built-in AI setup. Export local stdio client JSON after finalizing the project folder; external-only mode needs no built-in model account.
+- Expose file, shell, project-context and Skills tools with current-OS-user Full Access. External clients retain their own approval policies; no root elevation or global client configuration changes.
+- Register external MCP processes and coordinate configuration, rename, install/repair and kernel maintenance with ownership locks. Disconnect MCP clients before maintenance; normal app restart does not terminate their host AI.
+- Include runtime request-drain/Dock shutdown fixes and the current application chat interface in the complete source snapshot. Kernel-only upgrades continue to preserve application-owned chat and customizations.
+- Publish kernel0.9.6 with an immutable v0.9.6 tag and matching macOS/Windows source packages. Existing tags remain unchanged; native Windows, third-party GUI clients and real-model acceptance are separate checks.
+
 ## 0.9.5 — Project-relative configuration and safe handoff
 
 - Run the complete configuration website and its helper in a visible, session-owned sibling folder (`../sapling-config-*`), with canonical source retained under `kernel/`.
