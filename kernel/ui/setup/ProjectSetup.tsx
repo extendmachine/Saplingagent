@@ -39,6 +39,7 @@ export function ProjectSetup({
   onFinish,
   aiDirty = false,
   configurationRevision,
+  onLocationChanged,
   children,
 }: {
   children?: React.ReactNode;
@@ -52,7 +53,8 @@ export function ProjectSetup({
   onValidateSettings?: () => void;
   onFinish?: () => void;
   aiDirty?: boolean;
-  configurationRevision?: number;
+  configurationRevision?: number | string;
+  onLocationChanged?: (key: string) => void;
 }) {
   const [state, setState] = useState<Snapshot | null>(null),
     [name, setName] = useState(""),
@@ -72,6 +74,9 @@ export function ProjectSetup({
     picker = useRef<HTMLInputElement>(null);
   const running = state?.job?.phase === "running";
   const external = state?.configurationHost === "external";
+  useEffect(() => {
+    if (state?.root) onLocationChanged?.(JSON.stringify([state.root, state.launcher?.artifact, state.launcher?.compiledAt]));
+  }, [state?.root, state?.launcher?.artifact, state?.launcher?.compiledAt, onLocationChanged]);
   async function refresh() {
     const value: Snapshot = await request("project");
     setState(value);
@@ -395,8 +400,8 @@ export function ProjectSetup({
           {!aiReady && (
             <p className="note">
               {t(
-                "Step 2: save and select an AI scheme above.",
-                "第 2 步：请先在上方保存并选择一个 AI 方案。",
+                "Step 2: save an AI scheme or enable external-only MCP access above.",
+                "第 2 步：请在上方保存 AI 方案，或启用仅使用外部 AI 的 MCP 接入。",
               )}
             </p>
           )}
