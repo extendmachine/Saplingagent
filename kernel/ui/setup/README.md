@@ -19,9 +19,10 @@ change the engine of existing conversations.
 
 A parallel External AI / MCP tab configures the standalone kernel stdio service;
 it is not another model provider. Enable access and optionally choose external-only
-mode to skip built-in model login. In that mode users converse in their own AI
-client; the project's web chat has no model. Existing account/API schemes remain
-saved, and saving a scheme never changes MCP choices. The page explains current
+mode to skip built-in model login. MCP supplies no model for web chat; without a
+configured built-in provider users converse in their own AI client. Existing
+account/API schemes remain saved and usable by web chat, and saving a scheme never
+changes MCP choices. The page explains current
 OS-user Full Access, accessible external paths, no root/admin elevation and the
 external client's own approval policy. The MCP service does not require the app
 to be running.
