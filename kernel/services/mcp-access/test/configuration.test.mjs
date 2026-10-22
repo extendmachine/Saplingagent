@@ -32,7 +32,7 @@ test('configuration targets final project runtime, never this process or a confi
   assert.equal((await getMcpAccess(root)).available,true);
 });
 
-test('managed config symlinks fail without affecting general tool path policy',async t=>{
+test('managed config symlinks fail without affecting general tool path policy',{skip:process.platform==='win32'?'Directory symlink fixture requires Windows developer-mode privileges':false},async t=>{
   const root=await fixture(t);await fs.mkdir(path.join(root,'actual'));await fs.symlink('actual',path.join(root,'config'));
   await assert.rejects(saveMcpAccess(root,{revision:0,enabled:true,externalOnly:false}),{code:'MCP_STORAGE_LOCATION'});
   assert.deepEqual(await fs.readdir(path.join(root,'actual')),[]);

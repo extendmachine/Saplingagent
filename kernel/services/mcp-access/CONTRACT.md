@@ -32,7 +32,7 @@ block; active or uncertain ownership returns MCP_CLIENTS_ACTIVE409. No foreign
 process is signalled. Maintenance/rename callers must hold the same operation
 lock across this check and their incompatible operation, preventing new clients
 from entering after the check. External clients should disconnect before rename,
-kernel/dependency replacement or launcher compilation. Disabled settings reject
+kernel/dependency replacement or configuration finalization. Disabled settings reject
 new tools; they do not terminate an external host or interrupt a dispatched write.
 
 ## Tools
