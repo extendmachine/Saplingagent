@@ -12,12 +12,19 @@ const text = (value, field, max = 240) => {
 export function validateProfile(input, previous) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw failure('INVALID_CONFIG', 'Enter a configuration scheme.');
   const engine = input.engine, kind = input.kind || 'api';
-  if (!['codex','opencode','claude'].includes(engine) || !['api','chatgpt'].includes(kind)) throw failure('INVALID_CONFIG','Select a supported engine and authentication method.');
+  if (!['codex','opencode','claude'].includes(engine) || !['api','chatgpt','subscription'].includes(kind)) throw failure('INVALID_CONFIG','Select a supported engine and authentication method.');
   const id = input.id || (kind === 'chatgpt' ? 'codex-account' : randomUUID());
   if (!/^[a-z0-9-]{1,80}$/.test(id) || (id === 'codex-account' && kind !== 'chatgpt')) throw failure('INVALID_CONFIG', 'Invalid scheme ID.');
   if (kind === 'chatgpt') {
     if (engine !== 'codex') throw failure('INVALID_CONFIG', 'ChatGPT account login uses Codex.');
     return { id, label: text(input.label || 'ChatGPT account', 'scheme name',80), engine, kind };
+  }
+  if (kind === 'subscription') {
+    if (engine !== 'claude') throw failure('INVALID_CONFIG', 'Subscription tokens use Claude Agent.');
+    if (['noAuth','baseUrl','protocol','contextWindow','maxOutput'].some(field => Object.hasOwn(input,field))) throw failure('INVALID_CONFIG', 'Subscription schemes do not accept API endpoint, protocol, no-auth or token-limit settings.');
+    if (input.apiKey !== undefined && (typeof input.apiKey !== 'string' || input.apiKey.length > 8192 || /[\x00-\x1f\x7f]/.test(input.apiKey) || /\s/.test(input.apiKey.trim()))) throw failure('INVALID_CONFIG', 'Subscription token contains invalid characters.');
+    if (!input.apiKey?.trim() && (previous?.kind !== 'subscription' || previous.engine !== 'claude')) throw failure('KEY_REQUIRED', 'Paste the token printed by claude setup-token.');
+    return { id, label: text(input.label || 'Claude subscription', 'scheme name',80), engine, kind, model: text(input.model,'model ID') };
   }
   const protocol = input.protocol;
   if (!['chat','responses','anthropic'].includes(protocol) || (engine === 'codex' && protocol !== 'responses') || (engine === 'claude' && protocol !== 'anthropic')) throw failure('INVALID_CONFIG', 'Codex requires Responses API; Claude Agent requires Anthropic Messages; OpenCode supports all three protocols.');
@@ -50,7 +57,7 @@ export class ConfigurationStore {
   constructor(root) { this.root = root; }
   async state() {
     const data = await readConnections(this.root);
-    const profiles = await Promise.all(data.profiles.map(async profile => ({ ...Object.fromEntries(['id','label','engine','kind','protocol','baseUrl','model','noAuth','contextWindow','maxOutput'].filter(key=>profile[key]!==undefined).map(key=>[key,profile[key]])), hasKey: profile.kind === 'api' && !profile.noAuth && await readCredential(this.root,profile).then(()=>true,()=>false) })));
+    const profiles = await Promise.all(data.profiles.map(async profile => ({ ...Object.fromEntries(['id','label','engine','kind','protocol','baseUrl','model','noAuth','contextWindow','maxOutput'].filter(key=>profile[key]!==undefined).map(key=>[key,profile[key]])), hasKey: (profile.kind === 'subscription' || (profile.kind === 'api' && !profile.noAuth)) && await readCredential(this.root,profile).then(()=>true,()=>false) })));
     return { revision:data.revision, activeId:data.activeId, profiles, codex: await codexCredentialStatus(this.root) };
   }
   async write(work, revision) {
@@ -79,7 +86,15 @@ export class ConfigurationStore {
       if (input.id && !previous && input.id !== 'codex-account') throw failure('NOT_FOUND','Saved scheme no longer exists.',404);
       const profile = validateProfile(input,previous);
       if (profile.kind === 'chatgpt' && !(await codexCredentialStatus(this.root)).chatgpt) throw failure('LOGIN_REQUIRED','Sign in with your ChatGPT account first. API-key credentials are a separate method.');
-      if (profile.kind === 'api') {
+      if (profile.kind === 'subscription') {
+        // A blank edit may retain only a valid credential of the same kind.
+        if (input.apiKey?.trim()) {
+          await atomicJSON(credentialPath(this.root,profile.id),{oauthToken:input.apiKey.trim()});
+          await readCredential(this.root,profile);
+        } else await readCredential(this.root,profile).catch(()=>{throw failure('KEY_REQUIRED','The saved subscription token is unavailable. Paste the token printed by claude setup-token.');});
+        const entry = { id:`ai-${profile.id}`,category:'oauth-token',service:'agent-runtime/Claude Agent',environment:'local',purpose:`${profile.label} (claude setup-token, personal local use)`,credential_file:`../api-keys/ai-${profile.id}.json`,official_reference:'kernel/services/ai-config/REFERENCES.md',status:'configured',updated_at:new Date().toISOString() };
+        const index=ledger.credentials.findIndex(e=>e.id===entry.id);if(index<0)ledger.credentials.push(entry);else ledger.credentials[index]={...ledger.credentials[index],...entry};
+      } else if (profile.kind === 'api') {
         const file = credentialPath(this.root,profile.id);
         if (!profile.noAuth && input.apiKey?.trim()) await atomicJSON(file,{apiKey:input.apiKey.trim()});
         if (!profile.noAuth) await readCredential(this.root,profile);
@@ -119,6 +134,7 @@ export class ConfigurationStore {
   }
   async activate(input) { return this.write(async data=> { if(!data.profiles.some(p=>p.id===input.id))throw failure('NOT_FOUND','Scheme not found.',404);data.activeId=input.id; },input.revision); }
   async models(input) {
+    if (input?.kind === 'subscription') throw failure('INVALID_CONFIG','Model discovery is not available for subscription tokens. Enter a Claude model ID.');
     const data=await readConnections(this.root); const previous=data.profiles.find(p=>p.id===input.id);
     const profile=validateProfile({ ...input,model:input.model || 'model-discovery' },previous);
     const key=profile.noAuth ? null : input.apiKey?.trim() || await readCredential(this.root,profile);
