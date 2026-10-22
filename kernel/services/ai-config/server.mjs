@@ -8,13 +8,17 @@ import { ConfigurationStore,failure } from './store.mjs';
 import { AccountSetup } from './auth.mjs';
 import { CredentialImport } from './credentials.mjs';
 import { ProjectLauncher, prepareSetupUI } from '../../launcher/public.mjs';
+import { readMcpAccess, saveMcpAccess, getMcpAccess } from '../../contracts/mcp-access.mjs';
 const defaultRoot=fileURLToPath(new URL('../../../',import.meta.url));
 export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRoot,assets=path.join(root,'kernel/.cache/setup'),language='en',authOptions={},importOptions={},onClose,token:providedToken,projectController,onProjectRename,instanceId,beforeClose}={}){
   root=path.resolve(root);
   let store=new ConfigurationStore(root),auth=new AccountSetup(root,store,authOptions),imports=new CredentialImport(store,importOptions);const token=providedToken||randomBytes(32).toString('hex');let closing=false,shutdown,directoryOperation=false,finalizing=false,activeAIRequests=0;const project=projectController||new ProjectLauncher(root);
-  const aiRoutes=new Set(['profiles','activate','models','login','credentials/import']);
+  const aiRoutes=new Set(['profiles','activate','models','login','credentials/import','mcp']);
   const pendingLogin=()=>['starting','pending','completing'].includes(auth.login.phase);
   const settingsSaved=async()=>{const state=await project.state();return state.settingsSaved===true;};
+  const mcpSummary=async()=>{const {revision,enabled,externalOnly,available}=await getMcpAccess(root);return {revision,enabled,externalOnly,available};};
+  const configurationState=async(state)=>({...state,login:auth.snapshot(),mcp:await mcpSummary()});
+  const accessConfigured=async()=>{if((await store.state()).activeId)return true;const mcp=await readMcpAccess(root);return mcp.enabled&&mcp.externalOnly;};
   const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"};
   const send=(res,status,body)=>{res.writeHead(status,{...headers,'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
   const server=http.createServer(async(req,res)=>{
@@ -30,8 +34,9 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
         const supplied=Buffer.from(String(req.headers['x-sapling-config']||''));const expected=Buffer.from(token);
         if(supplied.length!==expected.length||!timingSafeEqual(supplied,expected))throw failure('UNAUTHORIZED','Reload the local configuration page.',401);
         if(closing||finalizing)throw failure('CLOSING','Configuration is closing or restarting. Wait for the operation to finish.',503);
-        if(req.method==='GET'&&['/api/config/state','/api/config/project'].includes(url.pathname)&&directoryOperation)throw failure('PROJECT_BUSY','Wait for project directory confirmation to finish.',409);
-        if(req.method==='GET'&&url.pathname==='/api/config/state'){const login=auth.snapshot();return send(res,200,{...await store.state(),login});}
+        if(req.method==='GET'&&['/api/config/state','/api/config/project','/api/config/mcp'].includes(url.pathname)&&directoryOperation)throw failure('PROJECT_BUSY','Wait for project directory confirmation to finish.',409);
+        if(req.method==='GET'&&url.pathname==='/api/config/state')return send(res,200,await configurationState(await store.state()));
+        if(req.method==='GET'&&url.pathname==='/api/config/mcp')return send(res,200,await getMcpAccess(root));
         if(req.method==='GET'&&url.pathname==='/api/config/project')return send(res,200,await project.state());
         if(req.method!=='POST')throw failure('NOT_FOUND','Configuration endpoint not found.',404);
         if(req.headers.origin!==origin||!/^application\/json(?:;|$)/i.test(req.headers['content-type']||''))throw failure('CROSS_SITE','Use the local configuration page to make changes.',403);
@@ -41,8 +46,8 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
         if(directoryOperation)throw failure('PROJECT_BUSY','Wait for project directory confirmation to finish.',409);
         const setupPhase=(await project.state()).finalization?.phase;
         if(directoryOperation||finalizing||closing||['waiting-release','restarting'].includes(setupPhase))throw failure('PROJECT_BUSY','Wait for setup to finish saving or restarting before changing settings.',409);
-        if(['/api/config/profiles','/api/config/activate','/api/config/credentials/import'].includes(url.pathname)&&pendingLogin())throw failure('LOGIN_BUSY','Finish or cancel the current sign-in before changing schemes.',409);
-        if(['/api/config/profiles','/api/config/activate','/api/config/login','/api/config/close'].includes(url.pathname)&&imports.busy)throw failure('IMPORT_BUSY','Wait for credential import to finish.',409);
+        if(['/api/config/profiles','/api/config/activate','/api/config/credentials/import','/api/config/mcp'].includes(url.pathname)&&pendingLogin())throw failure('LOGIN_BUSY','Finish or cancel the current sign-in before changing schemes.',409);
+        if(['/api/config/profiles','/api/config/activate','/api/config/login','/api/config/close','/api/config/mcp'].includes(url.pathname)&&imports.busy)throw failure('IMPORT_BUSY','Wait for credential import to finish.',409);
         if(url.pathname.startsWith('/api/config/project/')){
           if(pendingLogin()||imports.busy)throw failure('LOGIN_BUSY','Finish account configuration before project operations.',409);
           const route=url.pathname.slice('/api/config/project/'.length);
@@ -55,7 +60,7 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
               if(route!=='finalize')return send(res,200,{project:await project.stageSetup(body),root:project.root,renamed:false});
               if(Object.keys(body).length)throw failure('INVALID_CONFIG','Finalization uses the saved settings and accepts an empty object only.');
               if(!await settingsSaved())throw failure('PROJECT_SETTINGS_REQUIRED','Save project settings before finalizing setup.',409);
-              if(!(await store.state()).activeId)throw failure('AI_NOT_CONFIGURED','Save and select an AI connection before finalizing setup.',409);
+              if(!await accessConfigured())throw failure('AI_NOT_CONFIGURED','Save and select an AI connection or enable external-only MCP access before finalizing setup.',409);
               const result=await project.finalizeSetup({management:{pid:process.pid,instanceId,port:address.port},language});
               if(project.configurationHost==='external')return send(res,202,{job:result});
               const finalization={...Object.fromEntries(['id','phase','targetRoot','previousRoot','readyUrl'].filter(key=>result[key]!==undefined).map(key=>[key,result[key]])),managementPort:address.port};
@@ -71,7 +76,7 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
             try{
               await auth.close();
               if(project.configurationHost!=='external'&&(await project.state()).exportReady!==true)throw failure('PROJECT_RESTART_REQUIRED','Save settings and wait for the completed restart before exporting your app.',409);
-              if(!(await store.state()).activeId)throw failure('AI_NOT_CONFIGURED','Save and select an AI connection before exporting.',409);
+              if(!await accessConfigured())throw failure('AI_NOT_CONFIGURED','Save and select an AI connection or enable external-only MCP access before exporting.',409);
               return send(res,202,{job:await project.build()});
             }finally{directoryOperation=false;}
           }
@@ -88,10 +93,11 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
           try{
             if(!await settingsSaved())throw failure('PROJECT_SETTINGS_REQUIRED','Save project settings before configuring AI.',409);
             if(project.busy)throw failure('PROJECT_BUSY','Wait for the project operation before changing configuration.',409);
+            if(aiRoute==='mcp'){await saveMcpAccess(root,body);await project.invalidateSetup();return send(res,200,await getMcpAccess(root));}
             if(aiRoute!=='models')await project.invalidateSetup();
-            if(aiRoute==='credentials/import')return send(res,200,{...await imports.run(body),login:auth.snapshot()});
-            if(aiRoute==='profiles')return send(res,200,{...await store.save(body),login:auth.snapshot()});
-            if(aiRoute==='activate')return send(res,200,{...await store.activate(body),login:auth.snapshot()});
+            if(aiRoute==='credentials/import')return send(res,200,await configurationState(await imports.run(body)));
+            if(aiRoute==='profiles')return send(res,200,await configurationState(await store.save(body)));
+            if(aiRoute==='activate')return send(res,200,await configurationState(await store.activate(body)));
             if(aiRoute==='models')return send(res,200,await store.models(body));
             if(aiRoute==='login')return send(res,200,{login:await auth.begin(body.mode)});
           }finally{activeAIRequests--;}

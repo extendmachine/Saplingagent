@@ -1,5 +1,14 @@
 # Standalone AI configuration service
 
+TASK-20261021-004 adds project-local external MCP access configuration through the
+public kernel contract at `kernel/contracts/mcp-access.mjs`. The service returns
+generated stdio client settings for the actual project path and supports finishing
+external-only setup without a built-in model account. It does not host the MCP
+transport, invoke a model, mutate global client configuration or share model keys.
+The provider schemes and MCP revision remain independent. No service dependency,
+network listener or log is added; configuration B remains a closed builtin-only
+module graph. See CONTRACT.md for request/readiness and relocation behavior.
+
 TASK-20261012-001 / Codex. Responsibilities: project-private provider schemes/keys/ledger, official Codex account flow, explicit model discovery and standalone setup lifecycle. Source server.mjs, store.mjs, auth.mjs, test/. Frontend lives in kernel/ui/setup; shared file/transport contracts in kernel/contracts/ai-configuration.mjs and codex-rpc.mjs. The service does not host chat or change tool/file permissions.
 
 Runtime Node24.21 in project .runtime, native built-ins only; existing pinned Codex0.146.1 used for auth. No npm service dependencies. Launcher builds existing React/Vite configuration entry into kernel/.cache/setup, then starts `node kernel/launcher/entry.mjs`, which hosts this service; default OS-assigned loopback port. Ctrl+C or Close setup stops only setup/owned auth. Public contract CONTRACT.md; deployment DEPLOY.md; official evidence REFERENCES.md. Runtime metadata stays in terminal (no credentials or raw upstream errors); this module introduces no persistent logs. Auth/keys/config/ledger under local-secrets/, ignored and excluded from distribution. Existing accounts and schemes are retained; blank keys preserve, explicitly replacing a key updates only that scheme. Anonymous custom local endpoints require noAuth selection.
