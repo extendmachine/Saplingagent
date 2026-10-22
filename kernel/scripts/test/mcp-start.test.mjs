@@ -11,7 +11,7 @@ const source=fileURLToPath(new URL('../../../',import.meta.url));
 const platforms=['darwin','win32'];
 async function write(root,file,value){const target=path.join(root,file);await fs.mkdir(path.dirname(target),{recursive:true});await fs.writeFile(target,value);}
 
-async function fixture(t,externalOnly){
+async function fixture(t,externalOnly,{subscription=false}={}){
   const parent=path.join(source,'.cache/mcp-cli-start-tests');await fs.mkdir(parent,{recursive:true});
   const root=await fs.mkdtemp(path.join(parent,'app-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
   await fs.cp(path.join(source,'kernel'),path.join(root,'kernel'),{recursive:true,filter:file=>!file.split(path.sep).some(part=>['node_modules','.cache'].includes(part))});
@@ -28,6 +28,10 @@ async function fixture(t,externalOnly){
   await write(root,'config/runtime.json',JSON.stringify({frontPort:5173,agentPort:4310}));
   await write(root,'config/mcp-access.json',JSON.stringify({schemaVersion:1,revision:1,enabled:externalOnly,externalOnly}));
   if(!externalOnly)await write(root,'local-secrets/ai-config/connections.json',JSON.stringify({schemaVersion:1,revision:1,activeId:'synthetic',profiles:[{id:'synthetic',label:'Synthetic endpoint',engine:'opencode',kind:'api',protocol:'chat',baseUrl:'https://provider.example/v1',model:'synthetic',noAuth:true,contextWindow:128000,maxOutput:16384}]}));
+  if(subscription){
+    await write(root,'local-secrets/ai-config/connections.json',JSON.stringify({schemaVersion:1,revision:1,activeId:'personal',profiles:[{id:'personal',label:'Personal Claude',engine:'claude',kind:'subscription',model:'fixture-model'}]}));
+    await write(root,'local-secrets/api-keys/ai-personal.json',JSON.stringify({oauthToken:'synthetic-subscription-token'}));
+  }
   await write(root,'scripts/dev.mjs',`import http from 'node:http';import fs from 'node:fs';
 fs.writeFileSync('runtime.pid',String(process.pid));
 let checks=0,closing=false;
@@ -37,7 +41,7 @@ const server=http.createServer((req,res)=>{
  res.setHeader('Content-Type','application/json');
  if(req.url==='/api/runtime/status')res.end(JSON.stringify({phase:'ready',busy:false,aiConnection:${JSON.stringify(externalOnly?'external-mcp':'builtin')}}));
  else if(req.url==='/api/status'){
-  res.end(JSON.stringify({ready:false,authenticated:false,mcp:{ready:false,tools:[]},skills:[]}));
+  res.end(JSON.stringify({ready:${subscription},authenticated:${subscription},provider:'Claude Agent',model:'fixture-model',mcp:{ready:${subscription},tools:[]},skills:[]}));
   if(++checks===3)setTimeout(close,120);
  }else if(req.url==='/'){res.end('synthetic frontend');setTimeout(close,150);}
  else{res.statusCode=404;res.end('{}');}
@@ -79,4 +83,14 @@ test('real CLI start never claims built-in chat readiness when its Agent is unau
   assert.ok(result.requests.includes('/api/runtime/status'));assert.equal(result.requests.filter(route=>route==='/api/status').length,3);
   assert.equal(result.requests.includes('/'),false);assert.doesNotMatch(result.output,/Web page:|External AI \/ MCP|Connected to/);
   assert.equal(await fs.access(path.join(root,'local-secrets/codex/auth.json')).then(()=>true,()=>false),false);
+});
+
+
+test('real CLI start accepts a Claude subscription without Codex login',{skip:!platforms.includes(process.platform),timeout:15000},async t=>{
+  const root=await fixture(t,false,{subscription:true}),result=await execute(t,root);
+  assert.match(result.output,/Connected to Claude Agent: fixture-model/);
+  assert.match(result.output,/Web page: http:\/\/127\.0\.0\.1:\d+\//);
+  assert.ok(result.requests.includes('/api/status'));assert.ok(result.requests.includes('/'));
+  assert.equal(await fs.access(path.join(root,'local-secrets/codex/auth.json')).then(()=>true,()=>false),false);
+  assert.doesNotMatch(result.output,/synthetic-subscription-token/);
 });

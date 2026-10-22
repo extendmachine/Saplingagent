@@ -197,7 +197,7 @@ async function configuredAccess() {
   const connections = await readConnections(root);
   const selection = defaultSelection(connections);
   const profile = connections.profiles.find(p=>p.id===connections.activeId);
-  if(profile?.kind === 'api'){
+  if(profile?.kind === 'api' || profile?.kind === 'subscription'){
     if(selection.engine === 'codex')await codexConnection(root,connections);
     else if(selection.engine === 'claude')await claudeConnections(root,connections);
     else await openCodeConnections(root,connections);
@@ -208,7 +208,7 @@ async function configuredAccess() {
 async function start(noOpen) {
   if (!await installed()) throw new Error(t('Installation is incomplete or dependency lockfiles have changed. Run: bash Saplingagent.sh install --repair', "安装未完成或依赖锁文件已变化。请运行：bash Saplingagent.sh install --repair"));
   await localSetup();
-  if (!await configuredAccess()) throw new Error(t('Choose Configure AI in Saplingagent.sh and save an account/API scheme or enable external-only MCP access.', '请先选择配置 AI 接口，保存账号/API 方案或启用仅外部 AI 的 MCP 接入。'));
+  if (!await configuredAccess()) throw new Error(t('Choose Configure AI in Saplingagent.sh and save an account/API/subscription scheme or enable external-only MCP access.', '请先选择配置 AI 接口，保存账号/API/订阅 Token 方案或启用仅外部 AI 的 MCP 接入。'));
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   const child = spawn(process.execPath, [path.join(root, 'scripts/dev.mjs')], { cwd: root, env, detached: false, stdio: ['inherit', 'pipe', 'pipe'] });
   let ended = false, interrupted = false, stopRequested = false, launched = false, startupOutput = '', frontPort = config.frontPort;
