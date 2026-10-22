@@ -1,6 +1,6 @@
 {
   "name": "saplingagent-kernel",
-  "version": "0.9.5",
+  "version": "0.9.6",
   "private": true,
   "type": "module",
   "license": "PolyForm-Noncommercial-1.0.0",
