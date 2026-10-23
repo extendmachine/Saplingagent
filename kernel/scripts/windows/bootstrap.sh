@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 SAPLING_WINDOWS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
-say() { if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' "$2"; else printf '%s\n' "$1"; fi; }
+source "$SAPLING_WINDOWS_ROOT/kernel/localization/installer-messages.sh"
 SAPLING_WINDOWS_ACTION="${1:-}"
 if [ "$#" -gt 0 ]; then shift; fi
 SAPLING_WINDOWS_FLAG="${1:-}"
@@ -11,11 +11,11 @@ case "$SAPLING_WINDOWS_ACTION:$#:$SAPLING_WINDOWS_FLAG" in
   kernel:0:|kernel:1:status|kernel:1:check|kernel:1:update) ;;
   kernel:2:update) [ "$SAPLING_WINDOWS_SECOND_FLAG" = --accept-risk ] || exit 2 ;;
   kernel:2:restore) [[ "$SAPLING_WINDOWS_SECOND_FLAG" =~ ^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$ ]] || exit 2 ;;
-  *) say 'Invalid action/flag. Run bash Saplingagent.sh --help.' '操作或参数无效。请运行 bash Saplingagent.sh --help。' >&2; exit 2 ;;
+  *) sapling_message installer_030 >&2; exit 2 ;;
 esac
 for SAPLING_WINDOWS_TOOL in cygpath powershell.exe iconv base64; do
   if ! command -v "$SAPLING_WINDOWS_TOOL" >/dev/null 2>&1; then
-    say "Missing $SAPLING_WINDOWS_TOOL. Use Git Bash from https://gitforwindows.org/." "缺少 $SAPLING_WINDOWS_TOOL。请使用 https://gitforwindows.org/ 提供的 Git Bash。" >&2
+    sapling_message installer_031 >&2
     exit 1
   fi
 done
@@ -37,9 +37,9 @@ export MSYS2_ENV_CONV_EXCL='SAPLING_BOOTSTRAP_ROOT'
 case "$SAPLING_WINDOWS_ACTION" in
   install|login|opencode|start|kernel)
     if [ -t 0 ] && [ -t 1 ] && command -v winpty >/dev/null 2>&1; then
-      say "Starting Windows $SAPLING_WINDOWS_ACTION (PowerShell / winpty)..." "正在启动 Windows ${SAPLING_WINDOWS_ACTION}（PowerShell / winpty）…"
+      sapling_message installer_032
       exec winpty powershell.exe -NoLogo -NoProfile -EncodedCommand "$SAPLING_WINDOWS_ENCODED"
     fi ;;
 esac
-say "Starting Windows $SAPLING_WINDOWS_ACTION (PowerShell)..." "正在启动 Windows ${SAPLING_WINDOWS_ACTION}（PowerShell）…"
+sapling_message installer_033
 exec powershell.exe -NoLogo -NoProfile -EncodedCommand "$SAPLING_WINDOWS_ENCODED"

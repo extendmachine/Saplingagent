@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -80,4 +81,24 @@ func runtimeBootstrap(root string, env []string) *exec.Cmd {
 	cmd := exec.Command("/bin/bash", filepath.Join(root, "kernel/scripts/macos/bootstrap.sh"), "runtime-only")
 	cmd.Env = env
 	return cmd
+}
+
+func systemLanguage() string {
+	if value := os.Getenv("LC_ALL"); value != "" {
+		return value
+	}
+	if value := os.Getenv("LANG"); value != "" {
+		return value
+	}
+	raw, err := exec.Command("/usr/bin/defaults", "read", "-g", "AppleLanguages").Output()
+	if err == nil {
+		for _, value := range strings.FieldsFunc(string(raw), func(r rune) bool {
+			return r == '(' || r == ')' || r == ',' || r == '\n' || r == ' ' || r == '\t' || r == '"'
+		}) {
+			if value != "" {
+				return value
+			}
+		}
+	}
+	return "en"
 }

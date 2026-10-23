@@ -57,9 +57,10 @@ test('Windows progress Close hides the window while its worker remains active', 
   const root = await fs.mkdtemp(path.join(parent, 'window-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   await prepareBuildStorage(root);
-  for (const name of ['progress.go', 'progress_windows.go']) await fs.copyFile(path.join(source, 'kernel/launcher/native', name), path.join(root, name));
+  for (const name of ['progress.go', 'progress_windows.go', 'localization.go']) await fs.copyFile(path.join(source, 'kernel/launcher/native', name), path.join(root, name));
   await fs.writeFile(path.join(root, 'progress_windows_test.go'), `package main
 import ("testing";"time")
+func systemLanguage() string{return "en"}
 func TestWindowClose(t *testing.T){
  showNativeProgress("Progress fixture");defer closeNativeProgress();window:=progressHandle.Load();if window==0{t.Fatal("window not created")}
  progressUser32.NewProc("PostMessageW").Call(window,0x0010,0,0);time.Sleep(100*time.Millisecond)

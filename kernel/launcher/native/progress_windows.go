@@ -65,7 +65,7 @@ func progressWindowProc(window uintptr, message uint32, wparam, lparam uintptr) 
 
 func showNativeProgress(name string) {
 	initialized := make(chan struct{})
-	progressText.Store(progressMessages["checking"])
+	progressText.Store(translated(progressMessages["checking"]))
 	go func() {
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
@@ -81,7 +81,7 @@ func showNativeProgress(name string) {
 		}
 		screenWidth, _, _ := progressUser32.NewProc("GetSystemMetrics").Call(0)
 		screenHeight, _, _ := progressUser32.NewProc("GetSystemMetrics").Call(1)
-		window, _, _ := progressUser32.NewProc("CreateWindowExW").Call(0, uintptr(unsafe.Pointer(class.Name)), uintptr(unsafe.Pointer(wide(name+" — Starting project"))), 0x00CA0000, (screenWidth-580)/2, (screenHeight-220)/2, 580, 220, 0, 0, instance, 0)
+		window, _, _ := progressUser32.NewProc("CreateWindowExW").Call(0, uintptr(unsafe.Pointer(class.Name)), uintptr(unsafe.Pointer(wide(name+translated(" — Starting project")))), 0x00CA0000, (screenWidth-580)/2, (screenHeight-220)/2, 580, 220, 0, 0, instance, 0)
 		if window == 0 {
 			close(initialized)
 			return
@@ -92,8 +92,8 @@ func showNativeProgress(name string) {
 			progressUser32.NewProc("SendMessageW").Call(label, 0x0030, font, 1)
 			return label
 		}
-		progressLabel = addLabel(progressMessages["checking"], 28, 52)
-		addLabel("The project status page will open when the local service is available.\r\nClosing this window hides it; startup continues. Use Stop app on the status page to stop services.", 88, 76)
+		progressLabel = addLabel(translated(progressMessages["checking"]), 28, 52)
+		addLabel(translated("The project status page will open when the local service is available.")+"\r\n"+translated("Closing this window hides it; startup continues. Use Stop app on the status page to stop services."), 88, 76)
 		progressHandle.Store(window)
 		progressUser32.NewProc("ShowWindow").Call(window, 5)
 		progressUser32.NewProc("UpdateWindow").Call(window)
@@ -113,7 +113,7 @@ func showNativeProgress(name string) {
 
 func setNativeProgress(phase string) {
 	if message, known := progressMessages[phase]; known {
-		progressText.Store(message)
+		progressText.Store(translated(message))
 		if window := progressHandle.Load(); window != 0 {
 			progressUser32.NewProc("PostMessageW").Call(window, progressUpdate, 0, 0)
 		}

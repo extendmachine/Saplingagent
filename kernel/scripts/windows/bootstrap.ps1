@@ -1,12 +1,13 @@
 ﻿$ErrorActionPreference = 'Stop'
 $SaplingRoot = if ($env:SAPLING_BOOTSTRAP_ROOT) { $env:SAPLING_BOOTSTRAP_ROOT } else { [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..')) }
 $SaplingLanguage = $env:SAPLING_LANG
+. (Join-Path $SaplingRoot 'kernel/localization/installer-messages.ps1')
 # Scratch paths are project-derived before .NET downloads/extraction can run.
 foreach ($relative in @('.runtime', '.runtime/tmp', '.cache', '.cache/npm', '.cache/node-compile', '.cache/runtime', 'local-secrets', 'local-secrets/runtime', 'local-secrets/runtime/config', 'data', 'data/runtime', 'data/runtime-state')) {
     $directory = Join-Path $SaplingRoot $relative
     if (Test-Path -LiteralPath $directory) {
         $item = Get-Item -LiteralPath $directory -Force
-        if (!$item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Project storage must use ordinary local directories.' }
+        if (!$item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw (Message 'windows_003') }
     } else { [IO.Directory]::CreateDirectory($directory) | Out-Null }
 }
 $env:TMP = Join-Path $SaplingRoot '.runtime/tmp'
@@ -22,24 +23,21 @@ $env:XDG_CACHE_HOME = Join-Path $SaplingRoot '.cache/runtime'
 # Undo MSYS argument-conversion overrides before any application child starts.
 [Environment]::SetEnvironmentVariable('MSYS2_ARG_CONV_EXCL', $env:SAPLING_PREVIOUS_ARG_CONV, 'Process')
 [Environment]::SetEnvironmentVariable('MSYS2_ENV_CONV_EXCL', $env:SAPLING_PREVIOUS_ENV_CONV, 'Process')
-function Say([string]$English, [string]$Chinese) {
-    if ($script:SaplingLanguage -eq 'zh') { Write-Host $Chinese } else { Write-Host $English }
-}
-Say 'Windows bootstrap ready. Checking this device...' 'Windows 安装器已启动，正在检查设备…'
+Write-Host (Message 'windows_004')
 function Resolve-WindowsArchitecture([string]$NativeArchitecture, [string]$WowArchitecture, [string]$ProcessArchitecture) {
     $detected = if ($NativeArchitecture) { $NativeArchitecture } elseif ($WowArchitecture) { $WowArchitecture } else { $ProcessArchitecture }
     switch ($detected.ToUpperInvariant()) {
         { $_ -eq 'AMD64' -or $_ -eq 'X64' } { return 'x64' }
         'ARM64' { return 'arm64' }
-        default { throw "Unsupported device architecture: $detected. A 64-bit Windows x64 or ARM64 system is required." }
+        default { throw ((Message 'unsupported_arch') -f $detected) }
     }
 }
 function Get-WindowsDevice {
-    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { throw 'Detected a non-Windows system. On macOS run bash Saplingagent.sh / 检测到非 Windows 系统，macOS 请运行 bash Saplingagent.sh。' }
+    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) { throw (Message 'windows_005') }
     # Registry build avoids compatibility-manifest OS version emulation.
     $windows = Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
     $build = [int]$windows.CurrentBuildNumber
-    if ($build -lt 17763) { throw 'Windows 10 version 1809 or later is required. Update Windows before installation / 请先更新到 Windows 10 1809 或更新版本。' }
+    if ($build -lt 17763) { throw (Message 'windows_006') }
     # Native OS architecture wins over an emulated/32-bit terminal's architecture.
     $native = $null
     try { $native = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString() } catch {}
@@ -50,10 +48,10 @@ function Get-WindowsDevice {
 function Ensure-Node([bool]$Install) {
     $device = Get-WindowsDevice
     $architecture = $device.Architecture
-    Say ("Detected device: Windows {0}, {1}. Selecting matching project runtime." -f $device.Version, $architecture) ("检测到设备：Windows {0}，{1}。自动选择对应项目运行环境。" -f $device.Version, $architecture)
+    Write-Host ((Message 'detected_device') -f $device.Version, $architecture)
     $settings = Get-Content -LiteralPath (Join-Path $SaplingRoot 'kernel/config/windows.json') -Raw | ConvertFrom-Json
     $expectedHash = $settings.nodeSha256.$architecture
-    if ($settings.nodeVersion -notmatch '^\d+\.\d+\.\d+$' -or $expectedHash -notmatch '^[a-f0-9]{64}$') { throw 'Invalid Windows runtime configuration.' }
+    if ($settings.nodeVersion -notmatch '^\d+\.\d+\.\d+$' -or $expectedHash -notmatch '^[a-f0-9]{64}$') { throw (Message 'windows_007') }
     $runtime = Join-Path $SaplingRoot '.runtime'
     $folderName = "node-v$($settings.nodeVersion)-win-$architecture"
     $target = Join-Path $runtime $folderName
@@ -63,32 +61,32 @@ function Ensure-Node([bool]$Install) {
         $versionPassed = $LASTEXITCODE -eq 0 -and $version -eq "v$($settings.nodeVersion)"
         $nodeArchitecture = & $node -p 'process.arch'
         if ($versionPassed -and $LASTEXITCODE -eq 0 -and $nodeArchitecture -eq $architecture) { return $node }
-        throw 'Project Node is damaged. Stop the app, remove only its .runtime/node-v*-win-<detected-architecture> folder, then install again.'
+        throw (Message 'windows_008')
     }
-    if (!$Install) { throw 'Install first / 请先选择安装。No runtime will be downloaded by this action.' }
+    if (!$Install) { throw (Message 'windows_009') }
     New-Item -ItemType Directory -Path $runtime -Force | Out-Null
     $lock = Join-Path $runtime 'windows-node.lock'
     # FileMode.CreateNew is exclusive, unlike New-Item -Force.
     try { $lockHandle = [IO.File]::Open($lock, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None) }
-    catch { throw 'Another Node installation is running. See the Windows guide before removing a stale lock.' }
+    catch { throw (Message 'windows_010') }
     $stage = Join-Path $runtime ('windows-node-' + [Guid]::NewGuid().ToString('N'))
     $oldTls = [Net.ServicePointManager]::SecurityProtocol
     try {
         foreach ($lease in @('kernel-operation.lock', 'launcher-compile.lock', 'project-finalization.json')) {
-            if (Test-Path -LiteralPath (Join-Path $runtime $lease)) { throw 'Finish the active kernel/start/setup operation before installing Node.' }
+            if (Test-Path -LiteralPath (Join-Path $runtime $lease)) { throw (Message 'windows_011') }
         }
         New-Item -ItemType Directory -Path $stage | Out-Null
         $archive = Join-Path $stage ($folderName + '.zip')
-        Say 'Downloading project-local Node from nodejs.org...' '正在从 nodejs.org 下载项目内 Node…'
+        Write-Host (Message 'windows_012')
         [Net.ServicePointManager]::SecurityProtocol = $oldTls -bor [Net.SecurityProtocolType]::Tls12
         Invoke-WebRequest -UseBasicParsing -Uri "https://nodejs.org/dist/v$($settings.nodeVersion)/$folderName.zip" -OutFile $archive
-        if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedHash) { throw 'Node SHA-256 mismatch. Installation stopped.' }
+        if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedHash) { throw (Message 'windows_013') }
         Expand-Archive -LiteralPath $archive -DestinationPath $stage
         $staged = Join-Path $stage $folderName
         $version = & (Join-Path $staged 'node.exe') --version
-        if ($LASTEXITCODE -ne 0 -or $version -ne "v$($settings.nodeVersion)") { throw 'Downloaded Node cannot run on this computer.' }
+        if ($LASTEXITCODE -ne 0 -or $version -ne "v$($settings.nodeVersion)") { throw (Message 'windows_014') }
         $nodeArchitecture = & (Join-Path $staged 'node.exe') -p 'process.arch'
-        if ($LASTEXITCODE -ne 0 -or $nodeArchitecture -ne $architecture) { throw 'Downloaded Node architecture does not match this device.' }
+        if ($LASTEXITCODE -ne 0 -or $nodeArchitecture -ne $architecture) { throw (Message 'windows_015') }
         Move-Item -LiteralPath $staged -Destination $target
         return $node
     } finally {

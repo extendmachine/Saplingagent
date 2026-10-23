@@ -22,10 +22,10 @@ func problem(message string) {
 		os.Exit(1)
 	}
 	if runtime.GOOS == "darwin" {
-		exec.Command("/usr/bin/osascript", "-e", `display alert "Project launcher" message "The local runtime could not start. Open Saplingagent.sh and repair the project installation."`).Run()
+		exec.Command("/usr/bin/osascript", "-e", "on run argv\n display alert (item 1 of argv) message (item 2 of argv)\nend run", translated("Project launcher"), message).Run()
 	} else {
-		c := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", `Add-Type -AssemblyName PresentationFramework;[System.Windows.MessageBox]::Show($env.SAPLING_ERROR,'Project launcher')`)
-		c.Env = append(os.Environ(), "SAPLING_ERROR="+message)
+		c := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", `Add-Type -AssemblyName PresentationFramework;[System.Windows.MessageBox]::Show($env.SAPLING_ERROR,$env.SAPLING_ERROR_TITLE)`)
+		c.Env = append(os.Environ(), "SAPLING_ERROR="+message, "SAPLING_ERROR_TITLE="+translated("Project launcher"))
 		if launcherRoot != "" {
 			c.Dir = filepath.Dir(launcherRoot)
 		}
@@ -69,7 +69,7 @@ func projectEnvironment(root string) ([]string, error) {
 		}
 		env = append(env, item.name+"="+directory)
 	}
-	return append(env, "SEED_ROOT="+root), nil
+	return append(env, "SEED_ROOT="+root, "SAPLING_LANG="+launcherLanguage, "SAPLING_LANG_EXPLICIT=1"), nil
 }
 
 func main() {
@@ -85,7 +85,7 @@ func main() {
 	}
 	exe, err := os.Executable()
 	if err != nil {
-		problem("Cannot locate this launcher.")
+		problem(translated("Cannot locate this launcher."))
 		return
 	}
 	exe, _ = filepath.EvalSymlinks(exe)
@@ -94,6 +94,7 @@ func main() {
 		root = filepath.Clean(filepath.Join(root, "../../.."))
 	}
 	launcherRoot = root
+	loadLanguage(root)
 	if len(os.Args) > 1 && os.Args[1] == "--root" {
 		fmt.Println(root)
 		return
@@ -114,7 +115,7 @@ func main() {
 		b, err = os.ReadFile(filepath.Join(root, "config", platform+".json"))
 	}
 	if err != nil || json.Unmarshal(b, &cfg) != nil {
-		problem("Project configuration is missing. Restore the complete project folder.")
+		problem(translated("Project configuration is missing. Restore the complete project folder."))
 		return
 	}
 	arch := runtime.GOARCH
@@ -129,18 +130,18 @@ func main() {
 	}
 	env, err := projectEnvironment(root)
 	if err != nil {
-		problem("Project-local storage is unavailable. Check the folder and retry.")
+		problem(translated("Project-local storage is unavailable. Check the folder and retry."))
 		return
 	}
 	logs, err := localDirectory(root, "logs/project-launcher")
 	if err != nil {
-		problem("Project-local logs are unavailable.")
+		problem(translated("Project-local logs are unavailable."))
 		return
 	}
 	logPath := filepath.Join(logs, "project-launcher-"+time.Now().UTC().Format("2006-01-02")+".log")
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		problem("The project folder is not writable.")
+		problem(translated("The project folder is not writable."))
 		return
 	}
 	defer f.Close()
@@ -151,7 +152,7 @@ func main() {
 		}
 		if dockCommand && os.Args[1] == "--dock-stop" {
 			if runtimeMayBeRunning(root) {
-				problem("The project runtime may still be running, but its Node executable is missing. Restore the local runtime before stopping this project.")
+				problem(translated("The project runtime may still be running, but its Node executable is missing. Restore the local runtime before stopping this project."))
 			}
 			fmt.Println("stopped")
 			return
@@ -169,11 +170,11 @@ func main() {
 		}
 		if err != nil {
 			f.WriteString("Runtime preparation failed; inspect this log and retry with network access.\n")
-			problem("Project runtime installation failed. Check logs/project-launcher and open the app again after resolving the error.")
+			problem(translated("Project runtime installation failed. Check logs/project-launcher and open the app again after resolving the error."))
 			return
 		}
 		if _, err = os.Stat(node); err != nil {
-			problem("Runtime installation did not produce the configured Node executable. Check logs/project-launcher.")
+			problem(translated("Runtime installation did not produce the configured Node executable. Check logs/project-launcher."))
 			return
 		}
 	}
@@ -194,7 +195,7 @@ func main() {
 			if exit, ok := err.(*exec.ExitError); ok {
 				os.Exit(exit.ExitCode())
 			}
-			problem("The project operation did not complete. Inspect logs/project-launcher and retry.")
+			problem(translated("The project operation did not complete. Inspect logs/project-launcher and retry."))
 		}
 		return
 	}
@@ -208,19 +209,19 @@ func main() {
 			offset = info.Size()
 		}
 		if err = cmd.Start(); err != nil {
-			problem("The project-local runtime could not start. Check logs/project-launcher.")
+			problem(translated("The project-local runtime could not start. Check logs/project-launcher."))
 			return
 		}
 		done := make(chan error, 1)
 		go func() { done <- cmd.Wait() }()
 		if err = followProgress(logPath, offset, done, setNativeProgress); err != nil {
-			problem("Project startup did not complete. Check logs/project-launcher, then open the app to retry.")
+			problem(translated("Project startup did not complete. Check logs/project-launcher, then open the app to retry."))
 		}
 		return
 	}
 	if err = cmd.Start(); err != nil {
 		f.WriteString("Launcher could not start the project-local Node runtime. Repair using Saplingagent.sh.\n")
-		problem("The project-local runtime could not start.")
+		problem(translated("The project-local runtime could not start."))
 		return
 	}
 	cmd.Process.Release()

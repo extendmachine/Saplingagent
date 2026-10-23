@@ -11,7 +11,7 @@ async function fixture(t, os = 'MINGW64_NT-10.0-19045') {
   const parent = path.join(project, '.cache/shell-routing'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "中文 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['Saplingagent.sh','kernel/scripts/Saplingagent.sh', 'kernel/scripts/windows/bootstrap.sh', 'kernel/scripts/windows/bootstrap.ps1']) {
+  for (const file of ['kernel/localization/installer-messages.sh','kernel/localization/installer-messages.ps1','Saplingagent.sh','kernel/scripts/Saplingagent.sh', 'kernel/scripts/windows/bootstrap.sh', 'kernel/scripts/windows/bootstrap.ps1']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const bin = path.join(root, 'fake-bin'); await fs.mkdir(bin);
@@ -37,7 +37,7 @@ test('Windows Bash routes explicit actions with converted Unicode root and encod
   assert.deepEqual(capture.map(x => [x.action, x.flag]), [['install', '--repair'], ['login', '--device-auth'], ['start', '--no-open'], ['opencode', ''],['configure','--no-open']]);
   for (const row of capture) {
     assert.equal(row.root, "C:\\test\\中文 app's folder"); assert.equal(row.language, 'zh');
-    assert.match(row.program, /检测到设备/); assert.match(row.program, /function Get-WindowsDevice/);
+    assert.match(row.program, /installer-messages.ps1/); assert.match(row.program, /function Get-WindowsDevice/);
     assert.match(row.program, /\$env:SAPLING_BOOTSTRAP_ROOT/); assert.equal(row.argConversion, '*');
   }
 });

@@ -1,3 +1,6 @@
+import {launcherMessages} from '../localization/launcher-messages.mjs';
+import {formatMessage} from '../localization/public.mjs';
+import {readLanguage} from '../localization/store.mjs';
 import {ensureManagedDirectory} from '../contracts/local-storage.mjs';
 import {withConfigurationWrite,atomicConfigurationJSON} from '../contracts/configuration-write.mjs';
 import fs from 'node:fs/promises';
@@ -64,5 +67,7 @@ export async function setup({ importExistingAuth = process.env.SEED_IMPORT_EXIST
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const result = await setup();
-  console.log(result.imported ? 'Local services prepared; existing Codex login imported into this project.' : 'Local services prepared; project login preserved.');
+  const language=await readLanguage(root,process.env.SAPLING_LANG);
+  const text=(key)=>formatMessage(launcherMessages,language,key);
+  console.log(text(result.imported ? 'Local services prepared; existing Codex login imported into this project.' : 'Local services prepared; project login preserved.'));
 }

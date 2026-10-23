@@ -1,3 +1,6 @@
+import { readLanguage } from '../localization/store.mjs';
+import { normalizeLanguage, describeError, formatMessage } from '../localization/public.mjs';
+import { launcherMessages } from '../localization/launcher-messages.mjs';
 // A is a short-lived bootstrap. Configuration runs from the external capsule B.
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -12,6 +15,7 @@ import {statusPageOpener,launchProgress} from './status.mjs';
 
 const root=await fs.realpath(process.env.SEED_ROOT||fileURLToPath(new URL('../../',import.meta.url)));
 try{
+  process.env.SAPLING_LANG=process.env.SAPLING_LANG_EXPLICIT==='1'?normalizeLanguage(process.env.SAPLING_LANG):await readLanguage(root,normalizeLanguage(process.env.LC_ALL||process.env.LANG));
   const dockAction=process.argv.find(value=>/^--dock-(start|open|stop|status)$/.test(value));
   if(dockAction){
     const {createDockController}=await import('./dock.mjs');
@@ -45,13 +49,14 @@ try{
       }
     }else{
       const address=await openConfiguration(root,{noOpen});
-      console.log(`Project setup: http://127.0.0.1:${address.port}/`);
+      console.log(formatMessage(launcherMessages,process.env.SAPLING_LANG,'Project setup: {url}',{url:`http://127.0.0.1:${address.port}/`}));
     }
   }
   }
 }catch(error){
   if(process.argv.includes('--launch'))launchProgress('failed');
   await dailyLog(root,'launcher_failed',{code:error.code||'LAUNCHER_FAILED'}).catch(()=>{});
-  console.error(error.code||'LAUNCHER_FAILED',error.status?error.message:'The project launcher could not finish. Inspect logs/project-launcher/ and retry Saplingagent.sh.');
+  const info=describeError(error,process.env.SAPLING_LANG);
+  console.error([info.summary,info.action,info.code||'LAUNCHER_FAILED',info.details].filter(Boolean).join('\n'));
   process.exitCode=1;
 }

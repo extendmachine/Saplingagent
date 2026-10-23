@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
 	"syscall"
@@ -22,3 +23,17 @@ func runtimeBootstrap(root string, env []string) *exec.Cmd {
 }
 
 func runtimeMayBeRunning(root string) bool { return false }
+
+func systemLanguage() string {
+	if value := os.Getenv("LC_ALL"); value != "" {
+		return value
+	}
+	if value := os.Getenv("LANG"); value != "" {
+		return value
+	}
+	language, _, _ := syscall.NewLazyDLL("kernel32.dll").NewProc("GetUserDefaultUILanguage").Call()
+	if language&0x3ff == 4 {
+		return "zh"
+	}
+	return "en"
+}

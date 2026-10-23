@@ -17,7 +17,7 @@ async function fixture(t, { failure = false, longRunning = false } = {}) {
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   await fs.copyFile(path.join(project, 'Saplingagent.sh'), path.join(root, 'Saplingagent.sh'));
   await fs.mkdir(path.join(root, 'kernel/scripts/macos'), { recursive: true });
-  await fs.copyFile(path.join(project,'kernel/scripts/Saplingagent.sh'),path.join(root,'kernel/scripts/Saplingagent.sh'));
+  await fs.copyFile(path.join(project,'kernel/scripts/Saplingagent.sh'),path.join(root,'kernel/scripts/Saplingagent.sh'));await fs.mkdir(path.join(root,'kernel/localization'),{recursive:true});await fs.copyFile(path.join(project,'kernel/localization/installer-messages.sh'),path.join(root,'kernel/localization/installer-messages.sh'));
   await fs.writeFile(path.join(root, 'kernel/scripts/macos/bootstrap.sh'), `#!/bin/bash
 cd "$(dirname "$0")/../../.."
 printf '%s\\n' "$*" >> actions.txt
@@ -175,4 +175,11 @@ test('successful web setup releases the legacy menu process instead of retaining
  const value=await execute(root,'2\n4\n0\n',[],'en',{SAPLING_LEGACY_MENU:'1'});assert.equal(value.code,0);assert.equal(await actions(root),'configure\n');
  const failed=await fixture(t,{failure:true});await fs.mkdir(path.join(failed,'kernel/launcher'),{recursive:true});await fs.writeFile(path.join(failed,'kernel/launcher/entry.mjs'),'// Synthetic management entry');
  assert.equal((await execute(failed,'2\n4\n0\n',[],'en',{SAPLING_LEGACY_MENU:'1'})).code,0);assert.equal(await actions(failed),'configure\ndoctor\n');
+});
+
+test('saved project language skips the picker, explicit option wins, and OS locale is the first-install default',async t=>{
+ const root=await fixture(t);await fs.mkdir(path.join(root,'config'));await fs.writeFile(path.join(root,'config/ui-language.json'),JSON.stringify({schemaVersion:1,language:'zh'}));
+ const stored=await execute(root,'4\n0\n',[],null,{SAPLING_LANG:'en',SAPLING_LANG_EXPLICIT:'0',LANG:'en_US.UTF-8'});assert.equal(stored.code,0);assert.doesNotMatch(stored.output,/Language \/ 语言/);assert.match(stored.output,/服务诊断/);assert.equal(await fs.readFile(path.join(root,'languages.txt'),'utf8'),'zh\n');
+ const explicit=await execute(root,'4\n0\n',[],'en');assert.match(explicit.output,/Diagnostics/);assert.equal(await fs.readFile(path.join(root,'languages.txt'),'utf8'),'zh\nen\n');
+ await fs.rm(path.join(root,'config/ui-language.json'));const first=await execute(root,'\n0\n',[],null,{SAPLING_LANG:'',SAPLING_LANG_EXPLICIT:'0',LANG:'zh_CN.UTF-8',LC_ALL:''});assert.match(first.output,/Enter=中文/);assert.match(first.output,/服务诊断/);
 });
