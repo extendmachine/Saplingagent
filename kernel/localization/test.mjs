@@ -60,3 +60,15 @@ test('standalone error helper uses the same classifier as the imported contract'
  const result=runInNewContext(browserErrorSource()+`;describeError({code:'KERNEL_CONFLICT',message:'file'},'zh')`);
  assert.equal(result.summary,describeError({code:'KERNEL_CONFLICT',message:'file'},'zh').summary);
 });
+
+
+test('independent help renders both complete languages without executing user markup',async()=>{
+ const {renderHelpPage,helpMessages}=await import('./help.mjs');
+ assert.equal(helpMessages.en.sections.length,helpMessages.zh.sections.length);
+ for(const language of ['en','zh']){
+  const html=renderHelpPage(language,{endpoint:'/api/config/language',token:'</script><unsafe>'});
+  assert.ok(html.includes(language==='zh'?'lang="zh-CN"':'lang="en"'));
+  assert.ok(!html.includes('</script><unsafe>'));
+  for(const section of helpMessages[language].sections)assert.ok(html.includes(section[0]));
+ }
+});

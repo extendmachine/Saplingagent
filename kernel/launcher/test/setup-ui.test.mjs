@@ -82,3 +82,14 @@ test('interrupted and active builder locks remain owned and report explicit reco
   await assert.rejects(prepareSetupUI(root,{waitMs:0}),e=>e.code==='UI_BUILD_BUSY');
   assert.equal(JSON.parse(await fs.readFile(owner)).id,'active');
 });
+
+
+test('a shared language catalog change rebuilds setup even when setup TSX is unchanged',async t=>{
+  const root=await fixture(t);let count=0;const build=async(_,stage)=>{count++;await output(stage);};
+  await fs.mkdir(path.join(root,'kernel/localization'));
+  const catalog=path.join(root,'kernel/localization/setup-messages.mjs');
+  await fs.writeFile(catalog,'export const messages={en:{save:"Save"},zh:{save:"保存"}};');
+  await prepareSetupUI(root,{build});assert.equal(count,1);
+  await fs.writeFile(catalog,'export const messages={en:{save:"Save settings"},zh:{save:"保存设置"}};');
+  assert.deepEqual(await prepareSetupUI(root,{build}),{rebuilt:true});assert.equal(count,2);
+});
