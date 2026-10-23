@@ -1,4 +1,6 @@
 import test from 'node:test';
+import http from 'node:http';
+import {RuntimeManager} from '../services/runtime-manager/manager.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -22,7 +24,10 @@ test('preferences are project-local, atomic and do not overwrite surrounding con
  assert.equal(await fs.readFile(path.join(root,'config/project.json'),'utf8'),'keep');
  await assert.rejects(writeLanguage(root,'fr'),{code:'INVALID_LANGUAGE'});
  assert.equal(await readLanguage(root),'zh');assert.deepEqual((await fs.readdir(path.join(root,'config'))).sort(),['project.json','ui-language.json']);
- await fs.writeFile(path.join(root,'config/ui-language.json'),'{broken');assert.equal(await readLanguage(root,'zh'),'zh');
+ for(const raw of ['{broken','null','[]','42']) {
+ await fs.writeFile(path.join(root,'config/ui-language.json'),raw);assert.equal(await readLanguage(root,'zh'),'zh');
+ assert.equal(await fs.readFile(path.join(root,'config/ui-language.json'),'utf8'),raw);
+ }
 });
 test('known and unknown errors always retain code plus localized explanation and next action',()=>{
  for(const language of ['en','zh'])for(const issue of [{code:'KERNEL_CONFLICT',message:'kernel/file.mjs'},Error('Your refresh token was already used'),{code:'SOME_NEW_CODE',message:'future problem'}]){
@@ -71,4 +76,20 @@ test('independent help renders both complete languages without executing user ma
   assert.ok(!html.includes('</script><unsafe>'));
   for(const section of helpMessages[language].sections)assert.ok(html.includes(section[0]));
  }
+});
+
+test('language writes block maintenance until completion and release their count on aborted bodies',async t=>{
+ const root=await project(t),manager={root,gatewayWrites:0};
+ const options={manager,token:'fixture-token',frontPort:0,managerPort:0};
+ const server=createManagerServer(options);await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>server.close(r)));
+ options.frontPort=server.address().port;
+ const request=()=>http.request({host:'127.0.0.1',port:options.frontPort,path:'/api/runtime/language',method:'POST',headers:{origin:`http://127.0.0.1:${options.frontPort}`,'content-type':'application/json'}});
+ async function count(expected){for(let i=0;i<100&&manager.gatewayWrites!==expected;i++)await new Promise(r=>setTimeout(r,5));assert.equal(manager.gatewayWrites,expected);}
+ const first=request();const response=new Promise((resolve,reject)=>{first.on('error',reject);first.on('response',res=>{res.resume();res.on('end',()=>resolve(res.statusCode));});});
+ first.write('{"language":');await count(1);
+ await assert.rejects(RuntimeManager.prototype.prepareMaintenance.call(manager),{code:'KERNEL_BUSY'});
+ first.end('"zh"}');assert.equal(await response,200);await count(0);assert.equal(await readLanguage(root),'zh');
+ const aborted=request();aborted.on('error',()=>{});aborted.write('{"language":');await count(1);aborted.destroy();await count(0);
+ assert.equal(await readLanguage(root),'zh');
+ manager.closed=true;const closed=await fetch(`http://127.0.0.1:${options.frontPort}/api/runtime/language`,{method:'POST',headers:{origin:`http://127.0.0.1:${options.frontPort}`},body:'{"language":"en"}'});assert.equal(closed.status,409);assert.equal(manager.gatewayWrites,0);
 });

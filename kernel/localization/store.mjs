@@ -9,7 +9,7 @@ export async function readLanguage(root, fallback = 'en') {
     const directory = path.join(await fs.realpath(root),'config'), file = path.join(directory,'ui-language.json');
     if ((await fs.lstat(directory)).isSymbolicLink() || !(await fs.lstat(file)).isFile()) throw Object.assign(new Error('Language settings must be a regular project file.'),{code:'PROJECT_STORAGE_LOCATION',status:409});
     const value = JSON.parse(await fs.readFile(path.join(root, 'config/ui-language.json'), 'utf8'));
-    if (value.schemaVersion === 1 && supportedLanguages.includes(value.language)) return value.language;
+    if (value?.schemaVersion === 1 && supportedLanguages.includes(value.language)) return value.language;
   } catch (error) { if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error; }
   return normalizeLanguage(fallback);
 }
