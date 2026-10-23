@@ -1,4 +1,7 @@
+import { runtimeLanguageScript } from './localization/runtime-messages.mjs';
 // Copied before source replacement. This temporary process survives app shutdown.
+import { readLanguage, writeLanguage } from './localization/store.mjs';
+import { normalizeLanguage, describeError } from './localization/public.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import http from 'node:http';
@@ -11,6 +14,7 @@ import { terminateOwned } from './contracts/local-process.mjs';
 const [root,jobId,action,id]=process.argv.slice(2);
 if(!validId(jobId)||!validId(id)||!['apply','restore'].includes(action))throw Error('Invalid maintenance request.');
 const prefix=`.runtime/kernel/jobs/${jobId}`, state={jobId,phase:'waiting',message:'Waiting for the application to stop.',backupId:action==='restore'?id:null,url:null};
+let language=await readLanguage(root,normalizeLanguage(process.env.SAPLING_LANG||process.env.LANG));
 let app, busy=false, begun=false, successful=false;
 async function save(phase,message){Object.assign(state,{phase,message});await jsonWrite(root,`${prefix}/state.json`,state);await record(root,'maintenance_phase',{jobId,phase});}
 async function releaseLease(){try{const value=JSON.parse(await fs.readFile(path.join(root,'.runtime/kernel/active-job.json'),'utf8'));if(value.jobId===jobId)await fs.unlink(path.join(root,'.runtime/kernel/active-job.json'));}catch(error){if(error.code!=='ENOENT')throw error;}}
@@ -48,7 +52,7 @@ async function restart(){
  throw Error('Application readiness timed out. Source results and backup remain available. Open runtime recovery or retry.');
 }
 async function execute(operation){
- if(busy||successful)return;busy=true;
+ if(busy||successful)return;busy=true;delete state.error;
  try{
   if(operation==='begin'){
    await waitOffline();await save('applying',action==='apply'?'Applying the verified kernel package.':'Restoring the selected source backup.');
@@ -66,18 +70,24 @@ async function execute(operation){
   await restart();
  }catch(error){
   const match=String(error.message).match(/Backup ([a-f0-9-]{36})/);if(match)state.backupId=match[1];
-  await save('failed',error.code?`${error.code}: ${error.message}`:error.message);
+  state.error=describeError(error,language);await save('failed',state.error.details);
  }finally{busy=false;}
 }
-const html=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Saplingagent kernel maintenance</title><style>body{font:16px system-ui;max-width:680px;margin:10vh auto;padding:24px;color:#263128;background:#fafbf7}pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:20px;background:#eef1ea;border-radius:16px}button,a{display:inline-block;padding:10px 14px;margin:6px;border:1px solid #bac5b8;border-radius:8px;background:white;color:inherit}button{cursor:pointer}button:disabled{opacity:.45}</style><h1>Kernel maintenance</h1><p>Keep this page open while the application stops and restarts. Your application files and Git are preserved. Source restore is manual.</p><pre id="state" role="status">Connecting…</pre><div id="actions"><button id="retry">Retry dependencies & start</button><button id="restore">Restore backup & start</button><button id="close">Close maintenance</button></div><a id="app" hidden>Open app / runtime recovery</a><script>
-let busy=false;const out=document.getElementById('state');async function poll(){try{const r=await fetch('/status');const s=await r.json();out.textContent=s.phase+'\\n'+s.message+(s.sourceResult?'\\nSource: '+s.sourceResult:'')+(s.backupId?'\\nBackup: '+s.backupId:'');for(const b of document.querySelectorAll('button'))b.disabled=busy||s.busy||s.phase==='ready';document.getElementById('restore').disabled=busy||s.busy||!s.backupId||s.phase==='ready';if(s.url){const a=document.getElementById('app');a.hidden=false;a.href=s.url+'__saplingagent/runtime'}if(s.phase==='ready'&&s.url)location.replace(s.url)}catch{out.textContent='Maintenance connection unavailable. Inspect .runtime/kernel/jobs and logs/kernel-manager; no success is assumed.'}}for(const b of document.querySelectorAll('button'))b.onclick=async()=>{if(b.id==='restore'&&!confirm('Restore the saved kernel source backup? Application data is not restored.'))return;busy=true;try{const r=await fetch('/'+b.id,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(!r.ok){const e=await r.json();out.textContent=e.error||'Operation failed';}}finally{busy=false;await poll()}};poll();setInterval(poll,1000);
+const html=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title data-i18n="Saplingagent kernel maintenance">Saplingagent kernel maintenance</title><style>body{font:16px system-ui;max-width:680px;margin:10vh auto;padding:24px;color:#263128;background:#fafbf7}pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:20px;background:#eef1ea;border-radius:16px}button,a{display:inline-block;padding:10px 14px;margin:6px;border:1px solid #bac5b8;border-radius:8px;background:white;color:inherit}button{cursor:pointer}button:disabled{opacity:.45}</style><nav style="display:flex;justify-content:flex-end;gap:10px;padding:8px"><label><span data-i18n="Language">Language</span> <select id="language" data-language aria-label="Language / 语言"><option value="en">English</option><option value="zh">中文</option></select></label></nav><h1 data-i18n="Kernel maintenance">Kernel maintenance</h1><p data-i18n="Keep this page open while the application stops and restarts. Your application files and Git are preserved. Source restore is manual.">Keep this page open while the application stops and restarts. Your application files and Git are preserved. Source restore is manual.</p><pre id="state" role="status" data-i18n="Connecting…">Connecting…</pre><div id="actions"><button id="retry" data-i18n="Retry dependencies &amp; start">Retry dependencies & start</button><button id="restore" data-i18n="Restore backup &amp; start">Restore backup & start</button><button id="close" data-i18n="Close maintenance">Close maintenance</button></div><a id="app" hidden data-i18n="Open app / runtime recovery">Open app / runtime recovery</a><script>${runtimeLanguageScript()}
+
+applyLanguage(${JSON.stringify(language)});
+document.getElementById('language').onchange=async()=>{try{const r=await fetch('/language',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({language:document.getElementById('language').value})});if(!r.ok)throw Error();applyLanguage((await r.json()).language);await poll()}catch{out.textContent=t('Language could not be saved. Check this runtime and retry.')}};
+let busy=false;const out=document.getElementById('state');async function poll(){try{const r=await fetch('/status');const s=await r.json();applyLanguage(s.language);out.textContent=t(s.phase)+'\\n'+(s.error?[s.error.summary,s.error.action,s.error.code,s.error.details].filter(Boolean).join('\\n'):t(s.message))+(s.sourceResult?'\\n'+t('Source: ')+t(s.sourceResult):'')+(s.backupId?'\\n'+t('Backup: ')+s.backupId:'');for(const b of document.querySelectorAll('button'))b.disabled=busy||s.busy||s.phase==='ready';document.getElementById('restore').disabled=busy||s.busy||!s.backupId||s.phase==='ready';if(s.url){const a=document.getElementById('app');a.hidden=false;a.href=s.url+'__saplingagent/runtime'}if(s.phase==='ready'&&s.url)location.replace(s.url)}catch{out.textContent=t("Maintenance connection unavailable. Inspect .runtime/kernel/jobs and logs/kernel-manager; no success is assumed.")}}for(const b of document.querySelectorAll('button'))b.onclick=async()=>{if(b.id==='restore'&&!confirm(t("Restore the saved kernel source backup? Application data is not restored.")))return;busy=true;try{const r=await fetch('/'+b.id,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(!r.ok){const e=await r.json();out.textContent=errorText(e.error||t("Operation failed"));}}finally{busy=false;await poll()}};poll();setInterval(poll,1000);
 </script></html>`;
 const server=http.createServer(async(req,res)=>{
  const port=server.address().port,origin=`http://127.0.0.1:${port}`;
  const send=(code,value)=>{res.writeHead(code,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
  if(req.headers.host!==`127.0.0.1:${port}`||req.headers.origin&&req.headers.origin!==origin||req.headers['sec-fetch-site']==='cross-site')return send(403,{error:'Local origin required.'});
  if(req.method==='GET'&&req.url==='/'){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Frame-Options':'DENY'});return res.end(html);}
- if(req.method==='GET'&&req.url==='/status')return send(200,{...state,busy});
+ if(req.method==='GET'&&req.url==='/status')return send(200,{...state,busy,language,error:state.error?describeError({code:state.error.code,message:state.error.details},language):undefined});
+ if(req.method==='POST'&&req.headers.origin===origin&&req.url==='/language'){
+  try{let body='';for await(const chunk of req){body+=chunk;if(Buffer.byteLength(body)>256)return send(413,{error:'Request too large.'});}const value=JSON.parse(body);if(!['en','zh'].includes(value.language))return send(400,{error:'Unsupported language.'});await writeLanguage(root,value.language);language=value.language;return send(200,{language});}catch{return send(400,{error:'Language could not be saved.'});}
+ }
  if(req.method==='POST'&&req.headers.origin===origin&&['/retry','/restore','/close'].includes(req.url)){
   if(busy||successful||!begun)return send(409,{error:'Maintenance is busy or already complete.'});
   if(req.url==='/close'){await releaseLease();send(200,{closed:true});return server.close(()=>process.exit(0));}

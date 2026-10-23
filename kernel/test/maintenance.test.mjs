@@ -14,7 +14,7 @@ const hash=x=>createHash('sha256').update(x).digest('hex');
 async function write(root,file,value){await fs.mkdir(path.dirname(path.join(root,file)),{recursive:true});await fs.writeFile(path.join(root,file),value);}
 async function fixture(t,{failure=false}={}){
  const parent=path.join(project,'.cache/maintenance-tests');await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,'app-'));
- for(const directory of ['kernel','kernel/contracts','kernel/compat','contracts'])for(const name of await fs.readdir(path.join(project,directory)))if(name.endsWith('.mjs'))await write(root,`${directory}/${name}`,await fs.readFile(path.join(project,directory,name)));
+ for(const directory of ['kernel','kernel/contracts','kernel/compat','kernel/localization','contracts'])for(const name of await fs.readdir(path.join(project,directory)))if(name.endsWith('.mjs'))await write(root,`${directory}/${name}`,await fs.readFile(path.join(project,directory,name)));
  const helper="import fs from 'node:fs/promises';import path from 'node:path';await fs.writeFile(path.join(process.argv[2],'core-repaired'),'yes');";
  await write(root,'kernel/install-dependencies.mjs',helper);
  const dev=`import http from 'node:http';import fs from 'node:fs/promises';import {randomUUID} from 'node:crypto';const instanceId=randomUUID();const s=http.createServer((req,res)=>{res.setHeader('content-type','application/json');res.end(JSON.stringify({instanceId,phase:'${failure?'failed':'ready'}',busy:false}))});await new Promise(r=>s.listen(0,'127.0.0.1',r));await fs.writeFile('.runtime/runtime-address.json',JSON.stringify({pid:process.pid,instanceId,url:'http://127.0.0.1:'+s.address().port+'/'}));process.on('SIGTERM',()=>s.close(()=>process.exit(0)));`;
@@ -56,9 +56,14 @@ test('source success with failed readiness stays failed and manual restore retai
  worker.commit();let state=await poll(worker.url,'failed');assert.equal(state.sourceResult,'applied');assert.ok(state.backupId);assert.match(state.message,/readiness failed/);
  const denied=await fetch(new URL('/restore',worker.url),{method:'POST',headers:{origin:'http://evil.invalid'},body:'{}'});assert.equal(denied.status,403);
  const restore=await fetch(new URL('/restore',worker.url),{method:'POST',headers:{origin:worker.url.slice(0,-1)},body:'{}'});assert.equal(restore.status,202);
- state=await poll(worker.url,'failed');assert.equal(state.sourceResult,'restored');assert.equal(await fs.readFile(path.join(f.root,'kernel/control-page.mjs'),'utf8'),"export const kernelControlPage = 'old control';");
+ state=await poll(worker.url,'failed');assert.equal(state.sourceResult,'restored');assert.ok(state.error?.summary);assert.equal(await fs.readFile(path.join(f.root,'kernel/control-page.mjs'),'utf8'),"export const kernelControlPage = 'old control';");
  for(const [name,value]of Object.entries(f.user))assert.equal(await fs.readFile(path.join(f.root,name),'utf8'),value);
  assert.deepEqual(await fs.readFile(path.join(f.root,'.git/config')),f.gitBefore);
+ const chosen=await fetch(new URL('/language',worker.url),{method:'POST',headers:{origin:worker.url.slice(0,-1),'Content-Type':'application/json'},body:JSON.stringify({language:'zh'})});assert.equal(chosen.status,200);assert.equal((await chosen.json()).language,'zh');
+ assert.equal(JSON.parse(await fs.readFile(path.join(f.root,'config/ui-language.json'),'utf8')).language,'zh');
+ const dev=path.join(f.root,'scripts/dev.mjs');await fs.writeFile(dev,(await fs.readFile(dev,'utf8')).replace("phase:'failed'","phase:'ready'"));
+ const retry=await fetch(new URL('/retry',worker.url),{method:'POST',headers:{origin:worker.url.slice(0,-1)},body:'{}'});assert.equal(retry.status,202);
+ state=await poll(worker.url,'ready');assert.equal(state.error,undefined);assert.equal(state.language,'zh');assert.equal(state.sourceResult,'restored');
 });
 test('unknown or stale plans are refused before runtime draining',async()=>{
  const {inspectKernelPlan}=await import('../manager.mjs');await assert.rejects(inspectKernelPlan(project,randomUUID()),{code:'INVALID_PLAN'});

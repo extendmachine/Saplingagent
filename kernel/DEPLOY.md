@@ -112,3 +112,7 @@ baseline regeneration or account/Git rewrite. See docs/configuration-storage.htm
 ## External AI / MCP
 
 Install/repair includes the pinned MCP SDK in kernel dependencies. Enable External AI / MCP in web setup and export client JSON after the final folder name is established. External-only mode needs no built-in account. The external client starts the local stdio process; no extra HTTP port or global client configuration is created. Disconnect this project's MCP connections before kernel update/restore, project rename or dependency repair. See `services/mcp-access/DEPLOY.md` and `../docs/mcp-access.html`. Kernel version is0.9.6; Git SHA identifies the exact source.
+
+### Language resources and maintenance handoff
+
+The independent maintenance worker copies its full localization module closure before applying source. Its same-origin language selector writes only the active project's shared preference. Kernel, status and maintenance pages use English/Chinese catalogs and shared error redaction; no frontend rebuild or model call is needed for those pages. The control iframe/footer changes language without navigating the host page. Keep the pre-Node Bash/PowerShell catalog files in delivered source snapshots. Existing native launchers require a rebuild for new embedded text, while their project preference remains outside the kernel update manifest.
