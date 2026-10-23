@@ -8,7 +8,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [controller] = useState(() => createLanguageController({ browserLanguage: navigator.language, storage: () => window.localStorage }));
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
   useEffect(() => { const abort = new AbortController(); void controller.load(abort.signal); return () => abort.abort(); }, [controller]);
-  useEffect(() => { document.documentElement.lang = state.language; }, [state.language]);
+  useEffect(() => { document.documentElement.lang = state.language; document.title = translate(state.language, 'page.title'); }, [state.language]);
   return <LanguageContext.Provider value={{ ...state, locale: localeFor(state.language), t: (key, params) => translate(state.language, key, params), text: value => resolveText(value, state.language), select: controller.select, receive: controller.receive }}>{children}</LanguageContext.Provider>;
 }
 export const useLanguage = () => useContext(LanguageContext);

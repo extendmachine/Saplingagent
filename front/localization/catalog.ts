@@ -1,5 +1,6 @@
 export const catalog = {
   "en": {
+    "page.title": "Saplingagent - Grow your application",
     "common.language": "Interface language",
     "common.help": "Help",
     "common.retry": "Retry",
@@ -188,6 +189,7 @@ export const catalog = {
     "runtime.confirmation": "Waiting for your confirmation…"
   },
   "zh": {
+    "page.title": "Saplingagent - 构建你的应用",
     "common.language": "界面语言",
     "common.help": "帮助",
     "common.retry": "重试",
