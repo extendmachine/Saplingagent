@@ -20,13 +20,13 @@ test('native and runtime catalogs have complete English/Chinese keys',()=>{
  }
 });
 
-function controlsHarness({getLanguage=async()=>'zh',setLanguage=async value=>value}={}){
+function controlsHarness({getLanguage=async()=>'zh',setLanguage=async value=>value,standalone=false,footer=false}={}){
  const elements=new Map(),calls=[],messages=[],listeners={};
  const element=id=>{if(!elements.has(id))elements.set(id,{id,value:'',textContent:'',hidden:false,dataset:{},disabled:false,checked:false,replaceChildren(...values){this.children=values}});return elements.get(id)};
  for(const match of kernelControlPage.matchAll(/<[^<>]+id="([^"]+)"[^<>]*data-i18n="([^"]+)"[^<>]*>/g))element(match[1]).dataset.i18n=match[2].replaceAll('&amp;','&');
- const parent={postMessage:(data,origin)=>messages.push({data,origin})},location={origin:'http://127.0.0.1:12345',search:'?embed',assign(){throw Error('language must not navigate')}};
+ const parent={postMessage:(data,origin)=>messages.push({data,origin})},location={origin:'http://127.0.0.1:12345',search:footer?'?footer':'?embed',assign(){throw Error('language must not navigate')}};
  const document={documentElement:{lang:'en'},body:{classList:{add(){},remove(){}}},getElementById:element,querySelectorAll(selector){if(selector==='[data-i18n]')return [...elements.values()].filter(e=>e.dataset.i18n);if(selector==='[data-language]')return [element('language')];return []}};
- const window={parent,addEventListener:(name,fn)=>listeners[name]=fn};
+ const window={parent,addEventListener:(name,fn)=>listeners[name]=fn};if(standalone)window.parent=window;
  const fetch=async(route,options)=>{calls.push({route,options});const data=route.endsWith('/language')?{language:options.method==='POST'?await setLanguage(JSON.parse(options.body).language):await getLanguage()}:{kernel:{state:'managed',version:'0.9.6'},backups:[]};return {ok:true,json:async()=>data}};
  const context=vm.createContext({document,window,parent,location,navigator:{language:'en-US'},URLSearchParams,Option:class{constructor(text,value){this.text=text;this.value=value}},fetch,console,setInterval(){},confirm(){return false}});
  vm.runInContext(kernelControlPage.match(/<script>([\s\S]*)<\/script>/)[1],context);
@@ -68,4 +68,15 @@ test('an older language GET cannot undo a saved selector choice or a trusted par
 test('a late language save acknowledgement does not replace a newer parent choice',async()=>{
  let finish;const h=controlsHarness({setLanguage:()=>new Promise(resolve=>finish=resolve)});await h.flush();h.elements.get('language').value='en';const save=h.elements.get('language').onchange();
  h.listeners.message({origin:h.location.origin,source:h.parent,data:{type:'saplingagent:language',language:'zh'}});finish('en');await save;assert.equal(h.document.documentElement.lang,'zh');assert.equal(h.messages.length,0);assert.equal(h.elements.get('language').disabled,false);
+});
+
+
+test('embedded controls and footer hide their language toolbar while standalone controls keep it',async()=>{
+ assert.match(kernelControlPage,/\.language-tools\[hidden\]\{display:none\}/);
+ assert.doesNotMatch(kernelControlPage,/<nav[^>]*style=/);
+ for(const options of [{},{footer:true},{standalone:true,footer:true}]){
+  const h=controlsHarness(options);await h.flush();assert.equal(h.elements.get('language-tools').hidden,true);assert.equal(h.elements.get('restart-bar').textContent,'重启应用');assert.equal(h.elements.get('open').textContent,'内核');
+  h.elements.get('open').onclick();assert.equal(h.elements.get('language-tools').hidden,true);
+ }
+ const standalone=controlsHarness({standalone:true});await standalone.flush();assert.equal(standalone.elements.get('language-tools').hidden,false);assert.equal(standalone.elements.get('language').value,'zh');
 });
