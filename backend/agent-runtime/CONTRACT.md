@@ -2,7 +2,7 @@
 
 Task 010, replacing the permission policy in 005; the complete field is contracts/runtime-api.md as the shared contract, and the browser is the same source/api agent. GET /health distinguishes between process healthy and agentReady; GET /api/status returns ready/authenticated/provider/model, permissions(full-access/danger-full-access/never/approve), project Skills and MCP real tool directory, and does not return token.
 
-TASK-20261011-022 adds `GET /api/engines` and immutable per-session `engine/providerId/modelId`. `POST /api/chat` accepts those fields only when creating or confirming a session selection. Codex preserves the existing RPC path; the setup-selected engine is the UI default, with Codex as the legacy HTTP default when omitted. OpenCode is independent, uses its official SDK/server API, emits the existing SSE event shapes only after the request/session state has persisted, and has no silent fallback. Provider credentials and the local server password are never part of this HTTP API.
+TASK-20261011-022 adds `GET /api/engines` and per-session `engine/providerId/modelId`. Ordinary PATCH/chat cannot change that binding; the explicit switch contract below supersedes the original immutable-session restriction. Codex preserves the existing RPC path; the setup-selected engine is the UI default, with Codex as the legacy HTTP default when omitted. OpenCode is independent, uses its official SDK/server API, emits the existing SSE event shapes only after the request/session state has persisted, and has no silent fallback. Provider credentials and the local server password are never part of this HTTP API.
 
 TASK-20261010-004 New Git version interface. GET /api/git returns the current repository name, branch or detached status, HEAD, `version` short version number, `fingerprint` current status fingerprint, work area changes (up to 100 items and mark truncation), local branches, recent submissions (25 by default) and the status of branches occupied by other Worktree. When it is clean, the version number is short SHA, and when there is a change, a fingerprint summary is added; the fingerprint is used to detect page status changes, not a security signature. POST /api/git/switch {branch} only switches to local branches that already exist and are not occupied by other Worktrees; if the current named branch is changed, first stage nonignored source changes excluding private runtime files and automatically submit with `chore: save <current> before switching to <target>`, and then switch the target branch. Return 409 during active Agent dialogue, concurrent switching or target Worktree occupation. The interface does not create/delete branches, does not automatically stash, force/discard, remote fetch/pull/push; after success, the front-end should reload the target version. USE GIT_NOT_REPOSITORY, GIT_INVALID_BRANCH, GIT_BRANCH_NOT_FOUND, GIT_BRANCH_IN_USE, GIT_AGENT_BUSY, GIT_SWITCH_BUSY OR GIT_COMMAND_FAILED.
 
@@ -145,3 +145,48 @@ Usage persists with message snapshots, including dirty-session retries and expli
 null clearing. Old sessions remain compatible without migrations. Token events do
 not extend the effective-progress timer. Session listing/switching remains read-only;
 closing a browser subscription does not interrupt its backend turn or send a prompt.
+
+## Same-conversation AI handoff (TASK-20261023-004)
+
+`POST /api/sessions/:id/engine` takes the full selection `{engine,providerId,modelId,
+expectedEngineRevision}` and returns200 `{session}`. The expected revision is a
+required nonnegative safe integer (legacy sessions read as0). Same selection is a
+no-op; a different selection must be available in the current engine catalog.
+Codex retains its configured default model and requires null provider/model IDs.
+No model prompt is sent by switching. Active/finishing turns, pending saves,
+approvals or concurrent switches return409; unavailable targets return503 or400.
+The Agent reserves the session against chat before awaiting Workspace, then uses
+both Workspace revision and binding revision for its atomic switch. Failed writes
+leave the saved selection/history intact; unknown network outcomes require reload.
+
+Workspace remains the source of the logical conversation. Switching preserves its
+ID, title, messages, attachments and request ledger, archives native binding metadata,
+increments `engineRevision`, clears native thread/context usage, and marks history
+handoff pending. Returning to a former engine also starts a fresh native thread.
+Unrelated old conversations are not merged. Old sessions get read-only defaults.
+
+The next user send supplies a quoted, role-labelled recent history excerpt as user
+input to any of the three engines, never as system instructions or visible new
+messages. The excerpt is bounded to24000 characters; omitted content is disclosed
+and the complete project-local session JSON is referenced. Attachment IDs resolve
+through Workspace; missing files are labelled unavailable. No credentials, global
+native logs or hidden reasoning are imported. The current user message governs
+actions. A failed/interrupted turn keeps the same pending handoff ID for manual
+retry; only a completed request successfully saved for the current binding marks
+it delivered. Delivery means successful turn persistence, not guaranteed model
+recall or exactly-once provider execution.
+
+Chat optionally accepts `engineRevision` for legacy compatibility and rejects a
+stale value409 `SESSION_ENGINE_CHANGED`. New clients always send it. Each new
+request ledger entry records the current revision; an old failed request cannot be
+replayed under a new binding. Every Agent run/recovery snapshot checks the binding
+revision to prevent late callbacks overwriting a switched session. Full Access,
+existing SSE shapes and kernel adapters remain unchanged.
+
+Final-save acknowledgement failures are read back against the intended binding,
+thread, messages, request ledger, usage and delivery metadata. A matching persisted
+result is success. When persistence remains unknown, the dirty cache retains the
+actual model outcome and blocks switching; a manual retry restores the same snapshot
+and idempotent delivery acknowledgement before replaying the completed result. It
+does not downgrade a possibly committed result or repeat completed inference. The
+HTTP/SSE error still reports persistence uncertainty until storage is confirmed.
