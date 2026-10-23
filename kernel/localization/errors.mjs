@@ -50,10 +50,10 @@ const groups = {
   credentialExists: ['CREDENTIAL_EXISTS'], missingAuth: ['LOCAL_AUTH_NOT_FOUND','LOCAL_API_NOT_FOUND'],
   setup: ['PROJECT_SETTINGS_REQUIRED','PROJECT_RESTART_REQUIRED','PROJECT_FINALIZATION_REQUIRED','PROJECT_DIRECTORY_REQUIRED'],
   dependency: ['UI_NOT_BUILT','UI_BUILD_FAILED','UI_BUILD_INTERRUPTED','DEPENDENCIES_MISSING','SPAWN_FAILED','ENOENT'],
-  permission: ['INVALID_HOST','INVALID_ORIGIN','UNAUTHORIZED','FORBIDDEN','EACCES','EPERM'],
+  permission: ['INVALID_HOST','INVALID_ORIGIN','UNAUTHORIZED','FORBIDDEN','EACCES','EPERM','PROJECT_STORAGE_LOCATION'],
   conflict: ['KERNEL_CONFLICT'], kernel: ['KERNEL_INCOMPATIBLE','INVALID_KERNEL','KERNEL_INTEGRITY'],
   session: ['SESSION_NOT_FOUND'], stopped: ['SERVICE_STOP_FAILED','STOP_UNAVAILABLE'],
-  storage: ['ENOSPC','EROFS','SESSION_SAVE_FAILED','WORKSPACE_UNAVAILABLE']
+  storage: ['ENOSPC','EROFS','SESSION_SAVE_FAILED','WORKSPACE_UNAVAILABLE','LANGUAGE_SAVE_FAILED']
 };
 export function describeError(error, language = 'en') {
   const issue = error?.error || error;
@@ -76,4 +76,10 @@ export function describeError(error, language = 'en') {
   }
   const [summary, action] = errorMessages[language === 'zh' ? 'zh' : 'en'][group];
   return { code, summary, action, details };
+}
+
+// Embed the exact shared classifier in standalone pages without remote scripts.
+export function browserErrorSource() {
+  const json=value=>JSON.stringify(value).replaceAll('<','\\u003c');
+  return `const errorMessages=${json(errorMessages)},groups=${json(groups)};${describeError.toString()}`;
 }

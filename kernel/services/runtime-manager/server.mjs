@@ -45,6 +45,7 @@ export function createControlHandler(options) {
         let language;
         try {
           if (req.method === 'POST') {
+            if (manager.operation || manager.maintenance || manager.closing) return send(res,409,{error:{code:'RUNTIME_BUSY',message:'Wait for the current runtime operation before changing language.'}});
             let bytes = 0; const chunks = [];
             for await (const chunk of req) {
               bytes += chunk.length;
@@ -57,7 +58,7 @@ export function createControlHandler(options) {
             language = await writeLanguage(manager.root,input.language);
           } else language = await readLanguage(manager.root,normalizeLanguage(req.headers['accept-language']));
           return send(res,200,{language,supported:supportedLanguages});
-        } catch { return send(res,503,{error:{code:'LANGUAGE_SAVE_FAILED',message:'The project language preference could not be read or saved. Check folder access and retry.'}}); }
+        } catch (error) { return send(res,error.status || 503,{error:{code:error.status ? error.code : 'LANGUAGE_SAVE_FAILED',message:'The project language preference could not be read or saved. Check folder access, wait for configuration to finish and retry.'}}); }
       }
       if (await kernelRequest(req,res,options,route,send)) return;
       if (req.method === 'GET' && route === '/health') return send(res, 200, { ready: true, service: 'runtime-manager' });

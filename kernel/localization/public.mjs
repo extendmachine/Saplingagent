@@ -10,4 +10,4 @@ export function formatMessage(catalog, language, key, params = {}) {
   const text = catalog[normalizeLanguage(language)]?.[key] ?? catalog.en?.[key] ?? key;
   return String(text).replace(/\{([A-Za-z0-9_]+)\}/g, (match, name) => Object.hasOwn(params, name) ? String(params[name]) : match);
 }
-export { describeError } from './errors.mjs';
+export { describeError, browserErrorSource } from './errors.mjs';

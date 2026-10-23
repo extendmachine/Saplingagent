@@ -44,3 +44,19 @@ test('runtime language endpoint respects local auth, browser fallback, validatio
  assert.equal((await (await fetch(url,{method:'POST',headers,body:'{"language":"en"}'})).json()).language,'en');
  assert.equal((await (await fetch(url,{headers})).json()).language,'en');assert.equal(await readLanguage(root,'zh'),'en');
 });
+test('language writes respect configuration relocation lease and refuse external managed paths',async t=>{
+ const root=await project(t);
+ await fs.mkdir(path.join(root,'local-secrets/ai-config'),{recursive:true});
+ await fs.writeFile(path.join(root,'local-secrets/ai-config/write.lock'),'other-owner');
+ await assert.rejects(writeLanguage(root,'zh'),{code:'CONFIG_BUSY'});
+ assert.equal(await fs.readFile(path.join(root,'local-secrets/ai-config/write.lock'),'utf8'),'other-owner');
+ await fs.rm(path.join(root,'local-secrets/ai-config/write.lock'));
+ const elsewhere=await project(t);await fs.symlink(elsewhere,path.join(root,'config'),'dir');
+ await assert.rejects(writeLanguage(root,'zh'),{code:'PROJECT_STORAGE_LOCATION'});
+ assert.deepEqual(await fs.readdir(elsewhere),[]);
+});
+test('standalone error helper uses the same classifier as the imported contract',async()=>{
+ const {browserErrorSource}=await import('./public.mjs');const {runInNewContext}=await import('node:vm');
+ const result=runInNewContext(browserErrorSource()+`;describeError({code:'KERNEL_CONFLICT',message:'file'},'zh')`);
+ assert.equal(result.summary,describeError({code:'KERNEL_CONFLICT',message:'file'},'zh').summary);
+});

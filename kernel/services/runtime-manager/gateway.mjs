@@ -1,4 +1,7 @@
 import http from 'node:http';
+import {readLanguage} from '../../localization/store.mjs';
+import {normalizeLanguage} from '../../localization/public.mjs';
+import {renderHelpPage} from '../../localization/help.mjs';
 import { kernelControlPage } from '../../control-page.mjs';
 import { createControlHandler, localAccess, send } from './server.mjs';
 
@@ -11,6 +14,14 @@ export function createGateway(options) {
   const server = http.createServer((req, res) => {
     try { localAccess(req, options); } catch (error) { return send(res, error.status, { error: { code: error.code, message: 'Local endpoint authentication failed.' } }); }
     const route = new URL(req.url, 'http://127.0.0.1').pathname;
+    if (route === '/__saplingagent/help' && req.method === 'GET') {
+      const requested = new URL(req.url,'http://127.0.0.1').searchParams.get('lang');
+      return void readLanguage(manager.root,normalizeLanguage(req.headers['accept-language'])).then(saved=>{
+        if (res.destroyed) return;
+        res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"frame-ancestors 'self'"});
+        res.end(renderHelpPage(requested ? normalizeLanguage(requested,saved) : saved));
+      }).catch(()=>send(res,503,{error:{code:'HELP_UNAVAILABLE',message:'Open docs/language-help.html in this project folder.'}}));
+    }
     if (route === '/__saplingagent/kernel' && req.method === 'GET') { res.writeHead(200, {'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"frame-ancestors 'self'"}); return res.end(kernelControlPage); }
     if (route.startsWith('/api/runtime/')) return void control(req, res);
     const page = () => { if (res.headersSent || res.destroyed) return; res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "frame-ancestors 'self'" }); res.end(renderRuntimeStatusPage(manager)); };
