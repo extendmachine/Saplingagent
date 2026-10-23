@@ -70,9 +70,11 @@ export async function createWorkspaceServer({ root = process.env.SEED_ROOT || de
         response.end(bytes); return;
       }
       const id = url.pathname.match(/^\/sessions\/([^/]+)$/)?.[1];
+      const engineId = url.pathname.match(/^\/sessions\/([^/]+)\/engine$/)?.[1];
       const preferenceId = url.pathname.match(/^\/preferences\/([^/]+)$/)?.[1];
       if (request.method === 'GET' && url.pathname === '/sessions') return send(response, 200, { sessions: await store.listSessions() });
       if (request.method === 'POST' && url.pathname === '/sessions') return send(response, 201, { session: await store.createSession(await body(request)) });
+      if (request.method === 'POST' && engineId) return send(response, 200, { session: await store.switchSessionEngine(engineId, await body(request)) });
       if (request.method === 'GET' && id) return send(response, 200, { session: await store.getSession(id) });
       if (request.method === 'PATCH' && id) return send(response, 200, { session: await store.patchSession(id, await body(request)) });
       if (request.method === 'GET' && url.pathname === '/preferences') return send(response, 200, { preferences: await store.listPreferences() });

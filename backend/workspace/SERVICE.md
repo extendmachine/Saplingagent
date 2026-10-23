@@ -2,7 +2,7 @@
 
 - Contents: backend/workspace/, TASK-20261009-007, Codex/workspace.
 - Status: Implementation and isolation self-examination are completed, and the real joint adjustment is summarized by TASK-005; non-Git, no branch or submission.
-- Responsibilities: local session, engine thread/session ID, immutable engine/provider/model binding, message, running status, request to reweight the ledger and long-term preferences with clear evidence. Used by agent/MCP through internal HTTP. Legacy sessions without selection fields normalize to Codex without rewriting their content on read.
+- Responsibilities: local sessions, native engine thread/session IDs, explicit idle engine changes, messages, running status, request deduplication and long-term preferences with clear evidence. Used by agent/MCP through internal HTTP. Legacy sessions without selection fields normalize to Codex without rewriting their content on read.
 - It is not responsible for model calls, code generation, execution tools or cloud sharing, and does not automatically take temporary requirements as preferences.
 
 ## Structure and operation
@@ -22,6 +22,16 @@ and timestamps without estimating model usage, cost or compaction. Older records
 remain unchanged; an omitted patch retains the value and explicit null clears it.
 Concurrent title, message and usage patches keep unrelated fields intact through
 the existing serialized store.
+
+Explicit engine switching keeps one local conversation and all messages while
+archiving native binding metadata. The dedicated authenticated operation requires
+both storage and engine revisions and idle state; ordinary PATCH cannot change
+the selection or replace switching metadata. Agent run snapshots carry the engine
+revision so delayed native responses cannot restore an older binding. Optional
+request engine revisions identify completed history handoffs without confusing a
+previous engine's result with a new delivery. Native thread creation and model
+availability/history rendering remain Agent responsibilities. See CONTRACT.md and
+ai-tasks/TASK-20261023-005.md; no additional dependency or port is introduced.
 
 ## Daily record
 
