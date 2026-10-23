@@ -26,6 +26,11 @@ button:focus-visible { outline: 2px solid #647954; outline-offset: 4px; }
 .engine-picker { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
 .engine-picker select { min-width: 0; max-width: 180px; height: 27px; border: 1px solid #dce2d6; border-radius: 8px; background: #f7f9f4; color: #596651; padding: 0 22px 0 8px; font-size: 11px; }
 .engine-picker select:disabled { color: #9da49a; }
+.conversation-engine-controls { min-width: 0; margin-bottom: 10px; }
+.conversation-engine-controls .engine-picker { display: flex; flex-wrap: wrap; }
+.engine-apply { height: 27px; padding: 0 10px; border: 1px solid #ced8c5; border-radius: 8px; background: #edf3e8; color: #41533b; font-size: 11px; cursor: pointer; }
+.engine-apply:disabled { opacity: .5; cursor: default; }
+.engine-note { margin: 6px 0 0; color: #65705d; font-size: 11px; line-height: 1.5; }
 .input-hint { font-size: 11px; color: #a0a69b; }
 .send-button { width: 34px; height: 34px; border: 0; border-radius: 11px; background: #495c3b; color: #fff; display: grid; place-items: center; flex-shrink: 0; }
 .send-button:hover:not(:disabled) { background: #36492a; }

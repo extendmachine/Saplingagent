@@ -12,7 +12,7 @@ export function ConversationControls({ agent, composer, onChanging }: { agent: A
   active.current = agent.activeSessionId;
   useEffect(() => { setEditing(null); setError(''); setSaving(false); ++operation.current; }, [agent.activeSessionId]);
   async function change(id: string | null) {
-    if (changing || agent.isLoading || id === active.current || (!id && agent.isRunning)) return;
+    if (changing || agent.isLoading || agent.isChangingEngine || agent.isRestarting || id === active.current || (!id && agent.isRunning)) return;
     const state = composer.getState();
     if (state.submission) { setError('Wait for the pending attachment send to finish before switching conversations.'); return; }
     const from = active.current;
@@ -48,7 +48,7 @@ export function ConversationControls({ agent, composer, onChanging }: { agent: A
     catch (failure) { if (operation.current === request && active.current === id) setError(failure instanceof Error ? failure.message : 'Unable to save title.'); }
     finally { if (operation.current === request && active.current === id) setSaving(false); }
   }
-  const disabled = changing || agent.isLoading;
+  const disabled = changing || agent.isLoading || agent.isChangingEngine || agent.isRestarting;
   return <div className="conversation-navigation">
     <div className="session-switcher">
       <label htmlFor="conversation-select">Chat</label>

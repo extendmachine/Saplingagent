@@ -6,10 +6,11 @@ export type ModelOption = { id: string; label: string };
 export type ProviderOption = { id: string; label: string; defaultModelId?: string | null; models: ModelOption[] };
 export type EngineOption = { id: 'codex' | 'opencode' | 'claude'; label: string; ready: boolean; authenticated: boolean; model?: string; providers?: ProviderOption[]; error?: string | null };
 export type ContextUsage = { usedTokens: number; contextWindow: number; updatedAt: string };
-export type Session = EngineSelection & { id: string; title?: string; updatedAt?: string; messages: Message[]; running?: boolean; activeRequestId?: string | null; pendingApprovals?: Approval[]; contextUsage?: ContextUsage | null };
+export type EngineHandoff = { id: string; bindingRevision: number; status: 'pending' | 'delivered'; throughMessageId: string; createdAt: string; deliveredRequestId?: string };
+export type Session = EngineSelection & { id: string; title?: string; updatedAt?: string; messages: Message[]; running?: boolean; activeRequestId?: string | null; pendingApprovals?: Approval[]; contextUsage?: ContextUsage | null; engineRevision?: number; engineHistory?: (EngineSelection & { engineRevision: number; threadId?: string | null; closedAt: string })[]; handoff?: EngineHandoff | null };
 export type SessionSummary = EngineSelection & { id: string; title?: string; updatedAt?: string };
 export type RuntimeStatus = { ready: boolean; codexReady?: boolean; defaultEngine?: 'codex' | 'opencode' | 'claude'; authenticated: boolean; provider?: string; model?: string; skills?: { name: string; description: string }[]; mcp?: { ready: boolean; tools?: { name: string; description: string }[] }; error?: string };
-export type Request = EngineSelection & { requestId: string; sessionId?: string; text: string; attachmentIds?: string[] };
+export type Request = EngineSelection & { requestId: string; sessionId?: string; engineRevision?: number; text: string; attachmentIds?: string[] };
 
 export const SESSION_KEY = 'seedagent.active-session.v1';
 const sessionTitle = (item: SessionSummary) => item.title?.trim() || 'Untitled conversation';
@@ -101,6 +102,18 @@ export async function renameSession(id: string, title: string): Promise<Session>
   const body = await response.json();
   if (!body.session || body.session.id !== id || typeof body.session.title !== 'string') throw new Error('Invalid renamed conversation format.');
   return body.session;
+}
+
+export async function changeSessionEngine(id: string, selection: EngineSelection, expectedEngineRevision: number, signal?: AbortSignal): Promise<Session> {
+  const response = await checkedFetch(`/api/sessions/${encodeURIComponent(id)}/engine`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
+    body: JSON.stringify({ engine: selection.engine, providerId: selection.providerId ?? null, modelId: selection.modelId ?? null, expectedEngineRevision }),
+  });
+  const body = await response.json();
+  const saved = body.session as Session | undefined;
+  if (!saved || saved.id !== id || !Array.isArray(saved.messages) || !Number.isSafeInteger(saved.engineRevision) || (saved.engineRevision ?? -1) < expectedEngineRevision ||
+      saved.engine !== selection.engine || (saved.providerId ?? null) !== (selection.providerId ?? null) || (saved.modelId ?? null) !== (selection.modelId ?? null)) throw new Error('Invalid conversation engine response. Refresh the conversation before trying again.');
+  return saved;
 }
 
 export function cleanMessages(messages: Message[]): Message[] {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppendMessage } from '@assistant-ui/react';
-import { checkedFetch, cleanMessages, getSession, getSessions, isMissingSession, readSessionId, rememberSession, renameSession as saveSessionTitle, sortSessionSummaries, type Approval, type ContextUsage, type EngineOption, type EngineSelection, type Message, type Request, type RuntimeStatus, type Session, type SessionSummary } from './runtime-api';
+import { changeSessionEngine, checkedFetch, cleanMessages, getSession, getSessions, isMissingSession, readSessionId, rememberSession, renameSession as saveSessionTitle, sortSessionSummaries, type Approval, type ContextUsage, type EngineHandoff, type EngineOption, type EngineSelection, type Message, type Request, type RuntimeStatus, type Session, type SessionSummary } from './runtime-api';
 import { consumeEvents, type ServerEvent } from './sse';
 
 type ToolActivity = { id: string; name: string; status: string };
@@ -20,13 +20,21 @@ export function useSeedRuntime() {
   const [approvalBusy, setApprovalBusy] = useState(false);
   const [engines, setEngines] = useState<EngineOption[]>([]);
   const [selection, setSelectionState] = useState<EngineSelection>({ engine: 'codex', providerId: null, modelId: null });
+  const [isChangingEngine, setIsChangingEngine] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
+  const [engineRevision, setEngineRevision] = useState(0);
+  const [handoff, setHandoff] = useState<EngineHandoff | null>(null);
+  const changingEngine = useRef(false), bindingRevision = useRef(0);
   const [contextUsage, setContextUsage] = useState<ContextUsage | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(() => readSessionId());
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsError, setSessionsError] = useState('');
   const selectionChosen = useRef(false);
-  const setSelection = useCallback((value: EngineSelection) => { selectionChosen.current=true; setSelectionState(value); }, []);
+  const setSelection = useCallback((value: EngineSelection) => {
+    if (session.current || running.current || restarting.current || changingEngine.current) return false;
+    selectionChosen.current = true; setSelectionState(value); return true;
+  }, []);
   const session = useRef<string | null>(readSessionId());
   const running = useRef(false);
   const restarting = useRef(false);
@@ -86,21 +94,32 @@ export function useSeedRuntime() {
 
   const snapshot = useCallback((saved: Session) => {
     flush();
+    const revision = Number.isSafeInteger(saved.engineRevision) && (saved.engineRevision ?? -1) >= 0 ? saved.engineRevision! : 0;
+    if (session.current === saved.id && bindingRevision.current !== revision) {
+      lastRequest.current = null; setTools([]); setApprovalBusy(false); setRetryable(false); setError('');
+    }
+    const boundary = saved.handoff ? saved.messages.findIndex(message => message.id === saved.handoff?.throughMessageId) : -1;
+    const userIndex = saved.messages.reduce((last, message, index) => message.role === 'user' ? index : last, -1);
+    const retryBelongsToBinding = !saved.handoff || boundary >= 0 && userIndex > boundary;
     session.current = saved.id;
     setActiveSessionId(saved.id);
     rememberSession(saved.id);
     setSessions(current => sortSessionSummaries(current.some(item => item.id === saved.id)
-      ? current.map(item => item.id === saved.id ? { ...item, title: saved.title ?? item.title, updatedAt: saved.updatedAt ?? item.updatedAt } : item)
+      ? current.map(item => item.id === saved.id ? { ...item, title: saved.title ?? item.title, updatedAt: saved.updatedAt ?? item.updatedAt, engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null } : item)
       : [...current, { id: saved.id, title: saved.title, updatedAt: saved.updatedAt, engine: saved.engine || 'codex', providerId: saved.providerId, modelId: saved.modelId }]));
     setMessages(cleanMessages(saved.messages));
     setApprovals(Array.isArray(saved.pendingApprovals) ? saved.pendingApprovals : []);
     setContextUsage(saved.contextUsage && Number.isSafeInteger(saved.contextUsage.usedTokens) && saved.contextUsage.usedTokens >= 0 && Number.isSafeInteger(saved.contextUsage.contextWindow) && saved.contextUsage.contextWindow > 0 ? saved.contextUsage : null);
-    setSelection({ engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null });
-    if (!lastRequest.current) {
+    selectionChosen.current = true;
+    setSelectionState({ engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null });
+    bindingRevision.current = revision;
+    setEngineRevision(bindingRevision.current);
+    setHandoff(saved.handoff ?? null);
+    if (!lastRequest.current && retryBelongsToBinding) {
       const user = [...saved.messages].reverse().find(message => message.role === 'user');
-      if (user) lastRequest.current = { sessionId: saved.id, text: user.text, requestId: user.requestId || user.id, engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null, ...(user.attachments?.length ? { attachmentIds: user.attachments.map(value => value.id) } : {}) };
+      if (user) lastRequest.current = { sessionId: saved.id, text: user.text, requestId: user.requestId || user.id, engineRevision: bindingRevision.current, engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null, ...(user.attachments?.length ? { attachmentIds: user.attachments.map(value => value.id) } : {}) };
     }
-    if (!saved.running && saved.messages.at(-1)?.status === 'failed') {
+    if (retryBelongsToBinding && !saved.running && saved.messages.at(-1)?.status === 'failed') {
       setError(current => current || 'The previous run failed. Retry or send a new request.');
       setRetryable(Boolean(lastRequest.current));
     }
@@ -318,6 +337,7 @@ export function useSeedRuntime() {
     const changed = (event: Event) => {
       const state = (event as CustomEvent<{busy: boolean; phase: string; instanceId: string; generation: number}>).detail;
       restarting.current = state.busy || state.phase !== 'ready';
+      setIsRestarting(restarting.current);
       if (restarting.current) { setStatus(current => current ? { ...current, ready: false } : null); setActivity('Restarting services…'); return; }
       const next = `${state.instanceId}:${state.generation}`;
       if (signature === next) return;
@@ -325,7 +345,7 @@ export function useSeedRuntime() {
       const signal = controller.signal, expected = epoch.current, id = session.current;
       void (async () => {
         await refreshStatus(signal);
-        if (!currentTarget(signal, expected, id) || running.current) return;
+        if (!currentTarget(signal, expected, id) || running.current || changingEngine.current) return;
         if (id) { try { const saved = await getSession(id, signal); if (currentTarget(signal, expected, id)) snapshot(saved); } catch (failure) { detachMissingSession(failure, id, signal, expected); } }
         if (currentTarget(signal, expected, id)) setActivity('');
       })();
@@ -335,7 +355,7 @@ export function useSeedRuntime() {
   }, [currentTarget, detachMissingSession, refreshStatus, snapshot]);
 
   const runRequest = useCallback(async (request: Request, isRetry = false) => {
-    if (running.current || restarting.current) return;
+    if (running.current || restarting.current || changingEngine.current) return;
     const expectedEpoch = ++epoch.current;
     let id = session.current;
     const controller = new AbortController();
@@ -390,10 +410,10 @@ export function useSeedRuntime() {
   const onNew = useCallback(async (message: AppendMessage) => {
     const text = message.content.filter(part => part.type === 'text').map(part => part.type === 'text' ? part.text : '').join('\n').trim();
     const files = message.attachments || [];
-    if ((!text && !files.length) || running.current || restarting.current) return;
+    if ((!text && !files.length) || running.current || restarting.current || changingEngine.current) return;
     const requestId = crypto.randomUUID();
     if (files.length) messageAttachments.current.set(requestId, files.map(file => ({ id: file.id, name: file.name, contentType: file.contentType || 'application/octet-stream', kind: file.type === 'image' ? 'image' : 'file', size: file.file?.size || 0 })));
-    try { await runRequest({ requestId, text, ...selection, ...(files.length ? { attachmentIds: files.map(file => file.id) } : {}), ...(session.current ? { sessionId: session.current } : {}) }); }
+    try { await runRequest({ requestId, text, ...selection, ...(files.length ? { attachmentIds: files.map(file => file.id) } : {}), ...(session.current ? { sessionId: session.current, engineRevision: bindingRevision.current } : {}) }); }
     finally { messageAttachments.current.delete(requestId); }
   }, [runRequest, selection]);
 
@@ -410,7 +430,7 @@ export function useSeedRuntime() {
   }, []);
 
   const startNew = useCallback(() => {
-    if (running.current || restarting.current) return false;
+    if (running.current || restarting.current || changingEngine.current) return false;
     ++epoch.current;
     stream.current?.abort();
     pending.current.clear();
@@ -427,6 +447,7 @@ export function useSeedRuntime() {
     setApprovals([]);
     setApprovalBusy(false);
     setContextUsage(null);
+    bindingRevision.current = 0; setEngineRevision(0); setHandoff(null);
     setError('');
     setRetryable(false);
     setActivity('');
@@ -434,7 +455,7 @@ export function useSeedRuntime() {
   }, [refreshEngines]);
 
   const switchSession = useCallback((id: string) => {
-    if (!id || id === session.current || restarting.current) return false;
+    if (!id || id === session.current || restarting.current || changingEngine.current) return false;
     const expectedEpoch = ++epoch.current;
     const controller = new AbortController();
     stream.current?.abort();
@@ -453,6 +474,7 @@ export function useSeedRuntime() {
     setApprovals([]);
     setApprovalBusy(false);
     setContextUsage(null);
+    bindingRevision.current = 0; setEngineRevision(0); setHandoff(null);
     setError('');
     setRetryable(false);
     setIsLoading(true);
@@ -480,6 +502,33 @@ export function useSeedRuntime() {
     })();
     return true;
   }, [currentTarget, detachMissingSession, flush, recover, refreshSessions, setRunning, snapshot]);
+
+  const changeEngine = useCallback(async (value: EngineSelection) => {
+    const id = session.current;
+    if (!id || running.current || restarting.current || changingEngine.current || isLoading) return false;
+    if (value.engine === selection.engine && (value.providerId ?? null) === (selection.providerId ?? null) && (value.modelId ?? null) === (selection.modelId ?? null)) return true;
+    changingEngine.current = true; setIsChangingEngine(true);
+    const expectedEpoch = ++epoch.current, controller = new AbortController();
+    stream.current?.abort(); stream.current = controller;
+    flush(); ++listEpoch.current; setSessionsLoading(false); setError('');
+    setActivity('Changing AI for this conversation…');
+    try {
+      const saved = await changeSessionEngine(id, value, bindingRevision.current, controller.signal);
+      if (!currentTarget(controller.signal, expectedEpoch, id)) return false;
+      ++listEpoch.current; setSessionsLoading(false);
+      snapshot(saved);
+      lastRequest.current = null;
+      setTools([]); setApprovals([]); setApprovalBusy(false); setContextUsage(null);
+      setError(''); setRetryable(false);
+      return true;
+    } catch (failure) {
+      if (currentTarget(controller.signal, expectedEpoch, id) && !isAborted(failure)) setError(`Unable to change AI: ${errorText(failure)}`);
+      return false;
+    } finally {
+      changingEngine.current = false; setIsChangingEngine(false);
+      if (currentTarget(controller.signal, expectedEpoch, id)) setActivity('');
+    }
+  }, [currentTarget, flush, isLoading, selection, snapshot]);
 
   const renameSession = useCallback(async (id: string, title: string) => {
     const trimmed = title.trim();
@@ -525,5 +574,5 @@ export function useSeedRuntime() {
   const selectedEngine = engines.find(engine => engine.id === selection.engine);
   const engineReady = selection.engine === 'codex' ? Boolean(status?.codexReady ?? status?.ready) : Boolean(selectedEngine?.ready && selectedEngine.authenticated && selection.providerId && selection.modelId);
   const engineError = selection.engine !== 'codex' && !selectedEngine?.authenticated ? 'Configure this agent provider in AI setup before starting this conversation' : selectedEngine?.error || '';
-  return { messages, status, engines, selection, setSelection, contextUsage, sessions, activeSessionId, sessionsLoading, sessionsError, refreshSessions, switchSession, renameSession, engineReady, engineError, canSelectEngine: !session.current && !isRunning, isLoading, isRunning, activity, tools, approvals, approvalBusy, error, retryable, onNew, onCancel, startNew, retry, respondApproval, refreshStatus, refreshEngines };
+  return { messages, status, engines, selection, setSelection, changeEngine, isChangingEngine, isRestarting, engineRevision, handoff, contextUsage, sessions, activeSessionId, sessionsLoading, sessionsError, refreshSessions, switchSession, renameSession, engineReady, engineError, canSelectEngine: !isRunning && !isLoading && !isChangingEngine && !isRestarting, isLoading, isRunning, activity, tools, approvals, approvalBusy, error, retryable, onNew, onCancel, startNew, retry, respondApproval, refreshStatus, refreshEngines };
 }

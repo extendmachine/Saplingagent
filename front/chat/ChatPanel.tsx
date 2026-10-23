@@ -9,6 +9,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { ConversationControls } from './ConversationControls';
+import { EngineControls } from './EngineControls';
 import { ContextUsageCounter } from '../features/context-usage/ContextUsageCounter';
 import { ArrowUp, Check, LoaderCircle, RotateCcw, Square, Wrench } from 'lucide-react';
 import { useSeedRuntime } from './useSeedRuntime';
@@ -41,20 +42,11 @@ const decisionLabel = (decision: string) => ({ accept: 'Allow', decline: 'Declin
 export function ChatPanel() {
   const agent = useSeedRuntime();
   const [changingSession, setChangingSession] = useState(false);
-  const runtime = useExternalStoreRuntime({ messages: agent.messages, convertMessage, onNew: agent.onNew, onCancel: agent.onCancel, isRunning: agent.isRunning, isLoading: agent.isLoading, isSendDisabled: changingSession || agent.isLoading || !agent.engineReady, adapters: { attachments: attachmentAdapter } });
+  const runtime = useExternalStoreRuntime({ messages: agent.messages, convertMessage, onNew: agent.onNew, onCancel: agent.onCancel, isRunning: agent.isRunning, isLoading: agent.isLoading, isSendDisabled: changingSession || agent.isLoading || agent.isChangingEngine || agent.isRestarting || !agent.engineReady, adapters: { attachments: attachmentAdapter } });
   const selectedEngine = agent.engines.find(engine => engine.id === agent.selection.engine);
   const selectedProvider = selectedEngine?.providers?.find(provider => provider.id === agent.selection.providerId);
   const offline = !agent.isLoading && !agent.engineReady;
   const caption = agent.isLoading ? 'Connecting to local Agent…' : offline ? agent.engineError || selectedEngine?.error || 'Selected engine is not ready' : agent.activity || (agent.selection.engine !== 'codex' ? selectedProvider?.models.find(model => model.id === agent.selection.modelId)?.label : agent.status?.model) || 'Local Agent';
-  const selectEngine = (engine: 'codex' | 'opencode' | 'claude') => {
-    if (engine === 'codex') return agent.setSelection({ engine, providerId: null, modelId: null });
-    const provider = agent.engines.find(item => item.id === engine)?.providers?.[0];
-    agent.setSelection({ engine, providerId: provider?.id || null, modelId: provider?.defaultModelId || provider?.models[0]?.id || null });
-  };
-  const selectProvider = (providerId: string) => {
-    const provider = agent.engines.find(item => item.id === agent.selection.engine)?.providers?.find(item => item.id === providerId);
-    agent.setSelection({ engine: agent.selection.engine, providerId, modelId: provider?.defaultModelId || provider?.models[0]?.id || null });
-  };
 
   return <AssistantRuntimeProvider runtime={runtime}>
     <ConversationControls agent={agent} composer={runtime.thread.composer} onChanging={setChangingSession} />
@@ -74,13 +66,11 @@ export function ChatPanel() {
         </div>)}
       </ThreadPrimitive.Viewport>
       <div className="composer-area">
+        <EngineControls agent={agent} composer={runtime.thread.composer} changingSession={changingSession} />
         {agent.error && <div className="chat-error" role="alert"><span>{agent.error}</span>{agent.retryable && <button type="button" disabled={agent.isRunning} onClick={() => { void agent.retry(); }}><RotateCcw size={12} />Retry</button>}</div>}
         <ComposerPrimitive.Root className="composer"><RestartDraft sessionId={agent.activeSessionId} /><ComposerAttachments />
           <ComposerPrimitive.Input addAttachmentOnPaste={false} className="composer-input" placeholder="Describe your idea…" aria-label="Chat with Saplingagent" rows={2} autoFocus />
-          <div className="composer-bottom"><div className="composer-meta"><AttachFilesButton />{agent.canSelectEngine && <div className="engine-picker">
-            <select aria-label="Agent engine" value={agent.selection.engine} onChange={event => selectEngine(event.target.value as 'codex' | 'opencode' | 'claude')}><option value="codex">Codex</option><option value="opencode">OpenCode</option><option value="claude">Claude Agent</option></select>
-            {agent.selection.engine !== 'codex' && <><select aria-label="Agent provider" value={agent.selection.providerId || ''} onChange={event => selectProvider(event.target.value)} disabled={!selectedEngine?.providers?.length}><option value="" disabled>Select provider</option>{selectedEngine?.providers?.map(provider => <option key={provider.id} value={provider.id}>{provider.label}</option>)}</select><select aria-label="Agent model" value={agent.selection.modelId || ''} onChange={event => agent.setSelection({ ...agent.selection, modelId: event.target.value })} disabled={!selectedProvider?.models.length}><option value="" disabled>Select model</option>{selectedProvider?.models.map(model => <option key={model.id} value={model.id}>{model.label}</option>)}</select></>}
-          </div>}<span className="input-hint">Enter to send · Shift + Enter for a new line</span></div>{agent.isRunning ? <ComposerPrimitive.Cancel className="send-button stop-button" aria-label="Stop response"><Square size={14} fill="currentColor" /></ComposerPrimitive.Cancel> : <ComposerPrimitive.Send className="send-button" aria-label="Send message"><ArrowUp size={19} /></ComposerPrimitive.Send>}</div>
+          <div className="composer-bottom"><div className="composer-meta"><AttachFilesButton /><span className="input-hint">Enter to send · Shift + Enter for a new line</span></div>{agent.isRunning ? <ComposerPrimitive.Cancel className="send-button stop-button" aria-label="Stop response"><Square size={14} fill="currentColor" /></ComposerPrimitive.Cancel> : <ComposerPrimitive.Send className="send-button" aria-label="Send message"><ArrowUp size={19} /></ComposerPrimitive.Send>}</div>
         </ComposerPrimitive.Root>
         <div className="runtime-footer"><span className={`runtime-caption ${offline ? 'runtime-offline' : ''}`} role="status">{agent.isRunning || agent.isLoading ? <LoaderCircle size={11} className="spinning" /> : <span className="connection-dot" />}{caption}</span>
           <div className="conversation-actions">{offline && <button type="button" title="Reconnect to local Agent" onClick={() => { void agent.refreshStatus(); void agent.refreshEngines(); }}><RotateCcw size={12} />Reconnect</button>}</div>
