@@ -1,3 +1,4 @@
+import * as uiMessages from '../localization/messages.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -6,15 +7,15 @@ import { transformSync } from 'rolldown/utils';
 
 const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(nodes)];
 const text = node => !node || typeof node !== 'object' ? String(node ?? '') : [node.props?.children].flat(Infinity).map(text).join('');
-async function fixture({ activeSessionId = 'same', ...overrides } = {}) {
+async function fixture({ language = 'en', activeSessionId = 'same', ...overrides } = {}) {
   const slots=[],effects=[],calls=[];let cursor=0,tree,scheduled=false;
   const same=(a,b)=>a&&b&&a.length===b.length&&a.every((v,i)=>Object.is(v,b[i]));
   const schedule=()=>{if(!scheduled){scheduled=true;queueMicrotask(()=>{scheduled=false;render()})}};
   const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]={value:typeof initial==='function'?initial():initial};return[slots[i].value,value=>{slots[i].value=typeof value==='function'?value(slots[i].value):value;schedule()}]},useEffect(effect,deps){const i=cursor++;if(!same(slots[i]?.deps,deps)){const old=slots[i];slots[i]={deps};effects.push(()=>{old?.cleanup?.();slots[i].cleanup=effect()})}}};
   const composer={text:'Retain my draft',attachments:[{id:'retained-file',status:{type:'running'},file:{name:'pending.txt'}}],getState(){return{text:this.text,attachments:this.attachments,submission:this.submission}},reset(){throw new Error('Changing AI must never reset composer')}};
   const agent={activeSessionId,selection:{engine:'codex',providerId:null,modelId:null},engineRevision:0,canSelectEngine:true,isChangingEngine:false,status:{ready:true,codexReady:true},engines:[{id:'codex',ready:true,authenticated:true},...['claude','opencode'].map(id=>({id,ready:true,authenticated:true,providers:[{id:`${id}-provider`,label:id,defaultModelId:'model-a',models:[{id:'model-a',label:'Model A'},{id:'model-b',label:'Model B'}]}]}))],setSelection(selection){calls.push({type:'selection',selection});this.selection=selection;render();return true},async changeEngine(selection){calls.push({type:'apply',selection});this.selection=selection;this.engineRevision++;this.handoff={status:'pending'};render();return true},...overrides};
-  const jsx=(type,props)=>({type,props}),context=vm.createContext({Error,Promise});
-  const mocks={react,'react/jsx-runtime':{jsx,jsxs:jsx,Fragment:'fragment'}};
+  const jsx=(type,props)=>typeof type==='function'?type(props):({type,props}),context=vm.createContext({Error,Promise});
+  const mocks={'../localization/LanguageProvider':{useLanguage:()=>({language, locale: uiMessages.localeFor(language), t:(key,params)=>uiMessages.translate(language,key,params), text:value=>uiMessages.resolveText(value,language)})},'../localization/messages':uiMessages,'../localization/ErrorNotice':{ErrorNotice:({error})=>jsx('div',{children:uiMessages.resolveText(error,language)})},react,'react/jsx-runtime':{jsx,jsxs:jsx,Fragment:'fragment'}};
   const mod=new vm.SourceTextModule(transformSync('EngineControls.tsx',await readFile(new URL('./EngineControls.tsx',import.meta.url),'utf8'),{jsx:{runtime:'automatic'}}).code,{context});
   await mod.link(name=>{const mock=mocks[name];return new vm.SyntheticModule(Object.keys(mock),function(){for(const[k,v]of Object.entries(mock))this.setExport(k,v)},{context})});await mod.evaluate();
   function render(){cursor=0;tree=mod.namespace.EngineControls({agent,composer,changingSession:false});while(effects.length)effects.shift()();return tree}
@@ -47,4 +48,9 @@ test('busy runtime disables changes, unavailable target cannot apply, and a reje
 
 test('changing conversation or persisted revision resets only the selection draft',async()=>{
   const h=await fixture();h.node('Agent engine').props.onChange({target:{value:'claude'}});await h.settle();h.agent.activeSessionId='other';h.agent.selection={engine:'opencode',providerId:'opencode-provider',modelId:'model-b'};h.render();await h.settle();assert.equal(h.node('Agent engine').props.value,'opencode');assert.equal(h.node('Agent model').props.value,'model-b');assert.equal(h.calls.length,0);assert.equal(h.composer.text,'Retain my draft');
+});
+
+test('Chinese controls keep provider/model values and pending attachment draft during AI selection',async()=>{
+ const h=await fixture({language:'zh'});h.node('AI 引擎').props.onChange({target:{value:'claude'}});await h.settle();assert.equal(h.node('AI 模型').props.value,'model-a');assert.equal(h.composer.text,'Retain my draft');assert.equal(h.composer.attachments[0].id,'retained-file');assert.match(h.content,/会话/);
+ h.node('将所选 AI 应用于当前会话').props.onClick();await h.settle();assert.equal(h.calls.length,1);assert.equal(h.agent.activeSessionId,'same');assert.match(h.content,/下一次发送/);
 });

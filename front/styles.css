@@ -79,3 +79,17 @@
 .git-name-form p { margin: 7px 0 0; color: #8b9385; font-size: 10px; }
 .git-name-form button:disabled { opacity: .5; }
 .git-version-popover button:focus-visible, .git-version-trigger:focus-visible, .git-name-form input:focus-visible { outline: 2px solid #738c5f; outline-offset: 2px; }
+
+.language-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12px; }
+.language-tools select { font: inherit; background: #fff; color: #46573c; border: 1px solid #dce3d7; border-radius: 7px; padding: 4px 6px; max-width: 130px; }
+.language-tools a { color: #46573c; }
+.language-save-error { font-size: 11px; max-width: 260px; }
+.localized-error { display: flex; flex-direction: column; gap: 5px; overflow-wrap: anywhere; }
+.localized-error small { display: block; line-height: 1.5; opacity: .85; }
+.localized-error details { font-size: 11px; }
+.localized-error pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 160px; overflow: auto; }
+
+.seed-page .page-header { gap: 18px; padding-right: 350px; position: relative; z-index: 31; }
+@media(max-width: 720px) { .seed-page .page-header { height: 104px; align-content: end; align-items: center; flex-wrap: wrap; padding: 62px 18px 8px; gap: 12px; } .language-tools { gap: 6px; } .language-save-error { flex-basis: 100%; } }
+
+@media(max-width: 720px) { .seed-page .chat-dock:not(.is-collapsed) { top: 110px; } }

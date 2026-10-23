@@ -1,3 +1,4 @@
+import { useLanguage } from '../../localization/LanguageProvider';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 
@@ -34,6 +35,7 @@ async function requestVersion(): Promise<VersionState> {
 }
 
 export function VersionFooter() {
+  const { t } = useLanguage();
   const [version, setVersion] = useState<VersionState | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [kernelVersion, setKernelVersion] = useState<string | null>(null);
@@ -72,14 +74,14 @@ export function VersionFooter() {
   }, [refresh]);
 
   const hasUpdate = Boolean(version && baseline.current && version.fingerprint !== baseline.current);
-  const label = version ? `${version.branch || 'detached'} · ${version.version}` : unavailable ? 'Version unavailable' : 'Loading version…';
+  const label = version ? `${version.branch || t('version.detached')} · ${version.version}` : unavailable ? t('version.unavailable') : t('version.loading');
 
   return <footer className={`version-footer${hasUpdate ? ' has-update' : ''}`} aria-live="polite">
-    <span className="version-footer-label version-footer-kernel">Kernel version <code>{kernelVersion || 'Unavailable'}</code></span>
-    <span className="version-footer-label"><span className="version-footer-dot" />Workspace revision <code>{label}</code></span>
+    <span className="version-footer-label version-footer-kernel">{t('version.kernel')} <code>{kernelVersion || t('common.unavailable')}</code></span>
+    <span className="version-footer-label"><span className="version-footer-dot" />{t('version.workspace')} <code>{label}</code></span>
     {hasUpdate ? <button type="button" onClick={() => window.location.reload()}>
       <RefreshCw size={13} aria-hidden="true" />
-      New version available - refresh
+      {t('version.refresh')}
     </button> : null}
   </footer>;
 }

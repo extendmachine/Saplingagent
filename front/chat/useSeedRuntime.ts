@@ -1,3 +1,5 @@
+import { useLanguage } from '../localization/LanguageProvider';
+import { message, resolveText, type UiText } from '../localization/messages';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppendMessage } from '@assistant-ui/react';
 import { changeSessionEngine, checkedFetch, cleanMessages, getSession, getSessions, isMissingSession, readSessionId, rememberSession, renameSession as saveSessionTitle, sortSessionSummaries, type Approval, type ContextUsage, type EngineHandoff, type EngineOption, type EngineSelection, type Message, type Request, type RuntimeStatus, type Session, type SessionSummary } from './runtime-api';
@@ -8,14 +10,15 @@ const errorText = (error: unknown) => error instanceof Error ? error.message : '
 const isAborted = (error: unknown) => error instanceof DOMException && error.name === 'AbortError';
 
 export function useSeedRuntime() {
+  const { language } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [status, setStatus] = useState<RuntimeStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
-  const [activity, setActivity] = useState('Connecting to local Agent…');
+  const [activity, setActivity] = useState<UiText>(message('runtime.connecting'));
   const [tools, setTools] = useState<ToolActivity[]>([]);
   const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<UiText | Error>('');
   const [retryable, setRetryable] = useState(false);
   const [approvalBusy, setApprovalBusy] = useState(false);
   const [engines, setEngines] = useState<EngineOption[]>([]);
@@ -29,7 +32,7 @@ export function useSeedRuntime() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(() => readSessionId());
   const [sessionsLoading, setSessionsLoading] = useState(false);
-  const [sessionsError, setSessionsError] = useState('');
+  const [sessionsError, setSessionsError] = useState<Error | string>('');
   const selectionChosen = useRef(false);
   const setSelection = useCallback((value: EngineSelection) => {
     if (session.current || running.current || restarting.current || changingEngine.current) return false;
@@ -87,7 +90,7 @@ export function useSeedRuntime() {
     setRunning(false);
     setApprovals([]);
     setActivity('');
-    setError(lastRequest.current ? 'This session does not exist in the current service. Your input is retained; retry to continue in a new session.' : 'The previous session does not exist in the current service. Send a message to start a new session.');
+    setError(lastRequest.current ? message('runtime.missingRetry') : message('runtime.missing'));
     setRetryable(Boolean(lastRequest.current));
     return true;
   }, [currentTarget, flush, setRunning]);
@@ -120,7 +123,7 @@ export function useSeedRuntime() {
       if (user) lastRequest.current = { sessionId: saved.id, text: user.text, requestId: user.requestId || user.id, engineRevision: bindingRevision.current, engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null, ...(user.attachments?.length ? { attachmentIds: user.attachments.map(value => value.id) } : {}) };
     }
     if (retryBelongsToBinding && !saved.running && saved.messages.at(-1)?.status === 'failed') {
-      setError(current => current || 'The previous run failed. Retry or send a new request.');
+      setError(current => current || message('runtime.previousFailed'));
       setRetryable(Boolean(lastRequest.current));
     }
   }, [flush]);
@@ -135,7 +138,7 @@ export function useSeedRuntime() {
         setSessionsError('');
       }
     } catch (failure) {
-      if (!signal?.aborted && request === listEpoch.current && !isAborted(failure)) setSessionsError(errorText(failure));
+      if (!signal?.aborted && request === listEpoch.current && !isAborted(failure)) setSessionsError(failure instanceof Error ? failure : errorText(failure));
     } finally {
       if (!signal?.aborted && request === listEpoch.current) setSessionsLoading(false);
     }
@@ -187,7 +190,7 @@ export function useSeedRuntime() {
         if (typeof event.itemId !== 'string' || typeof event.delta !== 'string') throw new Error('Invalid response delta format.');
         pending.current.set(event.itemId, (pending.current.get(event.itemId) || '') + event.delta);
         if (!timer.current) timer.current = setTimeout(flush, 50);
-        setActivity('Responding…');
+        setActivity(message('runtime.responding'));
         break;
       }
       case 'status': {
@@ -198,19 +201,19 @@ export function useSeedRuntime() {
         if (typeof event.id !== 'string' || typeof event.name !== 'string' || typeof event.status !== 'string') break;
         const next = { id: event.id, name: event.name, status: event.status };
         setTools(current => [...current.filter(item => item.id !== next.id), next].slice(-4));
-        setActivity('Using tools…');
+        setActivity(message('runtime.tools'));
         break;
       }
       case 'approval': {
         if (typeof event.id !== 'string' || typeof event.description !== 'string') break;
         const next = event as unknown as Approval;
         setApprovals(current => [...current.filter(item => item.id !== next.id), next]);
-        setActivity('Waiting for your choice');
+        setActivity(message('runtime.choice'));
         break;
       }
       case 'error': {
         flush();
-        setError(typeof event.message === 'string' ? event.message : 'Agent execution failed.');
+        setError(Object.assign(new Error(typeof event.message === 'string' ? event.message : 'Agent execution failed.'), { code: typeof event.code === 'string' ? event.code : undefined }));
         break;
       }
       case 'done': {
@@ -218,9 +221,9 @@ export function useSeedRuntime() {
         setRunning(false);
         setApprovals([]);
         setMessages(current => current.map(message => message.status === 'streaming' ? { ...message, status: String(event.status) } : message));
-        setActivity(event.status === 'interrupted' ? 'Stopped' : event.status === 'failed' ? 'Execution failed' : '');
+        setActivity(event.status === 'interrupted' ? message('runtime.stopped') : event.status === 'failed' ? message('runtime.failed') : '');
         if (event.status === 'failed') {
-          setError(current => current || 'Agent execution failed. Please try again.');
+          setError(current => current || message('runtime.agentFailed'));
           setRetryable(Boolean(lastRequest.current));
         } else {
           setRetryable(false);
@@ -236,7 +239,7 @@ export function useSeedRuntime() {
     const id = session.current;
     if (!id) throw new Error('Session connection interrupted. Retry your original request.');
     if (!currentTarget(signal, expectedEpoch, id)) return;
-    setActivity('Reconnecting…');
+    setActivity(message('runtime.reconnecting'));
     let saved: Session;
     try { saved = await getSession(id, signal); }
     catch (failure) {
@@ -250,7 +253,7 @@ export function useSeedRuntime() {
       setRunning(false);
       setActivity('');
       if (saved.messages.at(-1)?.status === 'failed') {
-        setError(current => current || 'Agent execution failed. Please try again.');
+        setError(current => current || message('runtime.agentFailed'));
         setRetryable(Boolean(lastRequest.current));
       }
       return;
@@ -279,7 +282,7 @@ export function useSeedRuntime() {
         setActivity('');
         return;
       }
-      setActivity('Reconnected. Waiting for a response…');
+      setActivity(message('runtime.reconnected'));
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
   }, [currentTarget, detachMissingSession, receive, setRunning, snapshot]);
@@ -315,7 +318,7 @@ export function useSeedRuntime() {
         }
       } catch (failure) {
         if (fetchingSavedSession && detachMissingSession(failure, id, bootstrap.signal, expectedEpoch)) id = null;
-        else if (currentTarget(bootstrap.signal, expectedEpoch, id) && !isAborted(failure) && id) setError(`Unable to restore the previous session:${errorText(failure)}`);
+        else if (currentTarget(bootstrap.signal, expectedEpoch, id) && !isAborted(failure) && id) setError(message('runtime.restoreFailed', undefined, failure));
       } finally {
         if (currentTarget(bootstrap.signal, expectedEpoch, id)) {
           setIsLoading(false);
@@ -338,7 +341,7 @@ export function useSeedRuntime() {
       const state = (event as CustomEvent<{busy: boolean; phase: string; instanceId: string; generation: number}>).detail;
       restarting.current = state.busy || state.phase !== 'ready';
       setIsRestarting(restarting.current);
-      if (restarting.current) { setStatus(current => current ? { ...current, ready: false } : null); setActivity('Restarting services…'); return; }
+      if (restarting.current) { setStatus(current => current ? { ...current, ready: false } : null); setActivity(message('runtime.restarting')); return; }
       const next = `${state.instanceId}:${state.generation}`;
       if (signature === next) return;
       signature = next; controller?.abort(); controller = new AbortController();
@@ -367,7 +370,7 @@ export function useSeedRuntime() {
     setRetryable(false);
     setTools([]);
     setApprovals([]);
-    setActivity(isRetry ? 'Retrying…' : 'Thinking…');
+    setActivity(isRetry ? message('runtime.retrying') : message('runtime.thinking'));
     if (!isRetry) setMessages(current => [...current, { id: request.requestId, requestId: request.requestId, role: 'user', text: request.text, ...(request.attachmentIds?.length ? { attachments: messageAttachments.current.get(request.requestId) } : {}) }]);
     try {
       const response = await checkedFetch('/api/chat', {
@@ -401,8 +404,8 @@ export function useSeedRuntime() {
       } catch { /* Keep the original actionable error when recovery also fails. */ }
       if (!currentTarget(controller.signal, expectedEpoch, id)) return;
       setRunning(false);
-      setActivity('Connection failed');
-      setError(errorText(failure));
+      setActivity(message('runtime.connectionFailed'));
+      setError(failure instanceof Error ? failure : new Error(errorText(failure)));
       setRetryable(true);
     }
   }, [currentTarget, detachMissingSession, flush, receive, recover, refreshSessions, setRunning, snapshot]);
@@ -419,14 +422,14 @@ export function useSeedRuntime() {
 
   const onCancel = useCallback(async () => {
     if (!session.current) {
-      setError('Creating the session. You can stop shortly.');
+      setError(message('runtime.creating'));
       return;
     }
     const target = session.current, expected = epoch.current;
-    setActivity('Stopping…');
+    setActivity(message('runtime.stopping'));
     try {
       await checkedFetch(`/api/sessions/${encodeURIComponent(target)}/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    } catch (failure) { if (epoch.current === expected && session.current === target) setError(`Unable to stop:${errorText(failure)}`); }
+    } catch (failure) { if (epoch.current === expected && session.current === target) setError(message('runtime.stopFailed', undefined, failure)); }
   }, []);
 
   const startNew = useCallback(() => {
@@ -478,7 +481,7 @@ export function useSeedRuntime() {
     setError('');
     setRetryable(false);
     setIsLoading(true);
-    setActivity('Loading conversation…');
+    setActivity(message('runtime.loading'));
     void (async () => {
     try {
       const saved = await getSession(id, controller.signal);
@@ -491,7 +494,7 @@ export function useSeedRuntime() {
       }
     } catch (failure) {
       if (!currentTarget(controller.signal, expectedEpoch, id) || isAborted(failure)) return;
-      if (!detachMissingSession(failure, id, controller.signal, expectedEpoch)) setError(`Unable to open conversation: ${errorText(failure)}`);
+      if (!detachMissingSession(failure, id, controller.signal, expectedEpoch)) setError(message('runtime.openFailed', undefined, failure));
       void refreshSessions();
     } finally {
       if (currentTarget(controller.signal, expectedEpoch, session.current)) {
@@ -511,7 +514,7 @@ export function useSeedRuntime() {
     const expectedEpoch = ++epoch.current, controller = new AbortController();
     stream.current?.abort(); stream.current = controller;
     flush(); ++listEpoch.current; setSessionsLoading(false); setError('');
-    setActivity('Changing AI for this conversation…');
+    setActivity(message('runtime.changing'));
     try {
       const saved = await changeSessionEngine(id, value, bindingRevision.current, controller.signal);
       if (!currentTarget(controller.signal, expectedEpoch, id)) return false;
@@ -522,7 +525,7 @@ export function useSeedRuntime() {
       setError(''); setRetryable(false);
       return true;
     } catch (failure) {
-      if (currentTarget(controller.signal, expectedEpoch, id) && !isAborted(failure)) setError(`Unable to change AI: ${errorText(failure)}`);
+      if (currentTarget(controller.signal, expectedEpoch, id) && !isAborted(failure)) setError(message('runtime.changeFailed', undefined, failure));
       return false;
     } finally {
       changingEngine.current = false; setIsChangingEngine(false);
@@ -566,13 +569,13 @@ export function useSeedRuntime() {
       if (epoch.current !== expected || session.current !== target) return;
       setApprovals(current => current.filter(item => item.id !== id));
       setError('');
-      setActivity('Continuing…');
-    } catch (failure) { if (epoch.current === expected && session.current === target) setError(`Action not confirmed:${errorText(failure)}`); }
+      setActivity(message('runtime.continuing'));
+    } catch (failure) { if (epoch.current === expected && session.current === target) setError(message('runtime.approvalFailed', undefined, failure)); }
     finally { if (epoch.current === expected && session.current === target) setApprovalBusy(false); }
   }, []);
 
   const selectedEngine = engines.find(engine => engine.id === selection.engine);
   const engineReady = selection.engine === 'codex' ? Boolean(status?.codexReady ?? status?.ready) : Boolean(selectedEngine?.ready && selectedEngine.authenticated && selection.providerId && selection.modelId);
-  const engineError = selection.engine !== 'codex' && !selectedEngine?.authenticated ? 'Configure this agent provider in AI setup before starting this conversation' : selectedEngine?.error || '';
-  return { messages, status, engines, selection, setSelection, changeEngine, isChangingEngine, isRestarting, engineRevision, handoff, contextUsage, sessions, activeSessionId, sessionsLoading, sessionsError, refreshSessions, switchSession, renameSession, engineReady, engineError, canSelectEngine: !isRunning && !isLoading && !isChangingEngine && !isRestarting, isLoading, isRunning, activity, tools, approvals, approvalBusy, error, retryable, onNew, onCancel, startNew, retry, respondApproval, refreshStatus, refreshEngines };
+  const engineError = selection.engine !== 'codex' && !selectedEngine?.authenticated ? message('chat.configure') : selectedEngine?.error || '';
+  return { messages, status, engines, selection, setSelection, changeEngine, isChangingEngine, isRestarting, engineRevision, handoff, contextUsage, sessions, activeSessionId, sessionsLoading, sessionsError, refreshSessions, switchSession, renameSession, engineReady, engineError: resolveText(engineError, language), engineErrorIssue: engineError, canSelectEngine: !isRunning && !isLoading && !isChangingEngine && !isRestarting, isLoading, isRunning, activity: resolveText(activity, language), tools, approvals, approvalBusy, error: resolveText(error, language), errorIssue: error, retryable, onNew, onCancel, startNew, retry, respondApproval, refreshStatus, refreshEngines };
 }

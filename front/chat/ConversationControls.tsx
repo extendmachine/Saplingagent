@@ -1,3 +1,6 @@
+import { ErrorNotice } from '../localization/ErrorNotice';
+import { message, type UiText } from '../localization/messages';
+import { useLanguage } from '../localization/LanguageProvider';
 import { useEffect, useRef, useState } from 'react';
 import type { ComposerRuntime } from '@assistant-ui/react';
 import { LoaderCircle, Pencil, Plus, RotateCcw, Save, X } from 'lucide-react';
@@ -6,15 +9,16 @@ import { captureConversationDraft, restoreConversationDraft, type ConversationDr
 
 type Agent = ReturnType<typeof useSeedRuntime>;
 export function ConversationControls({ agent, composer, onChanging }: { agent: Agent; composer: ComposerRuntime; onChanging: (value: boolean) => void }) {
+  const { t, locale } = useLanguage();
   const [editing, setEditing] = useState<string | null>(null), [title, setTitle] = useState('');
-  const [saving, setSaving] = useState(false), [changing, setChanging] = useState(false), [error, setError] = useState('');
+  const [saving, setSaving] = useState(false), [changing, setChanging] = useState(false), [error, setError] = useState<UiText>('');
   const drafts = useRef(new Map<string, ConversationDraft>()), operation = useRef(0), active = useRef(agent.activeSessionId);
   active.current = agent.activeSessionId;
   useEffect(() => { setEditing(null); setError(''); setSaving(false); ++operation.current; }, [agent.activeSessionId]);
   async function change(id: string | null) {
     if (changing || agent.isLoading || agent.isChangingEngine || agent.isRestarting || id === active.current || (!id && agent.isRunning)) return;
     const state = composer.getState();
-    if (state.submission) { setError('Wait for the pending attachment send to finish before switching conversations.'); return; }
+    if (state.submission) { setError(message('session.pending')); return; }
     const from = active.current;
     drafts.current.set(from || '', captureConversationDraft(state));
     setChanging(true); onChanging(true); setError(''); setEditing(null); ++operation.current;
@@ -23,7 +27,7 @@ export function ConversationControls({ agent, composer, onChanging }: { agent: A
       const accepted = id ? agent.switchSession(id) : agent.startNew();
       if (!accepted) {
         await restoreConversationDraft(composer, drafts.current.get(from || ''));
-        setError('Conversation could not switch while services are restarting. Try again when ready.');
+        setError(message('session.restart'));
         return;
       }
       // addAttachment descriptors restore finished uploads without re-uploading.
@@ -31,40 +35,41 @@ export function ConversationControls({ agent, composer, onChanging }: { agent: A
       const draft = drafts.current.get(id || '');
       drafts.current.delete(id || '');
       await restoreConversationDraft(composer, draft);
-    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Unable to restore the conversation draft.'); }
+    } catch (failure) { setError(message('session.draftError', undefined, failure)); }
     finally { setChanging(false); onChanging(false); }
   }
   function beginEdit() {
     if (!active.current) return;
     ++operation.current; setSaving(false); setError(''); setEditing(active.current);
-    setTitle(agent.sessions.find(item => item.id === active.current)?.title || 'Untitled conversation');
+    setTitle(agent.sessions.find(item => item.id === active.current)?.title || '');
   }
   async function save() {
     if (!editing || saving) return;
     const id = editing, request = ++operation.current, value = title.trim();
-    if (!value || value.length > 200) { setError('Use 1–200 characters.'); return; }
+    if (!value || value.length > 200) { setError(message('session.titleLength')); return; }
     setSaving(true); setError('');
     try { await agent.renameSession(id, value); if (operation.current === request && active.current === id) setEditing(null); }
-    catch (failure) { if (operation.current === request && active.current === id) setError(failure instanceof Error ? failure.message : 'Unable to save title.'); }
+    catch (failure) { if (operation.current === request && active.current === id) setError(message('session.titleError', undefined, failure)); }
     finally { if (operation.current === request && active.current === id) setSaving(false); }
   }
   const disabled = changing || agent.isLoading || agent.isChangingEngine || agent.isRestarting;
   return <div className="conversation-navigation">
     <div className="session-switcher">
-      <label htmlFor="conversation-select">Chat</label>
-      <select id="conversation-select" aria-label="Switch conversation" value={agent.activeSessionId || ''} disabled={disabled} onChange={event => { void change(event.target.value || null); }}>
-        <option value="" disabled={agent.isRunning}>New conversation{agent.isRunning ? ' (stop current first)' : ''}</option>
-        {agent.sessions.map(item => <option key={item.id} value={item.id}>{item.title?.trim() || 'Untitled conversation'}{item.updatedAt && Number.isFinite(Date.parse(item.updatedAt)) ? ` · ${new Date(item.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : ''}</option>)}
+      <label htmlFor="conversation-select">{t('session.label')}</label>
+      <select id="conversation-select" aria-label={t('session.switch')} value={agent.activeSessionId || ''} disabled={disabled} onChange={event => { void change(event.target.value || null); }}>
+        <option value="" disabled={agent.isRunning}>{t('session.new')}{agent.isRunning ? t('session.stopFirst') : ''}</option>
+        {agent.sessions.map(item => <option key={item.id} value={item.id}>{item.title?.trim() || t('session.untitled')}{item.updatedAt && Number.isFinite(Date.parse(item.updatedAt)) ? ` · ${new Date(item.updatedAt).toLocaleDateString(locale, { month: 'short', day: 'numeric' })}` : ''}</option>)}
       </select>
-      <button type="button" title="Rename conversation" aria-label="Rename conversation" disabled={!agent.activeSessionId || disabled} onClick={beginEdit}><Pencil size={13} /></button>
-      <button type="button" title="Refresh conversations" aria-label="Refresh conversations" disabled={agent.sessionsLoading} onClick={() => { void agent.refreshSessions(); }}><RotateCcw size={13} className={agent.sessionsLoading ? 'spinning' : ''} /></button>
+      <button type="button" title={t('session.rename')} aria-label={t('session.rename')} disabled={!agent.activeSessionId || disabled} onClick={beginEdit}><Pencil size={13} /></button>
+      <button type="button" title={t('session.refresh')} aria-label={t('session.refresh')} disabled={agent.sessionsLoading} onClick={() => { void agent.refreshSessions(); }}><RotateCcw size={13} className={agent.sessionsLoading ? 'spinning' : ''} /></button>
     </div>
-    <div className="session-actions"><button type="button" disabled={disabled || agent.isRunning} onClick={() => { void change(null); }}><Plus size={12} />New conversation</button>{agent.sessionsError && <span role="status" title={agent.sessionsError}>History unavailable</span>}</div>
+    <div className="session-actions"><button type="button" disabled={disabled || agent.isRunning} onClick={() => { void change(null); }}><Plus size={12} />{t('session.new')}</button>{agent.sessionsError && <span role="status" title={t('session.historyError')}>{t('session.historyError')}</span>}</div>
     {editing && <div className="session-title-editor">
-      <input aria-label="Conversation title" value={title} maxLength={200} autoFocus onChange={event => setTitle(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void save(); } else if (event.key === 'Escape') { ++operation.current; setEditing(null); setSaving(false); setError(''); } }} />
-      <button type="button" aria-label="Save conversation title" title="Save title" disabled={saving} onClick={() => { void save(); }}>{saving ? <LoaderCircle size={13} className="spinning" /> : <Save size={13} />}</button>
-      <button type="button" aria-label="Cancel title edit" title="Cancel" onClick={() => { ++operation.current; setEditing(null); setSaving(false); setError(''); }}><X size={13} /></button>
+      <input aria-label={t('session.title')} value={title} maxLength={200} autoFocus onChange={event => setTitle(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void save(); } else if (event.key === 'Escape') { ++operation.current; setEditing(null); setSaving(false); setError(''); } }} />
+      <button type="button" aria-label={t('session.saveTitle')} title={t('session.saveTitle')} disabled={saving} onClick={() => { void save(); }}>{saving ? <LoaderCircle size={13} className="spinning" /> : <Save size={13} />}</button>
+      <button type="button" aria-label={t('session.cancelTitle')} title={t('common.cancel')} onClick={() => { ++operation.current; setEditing(null); setSaving(false); setError(''); }}><X size={13} /></button>
     </div>}
-    {error && <p className="session-navigation-error" role="alert">{error}</p>}
+    {agent.sessionsError && <ErrorNotice className="session-navigation-error" error={message('session.historyError', undefined, agent.sessionsError)} />}
+    {error && <ErrorNotice className="session-navigation-error" error={error} />}
   </div>;
 }

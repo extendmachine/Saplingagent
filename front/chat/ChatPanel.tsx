@@ -1,3 +1,6 @@
+import { ErrorNotice } from '../localization/ErrorNotice';
+import type { MessageKey } from '../localization/catalog';
+import { useLanguage } from '../localization/LanguageProvider';
 import { useState } from 'react';
 import { attachmentAdapter, completeAttachment } from './attachments';
 import { AttachmentDropzone, AttachFilesButton, ComposerAttachments, MessageAttachment } from './AttachmentControls';
@@ -21,9 +24,10 @@ const convertMessage = (message: Message): ThreadMessageLike => ({
 });
 const preprocessMarkdown = (text: string) => escapeCurrencyDollars(normalizeMathDelimiters(text));
 function MarkdownText() {
+  const { t } = useLanguage();
   return <MarkdownTextPrimitive className="markdown-text" defer preprocess={preprocessMarkdown} remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[[rehypeKatex, { trust: false }]]} components={{
     a: ({ children, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer">{children}</a>,
-    img: ({ alt }) => <span className="image-description">{alt || 'Image'}</span>,
+    img: ({ alt }) => <span className="image-description">{alt || t('chat.image')}</span>,
   }} />;
 }
 function AssistantMessage() {
@@ -33,47 +37,49 @@ function UserMessage() {
   return <MessagePrimitive.Root className="message user-message"><div className="message-text"><div className="chat-attachments"><MessagePrimitive.Attachments components={{ Attachment: MessageAttachment }} /></div><MessagePrimitive.Parts /></div></MessagePrimitive.Root>;
 }
 
-const toolLabel = (name: string) => {
-  const labels: Record<string, string> = { page_read: 'Inspect current page', list_files: 'Browse project files', read_file: 'Read file', propose_change: 'Record page change', apply_change: 'Apply page change', rollback_change: 'Restore page version', get_preferences: 'Read preferences', set_preference: 'Save preference', search_web: 'Search sources' };
-  return labels[name.split(/[./]/).at(-1) || ''] || (name.includes('command') ? 'Run project command' : 'Use project tool');
+const toolLabel = (name: string, t: ReturnType<typeof useLanguage>['t']) => {
+  const labels: Record<string, MessageKey> = { page_read: 'tool.page', list_files: 'tool.list', read_file: 'tool.read', propose_change: 'tool.propose', apply_change: 'tool.apply', rollback_change: 'tool.rollback', get_preferences: 'tool.preferencesRead', set_preference: 'tool.preferencesSave', search_web: 'tool.search' };
+  return t(labels[name.split(/[./]/).at(-1) || ''] || (name.includes('command') ? 'tool.command' : 'tool.generic'));
 };
-const decisionLabel = (decision: string) => ({ accept: 'Allow', decline: 'Decline', acceptForSession: 'Allow for this session', cancel: 'Cancel' }[decision] || decision);
+const decisionLabel = (decision: string, t: ReturnType<typeof useLanguage>['t']) => { const key = ({ accept: 'approval.allow', decline: 'approval.decline', acceptForSession: 'approval.session', cancel: 'common.cancel' } as Record<string, MessageKey>)[decision]; return key ? t(key) : decision; };
 
 export function ChatPanel() {
+  const { t } = useLanguage();
   const agent = useSeedRuntime();
   const [changingSession, setChangingSession] = useState(false);
   const runtime = useExternalStoreRuntime({ messages: agent.messages, convertMessage, onNew: agent.onNew, onCancel: agent.onCancel, isRunning: agent.isRunning, isLoading: agent.isLoading, isSendDisabled: changingSession || agent.isLoading || agent.isChangingEngine || agent.isRestarting || !agent.engineReady, adapters: { attachments: attachmentAdapter } });
   const selectedEngine = agent.engines.find(engine => engine.id === agent.selection.engine);
   const selectedProvider = selectedEngine?.providers?.find(provider => provider.id === agent.selection.providerId);
   const offline = !agent.isLoading && !agent.engineReady;
-  const caption = agent.isLoading ? 'Connecting to local Agent…' : offline ? agent.engineError || selectedEngine?.error || 'Selected engine is not ready' : agent.activity || (agent.selection.engine !== 'codex' ? selectedProvider?.models.find(model => model.id === agent.selection.modelId)?.label : agent.status?.model) || 'Local Agent';
+  const caption = agent.isLoading ? t('runtime.connecting') : offline ? t('chat.offline') : agent.activity || (agent.selection.engine !== 'codex' ? selectedProvider?.models.find(model => model.id === agent.selection.modelId)?.label : agent.status?.model) || t('chat.local');
 
   return <AssistantRuntimeProvider runtime={runtime}>
     <ConversationControls agent={agent} composer={runtime.thread.composer} onChanging={setChangingSession} />
     <ContextUsageCounter usage={agent.contextUsage} />
     <AttachmentDropzone><ThreadPrimitive.Root className={`conversation ${agent.messages.length === 0 ? 'conversation-empty' : ''}`}>
       <ThreadPrimitive.Viewport className="message-viewport">
-        {agent.messages.length === 0 && <div className="welcome"><h1>Start with a conversation.</h1><p>Tell Saplingagent what you want to build.</p></div>}
+        {agent.messages.length === 0 && <div className="welcome"><h1>{t('chat.welcome')}</h1><p>{t('chat.idea')}</p></div>}
         <ThreadPrimitive.Messages components={{ AssistantMessage, UserMessage }} />
-        {agent.tools.length > 0 && <div className="tool-activity" aria-label="Execution progress">{agent.tools.map(tool => <div key={tool.id} className="tool-step">{['completed', 'complete', 'succeeded'].includes(tool.status) ? <Check size={13} /> : ['failed', 'error'].includes(tool.status) ? <Wrench size={13} /> : <LoaderCircle size={13} className="spinning" />}<span>{toolLabel(tool.name)}</span>{['failed', 'error'].includes(tool.status) && <span>Incomplete</span>}</div>)}</div>}
+        {agent.tools.length > 0 && <div className="tool-activity" aria-label={t('chat.progress')}>{agent.tools.map(tool => <div key={tool.id} className="tool-step">{['completed', 'complete', 'succeeded'].includes(tool.status) ? <Check size={13} /> : ['failed', 'error'].includes(tool.status) ? <Wrench size={13} /> : <LoaderCircle size={13} className="spinning" />}<span>{toolLabel(tool.name, t)}</span>{['failed', 'error'].includes(tool.status) && <span>{t('chat.incomplete')}</span>}</div>)}</div>}
         {agent.approvals.map(approval => <div className="approval-message" key={approval.id}>
           <p>{approval.description}</p>
           <div className="approval-actions">{(approval.choices?.length ? approval.choices : ['accept', 'decline']).map(choice => {
             const decision = typeof choice === 'string' ? choice : choice.value || choice.decision || '';
-            const label = typeof choice === 'string' ? decisionLabel(choice) : choice.label || decisionLabel(decision);
+            const label = typeof choice === 'string' ? decisionLabel(choice, t) : choice.label || decisionLabel(decision, t);
             return <button key={decision} type="button" disabled={agent.approvalBusy || !decision} onClick={() => { void agent.respondApproval(approval.id, decision); }}>{label}</button>;
           })}</div>
         </div>)}
       </ThreadPrimitive.Viewport>
       <div className="composer-area">
+        {offline && agent.engineErrorIssue ? <ErrorNotice error={agent.engineErrorIssue} /> : null}
         <EngineControls agent={agent} composer={runtime.thread.composer} changingSession={changingSession} />
-        {agent.error && <div className="chat-error" role="alert"><span>{agent.error}</span>{agent.retryable && <button type="button" disabled={agent.isRunning} onClick={() => { void agent.retry(); }}><RotateCcw size={12} />Retry</button>}</div>}
+        {agent.error && <div className="chat-error" role="alert"><ErrorNotice error={agent.errorIssue} />{agent.retryable && <button type="button" disabled={agent.isRunning} onClick={() => { void agent.retry(); }}><RotateCcw size={12} />{t('common.retry')}</button>}</div>}
         <ComposerPrimitive.Root className="composer"><RestartDraft sessionId={agent.activeSessionId} /><ComposerAttachments />
-          <ComposerPrimitive.Input addAttachmentOnPaste={false} className="composer-input" placeholder="Describe your idea…" aria-label="Chat with Saplingagent" rows={2} autoFocus />
-          <div className="composer-bottom"><div className="composer-meta"><AttachFilesButton /><span className="input-hint">Enter to send · Shift + Enter for a new line</span></div>{agent.isRunning ? <ComposerPrimitive.Cancel className="send-button stop-button" aria-label="Stop response"><Square size={14} fill="currentColor" /></ComposerPrimitive.Cancel> : <ComposerPrimitive.Send className="send-button" aria-label="Send message"><ArrowUp size={19} /></ComposerPrimitive.Send>}</div>
+          <ComposerPrimitive.Input addAttachmentOnPaste={false} className="composer-input" placeholder={t('chat.placeholder')} aria-label={t('chat.label')} rows={2} autoFocus />
+          <div className="composer-bottom"><div className="composer-meta"><AttachFilesButton /><span className="input-hint">{t('chat.enter')}</span></div>{agent.isRunning ? <ComposerPrimitive.Cancel className="send-button stop-button" aria-label={t('chat.stop')}><Square size={14} fill="currentColor" /></ComposerPrimitive.Cancel> : <ComposerPrimitive.Send className="send-button" aria-label={t('chat.send')}><ArrowUp size={19} /></ComposerPrimitive.Send>}</div>
         </ComposerPrimitive.Root>
         <div className="runtime-footer"><span className={`runtime-caption ${offline ? 'runtime-offline' : ''}`} role="status">{agent.isRunning || agent.isLoading ? <LoaderCircle size={11} className="spinning" /> : <span className="connection-dot" />}{caption}</span>
-          <div className="conversation-actions">{offline && <button type="button" title="Reconnect to local Agent" onClick={() => { void agent.refreshStatus(); void agent.refreshEngines(); }}><RotateCcw size={12} />Reconnect</button>}</div>
+          <div className="conversation-actions">{offline && <button type="button" title={t('chat.reconnectTitle')} onClick={() => { void agent.refreshStatus(); void agent.refreshEngines(); }}><RotateCcw size={12} />{t('chat.reconnect')}</button>}</div>
         </div>
       </div>
     </ThreadPrimitive.Root></AttachmentDropzone>

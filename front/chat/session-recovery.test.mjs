@@ -1,3 +1,4 @@
+import * as uiMessages from '../localization/messages.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -18,7 +19,7 @@ const sse = (id, messages) => new Response([
 ].map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream', 'X-Session-Id': id } });
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
 
-async function harness({ savedId = null, route, engineCatalog = null, runtimeStatus = null, list = () => json({ sessions: [] }) }) {
+async function harness({ language = 'en', savedId = null, route, engineCatalog = null, runtimeStatus = null, list = () => json({ sessions: [] }) }) {
   const storage = new Map(savedId ? [[KEY, savedId]] : []);
   const requests = [], slots = [], effects = [], timers = new Map();
   let cursor = 0, nextTimer = 0, rendered, scheduled = false, unmounted = false;
@@ -76,6 +77,8 @@ async function harness({ savedId = null, route, engineCatalog = null, runtimeSta
   const modules = new Map();
   async function load(name) {
     if (name === 'react') return reactModule;
+    const mock = name === '../localization/LanguageProvider' ? { useLanguage: () => ({ language }) } : name === '../localization/messages' ? uiMessages : null;
+    if (mock) return new vm.SyntheticModule(Object.keys(mock), function () { for (const [key, value] of Object.entries(mock)) this.setExport(key, value); }, { context });
     if (modules.has(name)) return modules.get(name);
     const source = await readFile(new URL(`${name}.ts`, import.meta.url), 'utf8');
     const module = new vm.SourceTextModule(stripTypeScriptTypes(source), { context, identifier: name });
@@ -89,6 +92,7 @@ async function harness({ savedId = null, route, engineCatalog = null, runtimeSta
   render(); await settle();
   return {
     get current() { return rendered; }, requests, storage, settle,
+    setLanguage(value) { language = value; render(); },
     runtime(detail) { const event = new Event('saplingagent:runtime'); event.detail = detail; events.dispatchEvent(event); },
     async send(text = 'synthetic request') { await rendered.onNew({ content: [{ type: 'text', text }] }); await settle(); },
     tick(delay) { for (const [id, timer] of [...timers]) if (timer.delay <= delay) { if (!timer.interval) timers.delete(id); timer.callback(); } },
@@ -517,4 +521,14 @@ test('active response blocks AI changes without discarding the running conversat
   let controller;const live={...session('live',[message('u','active task')],true),activeRequestId:'u'};
   const h=await harness({savedId:'live',route:r=>r.url.startsWith('/api/events')?new Response(new ReadableStream({start(c){controller=c}})):json({session:live})});t.after(()=>h.close());
   assert.equal(h.current.isRunning,true);assert.equal(h.current.canSelectEngine,false);assert.equal(await h.current.changeEngine(claudeChoice),false);assert.equal(h.requests.filter(r=>r.url.endsWith('/engine')).length,0);assert.equal(h.current.messages[0].text,'active task');controller.close();await h.settle();
+});
+
+test('language changes during streaming preserve the same session, messages and subscription', async t => {
+  let controller;const live={...session('bilingual',[message('original-user','Keep this original English message')],true),activeRequestId:'original-user'};
+  const h=await harness({savedId:'bilingual',route:r=>r.url.startsWith('/api/events')?new Response(new ReadableStream({start(c){controller=c}})):json({session:live})});t.after(()=>h.close());
+  const emit=value=>controller.enqueue(new TextEncoder().encode('data: '+JSON.stringify(value)+'\n\n'));
+  emit({type:'status',label:'Thinking…'});await h.settle();assert.equal(h.current.activity,'Thinking…');const count=h.requests.length;
+  h.setLanguage('zh');await h.settle();assert.equal(h.current.activity,'正在思考…');assert.equal(h.current.activeSessionId,'bilingual');assert.equal(h.current.isRunning,true);assert.equal(h.current.messages[0].text,'Keep this original English message');assert.equal(h.requests.length,count);
+  emit({type:'text_delta',itemId:'bilingual-answer',delta:'Untranslated model response'});await h.settle();h.tick(100);await h.settle();assert.ok(h.current.messages.some(item=>item.text==='Untranslated model response'));
+  h.setLanguage('en');await h.settle();assert.equal(h.current.activeSessionId,'bilingual');assert.equal(h.requests.filter(r=>r.url.startsWith('/api/events')).length,1);assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0);controller.close();
 });

@@ -1,9 +1,10 @@
+import { translate } from '../localization/messages.ts';
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
 import { transformSync } from "rolldown/utils";
-async function footer(kernel, release) {
+async function footer(kernel, release, language = 'en') {
 	let cursor = 0;
 	const slots = [], effects = [], jsx = (type, props) => ({
 		type,
@@ -52,6 +53,7 @@ async function footer(kernel, release) {
 		})
 	});
 	const mocks = {
+    "../../localization/LanguageProvider": { useLanguage: () => ({ t: (key, params) => translate(language, key, params) }) },
 		react,
 		"react/jsx-runtime": {
 			jsx,
