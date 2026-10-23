@@ -126,7 +126,7 @@ Runtimes stay in `.runtime/`, dependencies in their modules' `node_modules/`, an
 
 Scheme metadata stays in `local-secrets/ai-config/connections.json`, API keys in `local-secrets/api-keys/`, and Codex sign-in credentials in `local-secrets/codex/`. The credential ledger stores file references. The page never reads saved keys back into fields; leave a key blank when editing to retain it. No global credentials are imported. OpenCode's legacy native provider selector remains available as an explicit recovery command and stores its credentials in `local-secrets/opencode/`.
 
-Startup uses the saved default scheme. **An OpenCode-only or custom Codex API scheme does not require ChatGPT login.** Reconfigure while an app is running, then restart and start a new conversation to apply the choice. Existing conversations retain their engine/model; do not resume a Codex thread through a different provider. See [AI configuration guide](docs/ai-configuration.html) and [configuration service contract](kernel/services/ai-config/CONTRACT.md).
+Startup uses the saved default scheme. **An OpenCode-only or custom Codex API scheme does not require ChatGPT login.** After reconfiguration, restart to load available schemes. In an idle conversation, choose the desired AI/provider/model and Apply: its messages and draft stay in the same conversation, and the next Send hands history to the new AI. Native sessions remain engine-specific. See [AI configuration guide](docs/ai-configuration.html) and [configuration service contract](kernel/services/ai-config/CONTRACT.md).
 
 Startup opens the **actual address printed in the terminal** after local readiness checks. Port5173 is the default starting point; occupied public/internal ports are skipped upward. Send a message to verify an actual response. Installation and saved login do not prove model access or available quota.
 
@@ -142,7 +142,6 @@ bash Saplingagent.sh login --device-auth
 bash Saplingagent.sh opencode
 bash Saplingagent.sh start --no-open
 bash Saplingagent.sh doctor
-bash Saplingagent.sh git
 bash Saplingagent.sh kernel
 bash Saplingagent.sh logout
 ```
@@ -165,7 +164,7 @@ Open **Configure AI → ChatGPT account**, then choose **Use local Codex login**
 
 For Claude choose **Claude → API key**, enter your provider URL/model and use **Import local Claude API credentials** or **Upload API credential JSON**. The local action reads `ANTHROPIC_API_KEY` inherited from the launcher terminal, or the API env fields in local Claude `settings.json` (`CLAUDE_CONFIG_DIR` or `~/.claude`). JSON accepts `apiKey`, `ANTHROPIC_API_KEY` or `env.ANTHROPIC_API_KEY`, with optional `baseUrl`/`model`; nonblank form fields take precedence. Existing scheme keys require explicit replacement. Claude subscription OAuth files, OS keychain and executable credential helpers are not imported.
 
-Files are limited to32KiB and sent only to the protected local configuration service. Secrets stay in ignored project files, never state responses or browser storage. Import validates local structure/storage, not token expiry, quota or successful model access. Save settings, build the app and finish setup; start a new conversation when changing providers. See the [configuration guide](docs/ai-configuration.html) and [Claude official API authentication](https://code.claude.com/docs/en/agent-sdk/quickstart).
+Files are limited to32KiB and sent only to the protected local configuration service. Secrets stay in ignored project files, never state responses or browser storage. Import validates local structure/storage, not token expiry, quota or successful model access. Save settings, build the app and finish setup; use Apply in an idle conversation when changing providers, or start a new conversation if preferred. See the [configuration guide](docs/ai-configuration.html) and [Claude official API authentication](https://code.claude.com/docs/en/agent-sdk/quickstart).
 
 ## Authentication and costs
 
@@ -185,11 +184,11 @@ For current eligibility and costs, consult [Codex authentication](https://learn.
 
 ## Optional OpenCode providers
 
-Codex is the initial default when no scheme is saved. Use **Configure AI → API / custom provider** for OpenCode with an Anthropic, OpenRouter or custom compatible endpoint; that saved scheme can be the startup default. For providers requiring the native selector instead, run `bash Saplingagent.sh opencode` as a terminal fallback. Its credentials stay under `local-secrets/opencode/`. Restart Saplingagent and choose a connected OpenCode provider/model before the first message of a new conversation. Each conversation stays bound to its original engine/model across refresh and restart; start a new conversation to switch. There is no automatic fallback between providers.
+Codex is the initial default when no scheme is saved. Use **Configure AI → API / custom provider** for OpenCode with an Anthropic, OpenRouter or custom compatible endpoint; that saved scheme can be the startup default. For providers requiring the native selector instead, run `bash Saplingagent.sh opencode` as a terminal fallback. Its credentials stay under `local-secrets/opencode/`. Restart Saplingagent and choose a connected OpenCode provider/model before the first message of a new conversation. Each conversation retains its selected engine/model across refresh and restart; an explicit Apply can switch AI while preserving its history. There is no automatic fallback between providers.
 
 Claude can also run through the official **Claude Agent SDK** as its own local agent engine. It embeds the Claude Code agent loop with native shell/file tools, MCP, project Skills, streaming and resumable sessions. This is an embedded SDK integration, with no separate public App Server port.
 
-Run `bash Saplingagent.sh` to open web setup, then choose **API / custom provider** → **Anthropic · Messages**. The preset selects **Claude Agent**. Enter your own API key, exact model ID and API Base URL (`https://api.anthropic.com/v1`, or your compatible gateway URL). **Save & use** → **Save & build app** → wait for completion → **Finish setup** → open the generated app. Create a new conversation when changing providers. Model discovery is optional; gateways must support Anthropic Messages streaming and tool calls. Claude schemes do not require Codex login.
+Run `bash Saplingagent.sh` to open web setup, then choose **API / custom provider** → **Anthropic · Messages**. The preset selects **Claude Agent**. Enter your own API key, exact model ID and API Base URL (`https://api.anthropic.com/v1`, or your compatible gateway URL). **Save & use** → **Save & build app** → wait for completion → **Finish setup** → open the generated app. Change providers with Apply in an idle conversation, or create a new conversation. Model discovery is optional; gateways must support Anthropic Messages streaming and tool calls. Claude schemes do not require Codex login.
 
 The SDK is pinned to `0.3.296` and installs its native binary inside the application folder; a separate global Claude Code installation is unnecessary. API keys stay in `local-secrets/api-keys/`, and SDK state/transcripts in `local-secrets/claude/`. Project `CLAUDE.md` imports `AGENTS.md`; `.agents/` loads the existing Skills as the `saplingagent` local plugin. Full Access remains enabled as the current OS user. There is no default whole-turn deadline, automatic fallback, automatic resend or silent replacement of missing sessions.
 
@@ -264,11 +263,10 @@ Frontend edits use Vite hot reload. Restart after backend, MCP, Skill-discovery 
 
 ## Troubleshooting
 
-Choose Diagnostics in the menu, or run:
+For diagnostics or kernel maintenance, run:
 
 ```bash
 bash Saplingagent.sh doctor
-bash Saplingagent.sh git
 bash Saplingagent.sh kernel
 ```
 
@@ -281,13 +279,13 @@ Doctor reports installation, versions, saved AI configuration and configured-por
 | Expired login or account change | Run `bash Saplingagent.sh logout`, then log in again |
 | Download/dependency failure | Check Node.js/npm network access; run `bash Saplingagent.sh install --repair` |
 | Installation lock remains | Confirm this project's installer has exited; remove only its stale `.runtime/node-install.lock` or `.runtime/macos-install.lock`, then retry |
-| Windows operation exits 150 before device detection | Update the complete source folder; menu actions now retain foreground terminal ownership and interactive install/Git setup use a foreground native console bridge when available. Retry `bash Saplingagent.sh --lang zh install` in Git Bash and retain preceding error text if it still fails; the exit number alone is not a diagnosis |
+| Windows operation exits 150 before device detection | Update the complete source folder; menu actions now retain foreground terminal ownership and interactive installation uses a foreground native console bridge when available. Retry `bash Saplingagent.sh --lang zh install` in Git Bash and retain preceding error text if it still fails; the exit number alone is not a diagnosis |
 | Port occupied | Follow the actual URL printed by the launcher; it selects free ports automatically. If another process wins a bind race during startup, run Start app again. Other projects are left running |
 | Not ready within 120 seconds | Run Doctor and inspect the startup terminal and metadata in `logs/<service>/` |
 | Local service connection failed | Keep the startup terminal running, run Diagnostics, and use the actual runtime address/ports from `.runtime/runtime-address.json`; configured ports are starting values |
 | Session does not exist | The UI retains unsent/retry input and starts a new session; do not delete `data/` to resolve it |
 | No recent progress | Check whether a tool or user decision is pending; continue waiting or stop manually. The reminder does not impose a default turn deadline |
-| OpenCode shows `Current permissions: full-access` or internal instructions as a reply | Update source to a version containing the OpenCode message-attribution fix (TASK-20261012-017), then restart the backend/app and create a new conversation. Preserve `data/` and `local-secrets/`; older saved bubbles are not deleted. In follow mode Install / repair dependencies checks source and dependencies; local/own modes retain source. Check the actual branch/version because release may lag main |
+| OpenCode shows `Current permissions: full-access` or internal instructions as a reply | Update source to a version containing the OpenCode message-attribution fix (TASK-20261012-017), then restart the backend/app and create a new conversation. Preserve `data/` and `local-secrets/`; older saved bubbles are not deleted. Source downloads contain the public release snapshot without Git metadata. Check the exact source commit in delivery.json because release may lag main |
 | Quota/model authorization error | Check the actual account error and official usage limits; reinstalling cannot grant model access |
 
 Stop services before moving the application. Move the whole folder. On the same architecture, launchers resolve the new location; reinstall after changing architecture or lockfiles.
@@ -297,7 +295,7 @@ Stop services before moving the application. Move the whole folder. On the same 
 ```text
 Saplingagent/
 ├── README.md / README.zh-CN.md # English / Chinese project guides
-├── Saplingagent.sh             # macOS / Windows English / Chinese menu
+├── Saplingagent.sh             # macOS / Windows bilingual setup launcher
 ├── front/                     # React chat and application features
 ├── backend/
 │   ├── agent-runtime/         # Agent engines, turns, SSE, Git API
@@ -368,7 +366,7 @@ The user's project rules ship under `rules/`. Translating their prose does not r
 
 Run `bash Saplingagent.sh --lang zh` in Git Bash. The script opens bilingual project/AI setup, followed by local launcher compilation. The legacy terminal menu is available with `SAPLING_LEGACY_MENU=1`. Explicit actions/flags are identical to Mac: `install --repair`, `configure --no-open`, `login --device-auth`, `opencode`, `start --no-open`, `doctor`, `logout`. See [Windows guide](docs/windows-install.html) / [中文 Windows 说明](docs/windows-install.zh.html).
 
-Windows system detection/download/extraction uses its built-in PowerShell internally, embedded in kernel/scripts/windows/bootstrap.sh; there is no separate .ps1 file or user PowerShell command. UTF16 encoded command arguments preserve Unicode paths and leave stdin available for provider authentication. Windows menu actions run in the foreground. Diagnostics/web configuration use PowerShell directly; Git Bash's winpty is used when available for interactive install/Git setup/login/OpenCode/start console compatibility. Windows terminal shutdown/model interactions still require native-system testing. No WSL, global Node/Codex, registry/global PATH/permanent execution-policy modification is required.
+Windows device detection, downloads and extraction use built-in PowerShell through project-owned scripts under kernel/scripts/windows/. Users still enter the Bash launcher command. UTF16 encoded command arguments preserve Unicode paths and leave stdin available for provider authentication. Windows menu actions run in the foreground. Diagnostics/web configuration use PowerShell directly; Git Bash's winpty is used when available for interactive install/login/OpenCode/start console compatibility. Windows terminal shutdown/model interactions still require native-system testing. No WSL, global Node/Codex, registry/global PATH/permanent execution-policy modification is required.
 
 The App Server is a project-owned native stdio subprocess. Credentials and agent state remain in local-secrets/codex/, local-secrets/opencode/, local-secrets/claude/ and shared local-secrets/api-keys/; dependencies/cache/state stay in the folder. Installation, setup, chat, runtime controls and user help support English and Simplified Chinese. The project language preference survives port changes and restarts; switching it does not translate conversation data. Full Access remains current-user access. Git is required to supply Bash on Windows; fresh snapshots have no Git metadata or storage selection. Existing customer Git is preserved.
 

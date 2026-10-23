@@ -60,9 +60,9 @@
 4. 完成所有修改后，点击“保存并构建应用”。外部 B 停止本项目服务、等待进程退出，再应用文件夹名称并编译“项目名称.app”（Mac）或“项目名称.exe”（Windows）。页面地址保持不变；不会覆盖同名目录。构建失败会保留当前实际目录和配置，修复后重试。
 5. 构建完成后点击“完成配置”。B 启动项目内 A 并交接临时目录，随后退出；A 等待 B 退出，再清理自己的临时配置包。之后双击应用，启动器检查并安装缺少或变更的依赖，再打开项目。更改名称、图标或 AI 时重新打开配置；重新构建成功后替换上次产物，失败保留原产物。
 
-点击 `.app` 或 `.exe` 后，启动器显示准备进度，并在服务管理器可用后打开 **Project status** 页面。页面显示项目名称、内核版本、实际目录和服务端口；通过 **Open app** 进入应用，通过 **Restart app / Stop app / Open logs** 重启、停止或查看本地日志。端口来自当前实例，未固定为 5173；断开连接不等于确认服务已停止。详见[项目状态说明](docs/project-status.html)。
+点击 `.app` 或 `.exe` 后，启动器显示准备进度，并在服务管理器可用后打开 **项目状态（Project status）**页面。页面显示项目名称、内核版本、实际目录和服务端口；通过 **打开应用（Open app）**进入应用，通过**重启应用（Restart app）／停止应用（Stop app）／打开日志（Open logs）**重启、停止或查看本地日志。端口来自当前实例，未固定为 5173；断开连接不等于确认服务已停止。详见[项目状态说明](docs/project-status.html)。
 
-macOS 上，应用会作为普通应用留在 Dock。点击 Dock 图标可重新打开项目状态；选择“退出”或按 **Command-Q** 会停止该项目的后台并退出应用。两个系统都可以使用状态页的 **Stop app**，等待服务确认退出后，再次打开原生应用即可重新启动。单独关闭浏览器或隐藏启动进度不会停止服务。停止失败时可查看 `logs/project-launcher/` 后重试。配置流程会等待原生应用和启动辅助进程退出后再改名或替换启动器。已有安装更新源码后，请通过“保存并构建应用”重新构建旧 `.app` / `.exe`，以启用新的进度显示；应用源码和服务集群保持不变。
+macOS 上，应用会作为普通应用留在 Dock。点击 Dock 图标可重新打开项目状态；选择“退出”或按 **Command-Q** 会停止该项目的后台并退出应用。两个系统都可以使用状态页的**停止应用（Stop app）**，等待服务确认退出后，再次打开原生应用即可重新启动。单独关闭浏览器或隐藏启动进度不会停止服务。停止失败时可查看 `logs/project-launcher/` 后重试。配置流程会等待原生应用和启动辅助进程退出后再改名或替换启动器。已有安装更新源码后，请通过“保存并构建应用”重新构建旧 `.app` / `.exe`，以启用新的进度显示；应用源码和服务集群保持不变。
 
 通过 `bash Saplingagent.sh configure --no-open` 可重新打开管理；`SAPLING_LEGACY_MENU=1 bash Saplingagent.sh` 保留旧终端菜单。原生 Windows 图标、目录改名和替换需要真机验收。详见[启动器说明](docs/project-launcher.html)。下方旧版菜单步骤仅适用于既有 release。
 
@@ -76,7 +76,7 @@ macOS 上，应用会作为普通应用留在 Dock。点击 Dock 图标可重新
 bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/Saplingagent/release/install.sh | bash -s -- --lang zh'
 ```
 
-独立的 `install.sh` 会解析当前 **release** 提交，下载该提交对应的完整源码到 `./Saplingagent`，运行安装程序，再打开配置与启动菜单。下载阶段不要求预装 Node，也不会克隆作者的全部分支。完成后配置你自己的 AI 访问方式，再选择启动应用。
+独立的 `install.sh` 会解析当前 **release** 提交，下载该提交对应的完整源码到 `./Saplingagent`，运行安装程序，再打开配置网页。下载阶段不要求预装 Node，也不会克隆作者的全部分支。完成后配置你自己的 AI 访问方式，保存并构建应用，再打开生成的启动器。
 
 目标文件夹必须是新目录。使用 `--dir` 指定另一个位置：
 
@@ -108,19 +108,19 @@ bash Saplingagent.sh --lang zh
 - **macOS：**使用终端，支持 Apple Silicon 和 Intel。
 - **Windows：**在项目目录中使用 Git Bash，支持 Windows 10 1809+ / Windows 11 的 x64 与 ARM64。CMD 或 PowerShell 不能直接执行 Bash 脚本；WSL/Linux 不属于此原生 Windows 安装路径。
 
-直接运行 `bash Saplingagent.sh` 时，首先选择 English 或 中文，回车默认 English。不要用 `sh` 执行，也不以双击脚本作为标准启动方式。
+直接运行 `bash Saplingagent.sh` 时，会沿用此项目已保存的语言；尚未保存时根据设备语言给出 English／中文默认项，并在提示中选择。也可用 `--lang zh` 明确选择中文。不要用 `sh` 执行，也不以双击脚本作为标准启动方式。当前流程会安装最小内核后直接进入配置网页；以下菜单仅在使用 `SAPLING_LEGACY_MENU=1 bash Saplingagent.sh` 的旧终端模式时显示。
 
 | 菜单项 | 作用 |
 | --- | --- |
 | 1. 安装 / 修复依赖 | 安装项目内依赖；保留应用源码与已有 Git |
-| 2. 配置 AI | 打开独立的本地账号 / API 配置页面 |
+| 2. 配置 AI 接口 | 打开独立的本地账号 / API 配置页面 |
 | 3. 启动应用 | 启动本地服务并打开聊天页 |
-| 4. 诊断 | 检查安装、AI 配置和运行状态 |
+| 4. 服务诊断 | 检查安装、AI 配置和运行状态 |
 | 6. 内核管理 | 独立查看版本、检查更新、备份更新与手动恢复；独立于应用与 Git |
 | 9. 切换语言 | 切换英文 / 中文菜单 |
 | 0. 退出 | 关闭菜单 |
 
-手动下载源码后，先选 **1. 安装 / 修复依赖**。一键安装命令已经执行了这一步。接着选 **2. 配置 AI**，完成配置后选 **3. 启动应用**。操作结束会返回菜单，失败时可根据提示重试。更新依赖前请先停止正在运行的应用；应用运行期间保留启动终端，按 Control+C 停止它所管理的服务并退出启动器。
+手动下载源码后运行统一入口，即可安装并进入配置网页；一键安装命令已自动执行这一步。在旧终端菜单中，对应操作为 **1. 安装 / 修复依赖**、**2. 配置 AI 接口**和 **3. 启动应用**。失败时根据提示重试。更新依赖前请先停止正在运行的应用；若通过终端启动服务，请保留启动终端，按 Control+C 停止它所管理的服务并退出启动器。
 
 安装程序将固定版本的 Node **24.21.0**、Codex **0.146.1**、OpenCode、Claude Agent SDK **0.3.296** 和锁定依赖安装到项目内，并核对官方 Node SHA-256。无需预装 Node、npm、Homebrew 或 Codex 桌面应用，也无需 sudo 或全局 npm 安装。版本声明见 [kernel/config/macos.json](kernel/config/macos.json) 和各模块的锁文件。
 
@@ -137,15 +137,15 @@ bash Saplingagent.sh --lang zh
 | OpenCode API | 支持 Chat Completions、Responses 或 Anthropic Messages，按服务商协议选择 |
 | Claude Agent API | 使用 Anthropic Messages 协议、你自己的 API key 和准确模型 ID |
 
-填写 **API 地址**，不要填写网站首页。预设可辅助配置 OpenAI、OpenRouter、Anthropic 或本地 Ollama 兼容端点。需要其他协议、任意自定义请求头或独立订阅 OAuth 的服务商，仍需对应适配。
+在 **API Base URL** 字段填写 API 基础地址，不要填写网站首页。预设可辅助配置 OpenAI、OpenRouter、Anthropic 或本地 Ollama 兼容端点。需要其他协议、任意自定义请求头或独立订阅 OAuth 的服务商，仍需对应适配。
 
 **获取模型 / Fetch models**是可选的目录查询；不支持查询时可手动填写模型 ID。用于应用开发的模型应支持流式输出与工具调用。保存方案不代表已验证模型兼容性或可用额度。
 
-点击 **保存并使用 / Save & use**，完成所有修改后选择 **保存并构建应用 / Save & build app**。等待构建完成，再点击 **完成配置 / Finish setup**，随后双击项目内 App。可以保存多个方案并切换默认项；更换服务商后新建对话。**完成配置 / Finish setup** 会交回项目内启动器，等待外部配置进程退出后清理临时目录，单独关闭浏览器标签不会停止服务。浏览器未自动打开时，使用终端打印的本地网址。
+点击 **保存并使用 / Save & use**，完成所有修改后选择 **保存并构建应用 / Save & build app**。等待构建完成，再点击 **完成配置 / Finish setup**，随后双击项目内 App。可以保存多个方案并切换默认项；更换服务商时可在空闲对话中选择 AI 并点击“应用”，保留当前历史，也可按需新建对话。**完成配置 / Finish setup** 会交回项目内启动器，等待外部配置进程退出后清理临时目录，单独关闭浏览器标签不会停止服务。浏览器未自动打开时，使用终端打印的本地网址。
 
 方案元数据保存在 `local-secrets/ai-config/connections.json`，API key 保存在 `local-secrets/api-keys/`，Codex 登录凭据保存在 `local-secrets/codex/`。凭据总账只保存文件引用。页面不会将已有密钥回填到表单；编辑时留空可保留旧密钥。安装不会自动导入全局凭据。
 
-OpenCode 独立方案和自定义 Codex API 方案无需先登录 ChatGPT。修改默认方案后，重启应用并新建对话；已有对话保留原来的引擎与模型，不要将旧 Codex 会话交给另一服务商恢复。详见 [AI 配置指南](docs/ai-configuration.html)和[配置服务契约](kernel/services/ai-config/CONTRACT.md)。
+OpenCode 独立方案和自定义 Codex API 方案无需先登录 ChatGPT。修改默认方案后，点击**重启应用**加载配置。已有对话保留原来的引擎与模型；需要在原对话换用新方案时，在空闲状态选择 AI 并点击**应用（Apply）**，下一次发送才交接历史，也可选择**新建对话**。详见 [AI 配置指南](docs/ai-configuration.html)和[配置服务契约](kernel/services/ai-config/CONTRACT.md)。
 
 启动后使用终端打印的**实际网址**。默认从端口 `5173` 开始，已被占用时自动向上选择空闲端口。发送一条消息，检查真实回复；安装成功、已登录和获取到模型列表都不等于推理成功。
 
@@ -161,7 +161,6 @@ bash Saplingagent.sh login --device-auth
 bash Saplingagent.sh opencode
 bash Saplingagent.sh start --no-open
 bash Saplingagent.sh doctor
-bash Saplingagent.sh git
 bash Saplingagent.sh kernel
 bash Saplingagent.sh logout
 ```
@@ -172,24 +171,24 @@ bash Saplingagent.sh logout
 
 ## 无 Git 的应用文件夹
 
-0.9.2 下载的是 release 源码快照，不包含 `.git`，安装时不创建 Git、不询问存放方式、不连接作者仓库。默认网页不再显示分支、Git 版本和 Save version。以后可自行创建仓库；重新安装或升级内核不会删除已有 Git、应用源码、数据和配置。
+0.9.2 下载的是 release 源码快照，不包含 `.git`，安装时不创建 Git、不询问存放方式、不连接作者仓库。默认网页不再显示分支、Git 版本和“保存版本（Save version）”。以后可自行创建仓库；重新安装或升级内核不会删除已有 Git、应用源码、数据和配置。
 
 ## 独立内核升级
 
-网页右上角 **Kernel → Check for kernel update → Upgrade kernel & restart**。升级器固定 release 提交并校验清单，显示变更和冲突，再停止当前应用、备份和替换内核、修复内核自己的依赖、完整重启并跳转到实际端口。页面、聊天、MCP、Skills、自定义业务和应用依赖声明保留。独立进度网页在原服务停止后继续工作，失败时可重试或手动恢复；不自动回退。
+网页右上角依次选择**内核 → 检查内核更新 → 升级内核并重启**（英文界面对应 Kernel → Check for kernel update → Upgrade kernel & restart）。升级器固定 release 提交并校验清单，显示变更和冲突，再停止当前应用、备份和替换内核、修复内核自己的依赖、完整重启并跳转到实际端口。页面、聊天、MCP、Skills、自定义业务和应用依赖声明保留。独立进度网页在原服务停止后继续工作，失败时可重试或手动恢复；不自动回退。
 
 当前内核版本为 **0.9.6 / schema3**；release 分支同步本版本；GitHub Releases 的旧标签和附件另行管理。0.9.1 的 schema2 原型不能直接跨边界升级：请下载0.9.2到新目录，保留原目录，再人工迁移自己的应用/数据/配置；不要覆盖真实凭据或重新生成旧目录基线。之后同 schema3 内核可在网页升级。完整说明：[内核管理](docs/kernel-management.html)。
 
 
 ## 导入已有的本地凭据
 
-在 **配置 AI → ChatGPT 账号**选择 **Use local Codex login**或 **Upload auth.json**。本地文件来自调用者的 `CODEX_HOME`，否则使用 `~/.codex/auth.json`；Windows 对应 `%USERPROFILE%\.codex\auth.json`。所选登录复制到此应用的 `local-secrets/codex/auth.json` 并启用；已有项目账号需要显式勾选 **Replace existing credentials**才会替换。只有系统钥匙串或桌面端登录时，可能没有可导入的文件，此时使用官方登录按钮。不会修改全局登录或配置。
+在 **配置 AI → ChatGPT 账号**选择**使用本机已登录的 Codex（Use local Codex login）**或**上传 auth.json（Upload auth.json）**。本地文件来自调用者的 `CODEX_HOME`，否则使用 `~/.codex/auth.json`；Windows 对应 `%USERPROFILE%\.codex\auth.json`。所选登录复制到此应用的 `local-secrets/codex/auth.json` 并启用；已有项目账号需要显式勾选**替换当前账号／方案已有的凭据（Replace existing credentials for this account / scheme）**才会替换。只有系统钥匙串或桌面端登录时，可能没有可导入的文件，此时使用官方登录按钮。不会修改全局登录或配置。
 
-Claude 使用 **Claude → API 密钥**，填写服务地址与模型，再选择 **Import local Claude API credentials**或 **Upload API credential JSON**。本地导入读取启动终端继承的 `ANTHROPIC_API_KEY`，或 `CLAUDE_CONFIG_DIR` / `~/.claude/settings.json` 中的 API 环境字段。JSON 支持 `apiKey`、`ANTHROPIC_API_KEY`、`env.ANTHROPIC_API_KEY`，可附带 `baseUrl` / `model`；非空表单优先。替换已有方案密钥也需要明确选择。
+Claude 使用 **Claude → API 密钥**，填写服务地址与模型，再选择**导入本机 Claude API 凭据（Import local Claude API credentials）**或**上传 API 凭据 JSON（Upload API credential JSON）**。本地导入读取启动终端继承的 `ANTHROPIC_API_KEY`，或 `CLAUDE_CONFIG_DIR` / `~/.claude/settings.json` 中的 API 环境字段。JSON 支持 `apiKey`、`ANTHROPIC_API_KEY`、`env.ANTHROPIC_API_KEY`，可附带 `baseUrl` / `model`；非空表单优先。替换已有方案密钥也需要明确选择。
 
 个人本机使用 Claude 套餐时，在 **Claude → 订阅 Token（本人自用）** 选择独立认证方式，在官方 CLI 运行 `claude setup-token`，然后填写 Token 和模型 ID。此方式不填写自定义 API 地址，也不读取模型列表。Token 仅存于项目 `local-secrets/`；编辑同类方案时留空可保留，切换认证方式需要新凭据。保存不验证额度、有效性或免费使用；仍适用 Anthropic 的账号和集成条件，不代表第三方产品已获批准。详见[个人订阅 Token 指南](docs/claude-subscription.html)。
 
-导入不读取 Claude 订阅 OAuth 文件、系统钥匙串或可执行凭据助手。文件最大 32KiB，只发送给受保护的本地配置服务。密钥保存在 Git 忽略的项目文件中，不写入状态响应或浏览器存储。导入只验证本地结构与保存，不验证有效期、额度或模型推理；保存并构建应用、完成配置后再打开 App；更换服务商后新建对话。详见 [AI 配置指南](docs/ai-configuration.html)。
+导入不读取 Claude 订阅 OAuth 文件、系统钥匙串或可执行凭据助手。文件最大 32KiB，只发送给受保护的本地配置服务。密钥保存在 Git 忽略的项目文件中，不写入状态响应或浏览器存储。导入只验证本地结构与保存，不验证有效期、额度或模型推理；保存并构建应用、完成配置后再打开 App；更换服务商时可在空闲对话中选择 AI 并点击“应用”，保留当前历史，也可按需新建对话。详见 [AI 配置指南](docs/ai-configuration.html)。
 
 <a id="authentication"></a>
 
@@ -214,13 +213,13 @@ Claude 使用 **Claude → API 密钥**，填写服务地址与模型，再选�
 
 Claude Agent 通过官方 **Claude Agent SDK**作为独立的本地引擎运行，内嵌 Claude Code 的 Agent 循环，支持原生文件 / 命令工具、MCP、项目 Skills、流式输出和会话恢复；没有独立对外 App Server 端口，也不通过 Claude Desktop 执行推理。
 
-安装后进入 **配置 AI → API / 自定义服务商 → Anthropic · Messages**，预设会选择 **Claude Agent**。填写自己的 API key、准确模型 ID，以及 `https://api.anthropic.com/v1` 或兼容网关地址。保存并使用，再保存并构建应用，完成配置后打开 App；更换服务商后新建对话。网关需支持 Anthropic Messages 流式输出与工具调用，模型发现可选，Claude 方案无需 Codex 登录。
+安装后进入 **配置 AI → API / 自定义服务商 → Anthropic · Messages**，预设会选择 **Claude Agent**。填写自己的 API key、准确模型 ID，以及 `https://api.anthropic.com/v1` 或兼容网关地址。保存并使用，再保存并构建应用，完成配置后打开 App；更换服务商时可在空闲对话中选择 AI 并点击“应用”，保留当前历史，也可按需新建对话。网关需支持 Anthropic Messages 流式输出与工具调用，模型发现可选，Claude 方案无需 Codex 登录。
 
 SDK 固定为 `0.3.296`，原生二进制安装在应用文件夹内，无需全局安装 Claude Code。共享 API key 位于 `local-secrets/api-keys/`，Claude 状态和会话位于 `local-secrets/claude/`。项目 `CLAUDE.md` 引入 `AGENTS.md`，`.agents/` 作为本地 `saplingagent` 插件加载现有 Skills。
 
 本项目支持客户自己的 API 方案，以及本人手动提供 `claude setup-token` 的本机订阅方案；不自动登录或导入订阅 OAuth 文件。第三方产品使用订阅认证需遵循 Anthropic 的集成条件和适用批准要求；SDK 组件遵循其自身条款。参见 [SDK 概览](https://code.claude.com/docs/en/agent-sdk/overview)和[快速开始与认证](https://code.claude.com/docs/en/agent-sdk/quickstart)。
 
-每个对话始终绑定最初的引擎与模型；切换请新建对话，不会自动回退、重发或静默替换丢失会话。Claude 原生问题对话框 / MCP elicitation 表单暂未渲染，Agent 通过普通聊天提问。本地启动只证明原生初始化及项目 MCP / Skills 可用；付费模型、第三方网关和原生 Windows 行为仍需实际验证。OpenCode 的 Anthropic 服务商可独立使用。
+每个对话会保留已选引擎与模型；在空闲时选择新 AI 并点击“应用”可保留当前对话，下一次明确发送时交接历史。不会自动回退、重发或静默替换丢失会话。Claude 原生问题对话框 / MCP elicitation 表单暂未渲染，Agent 通过普通聊天提问。本地启动只证明原生初始化及项目 MCP / Skills 可用；付费模型、第三方网关和原生 Windows 行为仍需实际验证。OpenCode 的 Anthropic 服务商可独立使用。
 
 <a id="configuration"></a>
 
@@ -271,7 +270,7 @@ flowchart LR
 
 ## 常见问题
 
-优先使用菜单中的诊断，或执行 `bash Saplingagent.sh doctor`。诊断检查安装、版本、AI 方案与实际实例状态，不显示密钥，也不发模型提示词。
+优先打开**项目状态**查看服务情况，或使用旧终端菜单的**服务诊断**，也可执行 `bash Saplingagent.sh doctor`。诊断检查安装、版本、AI 方案与实际实例状态，不显示密钥，也不发模型提示词。
 
 | 问题 | 处理方式 |
 | --- | --- |
@@ -286,7 +285,7 @@ flowchart LR
 | 本地服务连接失败 | 保留启动终端，检查诊断及 `.runtime/runtime-address.json` 中实际端口，必要时完整重启 |
 | 会话不存在 | 界面保留未发送 / 重试输入，并创建新会话；不要为此删除 `data/` |
 | 长时间无进展 | 检查工具或用户决定是否待处理，选择继续等待或手动停止；提醒不会自动设置整轮截止时间 |
-| OpenCode 将内部权限指令当作回复 | 更新到包含消息归属修复的版本，重启后端 / 应用并新建对话；保留数据与凭据。核对实际分支，release 可能落后于 main |
+| OpenCode 将内部权限指令当作回复 | 更新到包含消息归属修复的版本，点击**重启后端**或**重启应用**，再选择**新建对话**；保留数据与凭据。核对实际分支，release 可能落后于 main |
 | 模型权限或额度报错 | 查看真实账号错误与服务商限制；重装不会授予权限或额度 |
 
 移动应用前先停止服务，并移动**整个文件夹**。相同架构下启动器会解析新位置；更换系统、架构或锁文件后需要重装对应依赖。原生 Windows 登录、模型、MCP、重启和 ARM 硬件行为尚需真实设备验收。

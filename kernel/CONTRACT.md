@@ -141,3 +141,8 @@ This manually configured personal/local option uses the unmodified official
 SDK/CLI. Anthropic's plan and integration conditions still apply; no third-party
 approval or free usage is implied. API credentials and existing profiles retain
 their current behavior. Full Access and the kernel version remain unchanged.
+
+
+## Project language and actionable errors (2026-10-23)
+
+The public `kernel/localization/` contract provides keyed English/Simplified Chinese messages, shared error summaries/actions and project language persistence. Setup, runtime controls, install/launcher surfaces and independent help use it; application UI keeps its own catalog under `front/`. Browser APIs store only `config/ui-language.json` under the existing configuration-write lease and runtime drain gate. Preferences belong to customers, stay outside kernel replacement/source packages and persist across ports. No language change reloads a model, rewrites conversations or changes tool permissions. See `localization/CONTRACT.md`.

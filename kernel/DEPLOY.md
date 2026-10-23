@@ -116,3 +116,8 @@ Install/repair includes the pinned MCP SDK in kernel dependencies. Enable Extern
 ### Language resources and maintenance handoff
 
 The independent maintenance worker copies its full localization module closure before applying source. Its same-origin language selector writes only the active project's shared preference. Kernel, status and maintenance pages use English/Chinese catalogs and shared error redaction; no frontend rebuild or model call is needed for those pages. The control iframe/footer changes language without navigating the host page. Keep the pre-Node Bash/PowerShell catalog files in delivered source snapshots. Existing native launchers require a rebuild for new embedded text, while their project preference remains outside the kernel update manifest.
+
+
+### Bilingual interface maintenance (2026-10-23)
+
+Keep locale catalogs and their public helpers with the kernel source. Shared-catalog changes invalidate the setup asset fingerprint; prepare the configuration page through the launcher before serving. Existing native apps need export/rebuild for newly compiled launcher behavior, then read the project's current saved language on launch. Browser language saves require the existing local origin/authentication contract; do not publish configuration endpoints. Verify locale parity, interpolation, in-flight state, request drain, both builds and copied configuration/maintenance closures before distribution. Current kernel version remains0.9.6.
