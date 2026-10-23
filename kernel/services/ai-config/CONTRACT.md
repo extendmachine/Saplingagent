@@ -1,5 +1,36 @@
 # AI configuration contract v1.1
 
+## Personal Claude subscription token (TASK-20261022-002)
+
+`POST /api/config/profiles` additionally accepts a Claude-only
+`kind:'subscription'` scheme: `{revision?,id?,label,engine:'claude',kind,model,apiKey?,activate?}`.
+The existing write-only `apiKey` input carries the token manually obtained with
+`claude setup-token`; it is not an API key in this mode. Public and persisted
+profile metadata contain only `{id,label,engine,kind,model}`, with `hasKey` added
+to public summaries. Private storage uses `{oauthToken}` at the existing
+`local-secrets/api-keys/ai-<id>.json`, referenced in the ledger as `oauth-token`
+for personal local use. No subscription token is imported from local account
+stores, copied into a capsule, returned in HTTP, logged or added to public config.
+
+New schemes and authentication-kind changes require a nonblank token. An omitted
+or blank token retains credentials only for the same existing Claude subscription
+scheme when its saved credential passes the shared contract's validation. Missing,
+malformed or API-key-only credentials return400 `KEY_REQUIRED` for re-entry;
+invalid engine, any supplied `noAuth`/`baseUrl`/`protocol`/`contextWindow`/`maxOutput`, invalid model or token
+returns400 `INVALID_CONFIG`. Token input is limited to8192 characters, rejects
+control characters and internal whitespace, and trims surrounding spaces.
+`POST /api/config/models` rejects subscription discovery before any fetch; enter
+a model ID manually. Errors never include the supplied token or raw credential.
+
+Existing revision, writer-lock, Host/Origin/token, request-size, pending-login/import
+and setup-readiness behavior is unchanged. API profiles and credential imports
+remain separate; changing back to API authentication requires its own key unless
+the API endpoint explicitly uses noAuth. Changing authentication kind deliberately
+replaces that scheme's private credential type, not another scheme. Saving confirms
+local storage only, not remote login, entitlement, token expiry or model access.
+This owner-requested personal setup does not establish approval to offer Claude
+subscription authentication in a third-party distributed product.
+
 ## External MCP access (TASK-20261021-004)
 
 `GET /api/config/mcp` returns the public kernel MCP-access state:
@@ -43,7 +74,7 @@ enabled, and provider mutations do not select or disable external-only mode.
 TASK-20261012-001, Codex. The standalone setup service binds 127.0.0.1 at an OS-assigned port; it serves the compiled kernel/ui/setup entry independently of chat. No persistent supervisor slot. Same-origin requests with X-Sapling-Config token from the HTML meta tag; reject other Host, Origin and cross-site Fetch Metadata. Token only protects setup HTTP and does not change Agent Full Access.
 
 - GET /api/config/state: {revision,activeId,profiles,codex,login,mcp}. Profile summaries contain hasKey, never key material, credentials, email or arbitrary headers. MCP summary fields are defined above.
-- POST /api/config/profiles: {revision?,id?,label,engine:codex|opencode|claude,kind:api|chatgpt,protocol:responses|chat|anthropic,baseUrl,model,apiKey?,noAuth?,contextWindow?,maxOutput?,activate?}. Blank key retains a saved key; noAuth disables it for that edited profile while retaining the old private key. ChatGPT profile needs locally saved ChatGPT credentials. Creates/updates one scheme; no model request. Returns sanitized state. Version mismatch 409 CONFIG_CHANGED; invalid input 400 INVALID_CONFIG. Configuration is stored in local-secrets/ai-config/connections.json; API keys are local-secrets/api-keys/ai-<id>.json and referenced in the ledger. No key in public runtime config/TOML/CLI argv.
+- POST /api/config/profiles: {revision?,id?,label,engine:codex|opencode|claude,kind:api|chatgpt|subscription,model?,apiKey?,activate?}; API schemes also use {protocol:responses|chat|anthropic,baseUrl,noAuth?,contextWindow?,maxOutput?}. The subscription shape and credential rules are defined above. Blank API keys retain a saved API key; noAuth disables it for that edited API profile while retaining the old private key. ChatGPT profile needs locally saved ChatGPT credentials. Creates/updates one scheme; no model request. Returns sanitized state. Version mismatch 409 CONFIG_CHANGED; invalid input 400 INVALID_CONFIG. Configuration is stored in local-secrets/ai-config/connections.json; API keys and subscription tokens are local-secrets/api-keys/ai-<id>.json and referenced in the ledger. No key in public runtime config/TOML/CLI argv.
 - POST /api/config/activate {revision?,id}: select an existing saved scheme; no current service restart/session mutation. New runtime/new conversation uses it.
 - POST /api/config/models: profile draft fields above, saved id and optional apiKey. Explicit, bounded GET of <baseUrl>/models with matching auth. No prompt; no persistence. {models:[{id,name}]}; HTTP failure 502 PROVIDER_HTTP_ERROR with status, no raw body/key; timeout/transport 502 PROVIDER_UNREACHABLE; redirects not followed. IDs manual when endpoint lacks discovery.
 - POST /api/config/login {mode:chatgpt|chatgptDeviceCode}: official pinned local Codex App Server auth flow, no password proxy. Returns {login:{phase,authUrl?,userCode?,mode}}; completion is polled through state. Login completion saves/selects ChatGPT scheme and registers credential reference. Only one login at a time (409 LOGIN_BUSY). App-server callbacks with another loginId are ignored. Late callbacks after cancellation/close do not activate a scheme.
@@ -63,7 +94,7 @@ Errors: 400 INVALID_CREDENTIALS/UNSUPPORTED_AUTH/CREDENTIALS_TOO_LARGE/INVALID_C
 
 ## Claude Agent engine (TASK-20261012-005–009)
 
-Engine ID `claude` uses the project-local official Claude Agent SDK, with API-only Anthropic Messages profiles. Each conversation binds `engine`, `providerId` (`sapling-<profile-id>`) and `modelId`; existing bindings are immutable. Configuration accepts custom HTTP(S) API base URLs ending in `/v1`; SDK transport removes this trailing API version before its own `/v1/messages` route. Keys remain in local-secrets, never public responses. The default takes effect after restart. Local initialization checks MCP and Skills without a model prompt; authentication means a saved key, not proven quota. Streaming, completion, interruption and failure use existing chat events. Missing native sessions are reported, never silently replaced. Full Access and the completion-review receipt remain unchanged. No claude.ai subscription login is offered.
+Engine ID `claude` uses the project-local official Claude Agent SDK with Anthropic Messages API profiles or the personal subscription-token scheme defined above. Each conversation binds `engine`, `providerId` (`sapling-<profile-id>`) and `modelId`; existing bindings are immutable. API configuration accepts custom HTTP(S) base URLs ending in `/v1`; SDK transport removes this trailing API version before its own `/v1/messages` route. Subscription mode has no custom endpoint. Credentials remain in local-secrets, never public responses. The default takes effect after restart. Local initialization checks MCP and Skills without a model prompt; configured authentication is not proven quota. Streaming, completion, interruption and failure use existing chat events. Missing native sessions are reported, never silently replaced. Full Access and the completion-review receipt remain unchanged. The personal token is entered manually; there is no new subscription browser-login or automatic account-import flow.
 
 ## Product0.9.3 project setup
 

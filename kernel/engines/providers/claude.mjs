@@ -8,16 +8,41 @@ import { claudeConnections, readConnections } from '../../contracts/ai-configura
 import { terminateOwned } from '../../contracts/local-process.mjs';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const authVariable = name => /^(ANTHROPIC_|CLAUDE_CODE_(OAUTH|SESSION_ACCESS_TOKEN|HOST_CREDS_FILE|HOST_AUTH|SDK_HAS_(HOST_AUTH|OAUTH)_REFRESH|PROVIDER_MANAGED_BY_HOST|(?:GATEWAY_TOKEN|API_KEY|WEBSOCKET_AUTH)_FILE_DESCRIPTOR|USE_)|CLAUDE_BRIDGE_OAUTH_TOKEN|AWS_|GOOGLE_(APPLICATION_CREDENTIALS|CLOUD_|API_KEY)|GCLOUD_)/i.test(name);
+const credential = value => typeof value === 'string' && !!value.trim() && value.length <= 8192 && !/[\s\x00-\x1f\x7f]/.test(value);
+const authFailure = () => Object.assign(new Error('The selected Claude authentication is unavailable. Reconfigure that scheme and restart the app.'),{code:'CLAUDE_AUTH_REQUIRED'});
+function safeError(error,profiles=[]) {
+  let message=typeof error?.message==='string'?error.message:'Claude Agent operation failed.';
+  for(const profile of profiles)for(const name of ['oauthToken','apiKey'])if(typeof profile?.[name]==='string'&&profile[name])message=message.split(profile[name]).join('[redacted]');
+  const value=new Error(message.slice(0,4000));
+  value.code=error?.code==='CLAUDE_AUTH_REQUIRED'?'CLAUDE_AUTH_REQUIRED':'CLAUDE_AGENT_ERROR';
+  return value;
+}
+function toolEnvironment(env={}) {
+  const clean={...env};
+  // An SDK child may merge its own environment. Explicit empty overrides prevent
+  // the registered MCP subprocess from inheriting the selected authentication.
+  for(const name of new Set([...Object.keys(process.env),...Object.keys(env),'ANTHROPIC_API_KEY','ANTHROPIC_AUTH_TOKEN','ANTHROPIC_BASE_URL','CLAUDE_CODE_OAUTH_TOKEN']))if(authVariable(name))clean[name]='';
+  return clean;
+}
 // Deliberately do not inherit a developer's global Claude account or routing.
 export function claudeEnvironment(root, profile, inherited = process.env) {
   const env = { ...inherited };
-  for (const name of Object.keys(env)) if (/^(ANTHROPIC_|CLAUDE_CODE_OAUTH|CLAUDE_CODE_USE_(BEDROCK|VERTEX|FOUNDRY)|AWS_|GOOGLE_APPLICATION_CREDENTIALS)/.test(name)) delete env[name];
-  return { ...env,
+  for (const name of Object.keys(env)) if (authVariable(name)||/^CLAUDE_CONFIG_DIR$/i.test(name)) delete env[name];
+  let auth;
+  if(profile.kind==='subscription'){
+    if(!credential(profile.oauthToken))throw authFailure();
+    auth={CLAUDE_CODE_OAUTH_TOKEN:profile.oauthToken};
+  }else if(profile.kind==='api'){
+    if(!profile.noAuth&&(typeof profile.apiKey!=='string'||!profile.apiKey))throw authFailure();
+    if(typeof profile.sdkBaseUrl!=='string'||!profile.sdkBaseUrl)throw authFailure();
+    auth={ANTHROPIC_API_KEY:profile.noAuth?'anonymous-local-endpoint':profile.apiKey,ANTHROPIC_BASE_URL:profile.sdkBaseUrl};
+  }else throw authFailure();
+  return { ...env, ...auth,
     XDG_CONFIG_HOME: path.join(root, 'local-secrets/claude/config'), XDG_DATA_HOME: path.join(root, 'local-secrets/claude/data'),
     XDG_CACHE_HOME: path.join(root, '.cache/claude'), XDG_STATE_HOME: path.join(root, 'local-secrets/claude/state'),
     TMPDIR: path.join(root, '.cache/claude/tmp'), TMP: path.join(root, '.cache/claude/tmp'), TEMP: path.join(root, '.cache/claude/tmp'),
     CLAUDE_CONFIG_DIR: path.join(root, 'local-secrets/claude'),
-    ANTHROPIC_API_KEY: profile.apiKey || 'anonymous-local-endpoint', ANTHROPIC_BASE_URL: profile.sdkBaseUrl,
     DISABLE_AUTOUPDATER: '1', DISABLE_TELEMETRY: '1', CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' };
 }
 
@@ -36,7 +61,7 @@ export class ClaudeProvider {
       permissionMode: 'bypassPermissions', allowDangerouslySkipPermissions: true, sandbox: { enabled: false },
       settingSources: ['project'], plugins: [{ type: 'local', path: path.join(this.root, '.agents') }],
       systemPrompt: { type: 'preset', preset: 'claude_code', append: this.instructions + ' Ask user questions in ordinary chat text; this host does not render native question or MCP elicitation forms.' }, includePartialMessages: true,
-      mcpServers: { seedagent: { type: 'stdio', command: process.execPath, args: [path.join(this.root, 'backend/mcp-runtime/server.mjs')], env: this.mcpEnv } },
+      mcpServers: { seedagent: { type: 'stdio', command: process.execPath, args: [path.join(this.root, 'backend/mcp-runtime/server.mjs')], env: toolEnvironment(this.mcpEnv) } },
       hooks: { PreToolUse: [{ hooks: [tool('running')] }], PostToolUse: [{ hooks: [tool('completed')] }], PostToolUseFailure: [{ hooks: [tool('failed')] }] },
       // Do not advertise dialog types that this minimal chat UI cannot render.
       supportedDialogKinds: [], onUserDialog: async () => ({ behavior: 'cancelled' }),
@@ -61,13 +86,13 @@ export class ClaudeProvider {
   async start() {
     if (this.ready) return this.catalog;
     if (this.starting) return this.starting;
-    this.starting = this.initialize().finally(() => { this.starting = null; });
+    this.starting = this.initialize().catch(error=>{throw safeError(error,this.profiles);}).finally(() => { this.starting = null; });
     return this.starting;
   }
   async initialize() {
     this.closing = false;
     const profiles = await claudeConnections(this.root, await readConnections(this.root));
-    if (!profiles.length) return { id: 'claude', label: 'Claude Agent', ready: false, authenticated: false, providers: [], mcp: { ready: false, tools: [] }, error: 'Configure a Claude Agent API scheme in AI setup first.' };
+    if (!profiles.length) return { id: 'claude', label: 'Claude Agent', ready: false, authenticated: false, providers: [], mcp: { ready: false, tools: [] }, error: 'Configure a Claude Agent scheme in AI setup first.' };
     await Promise.all(['local-secrets/claude','local-secrets/claude/config','local-secrets/claude/data','local-secrets/claude/state','.cache/claude/tmp'].map(directory => fs.mkdir(path.join(this.root, directory), { recursive: true, mode: 0o700 })));
     this.profiles = profiles;
     const state = {}; this.probe = state;
@@ -135,17 +160,17 @@ export class ClaudeProvider {
       if (run.cancelRequested || this.closing) terminal = { type: 'done', status: 'interrupted' };
       else if (!result && !run.finished) throw new Error('Claude Agent ended without a completion result.');
     } catch (error) {
-      terminal = run.cancelRequested || this.closing ? { type: 'done', status: 'interrupted' } : { type: 'error', error };
+      terminal = run.cancelRequested || this.closing ? { type: 'done', status: 'interrupted' } : { type: 'error', error:safeError(error,this.profiles) };
     } finally {
-      try { await this.dispose(state); } catch (error) { terminal = { type: 'error', error }; }
+      try { await this.dispose(state); } catch (error) { terminal = { type: 'error', error:safeError(error,this.profiles) }; }
       this.runs.delete(run);
       if (terminal && !run.finished) this.onEvent(run, run.cancelRequested ? { type: 'done', status: 'interrupted' } : terminal);
     }
   }
-  async interrupt(run) { run.cancelRequested = true; await this.dispose(this.runs.get(run)); }
+  async interrupt(run) { run.cancelRequested = true; try{await this.dispose(this.runs.get(run));}catch(error){throw safeError(error,this.profiles);} }
   async close() {
     this.closing = true; this.ready = false;
-    await Promise.all([...this.runs.values(), this.probe].filter(Boolean).map(state => this.dispose(state)));
+    try{await Promise.all([...this.runs.values(), this.probe].filter(Boolean).map(state => this.dispose(state)));}catch(error){throw safeError(error,this.profiles);}
     await this.starting?.catch(() => {});
   }
 }

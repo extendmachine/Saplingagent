@@ -1,5 +1,24 @@
 # Official configuration sources
 
+## Personal subscription setup (checked 2026-10-22 / TASK-20261022-002)
+
+- https://code.claude.com/docs/en/authentication#generate-a-long-lived-token —
+  `claude setup-token` creates a long-lived token for `CLAUDE_CODE_OAUTH_TOKEN`;
+  this implementation accepts manual input and does not execute login or import
+  global subscription stores. The endpoint cannot be replaced by a custom API URL.
+- https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan —
+  October7,2026 update describes current SDK/subscription-limit availability and
+  plan API credits. It does not prove a saved token's expiry, quota or model access.
+- https://code.claude.com/docs/en/legal-and-compliance — published SDK/binary,
+  customer authentication and third-party offering conditions remain applicable.
+  The owner requested personal local main use; no hosted offering, resale,
+  commercial-auth approval or public release is established by these changes.
+
+Public references were read without an account. Tests use synthetic credentials;
+no real login, provider request or model call was performed. The pinned official
+SDK is unchanged. Earlier dated import records below describe API-only imports,
+which remain separate from this manual subscription-token scheme.
+
 Checked 2026-10-11 / TASK-20261012-001, public documentation; accounts/keys required only for actual authentication/inference.
 
 - https://learn.chatgpt.com/docs/app-server — OpenAI auth account/read, account/login/start/chatgpt/device code, cancel/completed; local pinned Codex0.146.1 schema generated in ignored research cache confirms fields. Existing local use; commercial/hosted authentication requires separately authorized SIWC, not supplied by this UI.

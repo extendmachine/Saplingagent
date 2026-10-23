@@ -1,5 +1,13 @@
 # Standalone AI configuration service
 
+TASK-20261022-002 adds owner-requested personal Claude subscription-token storage.
+The existing profile endpoint accepts a distinct subscription kind and keeps its
+OAuth token separate from API keys. Public state exposes only hasKey; blank edits
+require a valid saved credential of the same kind, and subscription model discovery
+is rejected without network access. No credential import, new auth process, logger,
+port or dependency is added. See CONTRACT.md for validation and type transitions;
+the shared contract and engine adapter handle runtime selection separately.
+
 TASK-20261021-004 adds project-local external MCP access configuration through the
 public kernel contract at `kernel/contracts/mcp-access.mjs`. The service returns
 generated stdio client settings for the actual project path and supports finishing

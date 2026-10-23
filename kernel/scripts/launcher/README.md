@@ -49,3 +49,8 @@ Customer launcher management uses the public kernel/launcher/public.mjs facade. 
 ## Current kernel version
 
 The Bash menu/downloader now read kernel/manifest.json; kernelVersion in delivery receipts is authoritative and releaseVersion is the same compatibility alias. Build/package/config metadata mirrors are checked against that one version (currently0.9.6). Previous product/kernel distinction notes above are historical. Old updater transition: docs/kernel-version-migration.html.
+
+
+## Personal Claude subscription startup (2026-10-22)
+
+A saved Claude subscription profile is checked through the shared Claude credential contract before startup. It does not require Codex login and never falls back to it when its own token is missing. Runtime/Agent readiness checks still apply; saving a token is not proof of model quota or inference.

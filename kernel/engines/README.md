@@ -52,3 +52,12 @@ no model prompt and uses only generated local data. Real customer conversation,
 provider quota and Windows native execution remain separate acceptance.
 
 See `REFERENCES.md` for the official documentation and generated schema evidence.
+
+## Claude authentication
+
+Claude API and the owner's personal subscription-token profiles share the existing
+official SDK adapter. `kind` selects mutually exclusive authentication; a missing
+subscription token cannot fall back to a key or an inherited account. Setup and
+credential persistence belong to the configuration service. See CONTRACT.md,
+DEPLOY.md and the dated Claude entries in REFERENCES.md for the precise boundary
+and tests. Saved credentials/local startup do not prove model access or quota.

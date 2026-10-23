@@ -1,5 +1,25 @@
 # Setup service deployment
 
+## Personal Claude subscription token (2026-10-22)
+
+For the owner's local setup, run the official `claude setup-token` command yourself,
+then enter its output in the subscription-token option and choose a Claude model.
+Saving does not perform login or inference, and the application does not read your
+global Claude account storage. This mode has no custom endpoint or model catalog.
+Save & build app, finish setup, then restart and use a new conversation to select
+the scheme. API schemes and their explicit credential-import actions remain separate.
+
+Leave the token blank only when editing the same subscription scheme with a valid
+saved token. A missing/corrupt token or changing authentication kind requires a new
+credential. To preserve another credential, create a separate scheme. Metadata and
+the private `{oauthToken}` file remain project-local and excluded from delivery;
+the ledger records its purpose without a token or an inferred expiry date. Saved
+state is not proof of account entitlement, available quota or successful inference.
+Source rollback requires a compatible API/account profile and deliberate removal
+of subscription metadata before using an older version that cannot parse it;
+preserve the original credentials and conversations. This main-only change is for
+the requested personal use, not a new public authentication or hosted offering.
+
 External AI / MCP (TASK-20261021-004): after saving the project settings, enable
 MCP access and explicitly select external-only mode when no built-in AI account
 is needed. Save & build app can then finish without a provider profile. Existing
@@ -39,7 +59,7 @@ In ChatGPT account choose Use local Codex login or Upload auth.json. The local a
 
 In Claude API fill the provider URL and model, then Import local Claude API credentials or Upload API credential JSON. Local sources are inherited ANTHROPIC_API_KEY and optional ANTHROPIC_BASE_URL/ANTHROPIC_MODEL, otherwise user settings.json under CLAUDE_CONFIG_DIR or .claude. Only API fields are copied; settings hooks, apiKeyHelper, keychain and subscription .credentials.json are not used. Upload accepts {"apiKey":"YOUR_API_KEY","baseUrl":"https://api.anthropic.com/v1","model":"YOUR_MODEL_ID"}, equivalent ANTHROPIC_API_KEY or env.ANTHROPIC_API_KEY fields. JSON may omit URL/model when the form supplies them; explicit form values win. Existing scheme key replacement needs its checkbox; create a new scheme to preserve another key. The normal manual API form remains available.
 
-Files are limited to32KiB (request64KiB), processed by the local setup service and never returned to the browser, stored in browser storage or sent to a model. Malformed/unsupported/oversized files fail explicitly. All imported secrets stay ignored under local-secrets/ with restrictive POSIX permissions; Windows uses current user OS access controls. Source files remain untouched. Configuration writes are individually atomic, not a multi-file transaction: after an I/O failure refresh/check local state. Save settings, wait for the verified restart, then export the app. Begin a fresh conversation when changing providers; historical conversation bindings are retained. Claude subscription authentication is not supported without prior Anthropic approval. Real account/provider and native Windows tests remain recipient acceptance.
+Files are limited to32KiB (request64KiB), processed by the local setup service and never returned to the browser, stored in browser storage or sent to a model. Malformed/unsupported/oversized files fail explicitly. All imported secrets stay ignored under local-secrets/ with restrictive POSIX permissions; Windows uses current user OS access controls. Source files remain untouched. Configuration writes are individually atomic, not a multi-file transaction: after an I/O failure refresh/check local state. Save settings, wait for the verified restart, then export the app. Begin a fresh conversation when changing providers; historical conversation bindings are retained. Subscription documents are still not accepted by API import; the personal manual-token scheme is described above. Third-party product authentication rights are separate from this local configuration change. Real account/provider and native Windows tests remain recipient acceptance.
 
 
 Configuration UI recovery: Configure AI, the native launcher and offline restart verify/build the setup page automatically using project-local dependencies. Rebuilds use staging and retain the old page until a complete replacement is ready; old hashed resources remain available to already-open documents. A missing resource requests a page reload. If automatic preparation reports UI_BUILD_FAILED, run `bash Saplingagent.sh install --repair`, then `bash Saplingagent.sh configure`. UI_BUILD_INTERRUPTED requires inspecting the stopped builder before removing only kernel/.cache/setup-build.lock. Do not remove credentials or conversations to repair page assets.

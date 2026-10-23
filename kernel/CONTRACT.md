@@ -122,3 +122,22 @@ storage promise.
 The new standalone `kernel/services/mcp-access/` stdio endpoint and its SDK dependency are kernel-owned platform integration. It exposes eight native file/shell/context/Skills tools to an external AI with current-user Full Access, independently of model accounts and application backends. Existing `backend/mcp-runtime/`, app preferences/page tools and all Skills content remain application-owned; this addition does not migrate them into the kernel. Settings are in application-local `config/mcp-access.json`, excluded from kernel replacement.
 
 Connected MCP process receipts block source apply, standalone restore, dependency replacement and folder relocation. Registration and maintenance coordinate through kernel-operation/install locks. Copied maintenance workers include the shared guard and its builtin dependencies; standalone recovery retains a self-contained conservative guard. MCP_CLIENTS_ACTIVE requests client disconnection, never arbitrary PID termination. Restart app and Dock Quit do not claim ownership of external client connections.
+
+## Personal Claude subscription credentials (2026-10-22)
+
+AI configuration additionally accepts `engine:'claude',kind:'subscription'`.
+Its saved public profile contains only `id,label,engine,kind,model`; it has no
+API URL, protocol or anonymous-auth option. The existing write-only `apiKey`
+request field carries a manually supplied `claude setup-token` token for this
+kind. Only `oauthToken` is stored in its project-local credential file. Public
+state exposes `hasKey`, never the token. Empty input retains a valid existing
+credential of the same kind; changing authentication kind requires a new secret.
+The shared configuration contract passes `oauthToken` to the Claude adapter,
+which sets `CLAUDE_CODE_OAUTH_TOKEN` and removes conflicting inherited API/cloud
+settings. Missing tokens fail rather than falling back to anonymous API access.
+Model discovery is not available for this kind. Saving does not call a model,
+validate quota, refresh credentials or authorize third-party subscription access.
+This manually configured personal/local option uses the unmodified official
+SDK/CLI. Anthropic's plan and integration conditions still apply; no third-party
+approval or free usage is implied. API credentials and existing profiles retain
+their current behavior. Full Access and the kernel version remain unchanged.

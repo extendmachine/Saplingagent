@@ -6,8 +6,9 @@ export const credentialPath = (root, id) => {
   return path.join(root, 'local-secrets/api-keys', `ai-${id}.json`);
 };
 function validProfile(profile) {
-  if (!profile || !/^[a-z0-9-]{1,80}$/.test(profile.id) || !['codex','opencode','claude'].includes(profile.engine) || !['api','chatgpt'].includes(profile.kind) || typeof profile.label !== 'string' || !profile.label.trim() || profile.label.length > 80 || /[\x00-\x1f\x7f]/.test(profile.label)) return false;
+  if (!profile || !/^[a-z0-9-]{1,80}$/.test(profile.id) || !['codex','opencode','claude'].includes(profile.engine) || !['api','chatgpt','subscription'].includes(profile.kind) || typeof profile.label !== 'string' || !profile.label.trim() || profile.label.length > 80 || /[\x00-\x1f\x7f]/.test(profile.label)) return false;
   if (profile.kind === 'chatgpt') return profile.engine === 'codex';
+  if (profile.kind === 'subscription') return profile.engine === 'claude' && ['protocol','baseUrl','noAuth','contextWindow','maxOutput','apiKey','oauthToken'].every(key => !Object.hasOwn(profile,key)) && typeof profile.model === 'string' && Boolean(profile.model.trim()) && profile.model.length <= 240 && !/[\x00-\x1f\x7f]/.test(profile.model);
   if (!['chat','responses','anthropic'].includes(profile.protocol) || (profile.engine === 'codex' && profile.protocol !== 'responses') || (profile.engine === 'claude' && profile.protocol !== 'anthropic') || typeof profile.noAuth !== 'boolean' || typeof profile.model !== 'string' || !profile.model.trim() || profile.model.length > 240 || /[\x00-\x1f\x7f]/.test(profile.model)) return false;
   try {
     const url = new URL(profile.baseUrl);
@@ -27,11 +28,13 @@ export function defaultSelection(connections) {
   return profile && profile.engine !== 'codex' ? { engine: profile.engine, providerId: `sapling-${profile.id}`, modelId: profile.model } : { engine: 'codex', providerId: null, modelId: null };
 }
 export async function readCredential(root, profile) {
-  if (profile.kind !== 'api' || profile.noAuth) return null;
+  if (!['api','subscription'].includes(profile.kind) || (profile.kind === 'api' && profile.noAuth)) return null;
   try {
     const data = JSON.parse(await fs.readFile(credentialPath(root, profile.id), 'utf8'));
-    if (typeof data.apiKey !== 'string' || !data.apiKey) throw new Error();
-    return data.apiKey;
+    const value = profile.kind === 'subscription' ? data.oauthToken : data.apiKey;
+    if (typeof value !== 'string' || !value) throw new Error();
+    if (profile.kind === 'subscription' && (profile.engine !== 'claude' || !value.trim() || value.length > 8192 || /[\s\x00-\x1f\x7f]/.test(value))) throw new Error();
+    return value;
   } catch { throw new Error('A saved AI credential is unavailable. Reconfigure that scheme in the setup page.'); }
 }
 export async function codexConnection(root, connections) {
@@ -62,7 +65,9 @@ export async function codexCredentialStatus(root) {
 
 export async function claudeConnections(root, connections) {
   return Promise.all(connections.profiles.filter(p => p.engine === 'claude').map(async profile => ({
-    ...profile, providerId: `sapling-${profile.id}`, apiKey: await readCredential(root, profile),
-    sdkBaseUrl: profile.baseUrl.replace(/\/v1\/?$/, ''),
+    ...profile, providerId: `sapling-${profile.id}`,
+    ...(profile.kind === 'subscription'
+      ? { oauthToken: await readCredential(root, profile), sdkBaseUrl: null }
+      : { apiKey: await readCredential(root, profile), sdkBaseUrl: profile.baseUrl.replace(/\/v1\/?$/, '') }),
   })));
 }
