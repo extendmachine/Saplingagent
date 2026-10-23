@@ -19,6 +19,8 @@ async function sourceSignature(root) {
     }
   }
   await walk('kernel/ui/setup');
+  // Setup imports the shared language and error catalogs; invalidate cached UI on changes.
+  try { await walk('kernel/localization'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
   for (const name of ['kernel/package.json','kernel/package-lock.json']) hash.update(name).update(await fs.readFile(path.join(root,name)));
   return hash.digest('hex');
 }

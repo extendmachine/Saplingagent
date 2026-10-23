@@ -108,3 +108,8 @@ GET /api/runtime/status additionally returns applicationRoot (canonical absolute
 Runtime status adds `aiConnection: builtin | external-mcp`. The latter is derived only from saved `config/mcp-access.json` with both enabled and externalOnly true. In that mode the Agent HTTP service and all app services still start, but Agent readiness uses its ordinary /health endpoint rather than requiring a model login and application MCP initialization. Built-in mode retains its existing authenticated readiness. Malformed MCP settings fail with INVALID_MCP_CONFIG before replacing existing service processes. A settings change takes effect on restart. Embedded chat still requires a configured provider; external MCP conversations run in the user's external client.
 
 External stdio MCP processes are owned by their AI clients and remain independent of Restart app and Dock Quit. Kernel maintenance rejects active MCP connections before its handoff; it never terminates the external client host.
+
+
+## Project language (TASK-20261023-010)
+
+GET /api/runtime/language returns {language,supported:["en","zh"]}. POST accepts only {language:"en"|"zh"}, persists config/ui-language.json atomically and returns the same object. Existing local Host/Origin/Bearer checks apply; invalid input400/INVALID_LANGUAGE, filesystem failure503/LANGUAGE_SAVE_FAILED. Reading uses the saved project choice, then Accept-Language, then English; reading never writes. No inference, restart or credential change. See ../../localization/CONTRACT.md.

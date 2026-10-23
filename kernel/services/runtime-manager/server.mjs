@@ -1,4 +1,6 @@
 import http from 'node:http';
+import { readLanguage, writeLanguage } from '../../localization/store.mjs';
+import { normalizeLanguage, supportedLanguages } from '../../localization/public.mjs';
 import { kernelRequest } from '../../http.mjs';
 import { timingSafeEqual } from 'node:crypto';
 import { projectStatus, openProjectLogs } from './status.mjs';
@@ -39,6 +41,24 @@ export function createControlHandler(options) {
     try {
       localAccess(req, options);
       const route = new URL(req.url, 'http://127.0.0.1').pathname;
+      if (route === '/api/runtime/language' && ['GET','POST'].includes(req.method)) {
+        let language;
+        try {
+          if (req.method === 'POST') {
+            let bytes = 0; const chunks = [];
+            for await (const chunk of req) {
+              bytes += chunk.length;
+              if (bytes > 256) return send(res,400,{error:{code:'INVALID_LANGUAGE',message:'Choose en or zh.'}});
+              chunks.push(chunk);
+            }
+            let input; try { input = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch {}
+            if (!input || Array.isArray(input) || Object.keys(input).length !== 1 || !supportedLanguages.includes(input.language))
+              return send(res,400,{error:{code:'INVALID_LANGUAGE',message:'Choose en or zh.'}});
+            language = await writeLanguage(manager.root,input.language);
+          } else language = await readLanguage(manager.root,normalizeLanguage(req.headers['accept-language']));
+          return send(res,200,{language,supported:supportedLanguages});
+        } catch { return send(res,503,{error:{code:'LANGUAGE_SAVE_FAILED',message:'The project language preference could not be read or saved. Check folder access and retry.'}}); }
+      }
       if (await kernelRequest(req,res,options,route,send)) return;
       if (req.method === 'GET' && route === '/health') return send(res, 200, { ready: true, service: 'runtime-manager' });
       if (req.method === 'GET' && route === '/api/runtime/status') return send(res, 200, await projectStatus(manager));
