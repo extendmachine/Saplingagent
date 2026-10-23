@@ -1,6 +1,6 @@
 import { parseReleaseMetadata } from '../contracts/release.mjs';
 import { validateKernelManifest, isKernelPath, isContainedKernelPath } from '../contracts/kernel.mjs';
-import { initialProjectRecords, recipientAgentInstructions } from './launcher/recipient-records.mjs';
+import { recordsForSource, recipientAgentInstructions } from './launcher/recipient-records.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,7 +72,7 @@ export async function packageSource({ ref = 'release', outputDir = path.join(roo
       const content = await fs.readFile(path.join(directory, declared.path));
       if (content.length !== declared.bytes || createHash('sha256').update(content).digest('hex') !== declared.sha256 || (entry.mode === '100755') !== declared.executable) throw new Error('Kernel manifest does not match packaged source: ' + declared.path);
     }
-    const records = initialProjectRecords(commit, platform);
+    const records = await recordsForSource(directory, commit, platform);
     for (const [file, content] of Object.entries(records)) await fs.writeFile(path.join(directory, file), content);
     const agentsFile = path.join(directory, 'AGENTS.md');
     let agents = await fs.readFile(agentsFile, 'utf8');
