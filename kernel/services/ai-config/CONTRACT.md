@@ -155,3 +155,32 @@ These checks constrain the configuration service's own destinations, not Agent t
 Official login children use project-local temp/cache/XDG defaults and CODEX_HOME.
 Explicit local account imports still read the selected original source without
 changing it. Directory rename waits for active AI requests and owned auth exit.
+
+## Shared interface language (TASK-20261023-008)
+
+Protected `GET /api/config/language` returns `{language:'en'|'zh',supported:['en','zh']}`.
+Protected `POST /api/config/language` accepts exactly `{language:'en'|'zh'}` and
+returns the same shape. Existing Host/Origin/Fetch Metadata, token and JSON-body
+limits apply. Language can be chosen before project or account setup; the write
+counts as an active configuration request and refuses directory/finalization
+operations. It does not change account profiles, credentials, AI revisions,
+model requests or setup/export readiness. Unsupported values/extra fields return
+400 `INVALID_LANGUAGE`. Persistence uses the shared project-relative
+`config/ui-language.json` contract and follows the current root after relocation.
+
+The HTML language comes from saved project preferences, falling back to an explicit
+launcher language or browser Accept-Language and then English. Finalization reads
+the stored language again. The UI uses the central setup-message catalog and
+shared human error explanations; stable codes and sanitized original details
+remain available in an expandable disclosure. Switching language preserves drafts,
+secrets in unsaved form inputs and operation state. A delayed initial preference
+read must not overwrite a newer explicit selection. Saved content, user paths,
+provider/model identifiers and protocol values are never translated.
+
+
+Language-only writes use the shared configuration writer lease and managed-path
+checks, without updating the credential ledger. Errors retain the existing
+`{error:{code,message}}` fields and add `{summary,action,details}` from the shared
+language contract; unknown internal exceptions are sanitized before explanation.
+`GET /help?lang=en|zh` renders shared bilingual guidance with this setup server's
+language endpoint/token. Its sole inline helper receives a per-response CSP nonce.

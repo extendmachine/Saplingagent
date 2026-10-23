@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
-import { transformSync } from 'rolldown/utils';
+import {loadComponentModule} from './component-test-loader.mjs';
+import {formatMessage} from '../../localization/public.mjs';
+import {setupMessages} from '../../localization/setup-messages.mjs';
 
 const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(nodes)];
 async function fixture() {
@@ -27,22 +29,16 @@ async function fixture() {
       } else if (delayedRead) { const read = delayedRead; delayedRead = undefined; return read.promise; }
       return structuredClone(stored);
     },
-    t: en => en, disabled: false, refreshKey: 'old', onSaved() {}, onStatus: value => statuses.push(value),
+    language:'en', t: (key,params)=>formatMessage(setupMessages,props.language,key,params), disabled: false, refreshKey: 'old', onSaved() {}, onStatus: value => statuses.push(value),
   };
-  const ref = { current: null }, jsx = (type, props) => ({ type, props });
+  const ref = { current: null }, jsx = (type, props) => ['ErrorNotice','Notice','LanguageSelector'].includes(type?.name)?type(props):({ type, props });
   const context = vm.createContext({ Error, Promise, JSON, Blob, setTimeout,
     navigator: { clipboard: { async writeText(json) { if (copyFailure) throw Error('denied'); copied.push(json); } } },
     URL: { createObjectURL() { return 'blob:fixture'; }, revokeObjectURL() {} },
     document: { body: { append() {} }, createElement() { return { click() { downloads.push(this.download); }, remove() {} }; } },
   });
   const mocks = { react, 'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' } };
-  async function load(name) {
-    if (mocks[name]) { const mock = mocks[name]; return new vm.SyntheticModule(Object.keys(mock), function () { for (const [key, value] of Object.entries(mock)) this.setExport(key, value); }, { context }); }
-    const file = name === 'entry' ? 'McpAccess.tsx' : 'mcp-access.ts';
-    const module = new vm.SourceTextModule(transformSync(file, await readFile(new URL(file, import.meta.url), 'utf8'), { jsx: { runtime: 'automatic' } }).code, { context });
-    await module.link(load); return module;
-  }
-  const module = await load('entry'); await module.evaluate();
+  const module=await loadComponentModule('./McpAccess.tsx',{context,mocks});await module.evaluate();
   function render() { cursor = 0; tree = module.namespace.McpAccess(props, ref); while (effects.length) effects.shift()(); }
   const settle = async () => { for (let i = 0; i < 8; i++) await new Promise(resolve => setImmediate(resolve)); };
   render(); await settle();
@@ -79,7 +75,7 @@ test('MCP revision conflict keeps edits dirty until explicit reload and successf
   h.check(0).props.onChange({ target: { checked: true } }); await h.settle();
   await assert.rejects(h.ref.current.save(), { code: 'CONFIG_CHANGED' }); await h.settle();
   assert.equal(h.statuses.at(-1).dirty, true);
-  assert.match(h.text(), /MCP settings changed elsewhere/);
+  assert.match(h.text(), /CONFIG_CHANGED/);
   h.setStored({ revision: 5 }); h.allowSave();
   h.button('Reload saved MCP settings').props.onClick(); await h.settle();
   assert.equal(h.check(0).props.checked, false);
@@ -108,4 +104,10 @@ test('late MCP refresh cannot replace saved choices and busy setup disables clie
   late.resolve({ revision: 1, enabled: false, externalOnly: false, available: true, warnings: [] });
   await refresh; await h.settle(); assert.equal(h.check(0).props.checked, true);
   h.props.disabled = true; h.render(); assert.equal(h.button('Copy JSON').props.disabled, true);
+});
+
+test('MCP language changes keep unsaved choices and translate notices and error explanations',async()=>{
+ const h=await fixture();h.check(0).props.onChange({target:{checked:true}});await h.settle();h.props.language='zh';h.render();await h.settle();assert.equal(h.check(0).props.checked,true);assert.ok(h.button('保存 MCP 设置'));assert.equal(h.calls.filter(c=>c.body).length,0);
+ await h.ref.current.save();await h.settle();assert.match(h.text(),/MCP 设置已保存/);h.props.language='en';h.render();assert.match(h.text(),/MCP settings saved/);
+ h.conflict();h.check(1).props.onChange({target:{checked:true}});await h.settle();await assert.rejects(h.ref.current.save());await h.settle();h.props.language='zh';h.render();assert.match(h.text(),/等待期间项目或对话已发生变化/);assert.match(h.text(),/技术详情/);assert.match(h.text(),/CONFIG_CHANGED/);
 });

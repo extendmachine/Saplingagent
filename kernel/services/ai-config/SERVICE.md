@@ -1,5 +1,13 @@
 # Standalone AI configuration service
 
+TASK-20261023-008 adds the protected project-language endpoint and a bilingual
+help page. Stored language follows the actual root after relocation, HTML loads
+it before React, and finalization reads the current saved choice. Language writes
+use the shared configuration lock and existing active-operation gates without
+changing profiles, credentials, AI revisions or export readiness. Public errors
+add localized summary/action/details while preserving compatible code/message.
+
+
 TASK-20261022-002 adds owner-requested personal Claude subscription-token storage.
 The existing profile endpoint accepts a distinct subscription kind and keeps its
 OAuth token separate from API keys. Public state exposes only hasKey; blank edits

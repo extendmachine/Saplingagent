@@ -85,3 +85,19 @@ bootstrap if Node is absent and does not need Git Bash for daily activation. A
 failed install does not claim application readiness. Retain the complete source
 folder. No global installation, model call, credential/Git rewrite or automatic
 rollback. See configuration/CONTRACT.md and launcher/DEPENDENCIES.md.
+
+
+## Project language (TASK-20261023-008)
+
+Setup reads `config/ui-language.json` through the shared language contract. A new
+folder uses explicit launcher language or browser language with English fallback;
+an existing saved preference wins. The setup selector and Help selector save
+through the same loopback/token-protected endpoint. No AI scheme or credential
+must exist to choose a language. Configuration changes that own the directory
+must finish before language can be saved; the UI reports failure without clearing
+the form. Reopening after moving or renaming reads preferences from the new root.
+
+The kernel build includes the setup catalog and shared language/error modules.
+Regenerate/check the maintainer manifest after integration. Do not regenerate a
+recipient baseline. Native launcher language handoff belongs to the configuration
+and launcher owners; this service reads the final actual project preference again.

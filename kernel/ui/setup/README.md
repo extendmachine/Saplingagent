@@ -6,8 +6,13 @@ shared `kernel/launcher/setup-ui.mjs` prepares `kernel/.cache/setup` through a
 staged build. The configuration service serves the compiled page on its own
 loopback port; no chat page or Vite development server is needed.
 
-English is the default; the page follows the launcher language and offers a
-Chinese toggle. Account/API tabs support saved schemes, default activation,
+The language selector supports English and Chinese and saves the choice to the
+project through `/api/config/language`. Saved project language is authoritative;
+without it the explicit launcher language, browser language and English are the
+fallbacks. Language follows folder renames and port changes. Switching it preserves
+unsaved fields, credentials and operation state; it does not call a model or
+translate saved conversations, scheme names, paths or identifiers. Account/API
+tabs support saved schemes, default activation,
 custom API URL/protocol/model/key and optional model discovery. A blank credential
 when editing the same saved authentication kind keeps its credential. Changing
 authentication kind or engine requires a new credential. Typed credentials are
@@ -165,3 +170,27 @@ and Chinese errors without any real credential, login or model call.
 Shared API details belong to `kernel/services/ai-config/CONTRACT.md` and
 `kernel/launcher/CONTRACT.md`; project-facing guides are maintained by the parent
 integration task.
+
+
+## Central language and error presentation (TASK-20261023-008)
+
+`kernel/localization/setup-messages.mjs` is the keyed bilingual setup namespace.
+`localization.tsx` uses the shared formatter and error contract for labels, ARIA
+text, notices, MCP controls and project/build status. Notices store keys and
+parameters; errors retain stable codes and sanitized original details behind a
+closed disclosure so changing language also redraws existing feedback. Technical
+build logs remain original text in their details section. Unknown failures still
+show a localized summary and next action.
+
+The initial language request cannot override a later explicit selector change.
+The selector updates the document language/title without remounting the editor;
+language writes are independent of AI profile revisions and export receipts.
+Help opens `/help?lang=en|zh`; its own selector uses the same authenticated
+configuration endpoint. Setup HTTP adds a per-response script nonce to that page.
+The shared server API follows its actual root after relocation, not a remembered
+origin or old path. No account data is stored in browser storage.
+
+Synthetic tests cover catalog parity/interpolation, all UI message references,
+late preference responses, credential and project-draft retention, relocalized
+notices/errors, and unchanged MCP save/export behavior. Tests make no account or
+model calls. Native Windows and real provider acceptance remain separate.
