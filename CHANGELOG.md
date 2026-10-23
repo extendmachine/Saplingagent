@@ -1,5 +1,11 @@
 # Saplingagent changelog
 
+## Main development — English/Chinese and MIT licensing (2026-10-23)
+
+- Complete keyed English/Simplified Chinese user interfaces, project-local language persistence and localized error explanations/actions; preserve conversations and technical identifiers.
+- Add independent bilingual user help. Kernel version remains0.9.6; this entry does not claim release/tag promotion.
+- Replace the project-owned noncommercial policy with MIT permitting commercial use, modification and redistribution with retained copyright/license notice and upstream repository attribution. Third-party terms and historical release artifacts remain unchanged.
+
 ## 0.9.6 — External AI / MCP access
 
 - Add an External AI / MCP option alongside built-in AI setup. Export local stdio client JSON after finalizing the project folder; external-only mode needs no built-in model account.

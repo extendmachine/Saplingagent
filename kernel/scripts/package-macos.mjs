@@ -11,7 +11,8 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 export function distributable(file) {
   if (!file || file.startsWith('/') || file.split('/').some(part => part === '..')) return false;
   if (/(^|\/)(?:\.git|\.worktrees|\.cache|\.runtime|local-secrets|logs|data|snapshots|node_modules|\.venv|\.test-data|dist|build)(\/|$)/.test(file)) return false;
-  if (['config/project.json','config/project-icon.png'].includes(file)) return false;
+  if (['config/project.json','config/project-icon.png','config/ui-language.json'].includes(file)) return false;
+  if (/^config\/\.ui-language-.*\.tmp$/.test(file)) return false;
   if (/(^|\/)ai-tasks\/runtime(\/|$)/.test(file)) return false;
   if (/(^|\/)(?:selfdata\.json|\.DS_Store|\.env(?:\..*)?|auth\.json|service-token)$/.test(file)) return false;
   if (/\.(?:key|pem|p12|pfx|log)$/i.test(file)) return false;

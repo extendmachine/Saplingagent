@@ -21,7 +21,7 @@
   <a href="docs/index.html">使用文档</a>
 </p>
 
-<p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 / ARM64 · 源码可用于许可证允许的非商业用途</sub></p>
+<p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 / ARM64 · MIT 开源 · 允许商业使用</sub></p>
 
 **开发分支：main。** 本分支用于维护者的开发和测试。共享修改先在 main 实现并验证，再按发布要求同步到 release。
 
@@ -204,7 +204,7 @@ Claude 使用 **Claude → API 密钥**，填写服务地址与模型，再选�
 
 安装、保存登录和模型目录查询与推理成功是不同步骤。启动和诊断不会自动发送模型提示词；发送聊天消息才开始模型调用，重装不会增加额度。当前条件请查看 [Codex 认证](https://learn.chatgpt.com/docs/auth)与[使用限制及计费](https://learn.chatgpt.com/docs/pricing)。
 
-**商业与托管认证：**OpenAI 对已有本地或开源应用的 App Server 登录提供延续说明，并建议迁移到 Sign in with ChatGPT；其文档说明 App Server 认证不允许用于商业或托管服务。本项目尚未完成商业 Sign in with ChatGPT 注册与集成。Saplingagent 商业许可不等于 OpenAI 认证授权，两者需要分别解决。参见 [App Server 认证说明](https://learn.chatgpt.com/docs/app-server)和 [Sign in with ChatGPT 集成](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server)。
+**商业与托管认证：**OpenAI 对已有本地或开源应用的 App Server 登录提供延续说明，并建议迁移到 Sign in with ChatGPT；其文档说明 App Server 认证不允许用于商业或托管服务。本项目尚未完成商业 Sign in with ChatGPT 注册与集成。Saplingagent 的 MIT 许可不授予 OpenAI 认证权利；商业分发前仍需核对服务商的集成要求。参见 [App Server 认证说明](https://learn.chatgpt.com/docs/app-server)和 [Sign in with ChatGPT 集成](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server)。
 
 <a id="engines"></a>
 
@@ -351,15 +351,7 @@ Windows 源码包使用 `<project-node> kernel/scripts/package-windows.mjs relea
 
 **不要直接压缩正在运行的项目文件夹分发。**使用项目打包器。GitHub ZIP 是源码快照；客户打包器还初始化接收者记录。打包默认使用已提交的 `release`，不会静默改用 `main` 或 `HEAD`；明确指定其他 ref 时会记录真实分支 / 提交。打包不等于发布 GitHub Release。参见[交付检查清单](docs/release-checklist.html)。
 
-<a id="license"></a>
-
-## 许可证与参考资料
-
-Saplingagent 是独立软件，并非 OpenAI 官方产品。商业使用需另行取得书面许可，第三方认证须分别遵守其条款，参见 [NOTICE](NOTICE)。
-
-项目自有源码使用 **[PolyForm Noncommercial 1.0.0](LICENSE)**，允许许可证规定的非商业使用、修改与分发，需遵守声明保留等条款。商业用途需与所有者另行达成书面许可，可通过 [extendmachine](https://github.com/extendmachine) 联系。这是源码可用许可证，不是无限制的商业开源授权。准确范围以 [LICENSE](LICENSE)及[官方条款](https://polyformproject.org/licenses/noncommercial/1.0.0)为准。
-
-依赖和第三方材料保留其自身许可，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)；本项目的限制不重新许可这些材料，也不据此主张拥有用户生成的应用。
+## 参考资料
 
 Codex 认证、使用限制和 App Server 说明于 **2026-10-14**重新核对。本文版本号描述本仓库固定安装版本，不代表上游最新版本；账号资格、价格与第三方条款以官方当前说明为准。
 
@@ -387,3 +379,24 @@ Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍
 ## 旧内核编号的一次性升级
 
 旧0.90/0.91/0.92更新器会把0.9.4误判为降级。需要在原应用的 .cache 内下载新版工具，用新版 CLI 的 --root 明确指向原应用再检查、更新。保留原始基线，仍需停止应用并处理冲突、备份和风险确认。不要整包覆盖业务文件或重新生成客户基线。操作说明：[内核版本迁移](docs/kernel-version-migration.html)。
+
+
+## 语言与帮助
+
+安装时、AI 配置页和聊天界面都可以选择 English／中文。明确选择的语言保存在当前项目的 `config/ui-language.json`，切换端口、重启后继续使用；源码分发包不会包含你的语言偏好。也可用 `--lang en`／`--lang zh` 明确选择语言。尚未保存时使用受支持的设备／浏览器语言，否则回退英文。
+
+聊天中的“帮助”会打开独立的中英文快速指南，涵盖安装、AI 配置、对话、附件、重启／停止、更新和常见错误。错误同时提供易懂说明和下一步操作；展开“技术详情”可查看原始代码及信息。语言切换不会翻译已有消息、AI 回复、文件名、模型名和 API 标识，也不会发送模型请求；需要 AI 用某种语言回复时，可直接在对话中提出。[查看双语指南](docs/language-help.html)。
+
+<a id="license"></a>
+
+## 开源许可、商业使用与上游署名
+
+**Saplingagent 采用 [MIT 开源许可证](LICENSE)，允许商用。** 你可以将项目自有源代码及文档中的实现方案用于个人作品、公司项目、收费应用和客户交付，可以修改、分发、再许可或销售副本，无需另行申请 Saplingagent 商业授权，也无需向项目支付版税。你的修改不需要强制公开源码。
+
+分发 Saplingagent 的副本或实质性代码时，请保留 [LICENSE](LICENSE) 中的版权和许可声明，其中包含上游仓库地址：**https://github.com/extendmachine/Saplingagent**。将声明随源码或应用的许可证说明一起提供即可。也建议在 README／关于页面清楚注明，例如：
+
+> 本项目基于 [Saplingagent](https://github.com/extendmachine/Saplingagent) 构建，原作者为 extendmachine 及贡献者，采用 MIT 许可证。
+
+不强制展示 Logo，不要求购买套餐、上报使用情况或另行获取商业许可。Saplingagent 不主张拥有你自行创作的原创代码；包含的 Saplingagent 代码仍需保留 MIT 声明。第三方依赖、导入材料、AI 账号及模型服务仍适用各自的条款和费用，本项目不能替它们授权。参见 [NOTICE](NOTICE) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+本次源码版本取代此前项目的非商业使用政策。历史标签及旧压缩包仍保留当时的许可证文件，请使用包含本 MIT 许可证的版本。软件按 LICENSE 规定不提供担保；准确授权以英文 LICENSE 正文为准。[MIT 官方文本](https://opensource.org/license/mit)，核对日期：2026-10-23。
