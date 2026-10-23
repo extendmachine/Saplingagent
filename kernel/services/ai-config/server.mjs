@@ -12,6 +12,7 @@ import { readMcpAccess, saveMcpAccess, getMcpAccess } from '../../contracts/mcp-
 import {readLanguage, writeLanguage} from '../../localization/store.mjs';
 import {normalizeLanguage, formatMessage, describeError} from '../../localization/public.mjs';
 import {setupMessages} from '../../localization/setup-messages.mjs';
+import {wantsConfigurationErrorPage,renderConfigurationError} from './error-page.mjs';
 const defaultRoot=fileURLToPath(new URL('../../../',import.meta.url));
 export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRoot,assets=path.join(root,'kernel/.cache/setup'),language,authOptions={},importOptions={},onClose,token:providedToken,projectController,onProjectRename,instanceId,beforeClose}={}){
   root=path.resolve(root);
@@ -144,7 +145,16 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
       }
       if(file==='index.html'){const selected=await currentLanguage(req);content=Buffer.from(content.toString('utf8').replaceAll('__SAPLING_CONFIG_TOKEN__',token).replaceAll('__SAPLING_CONFIG_LANGUAGE__',selected).replaceAll('__SAPLING_CONFIG_TITLE__',formatMessage(setupMessages,selected,'common.setup.title')));}
       res.writeHead(200,{...headers,'Content-Type':file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':file.endsWith('.html')?'text/html; charset=utf-8':'image/svg+xml'});res.end(content);
-    }catch(error){if(!res.headersSent){const safe={code:error.code&&error.status?error.code:'CONFIG_STORAGE_ERROR',message:error.status?error.message:'Unable to read or save local configuration. Check the project files and reload.'};const selected=await currentLanguage(req).catch(()=>preferredLanguage(req));send(res,error.status||500,{error:{...safe,...describeError(safe,selected)}});}else res.end();}
+    }catch(error){
+      if(!res.headersSent){
+        const safe={code:error.code&&error.status?error.code:'CONFIG_STORAGE_ERROR',message:error.status?error.message:'Unable to read or save local configuration. Check the project files and reload.'};
+        const selected=await currentLanguage(req).catch(()=>preferredLanguage(req));
+        if(wantsConfigurationErrorPage(req,safe.code)){
+          res.writeHead(error.status||500,{...headers,'Content-Type':'text/html; charset=utf-8','Vary':'Accept'});
+          res.end(renderConfigurationError(safe,selected));
+        }else send(res,error.status||500,{error:{...safe,...describeError(safe,selected)}});
+      }else res.end();
+    }
   });
   let closePreparation;
   const prepareClose=()=>closePreparation||(closePreparation=Promise.resolve().then(()=>beforeClose?.()).catch(error=>{closePreparation=null;throw error;}));

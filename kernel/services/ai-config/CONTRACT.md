@@ -184,3 +184,11 @@ checks, without updating the credential ledger. Errors retain the existing
 language contract; unknown internal exceptions are sanitized before explanation.
 `GET /help?lang=en|zh` renders shared bilingual guidance with this setup server's
 language endpoint/token. Its sole inline helper receives a per-response CSP nonce.
+
+HTML navigation to `/` that explicitly accepts `text/html` receives a small,
+asset-independent localized error page when setup UI files/build or local
+configuration storage prevent rendering. It preserves the failure status and
+existing security headers, escapes all text, and provides a reload link, Help
+link and collapsed code/original-details disclosure. It runs no script, repair,
+build or external request. API routes, asset requests and non-HTML clients retain
+the JSON error contract. `text/html;q=0` does not request the fallback page.

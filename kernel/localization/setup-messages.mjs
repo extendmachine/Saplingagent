@@ -227,7 +227,9 @@ export const setupMessages = {
     "phase.restarting": "Restarting",
     "phase.unknown": "Status unavailable",
     "common.language.unsaved": "This language is shown, but could not be saved to the project.",
-    "common.language.retry": "Retry saving language"
+    "common.language.retry": "Retry saving language",
+    "common.setup.unavailable": "Configuration page unavailable",
+    "common.reload.page": "Reload page"
   },
   "zh": {
     "setup.use.an.existing.codex.login": "使用已有 Codex 登录",
@@ -456,6 +458,8 @@ export const setupMessages = {
     "phase.restarting": "正在重启",
     "phase.unknown": "状态未知",
     "common.language.unsaved": "页面已切换语言，但尚未成功保存到项目。",
-    "common.language.retry": "重新保存语言"
+    "common.language.retry": "重新保存语言",
+    "common.setup.unavailable": "配置页面暂时无法显示",
+    "common.reload.page": "重新加载页面"
   }
 };
