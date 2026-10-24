@@ -86,14 +86,3 @@ test('Chinese engine, attachment and token labels leave user file/provider/model
  const {AttachFilesButton,MessageAttachment}=await loadComponent('./AttachmentControls.tsx');assert.match(renderToStaticMarkup(React.createElement(AttachFilesButton)),/添加文件或图片/);const attachment=renderToStaticMarkup(React.createElement(MessageAttachment));assert.match(attachment,/正在上传/);
  const usage=contextUsageView({usedTokens:90000,contextWindow:100000},'zh');assert.match(usage.label,/90,000/);assert.match(usage.label,/上下文/);assert.match(usage.value,/万/);
 });
-
-test('application accepts language messages only from known frames on the exact origin',async()=>{
- const handlers=new Map(),refs=[],sent=[],received=[];let currentLanguage='zh';
- const react={useRef(){const ref={current:{contentWindow:{postMessage:(data,origin)=>sent.push({data,origin})}}};refs.push(ref);return ref},useState:()=>[false,()=>{}],useEffect(effect){effect()}};
- const jsx=(type,props)=>({type,props});const context=vm.createContext({URL,Event,window:{location:{origin:'http://127.0.0.1:65000'},addEventListener:(name,handler)=>handlers.set(name,handler),removeEventListener(){},dispatchEvent(){}}});
- const mocks={react,'react/jsx-runtime':{jsx,jsxs:jsx,Fragment:'fragment'},'./localization/LanguageProvider':{useLanguage:()=>({...locale(currentLanguage),receive:value=>received.push(value)})}};
- const mod=new vm.SourceTextModule(transformSync('App.tsx',await readFile(new URL('../App.tsx',import.meta.url),'utf8'),{jsx:{runtime:'automatic'}}).code,{context});await mod.link(name=>{const values=mocks[name];return new vm.SyntheticModule(Object.keys(values),function(){for(const[key,value]of Object.entries(values))this.setExport(key,value)},{context})});await mod.evaluate();mod.namespace.App();
- const handler=handlers.get('message'),data={type:'saplingagent:language',language:'en'};
- handler({origin:'https://foreign.example',source:refs[1].current.contentWindow,data});handler({origin:'http://127.0.0.1:65000',source:{},data});assert.equal(received.length,0);
- handler({origin:'http://127.0.0.1:65000',source:refs[1].current.contentWindow,data});assert.deepEqual(received,['en']);assert.equal(sent.length,2);assert.ok(sent.every(item=>item.origin==='http://127.0.0.1:65000'));
-});
