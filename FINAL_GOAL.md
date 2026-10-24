@@ -13,7 +13,7 @@ The long-term goal is to make building and adapting personal applications practi
 ## What minimal means
 
 - Ship the capabilities needed to start, modify and operate a project, with a simple entry point and clear dependencies.
-- Keep the default interface focused on conversation and necessary operation controls. Retain the current version and restart controls.
+- Keep the default interface focused on conversation and necessary operation controls. Use a compact top-right Settings entry for runtime status and operations; keep version/restart details on management pages.
 - Add business interfaces, canvases, dashboards, knowledge bases and integrations when requested. They are optional extensions, not requirements for every seed.
 - Prefer small, understandable modules and mature components. Add services, dependencies or configuration layers only when the requirement needs them.
 - Keep installation and delivery reproducible. A launcher relies on the accompanying seed files and declared dependencies; copying one script alone does not supply the whole application.
@@ -79,7 +79,7 @@ Cloud content upload/download, additional operating-system installers, commercia
 ## Acceptance criteria
 
 1. A recipient can install and start the complete clean seed in a new writable folder using documented macOS or Windows entry points and their own model authentication, without the developer's fixed filesystem paths or private account.
-2. The initial page provides usable conversation and necessary runtime/version controls, without mandatory unrelated business components.
+2. The initial page provides usable conversation and a compact Settings entry to the runtime page, without mandatory unrelated business components.
 3. A representative user request can change the local interface or backend with a verifiable, reloadable result. The delivered project remains modifiable.
 4. Context, source and business data remain organized and identifiable. Restart/source switching preserve actual data/login state according to documented behavior, without silently resending a task.
 5. User-created functionality can remain application-specific. Common seed changes have a stated reuse need and avoid unnecessary default complexity.
@@ -99,7 +99,7 @@ Authorized capability: select, drop or paste files/images into AI chat, retain o
 
 ## Single complete-restart action (2026-10-15)
 
-The main page exposes one Restart app button, with no adjacent backend-only/recovery dropdown. It always uses the existing full managed-project restart: stop owned frontend/backend/project processes, relaunch from the current source plan, await readiness and refresh the page. Keep persistent gateway/controller, busy protection, truthful failure status and conversation recovery. Diagnostic recovery HTTP access remains available for failures.
+Updated 2026-10-23: the main page exposes a compact Settings link to /__saplingagent/runtime. Restart app is available on that runtime page, without an embedded restart/kernel toolbar or bottom version indicator on the chat page. It always uses the existing full managed-project restart: stop owned frontend/backend/project processes, relaunch from the current source plan, await readiness and refresh the page. Keep persistent gateway/controller, busy protection, truthful failure status and conversation recovery. Diagnostic recovery HTTP access remains available for failures.
 
 ## Independently managed kernel (product0.9.2)
 
