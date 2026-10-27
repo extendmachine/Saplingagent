@@ -79,3 +79,27 @@
 .git-name-form p { margin: 7px 0 0; color: #8b9385; font-size: 10px; }
 .git-name-form button:disabled { opacity: .5; }
 .git-version-popover button:focus-visible, .git-version-trigger:focus-visible, .git-name-form input:focus-visible { outline: 2px solid #738c5f; outline-offset: 2px; }
+
+/* Compact page navigation; project operations live on the runtime page. */
+.seed-page .page-header { height: 56px; gap: 14px; padding: 0 24px; position: relative; z-index: 31; }
+.seed-page .wordmark { font-size: 18px; white-space: nowrap; }
+.page-header-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.language-tools { position: relative; display: flex; gap: 9px; align-items: center; font-size: 11px; }
+.language-tools select { height: 28px; font: inherit; background: #fff; color: #46573c; border: 1px solid #dce3d7; border-radius: 7px; padding: 3px 5px; max-width: 100px; }
+.language-tools a { color: #46573c; white-space: nowrap; }
+.settings-link { height: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 8px; border: 1px solid #dce3d7; border-radius: 7px; background: #fff; color: #46573c; font-size: 11px; text-decoration: none; white-space: nowrap; }
+.settings-link:hover { background: #f0f4eb; border-color: #b9c8ad; }
+.settings-link:focus-visible, .language-tools select:focus-visible, .language-tools a:focus-visible { outline: 2px solid #647954; outline-offset: 3px; }
+.language-save-error { position: absolute; right: 0; top: 34px; width: min(280px, calc(100vw - 32px)); padding: 9px; border: 1px solid #e0d6c9; border-radius: 8px; background: #fffefa; box-shadow: 0 5px 18px #26351c12; font-size: 11px; }
+.localized-error { display: flex; flex-direction: column; gap: 5px; overflow-wrap: anywhere; }
+.localized-error small { display: block; line-height: 1.5; opacity: .85; }
+.localized-error details { font-size: 11px; }
+.localized-error pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 160px; overflow: auto; }
+.seed-page .chat-dock:not(.is-collapsed) { top: 64px; bottom: max(16px, env(safe-area-inset-bottom)); }
+@media(max-width: 600px) {
+  .seed-page .page-header { padding: 0 12px; gap: 10px; }
+  .seed-page .wordmark { font-size: 16px; }
+  .page-header-actions { gap: 8px; }
+  .language-tools { gap: 6px; }
+  .language-tools select { max-width: 80px; }
+}

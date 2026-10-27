@@ -1,8 +1,10 @@
+import { useLanguage } from '../localization/LanguageProvider';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
 import { ChevronLeft, MessageSquare } from 'lucide-react';
 import { CHAT_LAUNCHER_KEY, clampChatLauncherTop, readChatLauncherTop } from './chat-launcher';
 
 export function ChatLauncher({ visible, onOpen, buttonRef }: { visible: boolean; onOpen: () => void; buttonRef: RefObject<HTMLButtonElement | null> }) {
+  const { t } = useLanguage();
   const [top, setTop] = useState<number | null>(() => { try { return readChatLauncherTop(window.localStorage, window.innerHeight); } catch { return null; } });
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ id: number; y: number; top: number; last: number; moved: boolean } | null>(null), suppressClick = useRef(false);
@@ -32,7 +34,7 @@ export function ChatLauncher({ visible, onOpen, buttonRef }: { visible: boolean;
     event.preventDefault(); save(move(event.currentTarget.getBoundingClientRect().top + (event.key === 'ArrowUp' ? -16 : 16)));
   }
   useEffect(() => { const fit = () => setTop(value => value === null ? null : clampChatLauncherTop(value, window.innerHeight)); window.addEventListener('resize', fit); return () => window.removeEventListener('resize', fit); }, []);
-  return <button ref={buttonRef} type="button" className={`chat-dock-launcher${dragging ? ' is-dragging' : ''}`} style={top === null ? undefined : { top, transform: 'none' }} hidden={!visible} aria-label="Open AI chat" aria-expanded={!visible} aria-controls="saplingagent-chat-panel" title="Open AI chat · Drag vertically or use arrow keys to move" onPointerDown={start} onPointerMove={moving} onPointerUp={finish} onPointerCancel={finish} onKeyDown={keyboard} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return; } onOpen(); }}>
-    <MessageSquare size={17} aria-hidden="true" /><span>AI chat</span><ChevronLeft size={14} aria-hidden="true" />
+  return <button ref={buttonRef} type="button" className={`chat-dock-launcher${dragging ? ' is-dragging' : ''}`} style={top === null ? undefined : { top, transform: 'none' }} hidden={!visible} aria-label={t('chat.open')} aria-expanded={!visible} aria-controls="saplingagent-chat-panel" title={t('chat.drag')} onPointerDown={start} onPointerMove={moving} onPointerUp={finish} onPointerCancel={finish} onKeyDown={keyboard} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return; } onOpen(); }}>
+    <MessageSquare size={17} aria-hidden="true" /><span>{t('chat.title')}</span><ChevronLeft size={14} aria-hidden="true" />
   </button>;
 }

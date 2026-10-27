@@ -1,6 +1,6 @@
 # Saplingagent chat frontend
 
-The starting page provides a right-side conversation panel, independent application content and kernel operation controls. It uses React19.3.0 and assistant-ui0.15.26 with the public Agent HTTP/SSE API. No business dashboards are preloaded.
+The starting page provides a right-side conversation panel, independent application content and a compact Settings link to project runtime management. It uses React19.3.0 and assistant-ui0.15.26 with the public Agent HTTP/SSE API. No business dashboards are preloaded.
 
 ## Chat controls
 
@@ -20,3 +20,7 @@ Use `bash Saplingagent.sh` or the exported app from the complete project. Open t
 `npm run build` runs TypeScript and Vite; `npm test` runs isolated frontend/SSE/session regressions. Dependencies/cache/build outputs remain project-local and ignored. Production static output requires a same-origin Agent proxy. Messages persist in backend/workspace; browser storage contains an opaque active-session ID, launcher position and temporary restart text.
 
 See [CONTRACT.md](CONTRACT.md), [SERVICE.md](SERVICE.md), [DEPLOY.md](DEPLOY.md), [REFERENCES.md](REFERENCES.md) and the TASK-20261019-055 handoff.
+
+## Language and Help
+
+Choose English or 中文 in the page header. This updates application UI without reloading chat; the saved preference belongs to the project. Independently opened management pages load that project preference. Settings opens the same-origin runtime page in a new tab so chat drafts, attachments and live replies remain in the original tab. Help opens the built-in same-origin bilingual guide. If saving the language fails, keep using the page and choose Retry saving language after the service is available. User/model content is never translated. Error details remain available below localized explanations. The interface uses no remote translation service.

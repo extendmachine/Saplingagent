@@ -31,3 +31,7 @@ config/project.json
 config/project-icon.png
 /*.app/
 /*.exe
+
+# Customer UI language preference
+config/ui-language.json
+config/.ui-language-*.tmp

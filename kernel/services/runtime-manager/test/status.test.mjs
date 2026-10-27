@@ -26,7 +26,7 @@ test('logs dispatch opens only the project folder with argv on Mac and Windows, 
 function pageHarness(fetch) {
   const elements=new Map();
   const element=()=>({textContent:'',disabled:false,hidden:false,children:[],attrs:{},appendChild(child){this.children.push(child)},replaceChildren(...children){this.children=children},setAttribute(key,value){this.attrs[key]=value},removeAttribute(key){delete this.attrs[key];delete this[key]}});
-  const document={getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id)},createElement:element,title:''};
+  const document={getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id)},createElement:element,title:'',documentElement:{lang:'en'},querySelectorAll(){return []}};
   const timers=[];
   const context=vm.createContext({document,fetch,URL,AbortSignal,Date,console,setTimeout(fn){const timer={fn,cancelled:false};timers.push(timer);return timer},clearTimeout(timer){if(timer)timer.cancelled=true}});
   vm.runInContext(renderRuntimeStatusPage({state:()=>({applicationRoot:'/project'})}).match(/<script>([\s\S]*)<\/script>/)[1],context);
@@ -60,7 +60,7 @@ test('an old status page refuses a different project after its port is reused', 
   await h.flush();different=true;await h.run('update()');
   assert.equal(h.elements.get('phase').textContent,'Different project');assert.equal(h.elements.get('stop').disabled,true);assert.equal(h.elements.get('restart').disabled,true);
   assert.equal(h.elements.get('name').textContent,state.projectName);assert.match(h.elements.get('message').textContent,/original project/);
-  await h.elements.get('stop').onclick();assert.ok(calls.every(route=>route.endsWith('/status')));
+  await h.elements.get('stop').onclick();assert.ok(calls.every(route=>(route.endsWith('/status')||route.endsWith('/language'))));
 });
 
 test('same-project replacement is visible and restart uses the newly observed instance', async()=>{
@@ -101,4 +101,10 @@ test('an older failed poll does not replace progress while stop confirmation is 
   assert.equal(h.elements.get('stop').disabled,true);
   confirmStop(response({stopped:true,instanceId:state.instanceId}));await stopping;
   assert.equal(h.elements.get('phase').textContent,'Stopped');assert.equal(h.timers.filter(x=>!x.cancelled).length,0);
+});
+
+test('runtime status changes language without navigation or changing the stop receipt',async()=>{
+ const calls=[];let language='zh';const h=pageHarness(async(route,options)=>{calls.push({route,options});if(route.endsWith('/status'))return response(state);if(route.endsWith('/language')){if(options.method==='POST')language=JSON.parse(options.body).language;return response({language})}return response({stopped:true,instanceId:state.instanceId})});
+ await h.flush();assert.equal(h.elements.get('phase').textContent,'就绪');assert.match(h.elements.get('version').textContent,/内核/);assert.equal(h.elements.get('services').children[0].children[1].textContent,'运行中');
+ h.elements.get('language').value='en';await h.elements.get('language').onchange();assert.equal(h.elements.get('phase').textContent,'Ready');await h.elements.get('stop').onclick();assert.equal(h.elements.get('phase').textContent,'Stopped');assert.equal(h.timers.filter(x=>!x.cancelled).length,0);assert.deepEqual(JSON.parse(calls.find(x=>x.route.endsWith('/stop-and-wait')).options.body),{instanceId:state.instanceId});
 });

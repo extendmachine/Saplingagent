@@ -16,5 +16,5 @@
     "yaml": "2.9.1",
     "zod": "4.6.5"
   },
-  "license": "PolyForm-Noncommercial-1.0.0"
+  "license": "MIT"
 }

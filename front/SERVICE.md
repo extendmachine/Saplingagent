@@ -88,3 +88,25 @@ New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92�
 ConversationControls owns selection/title UI and page-memory draft preservation; useSeedRuntime owns snapshots, history ordering and stale-result isolation. ContextUsageCounter displays only measured tokens/capacity and a visual capacity warning, never spending or a guaranteed compaction trigger. ChatLauncher stores only its vertical screen position and retains keyboard/pointer operation, focus return and existing main layout spacing. This is application-owned chat, not a new kernel service. No customer files, provider account state or business features are shipped by this port.
 
 Validation: 54 frontend tests and TypeScript/Vite build pass in the isolated candidate. Tests exercise state/transport, real Markdown rendering and simulated composer controls; live-account and native Windows browser acceptance remain separate. Build retains the existing large-chunk warning. Main integration/browser checks belong to TASK058.
+
+## Same-conversation AI handoff (2026-10-23)
+
+Deploy matching application Workspace, Agent and front/chat sources together, then Restart app. This is an application feature: kernel-only updates do not replace it, and kernel0.9.6/adapters/dependencies remain unchanged. Existing files read with engineRevision0; first explicit AI change persists binding metadata. Never reset customer sessions/credentials to adopt it.
+
+In an idle conversation, choose the target AI/provider/model and Apply. The current conversation and unsent composer remain. The next send transfers a labelled recent-history excerpt with the complete local transcript reference; a failed/interrupted handoff remains pending for manual retry. Model memory is not guaranteed by a successful transfer. Reconfiguration still requires restart; no automatic inference, authentication import or merging of separate sessions. See [conversation handoff](../docs/conversation-handoff.html).
+
+Rollback needs care: older application versions do not understand binding revisions/history and can discard this metadata on writes. Preserve data/ including sessions and attachments, stop the app before source rollback, and retain a matching application-source version; a kernel backup alone is insufficient. No new persistent service, platform API or dependencies. Synthetic tests verify storage/transport/UI behavior, not live provider entitlement or native Windows acceptance.
+
+## English/Chinese interface (TASK-20261023-007)
+
+The application has a persistent project-wide English/Chinese selector and same-origin Help entry. `localization/` owns keyed application messages, state-preserving React context and localized error presentation; it consumes the kernel localization public helper/API. Chat content, titles and provider/model/file data remain original. All default chat controls and the optional application Git/restart/version modules use this context. No new service or dependency is introduced. See CONTRACT and the task handoff for persistence and test limits.
+
+
+## Compact header and runtime Settings (TASK-20261023-012)
+
+The default main page shows a compact brand/language/Help header and an English/Chinese Settings link at the top right. Settings opens the current origin's /__saplingagent/runtime in a new tab, preserving the original chat, unsent text/attachments and current stream. The default application space is empty; no embedded kernel toolbar, Restart app/Kernel buttons or bottom version frame remains. Runtime restart/stop/status operations and direct /__saplingagent/kernel management remain available on their existing URLs. Kernel version stays0.9.6; this frontend change needs no backend restart, new service or dependency. Reload/HMR adopts the frontend; preserve conversations and configuration. Earlier embedded-control descriptions in this file are historical.
+
+
+## Project browser tab title (TASK-20261027-002)
+
+The application tab displays the configured project folder name from read-only GET /api/runtime/status.projectFolderName, not the native app display name. An older runtime falls back to the basename of applicationRoot (macOS/Windows paths); unavailable metadata retains the localized Saplingagent title. The name is plain text, remains unchanged when switching English/Chinese and is not stored in browser storage. Read once on mount and refresh on window focus with cancellation and a five-second deadline; temporary failures keep the last known name. No chat remount, model request, configuration write or new dependency/service. Frontend source/build deployment is required; kernel-only upgrades do not replace application UI. A cold controller restart enables the new explicit field.

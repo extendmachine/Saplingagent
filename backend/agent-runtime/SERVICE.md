@@ -100,3 +100,11 @@ rename ordering keeps active snapshots consistent without starting or stopping
 inference. Existing attachments, page reading, provider bindings and Full Access
 are retained. No extra service, dependency, process or persistent port is added.
 See CONTRACT.md and test/chat-controls.test.mjs for shape, failure and race handling.
+
+## Same-conversation AI handoff (2026-10-23)
+
+Deploy matching application Workspace, Agent and front/chat sources together, then Restart app. This is an application feature: kernel-only updates do not replace it, and kernel0.9.6/adapters/dependencies remain unchanged. Existing files read with engineRevision0; first explicit AI change persists binding metadata. Never reset customer sessions/credentials to adopt it.
+
+In an idle conversation, choose the target AI/provider/model and Apply. The current conversation and unsent composer remain. The next send transfers a labelled recent-history excerpt with the complete local transcript reference; a failed/interrupted handoff remains pending for manual retry. Model memory is not guaranteed by a successful transfer. Reconfiguration still requires restart; no automatic inference, authentication import or merging of separate sessions. See [conversation handoff](../../docs/conversation-handoff.html).
+
+Rollback needs care: older application versions do not understand binding revisions/history and can discard this metadata on writes. Preserve data/ including sessions and attachments, stop the app before source rollback, and retain a matching application-source version; a kernel backup alone is insufficient. No new persistent service, platform API or dependencies. Synthetic tests verify storage/transport/UI behavior, not live provider entitlement or native Windows acceptance.

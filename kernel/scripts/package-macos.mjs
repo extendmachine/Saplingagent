@@ -1,6 +1,6 @@
 import { parseReleaseMetadata } from '../contracts/release.mjs';
 import { validateKernelManifest, isKernelPath, isContainedKernelPath } from '../contracts/kernel.mjs';
-import { initialProjectRecords, recipientAgentInstructions } from './launcher/recipient-records.mjs';
+import { recordsForSource, recipientAgentInstructions } from './launcher/recipient-records.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,7 +11,8 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 export function distributable(file) {
   if (!file || file.startsWith('/') || file.split('/').some(part => part === '..')) return false;
   if (/(^|\/)(?:\.git|\.worktrees|\.cache|\.runtime|local-secrets|logs|data|snapshots|node_modules|\.venv|\.test-data|dist|build)(\/|$)/.test(file)) return false;
-  if (['config/project.json','config/project-icon.png'].includes(file)) return false;
+  if (['config/project.json','config/project-icon.png','config/ui-language.json'].includes(file)) return false;
+  if (/^config\/\.ui-language-.*\.tmp$/.test(file)) return false;
   if (/(^|\/)ai-tasks\/runtime(\/|$)/.test(file)) return false;
   if (/(^|\/)(?:selfdata\.json|\.DS_Store|\.env(?:\..*)?|auth\.json|service-token)$/.test(file)) return false;
   if (/\.(?:key|pem|p12|pfx|log)$/i.test(file)) return false;
@@ -71,7 +72,7 @@ export async function packageSource({ ref = 'release', outputDir = path.join(roo
       const content = await fs.readFile(path.join(directory, declared.path));
       if (content.length !== declared.bytes || createHash('sha256').update(content).digest('hex') !== declared.sha256 || (entry.mode === '100755') !== declared.executable) throw new Error('Kernel manifest does not match packaged source: ' + declared.path);
     }
-    const records = initialProjectRecords(commit, platform);
+    const records = await recordsForSource(directory, commit, platform);
     for (const [file, content] of Object.entries(records)) await fs.writeFile(path.join(directory, file), content);
     const agentsFile = path.join(directory, 'AGENTS.md');
     let agents = await fs.readFile(agentsFile, 'utf8');

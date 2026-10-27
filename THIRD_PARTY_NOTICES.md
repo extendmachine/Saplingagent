@@ -1,6 +1,6 @@
 # Third-party notices
 
-Saplingagent's PolyForm Noncommercial license applies to project-owned source. It does not replace the copyright or license terms of third-party software, dependencies or bundled tools. Their original notices must be retained when those components are redistributed.
+Saplingagent's MIT license applies to project-owned source. It does not replace the copyright or license terms of third-party software, dependencies or bundled tools. Their original notices must be retained when those components are redistributed.
 
 Direct dependency metadata checked from the installed locked packages on 2026-10-10:
 
@@ -24,7 +24,7 @@ Node.js and official Codex CLI retain their upstream licenses. Saplingagent does
 
 User-generated code and applications are not automatically relicensed by this project notice. Their ownership, external dependencies and distribution terms must be reviewed independently.
 
-- **Claude Agent SDK 0.3.296 and its native platform packages** (`@anthropic-ai/claude-agent-sdk`): Anthropic. SDK use is governed by Anthropic Commercial Terms, with individual dependency licensing as supplied by the packages. This project's PolyForm Noncommercial license does not replace those terms or grant authentication rights. Official overview/terms entry: https://code.claude.com/docs/en/agent-sdk/overview ; package: https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk . Native binaries are installed locally by npm and are not bundled into the source ZIP.
+- **Claude Agent SDK 0.3.296 and its native platform packages** (`@anthropic-ai/claude-agent-sdk`): Anthropic. SDK use is governed by Anthropic Commercial Terms, with individual dependency licensing as supplied by the packages. This project's MIT license does not replace those terms or grant authentication rights. Official overview/terms entry: https://code.claude.com/docs/en/agent-sdk/overview ; package: https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk . Native binaries are installed locally by npm and are not bundled into the source ZIP.
 
 ## Project-local Go toolchain
 

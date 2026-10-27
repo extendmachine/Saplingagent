@@ -1,6 +1,6 @@
 # Kernel deployment and recovery
 
-Current manifest version0.9.6, compatibility appApi1. Maintain this version separately from customer Git versions; keep the original baseline0.90. Stop this app before apply/restore. The launcher exposes kernel management regardless of Git storage mode. Check/preview are read-only; update requires compatibility-risk acknowledgement, creates an owned-source backup and refuses locally changed kernel files. Business extensions outside the manifest,config/runtime/services,credentials,conversations and Git metadata are preserved.
+Current manifest version0.9.7, compatibility appApi1. Maintain this version separately from customer Git versions; keep the original baseline0.90. Stop this app before apply/restore. The launcher exposes kernel management regardless of Git storage mode. Check/preview are read-only; update requires compatibility-risk acknowledgement, creates an owned-source backup and refuses locally changed kernel files. Business extensions outside the manifest,config/runtime/services,credentials,conversations and Git metadata are preserved.
 
 After source apply, run bash Saplingagent.sh install --repair to load changed dependency declarations, then start normally and verify actual functionality. An update can break modified apps, imports,dependencies or integrations despite manifest compatibility. No universal compatibility guarantee and no data migration. Startup readiness and model/account behavior are separate checks.
 
@@ -66,7 +66,7 @@ For maintainer publication only, regenerate/check kernel/manifest.json after all
 
 ## Unified kernel version (2026-10-19)
 
-There is one current Saplingagent version: kernel0.9.6. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
+There is one current Saplingagent version: kernel0.9.7. kernel/manifest.json is authoritative. UI, setup, Bash, packages and upgrade targets use that installed value, never a separate product number. config/release.json and JSON releaseVersion/productVersion fields are deprecated compatibility mirrors/aliases, not independent identities; source packaging verifies agreement. Kernel-only maintenance changes the displayed kernel version without touching business configuration. Missing/invalid installed metadata is unavailable in UI, not a claimed baseline. Git revisions remain source identifiers.
 
 New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92→0.9.3; original manifests/backups stay byte-exact. Shipped old comparators cannot understand0.9.4. Stop the app, download new tooling into an isolated .cache subfolder, then run that tooling's kernel/cli.mjs --root ORIGINAL_APP check/update with the project-local Node. Default is preview; update requires existing explicit risk acknowledgement and refuses conflicts/live targets. Never overwrite/rebaseline local core edits or regenerate a customer manifest to hide them. Source recovery remains explicit.
 
@@ -111,4 +111,13 @@ baseline regeneration or account/Git rewrite. See docs/configuration-storage.htm
 
 ## External AI / MCP
 
-Install/repair includes the pinned MCP SDK in kernel dependencies. Enable External AI / MCP in web setup and export client JSON after the final folder name is established. External-only mode needs no built-in account. The external client starts the local stdio process; no extra HTTP port or global client configuration is created. Disconnect this project's MCP connections before kernel update/restore, project rename or dependency repair. See `services/mcp-access/DEPLOY.md` and `../docs/mcp-access.html`. Kernel version is0.9.6; Git SHA identifies the exact source.
+Install/repair includes the pinned MCP SDK in kernel dependencies. Enable External AI / MCP in web setup and export client JSON after the final folder name is established. External-only mode needs no built-in account. The external client starts the local stdio process; no extra HTTP port or global client configuration is created. Disconnect this project's MCP connections before kernel update/restore, project rename or dependency repair. See `services/mcp-access/DEPLOY.md` and `../docs/mcp-access.html`. Kernel version is0.9.7; Git SHA identifies the exact source.
+
+### Language resources and maintenance handoff
+
+The independent maintenance worker copies its full localization module closure before applying source. Its same-origin language selector writes only the active project's shared preference. Kernel, status and maintenance pages use English/Chinese catalogs and shared error redaction; no frontend rebuild or model call is needed for those pages. The control iframe/footer changes language without navigating the host page. Keep the pre-Node Bash/PowerShell catalog files in delivered source snapshots. Existing native launchers require a rebuild for new embedded text, while their project preference remains outside the kernel update manifest.
+
+
+### Bilingual interface maintenance (2026-10-23)
+
+Keep locale catalogs and their public helpers with the kernel source. Shared-catalog changes invalidate the setup asset fingerprint; prepare the configuration page through the launcher before serving. Existing native apps need export/rebuild for newly compiled launcher behavior, then read the project's current saved language on launch. Browser language saves require the existing local origin/authentication contract; do not publish configuration endpoints. Verify locale parity, interpolation, in-flight state, request drain, both builds and copied configuration/maintenance closures before distribution. Current kernel version remains0.9.7.

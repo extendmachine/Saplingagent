@@ -12,7 +12,7 @@ export async function startMaintenance(root, action, id) {
   let child;
   try {
     await assertMcpClientsStopped(root);
-    const sources=['kernel/worker.mjs','kernel/manager.mjs','kernel/storage.mjs','kernel/recover.mjs','kernel/install-dependencies.mjs','kernel/contracts/kernel.mjs','kernel/contracts/mcp-access.mjs','kernel/contracts/configuration-write.mjs','kernel/contracts/local-storage.mjs','kernel/contracts/local-process.mjs','kernel/contracts/engine-dependencies.mjs','kernel/compat/paths.mjs'];
+    const sources=['kernel/worker.mjs','kernel/localization/public.mjs','kernel/localization/errors.mjs','kernel/localization/store.mjs','kernel/localization/runtime-messages.mjs','kernel/manager.mjs','kernel/storage.mjs','kernel/recover.mjs','kernel/install-dependencies.mjs','kernel/contracts/kernel.mjs','kernel/contracts/mcp-access.mjs','kernel/contracts/configuration-write.mjs','kernel/contracts/local-storage.mjs','kernel/contracts/local-process.mjs','kernel/contracts/engine-dependencies.mjs','kernel/compat/paths.mjs'];
     for (const file of sources) {
       const source=await safeFile(root,file);
       const target=await safeFile(root,`${prefix}/runner/${file}`,{internal:true});

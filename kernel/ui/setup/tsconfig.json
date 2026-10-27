@@ -18,7 +18,8 @@
     "isolatedModules": true,
     "types": [
       "vite/client"
-    ]
+    ],
+    "allowJs": true
   },
   "include": [
     "*.ts",

@@ -37,12 +37,56 @@ const contextUsage = (value) => {
   if (!Number.isFinite(Date.parse(result.updatedAt))) fail('contextUsage.updatedAt must be a valid timestamp');
   return result;
 };
-const normalizeSession = (session) => ({
-  ...session,
-  engine: session.engine === undefined ? 'codex' : engine(session.engine),
-  providerId: session.providerId === undefined ? null : providerId(session.providerId),
-  modelId: session.modelId === undefined ? null : modelId(session.modelId),
-});
+const timestamp = (value, name) => {
+  const result = text(value, name, 80);
+  if (!Number.isFinite(Date.parse(result))) fail(`Invalid ${name}`);
+  return result;
+};
+function selection(input) {
+  const selected = { engine: engine(input.engine), providerId: providerId(input.providerId), modelId: modelId(input.modelId) };
+  if (selected.engine === 'codex' && (selected.providerId !== null || selected.modelId !== null)) fail('Codex sessions do not accept providerId or modelId');
+  if (selected.engine !== 'codex' && (!selected.providerId || !selected.modelId)) fail('API agent sessions require providerId and modelId');
+  return selected;
+}
+function switchingMetadata(session) {
+  const engineRevision = session.engineRevision === undefined ? 0 : tokenCount(session.engineRevision, 'engineRevision');
+  const source = session.engineHistory === undefined ? [] : session.engineHistory;
+  if (!Array.isArray(source) || source.length > 1000) fail('engineHistory must contain at most 1000 bindings');
+  let previous = -1;
+  const engineHistory = source.map(item => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) fail('Invalid engine history');
+    const revision = tokenCount(item.engineRevision, 'history.engineRevision');
+    if (revision <= previous || revision >= engineRevision) fail('Invalid engine history order');
+    previous = revision;
+    return { ...selection(item), threadId: item.threadId === null ? null : text(item.threadId, 'history.threadId', 300), engineRevision: revision, closedAt: timestamp(item.closedAt, 'history.closedAt') };
+  });
+  let handoff = null;
+  if (session.handoff !== undefined && session.handoff !== null) {
+    const value = session.handoff;
+    if (typeof value !== 'object' || Array.isArray(value) || !['pending', 'delivered'].includes(value.status)) fail('Invalid handoff');
+    if (tokenCount(value.bindingRevision, 'handoff.bindingRevision', 1) !== engineRevision) fail('Handoff does not match the current binding');
+    handoff = { id: validId(value.id), bindingRevision: value.bindingRevision, status: value.status, throughMessageId: value.throughMessageId === null ? null : validId(value.throughMessageId), createdAt: timestamp(value.createdAt, 'handoff.createdAt') };
+    if (value.status === 'delivered') handoff.deliveredRequestId = validId(value.deliveredRequestId);
+    else if (value.deliveredRequestId !== undefined) fail('Pending handoff cannot be delivered');
+  }
+  return { engineRevision, engineHistory, handoff };
+}
+function normalizeSession(session) {
+  let switching;
+  try { switching = switchingMetadata(session); }
+  catch { throw new WorkspaceError('CORRUPT_STORAGE', 'Stored session switching metadata requires recovery', 500); }
+  return { ...session,
+    engine: session.engine === undefined ? 'codex' : engine(session.engine),
+    providerId: session.providerId === undefined ? null : providerId(session.providerId),
+    modelId: session.modelId === undefined ? null : modelId(session.modelId),
+    ...switching,
+  };
+}
+function checkEngineRevision(session, value, required = false) {
+  if (value === undefined && !required) return;
+  tokenCount(value, 'expectedEngineRevision');
+  if (value !== session.engineRevision) throw new WorkspaceError('CONFLICT', 'Session engine revision has changed', 409);
+}
 export async function safePath(root, relative, directory = false) {
   const pieces = relative.split('/');
   let current = root;
@@ -133,7 +177,7 @@ export async function createStore(applicationRoot) {
         if (!entry.name.endsWith('.json')) continue;
         if (entry.isSymbolicLink() || !entry.isFile()) throw new WorkspaceError('UNSAFE_STORAGE', 'Session storage contains an unsupported file', 409);
         const session = await get(entry.name.slice(0, -5));
-        sessions.push({ id: session.id, title: session.title, updatedAt: session.updatedAt, engine: session.engine, providerId: session.providerId, modelId: session.modelId });
+        sessions.push({ id: session.id, title: session.title, updatedAt: session.updatedAt, engine: session.engine, providerId: session.providerId, modelId: session.modelId, engineRevision: session.engineRevision });
       }
       return sessions.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     },
@@ -143,10 +187,33 @@ export async function createStore(applicationRoot) {
         if (!input || typeof input !== 'object' || Array.isArray(input)) fail('Invalid session input');
         const now = new Date().toISOString();
         const selectedEngine = input.engine === undefined ? 'codex' : engine(input.engine);
-        const session = { id: randomUUID(), title: input.title === undefined ? 'New conversation' : text(input.title, 'title', 200), engine: selectedEngine, providerId: input.providerId === undefined ? null : providerId(input.providerId), modelId: input.modelId === undefined ? null : modelId(input.modelId), threadId: null, messages: [], running: false, activeRequestId: null, createdAt: now, updatedAt: now, revision: 1 };
+        const session = { id: randomUUID(), title: input.title === undefined ? 'New conversation' : text(input.title, 'title', 200), engine: selectedEngine, providerId: input.providerId === undefined ? null : providerId(input.providerId), modelId: input.modelId === undefined ? null : modelId(input.modelId), threadId: null, messages: [], running: false, activeRequestId: null, createdAt: now, updatedAt: now, revision: 1, engineRevision: 0, engineHistory: [], handoff: null };
         if (selectedEngine === 'codex' && (session.providerId !== null || session.modelId !== null)) fail('Codex sessions do not accept providerId or modelId');
         if (selectedEngine !== 'codex' && (!session.providerId || !session.modelId)) fail('API agent sessions require providerId and modelId');
         await atomicJson(root, `data/workspace/sessions/${session.id}.json`, session);
+        return session;
+      });
+    },
+    switchSessionEngine(id, input) {
+      return serialize(async () => {
+        if (!input || typeof input !== 'object' || Array.isArray(input)) fail('Invalid engine switch');
+        const selected = selection(input);
+        tokenCount(input.expectedRevision, 'expectedRevision', 1);
+        const session = await get(id);
+        checkEngineRevision(session, input.expectedEngineRevision, true);
+        if (input.expectedRevision !== session.revision) throw new WorkspaceError('CONFLICT', 'Session revision has changed', 409);
+        if (session.running || session.activeRequestId || session.requests?.some(item => item.status === 'inProgress')) throw new WorkspaceError('SESSION_BUSY', 'This conversation is still running', 409);
+        if (selected.engine === session.engine && selected.providerId === session.providerId && selected.modelId === session.modelId) return session;
+        if (session.engineHistory.length >= 1000) throw new WorkspaceError('ENGINE_HISTORY_FULL', 'Conversation engine history is full', 409);
+        if (!Number.isSafeInteger(session.revision + 1) || !Number.isSafeInteger(session.engineRevision + 1)) throw new WorkspaceError('CONFLICT', 'Session revision is exhausted', 409);
+        const now = new Date().toISOString();
+        const history = { engine: session.engine, providerId: session.providerId, modelId: session.modelId, threadId: session.threadId ?? null, engineRevision: session.engineRevision, closedAt: now };
+        session.engineHistory.push(history);
+        session.engineRevision++;
+        Object.assign(session, selected, { threadId: null, contextUsage: null });
+        session.handoff = session.messages.length ? { id: randomUUID(), bindingRevision: session.engineRevision, status: 'pending', throughMessageId: validId(session.messages.at(-1).id), createdAt: now } : null;
+        session.updatedAt = now; session.revision++;
+        await atomicJson(root, `data/workspace/sessions/${validId(id)}.json`, session);
         return session;
       });
     },
@@ -155,6 +222,8 @@ export async function createStore(applicationRoot) {
         if (!input || typeof input !== 'object' || Array.isArray(input)) fail('Invalid session patch');
         const session = await get(id);
         if (input.expectedRevision !== undefined && input.expectedRevision !== session.revision) throw new WorkspaceError('CONFLICT', 'Session revision has changed', 409);
+        checkEngineRevision(session, input.expectedEngineRevision, input.handoffDeliveredRequestId !== undefined);
+        if (['engineRevision', 'engineHistory', 'handoff'].some(key => Object.hasOwn(input, key))) fail('Engine switching metadata cannot be replaced by a patch');
         if (input.threadId !== undefined) session.threadId = input.threadId === null ? null : text(input.threadId, 'threadId', 300);
         if (input.engine !== undefined && engine(input.engine) !== session.engine) fail('A session engine cannot be changed');
         if (input.providerId !== undefined && providerId(input.providerId) !== session.providerId) fail('A session provider cannot be changed');
@@ -178,6 +247,11 @@ export async function createStore(applicationRoot) {
             const startedAt = text(item.startedAt, 'request.startedAt', 80);
             if (!Number.isFinite(Date.parse(startedAt))) fail('Invalid request timestamp');
             const entry = { id: requestId, status: item.status, startedAt };
+            if (item.engineRevision !== undefined) entry.engineRevision = tokenCount(item.engineRevision, 'request.engineRevision');
+            const binding = entry.engineRevision ?? 0;
+            const previous = session.requests?.find(saved => saved.id === requestId);
+            if (binding > session.engineRevision) fail('A request cannot belong to a future engine binding');
+            if (previous && binding !== (previous.engineRevision ?? 0)) fail('A request engine binding cannot be changed');
             if (item.completedAt !== undefined) {
               entry.completedAt = text(item.completedAt, 'request.completedAt', 80);
               if (!Number.isFinite(Date.parse(entry.completedAt))) fail('Invalid completion timestamp');
@@ -185,6 +259,12 @@ export async function createStore(applicationRoot) {
             if (item.error !== undefined) entry.error = text(item.error, 'request.error', 1000, true);
             return entry;
           });
+        }
+        if (input.handoffDeliveredRequestId !== undefined) {
+          const requestId = validId(input.handoffDeliveredRequestId);
+          const request = session.requests?.find(item => item.id === requestId);
+          if (!session.handoff || session.handoff.bindingRevision !== session.engineRevision || request?.status !== 'completed' || (request.engineRevision ?? 0) !== session.engineRevision || (session.handoff.status === 'delivered' && session.handoff.deliveredRequestId !== requestId)) fail('Handoff delivery requires a completed request in the current binding');
+          session.handoff = { ...session.handoff, status: 'delivered', deliveredRequestId: requestId };
         }
         session.updatedAt = new Date().toISOString(); session.revision++;
         await atomicJson(root, `data/workspace/sessions/${validId(id)}.json`, session);

@@ -1,3 +1,4 @@
+import * as uiMessages from '../localization/messages.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -5,20 +6,20 @@ import vm from 'node:vm';
 import { transformSync } from 'rolldown/utils';
 
 const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(nodes)];
-async function fixture() {
+async function fixture(language = 'en') {
   const slots=[], effects=[];let cursor=0,tree,scheduled=false;
   const same=(a,b)=>a&&b&&a.length===b.length&&a.every((v,i)=>Object.is(v,b[i]));
   const schedule=()=>{if(!scheduled){scheduled=true;queueMicrotask(()=>{scheduled=false;render()})}};
   const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]={value:initial};return[slots[i].value,value=>{slots[i].value=typeof value==='function'?value(slots[i].value):value;schedule()}]},useRef(initial){const i=cursor++;return slots[i]||=( {current:initial})},useEffect(effect,deps){const i=cursor++;if(!same(slots[i]?.deps,deps)){const old=slots[i];slots[i]={deps};effects.push(()=>{old?.cleanup?.();slots[i].cleanup=effect()})}}};
   const composer={text:'A draft',attachments:[{id:'a-file',name:'a.txt',type:'file',status:{type:'complete'},content:[{type:'file',data:'/api/attachments/a-file/content'}]}],getState(){return{text:this.text,attachments:this.attachments,submission:this.submission}},setText(text){this.text=text},async reset(){this.text='';this.attachments=[]},async addAttachment(a){this.attachments.push({...a,status:{type:'complete'}})}};
   const calls=[],agent={activeSessionId:'a',sessions:[{id:'a',title:'Alpha'},{id:'b',title:'Beta'}],isLoading:false,isRunning:false,sessionsLoading:false,sessionsError:'',async refreshSessions(){calls.push('list')},switchSession(id){calls.push(id);this.activeSessionId=id;return true},startNew(){calls.push('new');this.activeSessionId=null;return true},async renameSession(id,title){calls.push({id,title});return title}};
-  const jsx=(type,props)=>({type,props}),context=vm.createContext({Map,Error,Promise});
-  const mocks={react,'react/jsx-runtime':{jsx,jsxs:jsx},'lucide-react':Object.fromEntries(['LoaderCircle','Pencil','Plus','RotateCcw','Save','X'].map(name=>[name,name]))};
+  const jsx=(type,props)=>typeof type==='function'?type(props):({type,props}),context=vm.createContext({Map,Error,Promise});
+  const mocks={'../localization/LanguageProvider':{useLanguage:()=>({language, locale: uiMessages.localeFor(language), t:(key,params)=>uiMessages.translate(language,key,params), text:value=>uiMessages.resolveText(value,language)})},'../localization/messages':uiMessages,'../localization/ErrorNotice':{ErrorNotice:({error})=>jsx('div',{children:uiMessages.resolveText(error,language)})},react,'react/jsx-runtime':{jsx,jsxs:jsx},'lucide-react':Object.fromEntries(['LoaderCircle','Pencil','Plus','RotateCcw','Save','X'].map(name=>[name,name]))};
   async function load(name){if(mocks[name]){const mock=mocks[name];return new vm.SyntheticModule(Object.keys(mock),function(){for(const[k,v]of Object.entries(mock))this.setExport(k,v)},{context})}const file=name==='controls'?'ConversationControls.tsx':'conversation-drafts.ts';const mod=new vm.SourceTextModule(transformSync(file,await readFile(new URL(file,import.meta.url),'utf8'),{jsx:{runtime:'automatic'}}).code,{context});await mod.link(load);return mod;}
   const mod=await load('controls');await mod.evaluate();
   function render(){cursor=0;tree=mod.namespace.ConversationControls({agent,composer,onChanging(){}});while(effects.length)effects.shift()();return tree}
   render();const settle=async()=>{for(let i=0;i<8;i++)await new Promise(resolve=>setImmediate(resolve))};
-  return{agent,composer,calls,render,settle,node(label){return nodes(tree).find(node=>node.props?.['aria-label']===label)},button(text){return nodes(tree).find(node=>node.type==='button'&&[node.props.children].flat().includes(text))}};
+  return{agent,composer,calls,render,settle,setLanguage(value){language=value;render()},node(label){return nodes(tree).find(node=>node.props?.['aria-label']===label)},button(text){return nodes(tree).find(node=>node.type==='button'&&[node.props.children].flat().includes(text))}};
 }
 test('switching and returning restores complete conversation drafts without cross-session attachments',async()=>{
  const h=await fixture();h.node('Switch conversation').props.onChange({target:{value:'b'}});await h.settle();assert.equal(h.agent.activeSessionId,'b');assert.equal(h.composer.text,'');assert.equal(h.composer.attachments.length,0);
@@ -44,4 +45,10 @@ test('switch cannot discard an attachment submission still preparing to send',as
  const h=await fixture();h.composer.submission={text:'pending sent text',attachments:[{id:'pending-upload'}]};
  h.node('Switch conversation').props.onChange({target:{value:'b'}});await h.settle();
  assert.equal(h.agent.activeSessionId,'a');assert.equal(h.calls.length,0);assert.equal(h.composer.submission.text,'pending sent text');assert.equal(h.composer.text,'A draft');assert.equal(h.composer.attachments[0].id,'a-file');
+});
+
+
+test('switching interface language preserves conversation title edit and composer attachments',async()=>{
+ const h=await fixture();const original=h.composer.attachments;h.node('Rename conversation').props.onClick();await h.settle();h.node('Conversation title').props.onChange({target:{value:'My original title draft'}});await h.settle();h.setLanguage('zh');await h.settle();assert.equal(h.node('会话标题').props.value,'My original title draft');assert.equal(h.composer.text,'A draft');assert.equal(h.composer.attachments,original);assert.equal(h.agent.activeSessionId,'a');assert.equal(h.calls.length,0);
+ h.setLanguage('en');await h.settle();assert.equal(h.node('Conversation title').props.value,'My original title draft');
 });

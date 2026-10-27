@@ -1,14 +1,15 @@
+import * as uiMessages from '../localization/messages.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { transformSync } from 'rolldown/utils';
 
-async function control() {
+async function control(language = 'en') {
   const requests = [], effects = [], slots = [];
   let cursor = 0, rendered, reloads = 0, poll;
   const status = { instanceId: 'owned-manager', generation: 1, phase: 'ready', busy: false, canRestart: true, jobId: null, scope: 'all', error: null };
-  const jsx = (type, props) => ({ type, props });
+  const jsx = (type, props) => typeof type==='function'?type(props):({ type, props });
   const react = {
     useState(initial) { const i=cursor++; if (!(i in slots)) slots[i]=initial; return [slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value;}]; },
     useRef(initial) { const i=cursor++; return slots[i] ||= {current:initial}; },
@@ -17,7 +18,7 @@ async function control() {
   const context=vm.createContext({Error,JSON,AbortSignal,Event,CustomEvent,sessionStorage:{getItem:()=>null,setItem(){},removeItem(){}},window:{dispatchEvent(){},setInterval:callback=>{poll=callback;return 1;},clearInterval(){},location:{reload(){reloads++;}}},fetch:async(url,options)=>{
     requests.push({url,...options});return {ok:true,json:async()=>url.endsWith('/restart')?{jobId:'full-job',status:{...status,busy:true,phase:'preparing',jobId:'full-job'}}:{...status}};
   }});
-  const mocks={react,'react/jsx-runtime':{jsx,jsxs:jsx},'lucide-react':{AlertTriangle:'svg',LoaderCircle:'svg',RotateCw:'svg'}};
+  const mocks={'../../localization/LanguageProvider':{useLanguage:()=>({language, locale: uiMessages.localeFor(language), t:(key,params)=>uiMessages.translate(language,key,params), text:value=>uiMessages.resolveText(value,language)})},'../../localization/messages':uiMessages,'../../localization/ErrorNotice':{ErrorNotice:({error})=>jsx('div',{children:uiMessages.resolveText(error,language)})},react,'react/jsx-runtime':{jsx,jsxs:jsx},'lucide-react':{AlertTriangle:'svg',LoaderCircle:'svg',RotateCw:'svg'}};
   async function load(name) {
     if (name in mocks) { const mock=mocks[name]; return new vm.SyntheticModule(Object.keys(mock),function(){for(const[k,v]of Object.entries(mock))this.setExport(k,v)},{context}); }
     const file=name==='control'?'../features/runtime-control/RestartServices.tsx':'../features/runtime-control/restart-reload.ts';

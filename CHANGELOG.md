@@ -1,5 +1,19 @@
 # Saplingagent changelog
 
+## 0.9.7 — Project identity and accumulated main improvements (2026-10-27)
+
+- The complete seed uses the configured project folder name for the browser tab, independently from the native app name. Language changes preserve it; older runtime and missing-metadata fallbacks keep chat usable. The kernel exposes the separate read-only projectFolderName status field.
+- Promote the checked main English/Chinese installation, setup, launcher, chat, errors and help; project-owned code/documentation use MIT with retained attribution. Historical tags and third-party terms remain unchanged.
+- Include same-conversation AI switching with history handoff and compact top-right Settings navigation in the complete application source.
+- Kernel-only updates preserve customized application frontend/backend. These application features require a deliberate matching application-source update; they are not automatically installed by Upgrade kernel. Existing native apps require an explicit rebuild for changed compiled launcher behavior.
+- Keep schema3/layout1, publish a new immutable v0.9.7 tag and matching macOS/Windows source ZIPs/checksums. Real Windows/account acceptance is separate from automated checks.
+
+## Main development — English/Chinese and MIT licensing (2026-10-23)
+
+- Complete keyed English/Simplified Chinese user interfaces, project-local language persistence and localized error explanations/actions; preserve conversations and technical identifiers.
+- Add independent bilingual user help. Kernel version remains0.9.6; this entry does not claim release/tag promotion.
+- Replace the project-owned noncommercial policy with MIT permitting commercial use, modification and redistribution with retained copyright/license notice and upstream repository attribution. Third-party terms and historical release artifacts remain unchanged.
+
 ## 0.9.6 — External AI / MCP access
 
 - Add an External AI / MCP option alongside built-in AI setup. Export local stdio client JSON after finalizing the project folder; external-only mode needs no built-in model account.

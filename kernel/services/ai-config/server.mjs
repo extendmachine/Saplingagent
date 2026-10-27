@@ -9,10 +9,17 @@ import { AccountSetup } from './auth.mjs';
 import { CredentialImport } from './credentials.mjs';
 import { ProjectLauncher, prepareSetupUI } from '../../launcher/public.mjs';
 import { readMcpAccess, saveMcpAccess, getMcpAccess } from '../../contracts/mcp-access.mjs';
+import {readLanguage, writeLanguage} from '../../localization/store.mjs';
+import {normalizeLanguage, formatMessage, describeError} from '../../localization/public.mjs';
+import {setupMessages} from '../../localization/setup-messages.mjs';
+import {wantsConfigurationErrorPage,renderConfigurationError} from './error-page.mjs';
 const defaultRoot=fileURLToPath(new URL('../../../',import.meta.url));
-export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRoot,assets=path.join(root,'kernel/.cache/setup'),language='en',authOptions={},importOptions={},onClose,token:providedToken,projectController,onProjectRename,instanceId,beforeClose}={}){
+export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRoot,assets=path.join(root,'kernel/.cache/setup'),language,authOptions={},importOptions={},onClose,token:providedToken,projectController,onProjectRename,instanceId,beforeClose}={}){
   root=path.resolve(root);
   let store=new ConfigurationStore(root),auth=new AccountSetup(root,store,authOptions),imports=new CredentialImport(store,importOptions);const token=providedToken||randomBytes(32).toString('hex');let closing=false,shutdown,directoryOperation=false,finalizing=false,activeAIRequests=0;const project=projectController||new ProjectLauncher(root);
+  const preferredLanguage=req=>normalizeLanguage(language ?? String(req.headers['accept-language']||'').split(',').map(part=>part.trim().split(';')[0]).find(tag=>/^(en|zh)(?:-|$)/i.test(tag)));
+  const currentLanguage=req=>readLanguage(root,preferredLanguage(req));
+  const languageState=async req=>({language:await currentLanguage(req),supported:['en','zh']});
   const aiRoutes=new Set(['profiles','activate','models','login','credentials/import','mcp']);
   const pendingLogin=()=>['starting','pending','completing'].includes(auth.login.phase);
   const settingsSaved=async()=>{const state=await project.state();return state.settingsSaved===true;};
@@ -34,7 +41,8 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
         const supplied=Buffer.from(String(req.headers['x-sapling-config']||''));const expected=Buffer.from(token);
         if(supplied.length!==expected.length||!timingSafeEqual(supplied,expected))throw failure('UNAUTHORIZED','Reload the local configuration page.',401);
         if(closing||finalizing)throw failure('CLOSING','Configuration is closing or restarting. Wait for the operation to finish.',503);
-        if(req.method==='GET'&&['/api/config/state','/api/config/project','/api/config/mcp'].includes(url.pathname)&&directoryOperation)throw failure('PROJECT_BUSY','Wait for project directory confirmation to finish.',409);
+        if(req.method==='GET'&&['/api/config/state','/api/config/project','/api/config/mcp','/api/config/language'].includes(url.pathname)&&directoryOperation)throw failure('PROJECT_BUSY','Wait for project directory confirmation to finish.',409);
+        if(req.method==='GET'&&url.pathname==='/api/config/language')return send(res,200,await languageState(req));
         if(req.method==='GET'&&url.pathname==='/api/config/state')return send(res,200,await configurationState(await store.state()));
         if(req.method==='GET'&&url.pathname==='/api/config/mcp')return send(res,200,await getMcpAccess(root));
         if(req.method==='GET'&&url.pathname==='/api/config/project')return send(res,200,await project.state());
@@ -61,7 +69,7 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
               if(Object.keys(body).length)throw failure('INVALID_CONFIG','Finalization uses the saved settings and accepts an empty object only.');
               if(!await settingsSaved())throw failure('PROJECT_SETTINGS_REQUIRED','Save project settings before finalizing setup.',409);
               if(!await accessConfigured())throw failure('AI_NOT_CONFIGURED','Save and select an AI connection or enable external-only MCP access before finalizing setup.',409);
-              const result=await project.finalizeSetup({management:{pid:process.pid,instanceId,port:address.port},language});
+              const result=await project.finalizeSetup({management:{pid:process.pid,instanceId,port:address.port},language:await currentLanguage(req)});
               if(project.configurationHost==='external')return send(res,202,{job:result});
               const finalization={...Object.fromEntries(['id','phase','targetRoot','previousRoot','readyUrl'].filter(key=>result[key]!==undefined).map(key=>[key,result[key]])),managementPort:address.port};
               finalizing=true;
@@ -87,6 +95,12 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
           throw failure('NOT_FOUND','Project endpoint not found.',404);
         }
         if(project.busy)throw failure('PROJECT_BUSY','Wait for the project operation before changing configuration.',409);
+        if(url.pathname==='/api/config/language'){
+          if(Object.keys(body).length!==1||!['en','zh'].includes(body.language))throw failure('INVALID_LANGUAGE','Choose English or Chinese.');
+          activeAIRequests++;
+          try{await writeLanguage(root,body.language);return send(res,200,await languageState(req));}
+          finally{activeAIRequests--;}
+        }
         const aiRoute=url.pathname.slice('/api/config/'.length);
         if(aiRoutes.has(aiRoute)){
           activeAIRequests++;
@@ -108,6 +122,12 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
         throw failure('NOT_FOUND','Configuration endpoint not found.',404);
       }
       if(req.method!=='GET')throw failure('NOT_FOUND','Page not found.',404);
+      if(url.pathname==='/help'){
+        const {renderHelpPage}=await import('../../localization/help.mjs');
+        const selected=url.searchParams.has('lang')?normalizeLanguage(url.searchParams.get('lang')):await currentLanguage(req);
+        const nonce=randomBytes(18).toString('base64'),page=renderHelpPage(selected,{endpoint:'/api/config/language',token}).replaceAll('<script>',`<script nonce="${nonce}">`);
+        res.writeHead(200,{...headers,'Content-Security-Policy':headers['Content-Security-Policy'].replace("script-src 'self'",`script-src 'self' 'nonce-${nonce}'`),'Content-Type':'text/html; charset=utf-8'});res.end(page);return;
+      }
       if(url.pathname==='/project-icon.png'){
         const iconFile=path.join(project.root,'config/project-icon.png');const stat=await fs.lstat(iconFile).catch(()=>null);
         if(!stat?.isFile()||stat.isSymbolicLink()||stat.size>1048576)throw failure('NOT_FOUND','Project icon not found.',404);
@@ -123,9 +143,18 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
         if(file!=='index.html')throw failure('UI_ASSET_NOT_FOUND','This configuration resource is unavailable. Reload the configuration page; if it persists, run bash Saplingagent.sh configure.',404);
         throw failure('UI_NOT_BUILT','Configuration page is not built. Run bash Saplingagent.sh configure to prepare it; if preparation fails, run install --repair first.',503);
       }
-      if(file==='index.html')content=Buffer.from(content.toString('utf8').replaceAll('__SAPLING_CONFIG_TOKEN__',token).replaceAll('__SAPLING_CONFIG_LANGUAGE__',language==='zh'?'zh':'en'));
+      if(file==='index.html'){const selected=await currentLanguage(req);content=Buffer.from(content.toString('utf8').replaceAll('__SAPLING_CONFIG_TOKEN__',token).replaceAll('__SAPLING_CONFIG_LANGUAGE__',selected).replaceAll('__SAPLING_CONFIG_TITLE__',formatMessage(setupMessages,selected,'common.setup.title')));}
       res.writeHead(200,{...headers,'Content-Type':file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':file.endsWith('.html')?'text/html; charset=utf-8':'image/svg+xml'});res.end(content);
-    }catch(error){if(!res.headersSent)send(res,error.status||500,{error:{code:error.code&&error.status?error.code:'CONFIG_STORAGE_ERROR',message:error.status?error.message:'Unable to read or save local configuration. Check the project files and reload.'}});else res.end();}
+    }catch(error){
+      if(!res.headersSent){
+        const safe={code:error.code&&error.status?error.code:'CONFIG_STORAGE_ERROR',message:error.status?error.message:'Unable to read or save local configuration. Check the project files and reload.'};
+        const selected=await currentLanguage(req).catch(()=>preferredLanguage(req));
+        if(wantsConfigurationErrorPage(req,safe.code)){
+          res.writeHead(error.status||500,{...headers,'Content-Type':'text/html; charset=utf-8','Vary':'Accept'});
+          res.end(renderConfigurationError(safe,selected));
+        }else send(res,error.status||500,{error:{...safe,...describeError(safe,selected)}});
+      }else res.end();
+    }
   });
   let closePreparation;
   const prepareClose=()=>closePreparation||(closePreparation=Promise.resolve().then(()=>beforeClose?.()).catch(error=>{closePreparation=null;throw error;}));

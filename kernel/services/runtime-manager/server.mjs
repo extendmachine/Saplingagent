@@ -1,4 +1,6 @@
 import http from 'node:http';
+import { readLanguage, writeLanguage } from '../../localization/store.mjs';
+import { normalizeLanguage, supportedLanguages } from '../../localization/public.mjs';
 import { kernelRequest } from '../../http.mjs';
 import { timingSafeEqual } from 'node:crypto';
 import { projectStatus, openProjectLogs } from './status.mjs';
@@ -39,6 +41,28 @@ export function createControlHandler(options) {
     try {
       localAccess(req, options);
       const route = new URL(req.url, 'http://127.0.0.1').pathname;
+      if (route === '/api/runtime/language' && ['GET','POST'].includes(req.method)) {
+        let language, holdingWrite = false;
+        try {
+          if (req.method === 'POST') {
+            if (manager.operation || manager.maintenance || manager.closing || manager.closed) return send(res,409,{error:{code:'RUNTIME_BUSY',message:'Wait for the current runtime operation before changing language.'}});
+            // Hold the existing drain counter through body reading and atomic persistence.
+            manager.gatewayWrites = (manager.gatewayWrites || 0) + 1; holdingWrite = true;
+            let bytes = 0; const chunks = [];
+            for await (const chunk of req) {
+              bytes += chunk.length;
+              if (bytes > 256) return send(res,400,{error:{code:'INVALID_LANGUAGE',message:'Choose en or zh.'}});
+              chunks.push(chunk);
+            }
+            let input; try { input = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch {}
+            if (!input || Array.isArray(input) || Object.keys(input).length !== 1 || !supportedLanguages.includes(input.language))
+              return send(res,400,{error:{code:'INVALID_LANGUAGE',message:'Choose en or zh.'}});
+            language = await writeLanguage(manager.root,input.language);
+          } else language = await readLanguage(manager.root,normalizeLanguage(req.headers['accept-language']));
+          return send(res,200,{language,supported:supportedLanguages});
+        } catch (error) { return send(res,error.status || 503,{error:{code:error.status ? error.code : 'LANGUAGE_SAVE_FAILED',message:'The project language preference could not be read or saved. Check folder access, wait for configuration to finish and retry.'}}); }
+        finally { if (holdingWrite) manager.gatewayWrites--; }
+      }
       if (await kernelRequest(req,res,options,route,send)) return;
       if (req.method === 'GET' && route === '/health') return send(res, 200, { ready: true, service: 'runtime-manager' });
       if (req.method === 'GET' && route === '/api/runtime/status') return send(res, 200, await projectStatus(manager));

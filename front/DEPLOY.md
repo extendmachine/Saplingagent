@@ -93,3 +93,27 @@ New comparison normalizes only historical labels0.90→0.9.0,0.91→0.9.2,0.92�
 Run the service-local npm ci to install locked remark-math6.0.0, rehype-katex7.0.1 and KaTeX0.19.0, then build. CSS/fonts are bundled locally; there is no math CDN, global package, new server or port. html-to-image remains for page inspection. The Agent must support title PATCH and optional contextUsage snapshots; older servers still display chat/history with unavailable usage or an explicit rename error. No migrations of real conversation files or credentials are performed by this frontend.
 
 Verify conversation switching/rename, a running snapshot, text and attachment draft roundtrips, math/GFM/currency, collapse/tab dragging and restart recovery in an isolated fixture. Clearing browser storage removes tab position and the active pointer, not server conversation data. Drafts of inactive conversations exist only in the current page; full reload preserves only the active text under the existing restart policy.
+
+## Same-conversation AI handoff (2026-10-23)
+
+Deploy matching application Workspace, Agent and front/chat sources together, then Restart app. This is an application feature: kernel-only updates do not replace it, and kernel0.9.6/adapters/dependencies remain unchanged. Existing files read with engineRevision0; first explicit AI change persists binding metadata. Never reset customer sessions/credentials to adopt it.
+
+In an idle conversation, choose the target AI/provider/model and Apply. The current conversation and unsent composer remain. The next send transfers a labelled recent-history excerpt with the complete local transcript reference; a failed/interrupted handoff remains pending for manual retry. Model memory is not guaranteed by a successful transfer. Reconfiguration still requires restart; no automatic inference, authentication import or merging of separate sessions. See [conversation handoff](../docs/conversation-handoff.html).
+
+Rollback needs care: older application versions do not understand binding revisions/history and can discard this metadata on writes. Preserve data/ including sessions and attachments, stop the app before source rollback, and retain a matching application-source version; a kernel backup alone is insufficient. No new persistent service, platform API or dependencies. Synthetic tests verify storage/transport/UI behavior, not live provider entitlement or native Windows acceptance.
+
+## Bilingual application UI (TASK-20261023-007)
+
+Deploy the front source/build together with the kernel localization public module and runtime language endpoint. No dependency install beyond the existing lockfile is added. The selector saves project preference and updates the live page without restarting the Agent; Help uses the same local gateway. Missing/offline preference endpoints use a browser/local fallback and show failed saves with retry. Language settings contain no credentials. Kernel-only updates do not replace application-owned front code.
+
+Verification:80 isolated frontend tests, TypeScript and Vite build passed. Checks include streamed reply preservation, no automatic inference, conversation/title/text/attachment continuity, delayed reads/writes, errors and strict iframe sources. Existing bundle warning remains. Real provider entitlement and native Windows/browser acceptance are not established by these synthetic tests. Roll back only source/build with a matching shared localization module; never clear customer data or credentials to switch interface language.
+
+
+## Compact header and runtime Settings (TASK-20261023-012)
+
+The default main page shows a compact brand/language/Help header and an English/Chinese Settings link at the top right. Settings opens the current origin's /__saplingagent/runtime in a new tab, preserving the original chat, unsent text/attachments and current stream. The default application space is empty; no embedded kernel toolbar, Restart app/Kernel buttons or bottom version frame remains. Runtime restart/stop/status operations and direct /__saplingagent/kernel management remain available on their existing URLs. Kernel version stays0.9.6; this frontend change needs no backend restart, new service or dependency. Reload/HMR adopts the frontend; preserve conversations and configuration. Earlier embedded-control descriptions in this file are historical.
+
+
+## Project browser tab title (TASK-20261027-002)
+
+The application tab displays the configured project folder name from read-only GET /api/runtime/status.projectFolderName, not the native app display name. An older runtime falls back to the basename of applicationRoot (macOS/Windows paths); unavailable metadata retains the localized Saplingagent title. The name is plain text, remains unchanged when switching English/Chinese and is not stored in browser storage. Read once on mount and refresh on window focus with cancellation and a five-second deadline; temporary failures keep the last known name. No chat remount, model request, configuration write or new dependency/service. Frontend source/build deployment is required; kernel-only upgrades do not replace application UI. A cold controller restart enables the new explicit field.

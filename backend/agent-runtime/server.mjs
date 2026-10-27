@@ -8,8 +8,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import { AppServer } from '../../kernel/engines/rpc.mjs';
 import { createTaskRegistry } from './tasks.mjs';
+import { handoffInput } from './session-handoff.mjs';
 import { confirmationContent } from '../../kernel/engines/approval.mjs';
 import { toolFingerprint } from '../../contracts/agent-tools.mjs';
 import { permissions, threadPermissions, permissionConfigArgs, automaticApproval } from '../../kernel/engines/permissions.mjs';
@@ -90,7 +92,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   let status = { ready: false, authenticated: false, provider: 'Codex App Server', model: '', skills: [], mcp: { ready: false, tools: [] }, permissions };
   let openCodeStatus = { id: 'opencode', label: 'OpenCode', ready: false, authenticated: false, providers: [], error: null };
   let claudeStatus = { id: 'claude', label: 'Claude Agent', ready: false, authenticated: false, providers: [], error: null };
-  const active = new Map(), threads = new Map(), resumed = new Set(), subscribers = new Map(), approvals = new Map(), requestSessions = new Map(), dirtySessions = new Map(), titleWrites = new Map();
+  const active = new Map(), threads = new Map(), resumed = new Set(), subscribers = new Map(), approvals = new Map(), requestSessions = new Map(), dirtySessions = new Map(), titleWrites = new Map(), switchingSessions = new Set();
   const currentRun = run => !run.finished && run.session && active.get(run.session.id) === run;
   let effort = config.reasoningEffort;
   const publicSession = session => {
@@ -109,9 +111,29 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     res.write(`data: ${JSON.stringify({ type: 'session', sessionId })}\n\n`);
     return event => { if (!res.destroyed && !res.writableEnded) res.write(`data: ${JSON.stringify(event)}\n\n`); };
   }
+  const deliveredPatch = (session, requestId) => session.requests?.find(r => r.id === requestId)?.status === 'completed' && session.handoff?.status === 'pending' ? { handoffDeliveredRequestId: requestId } : {};
+  const storedMessages = messages => messages.map(message => ({ ...message, ...(message.attachments ? { attachments: message.attachments.map(attachmentSummary) } : {}) }));
+  async function persistSnapshot(sessionId, snapshot) {
+    try { return await ws(`/sessions/${sessionId}`, 'PATCH', snapshot); }
+    catch (error) {
+      // A write can commit even when its HTTP acknowledgement is lost. Compare
+      // persisted facts before reporting failure or repeating a completed turn.
+      if (snapshot.running === false) {
+        try {
+          const value = await ws(`/sessions/${sessionId}`), saved = value.session;
+          if ((saved.engineRevision || 0) === snapshot.expectedEngineRevision && !saved.running && saved.activeRequestId === null && saved.threadId === snapshot.threadId &&
+              isDeepStrictEqual(saved.requests, snapshot.requests) && isDeepStrictEqual(storedMessages(saved.messages), storedMessages(snapshot.messages)) &&
+              (!Object.hasOwn(snapshot, 'contextUsage') || isDeepStrictEqual(saved.contextUsage, snapshot.contextUsage)) &&
+              (!snapshot.handoffDeliveredRequestId || saved.handoff?.status === 'delivered' && saved.handoff.deliveredRequestId === snapshot.handoffDeliveredRequestId)) return value;
+        } catch {}
+      }
+      throw error;
+    }
+  }
   function save(run) {
-    const snapshot = { messages: structuredClone(run.session.messages), requests: structuredClone(run.session.requests), running: !run.finished, activeRequestId: run.finished ? null : run.requestId, threadId: run.session.threadId, ...usagePatch(run.session) };
-    run.saving = run.saving.catch(() => {}).then(() => ws(`/sessions/${run.session.id}`, 'PATCH', snapshot)).then(value => { run.session.updatedAt = value.session.updatedAt; });
+    const delivery = run.finished ? deliveredPatch(run.session, run.requestId) : {};
+    const snapshot = { expectedEngineRevision: run.session.engineRevision || 0, ...delivery, messages: structuredClone(run.session.messages), requests: structuredClone(run.session.requests), running: !run.finished, activeRequestId: run.finished ? null : run.requestId, threadId: run.session.threadId, ...usagePatch(run.session) };
+    run.saving = run.saving.catch(() => {}).then(() => persistSnapshot(run.session.id, snapshot)).then(value => { run.session.updatedAt = value.session.updatedAt; run.session.revision = value.session.revision; if (delivery.handoffDeliveredRequestId) run.session.handoff = value.session.handoff; });
     return run.saving;
   }
   function scheduleSave(run) { if (run.saveTimer || run.finished) return; run.saveTimer = setTimeout(() => { run.saveTimer = null; save(run).catch(() => abortRun(run, new Error('Unable to save the session. Check local storage'))); }, 1000); }
@@ -136,8 +158,8 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     try { await save(run); }
     catch (persistError) {
       result = 'failed'; error = new Error('Response has not been fully saved. Check local storage');
-      if (request) { request.status = result; request.error = error.message; }
-      for (const item of run.session.messages) if (item.requestId === run.requestId && item.role === 'assistant') item.status = result;
+      // Retain the actual model outcome for persistence retry. Downgrading it
+      // could contradict a committed handoff or rerun already completed tools.
       dirtySessions.set(run.session.id, run.session);
     }
     broadcast(run.session.id, { type: 'snapshot', session: publicSession(run.session) });
@@ -326,7 +348,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         if (session.running && !active.has(session.id)) {
           for (const request of session.requests || []) if (request.status === 'inProgress') { request.status = 'interrupted'; request.completedAt = new Date().toISOString(); }
           for (const item of session.messages) if (item.status === 'inProgress') item.status = 'interrupted';
-          await ws(`/sessions/${session.id}`, 'PATCH', { running: false, activeRequestId: null, requests: session.requests, messages: session.messages });
+          await ws(`/sessions/${session.id}`, 'PATCH', { expectedRevision: session.revision, expectedEngineRevision: session.engineRevision || 0, running: false, activeRequestId: null, requests: session.requests, messages: session.messages });
         }
       }
   }
@@ -424,7 +446,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       const catalog = await startOpenCode();
       if (!catalog.ready) throw new Error(catalog.error || 'OpenCode is not ready');
       const provider = catalog.providers.find(item => item.id === run.session.providerId);
-      if (!provider?.models.some(item => item.id === run.session.modelId)) throw Object.assign(new Error('The selected OpenCode provider or model is no longer available. Start a new conversation and choose an available model'), { code: 'MODEL_NOT_AVAILABLE' });
+      if (!provider?.models.some(item => item.id === run.session.modelId)) throw Object.assign(new Error('The selected OpenCode provider or model is no longer available. Switch this conversation to an available model'), { code: 'MODEL_NOT_AVAILABLE' });
       const { preferences } = await ws('/preferences');
       if (!currentRun(run)) return;
       broadcast(run.session.id, { type: 'status', label: 'Thinking…' });
@@ -447,8 +469,27 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       await claude.execute(run, text + runtimeContext(preferences, run, 'Claude Agent SDK'), { images: await imageInputs(run) });
     } catch (error) { if (currentRun(run)) await finish(run, run.cancelRequested ? 'interrupted' : 'failed', run.cancelRequested ? undefined : error); }
   }
-  function execute(run, text) {
-    return run.session.engine === 'claude' ? executeClaude(run, text) : run.session.engine === 'opencode' ? executeOpenCode(run, text) : executeCodex(run, text);
+  async function execute(run, text) {
+    try {
+      const input = await handoffInput({ root, session: run.session, text, attachment: async id => (await ws(`/attachments/${id}`)).attachment });
+      if (!currentRun(run)) return;
+      if (closing || run.cancelRequested) return finish(run, 'interrupted');
+      return run.session.engine === 'claude' ? executeClaude(run, input) : run.session.engine === 'opencode' ? executeOpenCode(run, input) : executeCodex(run, input);
+    } catch (error) { if (currentRun(run)) await finish(run, run.cancelRequested ? 'interrupted' : 'failed', error); }
+  }
+  function assertBindingRevision(session, expected) {
+    if (expected !== undefined && (!Number.isSafeInteger(expected) || expected < 0)) throw new ApiError('INVALID_REVISION', 'Invalid engine revision');
+    if (expected !== undefined && expected !== (session.engineRevision || 0)) throw new ApiError('SESSION_ENGINE_CHANGED', 'This conversation changed AI. Reload it before sending or switching again.', 409);
+  }
+  async function validateAvailableSelection(selection) {
+    if (selection.engine === 'codex') {
+      if ((!rpc || rpc.closed) && (configuredSelection.engine === 'codex' || canStartOptionalCodex)) await startCodex();
+      if (!status.ready || !status.authenticated || startup) throw new ApiError('AGENT_NOT_READY', status.error || 'Codex is not ready. Check AI configuration.', 503);
+      return;
+    }
+    const catalog = selection.engine === 'claude' ? await startClaude() : await startOpenCode();
+    if (!catalog.ready || !catalog.authenticated) throw new ApiError('AGENT_NOT_READY', catalog.error || 'The selected AI is not ready. Check AI configuration.', 503);
+    if (!catalog.providers.some(p => p.id === selection.providerId && p.models.some(m => m.id === selection.modelId))) throw new ApiError('MODEL_NOT_AVAILABLE', 'The selected provider or model is no longer available. Refresh the AI choices.');
   }
   function browserAllowed(req) {
     const host = req.headers.host?.split(':')[0];
@@ -462,7 +503,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       if (header.length !== expected.length || !timingSafeEqual(header, expected)) throw new ApiError('UNAUTHORIZED', 'Local script operations require a service token', 401);
     }
   }
-  const drain = createDrainGate(() => active.size || pendingChats || gitSwitching || dirtySessions.size);
+  const drain = createDrainGate(() => active.size || pendingChats || gitSwitching || dirtySessions.size || switchingSessions.size);
   const server = http.createServer(async (req, res) => {
     let leave;
     try {
@@ -526,7 +567,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       if (req.method === 'GET' && url.pathname === '/api/git') return send(res, 200, { git: await readGitVersion(root, { limit: url.searchParams.has('limit') ? Number(url.searchParams.get('limit')) : 25 }) });
       if (req.method === 'POST' && ['/api/git/commit', '/api/git/switch', '/api/git/checkout', '/api/git/label'].includes(url.pathname)) {
         if (gitSwitching) throw new ApiError('GIT_SWITCH_BUSY', 'Another Git operation is in progress', 409);
-        if (active.size || pendingChats || dirtySessions.size) throw new ApiError('GIT_AGENT_BUSY', 'AI work is running or not yet saved. Wait or stop before changing versions', 409);
+        if (active.size || pendingChats || dirtySessions.size || switchingSessions.size) throw new ApiError('GIT_AGENT_BUSY', 'AI work is running or not yet saved. Wait or stop before changing versions', 409);
         // Reserve before reading the request body; no new chat may enter mid-switch.
         gitSwitching = true;
         try {
@@ -546,6 +587,24 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       }
       if (req.method === 'GET' && url.pathname === '/api/kernel') return send(res,200,{kernel:await kernelStatus(root)});
       if (req.method === 'GET' && url.pathname === '/api/sessions') return send(res, 200, await ws('/sessions'));
+      const engineSessionId = url.pathname.match(/^\/api\/sessions\/([a-zA-Z0-9_-]+)\/engine$/)?.[1];
+      if (req.method === 'POST' && engineSessionId) {
+        const input = await readBody(req, 16 * 1024);
+        if (!validId(engineSessionId) || !Number.isSafeInteger(input.expectedEngineRevision) || input.expectedEngineRevision < 0 || !Object.hasOwn(input, 'engine') || !Object.hasOwn(input, 'providerId') || !Object.hasOwn(input, 'modelId')) throw new ApiError('INVALID_SELECTION', 'Provide a complete AI selection and its expected engine revision.');
+        const selection = validateEngineSelection(input);
+        if (gitSwitching || active.has(engineSessionId) || dirtySessions.has(engineSessionId) || switchingSessions.has(engineSessionId) || [...approvals.values()].some(a => a.sessionId === engineSessionId)) throw new ApiError('SESSION_BUSY', 'Wait for this conversation to finish and save before switching AI.', 409);
+        // Reserve synchronously before catalog/storage awaits; chat uses this same gate.
+        switchingSessions.add(engineSessionId);
+        try {
+          await titleWrites.get(engineSessionId);
+          const { session } = await ws(`/sessions/${engineSessionId}`);
+          assertBindingRevision(session, input.expectedEngineRevision);
+          const same = (session.engine || 'codex') === selection.engine && (session.providerId || null) === selection.providerId && (session.modelId || null) === selection.modelId;
+          if (!same) await validateAvailableSelection(selection);
+          const result = await ws(`/sessions/${engineSessionId}/engine`, 'POST', { ...selection, expectedEngineRevision: input.expectedEngineRevision, expectedRevision: session.revision });
+          return send(res, 200, { session: publicSession(result.session) });
+        } finally { switchingSessions.delete(engineSessionId); }
+      }
       const sessionId = url.pathname.match(/^\/api\/sessions\/([a-zA-Z0-9_-]+)$/)?.[1];
       if (req.method === 'PATCH' && sessionId) {
         const input = await readBody(req, 16 * 1024);
@@ -619,12 +678,14 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           }
           try { id = await requestSessions.get(requestId); } catch (error) { requestSessions.delete(requestId); throw error; }
         }
+        if (switchingSessions.has(id)) throw new ApiError('SESSION_BUSY', 'AI is being changed for this conversation. Wait for it to finish.', 409);
         const existing = active.get(id);
         if (existing) {
           if (existing.requestId !== requestId) throw new ApiError('SESSION_BUSY', 'This conversation is still running. Stop it or wait first', 409);
           await existing.loaded;
           if (!existing.session) throw new ApiError('SESSION_FAILED', 'Session could not be loaded. Please try again', 503);
           assertSessionSelection(existing.session, requestedSelection);
+          assertBindingRevision(existing.session, input.engineRevision);
           const priorUser = existing.session.messages.find(m => m.id === requestId);
           if (priorUser && (priorUser.text !== input.text || JSON.stringify((priorUser.attachments || []).map(value => value.id)) !== JSON.stringify(ids))) throw new ApiError('IDEMPOTENCY_CONFLICT', 'The same request ID cannot be used for different text or attachments', 409);
           const emit = subscribe(id, res); emit({ type: 'snapshot', session: publicSession(existing.session) }); emitProgressStatus(existing, emit);
@@ -635,19 +696,21 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         const run = { requestId, attachments: resolvedAttachments, session: null, saving: Promise.resolve(), finished: false, cancelRequested: false, loaded: new Promise(resolve => { loaded = resolve; }) }; active.set(id, run);
         try {
           const dirty = dirtySessions.get(id);
-          if (dirty) { await ws(`/sessions/${id}`, 'PATCH', { messages: dirty.messages, requests: dirty.requests, threadId: dirty.threadId, running: false, activeRequestId: null, ...usagePatch(dirty) }); dirtySessions.delete(id); }
+          if (dirty) { await persistSnapshot(id, { expectedEngineRevision: dirty.engineRevision || 0, ...deliveredPatch(dirty, dirty.requests.at(-1)?.id), messages: dirty.messages, requests: dirty.requests, threadId: dirty.threadId, running: false, activeRequestId: null, ...usagePatch(dirty) }); dirtySessions.delete(id); }
           run.session = (await ws(`/sessions/${id}`)).session;
           assertSessionSelection(run.session, requestedSelection);
+          assertBindingRevision(run.session, input.engineRevision);
           if ((run.session.engine || 'codex') === 'codex' && (!status.ready || startup)) throw new ApiError('AGENT_NOT_READY', status.error || 'Codex is starting. Try again shortly', 503);
           run.session.requests ||= [];
           const prior = run.session.requests.find(r => r.id === requestId);
           const priorUser = run.session.messages.find(m => m.id === requestId);
+          if ((prior || priorUser) && (prior?.engineRevision || 0) !== (run.session.engineRevision || 0)) throw new ApiError('SESSION_ENGINE_CHANGED', 'This request belongs to a previous AI. Send a new message to continue the conversation.', 409);
           if (priorUser && (priorUser.text !== input.text || JSON.stringify((priorUser.attachments || []).map(value => value.id)) !== JSON.stringify(ids))) throw new ApiError('IDEMPOTENCY_CONFLICT', 'The same request ID cannot be used for different text or attachments', 409);
           const emit = subscribe(id, res);
           if (prior?.status === 'completed') { run.finished = true; emit({ type: 'snapshot', session: publicSession(run.session) }); emit({ type: 'done', status: 'completed' }); res.end(); active.delete(id); return; }
           if (!priorUser) run.session.messages.push({ id: requestId, role: 'user', text: input.text, requestId, ...(resolvedAttachments.length ? { attachments: resolvedAttachments.map(publicAttachment) } : {}) });
           else run.session.messages = run.session.messages.filter(m => m.role !== 'assistant' || m.requestId !== requestId);
-          const entry = { id: requestId, status: 'inProgress', startedAt: new Date().toISOString() };
+          const entry = { id: requestId, engineRevision: run.session.engineRevision || 0, status: 'inProgress', startedAt: new Date().toISOString() };
           run.session.requests = [...run.session.requests.filter(r => r.id !== requestId), entry].slice(-500);
           run.pendingEntryAdded = true;
           run.session.running = true; run.session.activeRequestId = requestId;

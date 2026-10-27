@@ -17,8 +17,9 @@ export async function projectStatus(manager) {
   // These reads intentionally do not use the launcher identity writer/initializer.
   const state = manager.state();
   const name = typeof identity?.name === 'string' && identity.name.trim() ? identity.name.trim().slice(0, 160) : path.basename(manager.root);
+  const folderName = typeof identity?.folderName === 'string' && identity.folderName.trim() ? identity.folderName.trim().slice(0, 160) : path.basename(manager.root);
   const version = typeof manifest?.version === 'string' && /^\d+\.\d+(?:\.\d+)?(?:[-+][\w.-]+)?$/.test(manifest.version) ? manifest.version : null;
-  return { ...state, canStop: !manager.operation && !manager.closing && (!manager.maintenance || manager.closed), projectName: name, kernelVersion: version, url: state.ports?.frontPort ? `http://127.0.0.1:${state.ports.frontPort}/` : null };
+  return { ...state, canStop: !manager.operation && !manager.closing && (!manager.maintenance || manager.closed), projectName: name, projectFolderName: folderName, kernelVersion: version, url: state.ports?.frontPort ? `http://127.0.0.1:${state.ports.frontPort}/` : null };
 }
 
 export async function openProjectLogs(root, { platform = process.platform, launch = spawn } = {}) {

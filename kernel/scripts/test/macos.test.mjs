@@ -14,7 +14,7 @@ async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   const parent = path.join(project, '.cache/macos-tests'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "\u6d4b\u8bd5 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['kernel/contracts/kernel.mjs', 'kernel/compat/paths.mjs', 'kernel/contracts/ai-configuration.mjs', 'kernel/contracts/local-process.mjs', 'kernel/contracts/engine-dependencies.mjs', 'kernel/scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'kernel/scripts/launcher/recipient-records.mjs', 'kernel/scripts/setup.mjs', 'kernel/scripts/macos/cli.mjs', 'kernel/scripts/macos/bootstrap.sh', 'kernel/scripts/macos/codex.sh', 'Saplingagent.sh', 'kernel/scripts/Saplingagent.sh', 'kernel/config/macos.json', 'config/runtime.json']) {
+  for (const file of ['kernel/localization/public.mjs','kernel/localization/errors.mjs','kernel/localization/store.mjs','kernel/localization/launcher-messages.mjs','kernel/localization/installer-messages.sh','kernel/contracts/configuration-write.mjs','kernel/contracts/local-storage.mjs','kernel/contracts/mcp-access.mjs','kernel/contracts/kernel.mjs', 'kernel/compat/paths.mjs', 'kernel/contracts/ai-configuration.mjs', 'kernel/contracts/local-process.mjs', 'kernel/contracts/engine-dependencies.mjs', 'kernel/scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'kernel/scripts/launcher/recipient-records.mjs', 'kernel/scripts/setup.mjs', 'kernel/scripts/macos/cli.mjs', 'kernel/scripts/macos/bootstrap.sh', 'kernel/scripts/macos/codex.sh', 'Saplingagent.sh', 'kernel/scripts/Saplingagent.sh', 'kernel/config/macos.json', 'config/runtime.json']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const settings = JSON.parse(await fs.readFile(path.join(root, 'kernel/config/macos.json'), 'utf8'));
@@ -44,7 +44,7 @@ test('distribution filter excludes runtime/private files while retaining complet
 test('missing login does not launch services or copy global authentication', async t => {
   const root = await fixture(t);
   const result = await runCli(root, ['start', '--no-open']);
-  assert.equal(result.code, 1); assert.match(result.output, /save an account or API scheme/);
+  assert.equal(result.code, 1); assert.match(result.output, /save an account\/API\/subscription scheme/);
   assert.equal(await fs.access(path.join(root, 'UNEXPECTED_LAUNCH')).then(() => true, () => false), false);
   assert.equal(await fs.access(path.join(root, 'local-secrets/codex/auth.json')).then(() => true, () => false), false);
   const ledger = JSON.parse(await fs.readFile(path.join(root, 'local-secrets/notes/project-secrets.json'), 'utf8'));
@@ -160,7 +160,7 @@ test('Chinese login failures preserve error meaning and do not expose raw creden
     const root = await fixture(t, { auth });
     const result = await runCli(root, ['start', '--no-open'], { SAPLING_LANG: 'zh' });
     assert.equal(result.code, 1);
-    assert.match(result.output, auth === 'missing' ? /在网页中保存账号或 API 方案/ : /此错误不代表未登录/);
+    assert.match(result.output, auth === 'missing' ? /保存账号\/API\/订阅 Token 方案/ : /此错误不代表未登录/);
     assert.doesNotMatch(result.output, /PRIVATE_FIXTURE_VALUE/);
     assert.equal(await fs.access(path.join(root, 'UNEXPECTED_LAUNCH')).then(() => true, () => false), false);
   }

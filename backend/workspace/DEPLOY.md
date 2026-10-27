@@ -22,3 +22,22 @@ Rollback: preserve local-secrets and data, select the previous reviewed Git vers
 ## Attachment data and recovery
 
 Back up data/attachments together with data/sessions. Keep both ignored and private to this local project; no new port, dependency or credentials. Removing an item from the composer removes its message selection, not stored bytes. Unsent uploads remain local; there is no automatic attachment cleanup or delete endpoint. Preserve original files for retained conversation IDs. Existing sessions without attachment metadata remain compatible. Older clients may ignore new attachment fields; preserve backups before using an older writer. An interrupted upload can leave an unreferenced binary; report the actual storage error and retry with a new ID, never overwrite another upload.
+
+## Same-conversation engine switching (2026-10-23)
+
+Deploy Workspace together with the Agent/client engine-switch contract; no new
+package installation or port is needed. Existing sessions are normalized in memory
+with engineRevision0, empty engineHistory and null handoff. Reading does not migrate
+or rewrite files. The first explicit engine switch stores the additional metadata
+atomically in that same local session file, preserving its existing message,
+attachment and request content. Agent then creates a fresh provider-native thread;
+this service never invokes an account or model.
+
+Back up data/workspace and data/attachments before manually reverting to an older
+application writer. Old writers do not implement binding-revision guards or history
+handoffs and must not run concurrently with the new service. Source rollback alone
+must not replace customer conversations or native transcripts. There is no bulk
+migration, background cleanup or automatic rollback. After an authorized restart,
+check that a single session survives a switch and refresh with its original title
+and messages. Real provider delivery and Windows native operation need their own
+acceptance; the service suite uses isolated synthetic local data and HTTP servers.

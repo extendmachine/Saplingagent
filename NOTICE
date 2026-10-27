@@ -1,7 +1,15 @@
-Required Notice: Saplingagent, maintained by extendmachine (https://github.com/extendmachine/Saplingagent).
+Saplingagent
+Copyright (c) 2026 extendmachine and Saplingagent contributors (https://github.com/extendmachine/Saplingagent)
 
-Project-owned source is licensed under PolyForm Noncommercial 1.0.0.
-Commercial use requires separate written permission from the project owner.
-Request permission through the repository owner before any commercial use.
-Third-party components retain their own licenses; see THIRD_PARTY_NOTICES.md.
-This notice does not change the PolyForm license text.
+Project-owned source and accompanying documentation are licensed under MIT.
+Commercial use, modification, redistribution, sublicensing and sale are permitted
+without separate permission or a Saplingagent royalty. Retain the LICENSE and
+its copyright notice, including the upstream repository URL, when redistributing
+copies or substantial portions. This NOTICE provides a convenient attribution;
+it adds no condition to MIT. A README or About-page upstream link is encouraged.
+
+Third-party components keep their own terms: see THIRD_PARTY_NOTICES.md.
+This license does not grant model accounts, service access, trademarks or third-party
+authentication rights. Saplingagent is an independent project, not an official
+OpenAI or Anthropic product. User-authored original code is not automatically
+relicensed; included Saplingagent portions remain subject to the retained MIT notice.

@@ -1,3 +1,6 @@
+import { launcherMessages } from '../localization/launcher-messages.mjs';
+import { formatMessage } from '../localization/public.mjs';
+import { readLanguage } from '../localization/store.mjs';
 // Shared headless dependency preparation for a complete, customer-owned folder.
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -132,7 +135,7 @@ export async function ensureApplicationDependencies(root,{onProgress=()=>{},inst
     for(const group of state.groups){
       signal?.throwIfAborted();
       if(!group.ready){
-        onProgress(`Preparing dependencies: ${group.name}…`);
+        onProgress(formatMessage(launcherMessages,await readLanguage(root,process.env.SAPLING_LANG),"Preparing dependencies: {name}…",{name:group.name}));
         await dailyLog(root,'dependency-install',{group:group.name});
         await install(root,group,state.settings,onProgress);
         signal?.throwIfAborted();

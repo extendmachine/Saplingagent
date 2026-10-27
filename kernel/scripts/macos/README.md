@@ -96,6 +96,6 @@ Saplingagent.sh rereads saplingagent.storageMode from this independent folder's 
 
 The shared launcher now exposes menu6 / `bash Saplingagent.sh kernel` for every storage mode. Native bootstrap forwards status/check/update/restore arguments using the existing project Node and terminal transport. Kernel/source maintenance is offline, explicit and separate from the application Git history. Node/dependency installer locks interlock with kernel apply/start. See ../../kernel/DEPLOY.md and ../../docs/kernel-management.html. Actual native Windows update/recovery acceptance remains pending.
 
-## Current kernel 0.9.6 entry
+## Current kernel 0.9.7 entry
 
 Default Bash startup installs/repairs only the local kernel, assembles the configuration bundle, starts it from a visible, session-owned sibling directory (`../sapling-config-*`), then exits its short-lived project process. Set and save name/icon/AI in the web page. Save & build app stops owned runtime processes, applies the folder name and compiles the thin native launcher into the project. Finish setup hands cleanup back to project-local A; B exits before A deletes the temporary bundle. Double-click the app to check/install dependencies and open the project. Reopen `bash Saplingagent.sh configure` for later changes. Explicit shell commands and `SAPLING_LEGACY_MENU=1` remain recovery tools. See `docs/project-launcher.html`; old menu sections above describe historical releases.

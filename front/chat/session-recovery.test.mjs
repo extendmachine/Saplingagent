@@ -1,3 +1,4 @@
+import * as uiMessages from '../localization/messages.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -18,7 +19,7 @@ const sse = (id, messages) => new Response([
 ].map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream', 'X-Session-Id': id } });
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
 
-async function harness({ savedId = null, route, engineCatalog = null, runtimeStatus = null, list = () => json({ sessions: [] }) }) {
+async function harness({ language = 'en', savedId = null, route, engineCatalog = null, runtimeStatus = null, list = () => json({ sessions: [] }) }) {
   const storage = new Map(savedId ? [[KEY, savedId]] : []);
   const requests = [], slots = [], effects = [], timers = new Map();
   let cursor = 0, nextTimer = 0, rendered, scheduled = false, unmounted = false;
@@ -76,6 +77,8 @@ async function harness({ savedId = null, route, engineCatalog = null, runtimeSta
   const modules = new Map();
   async function load(name) {
     if (name === 'react') return reactModule;
+    const mock = name === '../localization/LanguageProvider' ? { useLanguage: () => ({ language }) } : name === '../localization/messages' ? uiMessages : null;
+    if (mock) return new vm.SyntheticModule(Object.keys(mock), function () { for (const [key, value] of Object.entries(mock)) this.setExport(key, value); }, { context });
     if (modules.has(name)) return modules.get(name);
     const source = await readFile(new URL(`${name}.ts`, import.meta.url), 'utf8');
     const module = new vm.SourceTextModule(stripTypeScriptTypes(source), { context, identifier: name });
@@ -89,6 +92,7 @@ async function harness({ savedId = null, route, engineCatalog = null, runtimeSta
   render(); await settle();
   return {
     get current() { return rendered; }, requests, storage, settle,
+    setLanguage(value) { language = value; render(); },
     runtime(detail) { const event = new Event('saplingagent:runtime'); event.detail = detail; events.dispatchEvent(event); },
     async send(text = 'synthetic request') { await rendered.onNew({ content: [{ type: 'text', text }] }); await settle(); },
     tick(delay) { for (const [id, timer] of [...timers]) if (timer.delay <= delay) { if (!timer.interval) timers.delete(id); timer.callback(); } },
@@ -437,4 +441,94 @@ test('repeated title edits are persisted in order and older completion cannot re
  const old=h.current.renameSession('a','First');await h.settle();const fresh=h.current.renameSession('a','Second');await h.settle();assert.equal(patches,1);
  first.resolve(json({session:{...session('a'),title:'First'}}));await old;await h.settle();assert.equal(patches,2);assert.equal(h.current.sessions[0].title,'Initial');
  second.resolve(json({session:{...session('a'),title:'Second'}}));await fresh;await h.settle();assert.equal(h.current.sessions[0].title,'Second');
+});
+
+const claudeChoice = { engine: 'claude', providerId: 'fixture-claude', modelId: 'claude-model' };
+const openCodeChoice = { engine: 'opencode', providerId: 'fixture-open', modelId: 'open-model' };
+const migratedSession = (saved, choice = claudeChoice, revision = 1) => ({ ...saved, ...choice, engineRevision: revision, contextUsage: null, handoff: { id: `handoff-${revision}`, bindingRevision: revision, status: 'pending', throughMessageId: saved.messages.at(-1)?.id, createdAt: '2026-10-23T00:00:00Z' } });
+
+test('changing AI preserves one conversation and only the next explicit send invokes the selected binding', async t => {
+  const original = { ...session('same', [message('user-1', 'old task'), { ...message('assistant-1', 'old answer', 'assistant'), attachments: [{id:'old-file',name:'retained.txt',kind:'file',contentType:'text/plain',size:1}], status:'complete' }]), title:'Keep this title', engine:'codex', contextUsage:{usedTokens:10,contextWindow:100} };
+  let saved = original;
+  const h = await harness({ savedId:'same', list:()=>json({sessions:[{id:'same',title:original.title,engine:'codex'}]}), route:r=>{
+    if(r.url==='/api/sessions/same/engine') { saved=migratedSession(saved,r.input); return json({session:saved}); }
+    if(r.url==='/api/sessions/same') return json({session:saved});
+    if(r.url==='/api/chat') { saved={...saved,messages:[...saved.messages,message(r.input.requestId,r.input.text)],handoff:{...saved.handoff,status:'delivered'}}; return new Response([{type:'snapshot',session:saved},{type:'done',status:'completed'}].map(e=>`data: ${JSON.stringify(e)}\n\n`).join(''),{headers:{'Content-Type':'text/event-stream','X-Session-Id':'same'}}); }
+  }}); t.after(()=>h.close());
+  assert.equal(await h.current.changeEngine({engine:'codex',providerId:null,modelId:null}),true);
+  assert.equal(h.current.contextUsage.usedTokens,10); assert.equal(h.requests.filter(r=>r.url.endsWith('/engine')).length,0);
+  assert.equal(h.current.setSelection(claudeChoice),false);
+  assert.equal(await h.current.changeEngine(claudeChoice),true); await h.settle();
+  assert.equal(h.current.activeSessionId,'same'); assert.equal(h.storage.get(KEY),'same'); assert.deepEqual(JSON.parse(JSON.stringify(h.current.messages)),original.messages);
+  assert.equal(h.current.sessions[0].title,original.title); assert.equal(h.current.sessions[0].engine,'claude'); assert.equal(h.current.engineRevision,1); assert.equal(h.current.contextUsage,null); assert.equal(h.current.handoff.status,'pending'); assert.equal(h.current.retryable,false);
+  assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0); assert.equal(h.requests.find(r=>r.url.endsWith('/engine')).input.expectedEngineRevision,0);
+  await h.current.retry(); assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0);
+  await h.send('continue explicitly'); const post=h.requests.find(r=>r.url==='/api/chat').input;
+  assert.equal(post.sessionId,'same'); assert.equal(post.engineRevision,1); assert.equal(post.engine,'claude'); assert.equal(post.text,'continue explicitly');
+  assert.equal(h.current.handoff.status,'delivered');
+});
+
+test('pending AI changes reserve the view and reject duplicate change, send and conversation navigation',async t=>{
+  const pending=deferred(); let saved=session('a',[message('u','keep')]);
+  const h=await harness({savedId:'a',route:r=>r.url.endsWith('/engine')?pending.promise:r.url==='/api/sessions/a'?json({session:saved}):undefined}); t.after(()=>h.close());
+  const change=h.current.changeEngine(claudeChoice); await h.settle(); assert.equal(h.current.isChangingEngine,true); assert.equal(h.current.canSelectEngine,false);
+  assert.equal(await h.current.changeEngine(openCodeChoice),false); assert.equal(h.current.switchSession('b'),false); assert.equal(h.current.startNew(),false); await h.send('must not send');
+  assert.equal(h.requests.filter(r=>r.url.endsWith('/engine')).length,1); assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0); assert.equal(h.current.messages[0].text,'keep');
+  saved=migratedSession(saved); pending.resolve(json({session:saved})); assert.equal(await change,true); await h.settle(); assert.equal(h.current.isChangingEngine,false); assert.equal(h.current.selection.engine,'claude');
+});
+
+test('AI change conflicts and malformed responses keep old binding and content without automatic resend',async t=>{
+  for(const response of [json({error:{code:'SESSION_ENGINE_CHANGED',message:'Refresh this conversation'}},409),json({error:{code:'SESSION_BUSY',message:'Wait for the active turn'}},409),json({error:{message:'Unavailable'}},503),json({session:{...session('wrong'),...claudeChoice,engineRevision:1}})]) {
+    const saved={...session('keep',[message('u','preserved')]),engine:'codex'};
+    const h=await harness({savedId:'keep',route:r=>r.url.endsWith('/engine')?response:json({session:saved})}); t.after(()=>h.close());
+    assert.equal(await h.current.changeEngine(claudeChoice),false);await h.settle();assert.equal(h.current.activeSessionId,'keep');assert.equal(h.current.selection.engine,'codex');assert.equal(h.current.messages[0].text,'preserved');assert.equal(h.current.isChangingEngine,false);assert.match(h.current.error,/Unable to change AI/);assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0);
+  }
+});
+
+test('late pre-change snapshot and history responses cannot restore the old AI binding',async t=>{
+  const oldRead=deferred(),oldList=deferred();let reads=0,lists=0;
+  const original={...session('a',[message('u','history')]),engine:'codex'},updated=migratedSession(original);
+  const h=await harness({savedId:'a',list:()=>++lists===2?oldList.promise:json({sessions:[{id:'a',engine:'codex'}]}),route:r=>r.url.endsWith('/engine')?json({session:updated}):++reads===2?oldRead.promise:json({session:original})});t.after(()=>h.close());
+  h.runtime({busy:false,phase:'ready',instanceId:'new-runtime',generation:2}); const refresh=h.current.refreshSessions();await h.settle();
+  assert.equal(await h.current.changeEngine(claudeChoice),true);await h.settle();oldRead.resolve(json({session:original}));oldList.resolve(json({sessions:[{id:'a',engine:'codex'}]}));await refresh;await h.settle();
+  assert.equal(h.current.selection.engine,'claude');assert.equal(h.current.engineRevision,1);assert.equal(h.current.sessions[0].engine,'claude');
+});
+
+test('restoring a handoff never retries the prior binding but retains retries from the new binding',async t=>{
+  const previous=[message('old-request','old input'),{...message('old-failure','old failure','assistant'),status:'failed'}];
+  const switched=migratedSession(session('a',previous));
+  const h=await harness({savedId:'a',route:r=>json({session:switched})});t.after(()=>h.close());assert.equal(h.current.retryable,false);await h.current.retry();assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0);assert.equal(h.current.handoff.status,'pending');
+  const current={...switched,messages:[...previous,message('new-request','new input'),{...message('new-failure','new failure','assistant'),status:'failed'}]};
+  const next=await harness({savedId:'a',route:r=>r.url==='/api/chat'?json({error:{message:'Synthetic retry failure'}},503):json({session:current})});t.after(()=>next.close());assert.equal(next.current.retryable,true);await next.current.retry();const retry=next.requests.find(r=>r.url==='/api/chat').input;assert.equal(retry.requestId,'new-request');assert.equal(retry.engineRevision,1);assert.equal(retry.engine,'claude');
+});
+
+test('runtime restart and loading block AI change without clearing the conversation',async t=>{
+  const saved=session('a',[message('u','unchanged')]);
+  const h=await harness({savedId:'a',route:()=>json({session:saved})});t.after(()=>h.close());h.runtime({busy:true,phase:'restarting',instanceId:'r',generation:1});await h.settle();assert.equal(h.current.isRestarting,true);assert.equal(await h.current.changeEngine(claudeChoice),false);assert.equal(h.current.messages[0].text,'unchanged');assert.equal(h.requests.filter(r=>r.url.endsWith('/engine')).length,0);
+  const pending=deferred();const loading=await harness({savedId:'a',route:()=>pending.promise});t.after(()=>loading.close());assert.equal(loading.current.isLoading,true);assert.equal(await loading.current.changeEngine(claudeChoice),false);pending.resolve(json({session:saved}));await loading.settle();assert.equal(loading.current.isLoading,false);
+});
+
+test('engine and model roundtrips increment revisions while preserving the same history',async t=>{
+  let saved={...session('roundtrip',[message('history','unchanged history')]),engine:'codex'};
+  const h=await harness({savedId:'roundtrip',route:r=>{if(r.url.endsWith('/engine')){assert.equal(r.input.expectedEngineRevision,saved.engineRevision||0);saved=migratedSession(saved,r.input,(saved.engineRevision||0)+1);}return json({session:saved})}});t.after(()=>h.close());
+  for(const choice of [claudeChoice,{...claudeChoice,modelId:'claude-second-model'},openCodeChoice,{engine:'codex',providerId:null,modelId:null}]) {
+    assert.equal(await h.current.changeEngine(choice),true);await h.settle();assert.equal(h.current.selection.engine,choice.engine);assert.equal(h.current.selection.modelId,choice.modelId);assert.equal(h.current.messages[0].text,'unchanged history');assert.equal(h.current.activeSessionId,'roundtrip');
+  }
+  assert.equal(h.current.engineRevision,4);assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0);
+});
+
+test('active response blocks AI changes without discarding the running conversation',async t=>{
+  let controller;const live={...session('live',[message('u','active task')],true),activeRequestId:'u'};
+  const h=await harness({savedId:'live',route:r=>r.url.startsWith('/api/events')?new Response(new ReadableStream({start(c){controller=c}})):json({session:live})});t.after(()=>h.close());
+  assert.equal(h.current.isRunning,true);assert.equal(h.current.canSelectEngine,false);assert.equal(await h.current.changeEngine(claudeChoice),false);assert.equal(h.requests.filter(r=>r.url.endsWith('/engine')).length,0);assert.equal(h.current.messages[0].text,'active task');controller.close();await h.settle();
+});
+
+test('language changes during streaming preserve the same session, messages and subscription', async t => {
+  let controller;const live={...session('bilingual',[message('original-user','Keep this original English message')],true),activeRequestId:'original-user'};
+  const h=await harness({savedId:'bilingual',route:r=>r.url.startsWith('/api/events')?new Response(new ReadableStream({start(c){controller=c}})):json({session:live})});t.after(()=>h.close());
+  const emit=value=>controller.enqueue(new TextEncoder().encode('data: '+JSON.stringify(value)+'\n\n'));
+  emit({type:'status',label:'Thinking…'});await h.settle();assert.equal(h.current.activity,'Thinking…');const count=h.requests.length;
+  h.setLanguage('zh');await h.settle();assert.equal(h.current.activity,'正在思考…');assert.equal(h.current.activeSessionId,'bilingual');assert.equal(h.current.isRunning,true);assert.equal(h.current.messages[0].text,'Keep this original English message');assert.equal(h.requests.length,count);
+  emit({type:'text_delta',itemId:'bilingual-answer',delta:'Untranslated model response'});await h.settle();h.tick(100);await h.settle();assert.ok(h.current.messages.some(item=>item.text==='Untranslated model response'));
+  h.setLanguage('en');await h.settle();assert.equal(h.current.activeSessionId,'bilingual');assert.equal(h.requests.filter(r=>r.url.startsWith('/api/events')).length,1);assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0);controller.close();
 });

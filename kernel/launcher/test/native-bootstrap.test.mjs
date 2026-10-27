@@ -35,7 +35,7 @@ test('compiled macOS app restores absent local Node then launches from its relat
 
 test('macOS runtime-only bootstrap validates existing local Node without entering installer or web setup',{skip:process.platform!=='darwin'},async t=>{
   const base=path.join(source,'.cache/native-bootstrap');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,'runtime-only '));t.after(()=>fs.rm(root,{recursive:true,force:true}));
-  const script=path.join(root,'kernel/scripts/macos/bootstrap.sh');await fs.mkdir(path.dirname(script),{recursive:true});await fs.copyFile(path.join(source,'kernel/scripts/macos/bootstrap.sh'),script);
+  const script=path.join(root,'kernel/scripts/macos/bootstrap.sh');await fs.mkdir(path.dirname(script),{recursive:true});await fs.copyFile(path.join(source,'kernel/scripts/macos/bootstrap.sh'),script);await fs.mkdir(path.join(root,'kernel/localization'),{recursive:true});await fs.copyFile(path.join(source,'kernel/localization/installer-messages.sh'),path.join(root,'kernel/localization/installer-messages.sh'));
   await fs.mkdir(path.join(root,'kernel/config'),{recursive:true});await fs.writeFile(path.join(root,'kernel/config/macos.json'),JSON.stringify({nodeVersion:process.versions.node}));
   const node=path.join(root,`.runtime/node-v${process.versions.node}-darwin-${process.arch}/bin/node`);await fs.mkdir(path.dirname(node),{recursive:true});await fs.copyFile(process.execPath,node);
   await fs.writeFile(path.join(root,'kernel/scripts/macos/cli.mjs'),"throw Error('installer must not run');");
@@ -44,7 +44,7 @@ test('macOS runtime-only bootstrap validates existing local Node without enterin
 
 test('macOS bootstrap overrides inherited caches before the first Node invocation and refuses cache links',{skip:process.platform!=='darwin'},async t=>{
  const base=path.join(source,'.cache/native-bootstrap');await fs.mkdir(base,{recursive:true});const parent=await fs.mkdtemp(path.join(base,'first-node-'));t.after(()=>fs.rm(parent,{recursive:true,force:true}));const root=path.join(parent,'project'),foreign=path.join(parent,'foreign');await fs.mkdir(root);await fs.mkdir(foreign);
- const script=path.join(root,'kernel/scripts/macos/bootstrap.sh');await fs.mkdir(path.dirname(script),{recursive:true});await fs.copyFile(path.join(source,'kernel/scripts/macos/bootstrap.sh'),script);
+ const script=path.join(root,'kernel/scripts/macos/bootstrap.sh');await fs.mkdir(path.dirname(script),{recursive:true});await fs.copyFile(path.join(source,'kernel/scripts/macos/bootstrap.sh'),script);await fs.mkdir(path.join(root,'kernel/localization'),{recursive:true});await fs.copyFile(path.join(source,'kernel/localization/installer-messages.sh'),path.join(root,'kernel/localization/installer-messages.sh'));
  await fs.mkdir(path.join(root,'kernel/config'),{recursive:true});await fs.writeFile(path.join(root,'kernel/config/macos.json'),JSON.stringify({nodeVersion:process.versions.node}));
  const node=path.join(root,`.runtime/node-v${process.versions.node}-darwin-${process.arch}/bin/node`),seen=path.join(root,'first-node-env');await fs.mkdir(path.dirname(node),{recursive:true});
  await fs.writeFile(node,`#!/bin/bash\nprintf '%s\\n' "$NODE_COMPILE_CACHE" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME" > "$SAPLING_TEST_ENV_RECEIPT"\nexec "$SAPLING_TEST_SOURCE_NODE" "$@"\n`,{mode:0o755});

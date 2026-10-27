@@ -13,7 +13,7 @@ The long-term goal is to make building and adapting personal applications practi
 ## What minimal means
 
 - Ship the capabilities needed to start, modify and operate a project, with a simple entry point and clear dependencies.
-- Keep the default interface focused on conversation and necessary operation controls. Retain the current version and restart controls.
+- Keep the default interface focused on conversation and necessary operation controls. Use a compact top-right Settings entry for runtime status and operations; keep version/restart details on management pages.
 - Add business interfaces, canvases, dashboards, knowledge bases and integrations when requested. They are optional extensions, not requirements for every seed.
 - Prefer small, understandable modules and mature components. Add services, dependencies or configuration layers only when the requirement needs them.
 - Keep installation and delivery reproducible. A launcher relies on the accompanying seed files and declared dependencies; copying one script alone does not supply the whole application.
@@ -60,7 +60,7 @@ The user's current explicit instructions take priority within the project. This 
 - A standalone install.sh bootstrap supports one-command fresh installation in macOS Terminal/Windows Git Bash: resolve release, download its fixed source snapshot into a new local folder, then invoke the existing installer/menu. Source download creates no author branch refs; installation never initializes Git or fetches branches; existing customer Git remains untouched, with unchanged Full Access. A public repository cannot hide branches from a user who explicitly visits or configures them.
 - One Saplingagent.sh entry covers macOS Terminal and Windows Git Bash, with companion internal OS helpers and no standalone .ps1 launcher. Windows initial installation requires a Bash environment; daily native launching does not require an open terminal. Linux/WSL is not the native Windows install path. Installation covers macOS and native Windows 10/11 x64 and ARM64. Windows 10 Intel/AMD64 is the requested target; native Windows installation/login/restart acceptance remains pending until tested on that system. Other unsupported architectures/operating systems and device hosts require separate implementation and validation. Model services and integrations remain declared runtime dependencies.
 - Keep main, adobe-replica and release as the named branches. Main is the owner’s development/testing branch; release is the public default, introduction and customer source branch. Shared changes land and are checked on main first, then proceed to a requested release promotion. An explicit main-only request leaves release untouched. Demo videos, presentation examples and showcase images live only on release; main links to that introduction and retains shared branding and necessary technical illustrations. Preserve release presentation when promoting code. The direct-main authorization remains effective after appropriate self-checks (rule04); report human acceptance separately. This maintainer policy does not transfer to recipient projects.
-- Project-owned documentation and UI are English unless explicitly requested otherwise. Project-owned source uses PolyForm Noncommercial 1.0.0; commercial permission and third-party service rights remain separate.
+- User-facing installation, configuration, chat, errors and help support English and Simplified Chinese with consistent keyed language resources and a project-local preference. Existing conversations, identifiers and technical details remain unchanged. Project-owned source and accompanying documentation use MIT: commercial use, modification and distribution are permitted with the copyright/license notice and upstream repository URL retained. Third-party rights remain separate.
 
 ## Customer-local setup and launcher (0.9.3)
 
@@ -79,7 +79,7 @@ Cloud content upload/download, additional operating-system installers, commercia
 ## Acceptance criteria
 
 1. A recipient can install and start the complete clean seed in a new writable folder using documented macOS or Windows entry points and their own model authentication, without the developer's fixed filesystem paths or private account.
-2. The initial page provides usable conversation and necessary runtime/version controls, without mandatory unrelated business components.
+2. The initial page provides usable conversation and a compact Settings entry to the runtime page, without mandatory unrelated business components.
 3. A representative user request can change the local interface or backend with a verifiable, reloadable result. The delivered project remains modifiable.
 4. Context, source and business data remain organized and identifiable. Restart/source switching preserve actual data/login state according to documented behavior, without silently resending a task.
 5. User-created functionality can remain application-specific. Common seed changes have a stated reuse need and avoid unnecessary default complexity.
@@ -99,7 +99,7 @@ Authorized capability: select, drop or paste files/images into AI chat, retain o
 
 ## Single complete-restart action (2026-10-15)
 
-The main page exposes one Restart app button, with no adjacent backend-only/recovery dropdown. It always uses the existing full managed-project restart: stop owned frontend/backend/project processes, relaunch from the current source plan, await readiness and refresh the page. Keep persistent gateway/controller, busy protection, truthful failure status and conversation recovery. Diagnostic recovery HTTP access remains available for failures.
+Updated 2026-10-23: the main page exposes a compact Settings link to /__saplingagent/runtime. Restart app is available on that runtime page, without an embedded restart/kernel toolbar or bottom version indicator on the chat page. It always uses the existing full managed-project restart: stop owned frontend/backend/project processes, relaunch from the current source plan, await readiness and refresh the page. Keep persistent gateway/controller, busy protection, truthful failure status and conversation recovery. Diagnostic recovery HTTP access remains available for failures.
 
 ## Independently managed kernel (product0.9.2)
 
@@ -138,7 +138,7 @@ old distributed layout; restoring an explicit backup remains available.
 
 ## One kernel version (2026-10-19)
 
-The current version is **kernel0.9.6**. There is no separate product version. kernel/manifest.json is authoritative for display, setup, installation, maintenance and packaging. Old API/receipt field names can remain compatibility aliases, but they must not establish a second current version. Missing metadata is unavailable, not a hardcoded historical baseline. Keep old version records/backups factual and handle their numeric migration deliberately without hiding local edits. See contracts/release.md and docs/kernel-version-migration.html.
+The current version is **kernel0.9.7**. There is no separate product version. kernel/manifest.json is authoritative for display, setup, installation, maintenance and packaging. Old API/receipt field names can remain compatibility aliases, but they must not establish a second current version. Missing metadata is unavailable, not a hardcoded historical baseline. Keep old version records/backups factual and handle their numeric migration deliberately without hiding local edits. See contracts/release.md and docs/kernel-version-migration.html.
 
 
 Owner storage clarification (2026-10-19): configuration execution uses a visible

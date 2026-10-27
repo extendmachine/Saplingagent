@@ -1,10 +1,12 @@
+import { useLanguage } from '../../localization/LanguageProvider';
 import { Gauge } from 'lucide-react';
 import type { ContextUsage } from '../../chat/runtime-api';
 import { contextUsageView } from './context-usage';
 import './context-usage.css';
 
 export function ContextUsageCounter({ usage }: { usage: ContextUsage | null }) {
-  const view = contextUsageView(usage);
+  const { language } = useLanguage();
+  const view = contextUsageView(usage, language);
   return <div className={`context-usage context-usage-${view.tone}`} title={view.label} aria-label={view.label}>
     <Gauge size={13} aria-hidden="true" />
     <span className="context-usage-value">{view.value}</span>

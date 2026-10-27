@@ -1,3 +1,6 @@
+import { launcherMessages } from '../localization/launcher-messages.mjs';
+import { formatMessage } from '../localization/public.mjs';
+import { readLanguage } from '../localization/store.mjs';
 import fs from "node:fs/promises";
 import {readFileSync,existsSync} from "node:fs";
 import path from "node:path";
@@ -362,6 +365,8 @@ async function compileLauncherUnlocked(
   { onProgress = () => {}, force = false } = {},
 ) {
   const sourceDir = path.join(root, "kernel/launcher/native");
+  const language=await readLanguage(root,process.env.SAPLING_LANG);
+  const report=onProgress;onProgress=value=>report(formatMessage(launcherMessages,language,value));
   const sources = (await fs.readdir(sourceDir))
     .filter((f) => f.endsWith(".go"))
     .sort();
@@ -374,6 +379,7 @@ async function compileLauncherUnlocked(
     : Buffer.alloc(0);
   const identity = createHash("sha256")
     .update(source)
+    .update(JSON.stringify(launcherMessages))
     .update(await fs.readFile(macShell))
     .update(
       await fs.readFile(path.join(root, "kernel/launcher/toolchain.json")),
@@ -408,6 +414,7 @@ async function compileLauncherUnlocked(
   await fs.mkdir(base, { recursive: true });
   for (const f of sources)
     await fs.copyFile(path.join(sourceDir, f), path.join(base, f));
+  await fs.writeFile(path.join(base,"localization_generated.go"),"package main\nfunc init() { launcherMessagesJSON = "+JSON.stringify(JSON.stringify(launcherMessages))+" }\n");
   const relative =
     project.name + (process.platform === "darwin" ? ".app" : ".exe");
   let artifact = path.join(base, relative),
@@ -421,6 +428,7 @@ async function compileLauncherUnlocked(
     await fs.mkdir(path.join(artifact, "Contents/Resources"), {
       recursive: true,
     });
+    await writeJSON(path.join(artifact,"Contents/Resources/launcher-messages.json"),launcherMessages);
     const info = path.join(artifact, "Contents/Info.plist");
     const plist = JSON.parse(await command(root, "/usr/bin/plutil", ["-convert", "json", "-o", "-", info]));
     Object.assign(plist, {
