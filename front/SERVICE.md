@@ -105,3 +105,8 @@ The application has a persistent project-wide English/Chinese selector and same-
 ## Compact header and runtime Settings (TASK-20261023-012)
 
 The default main page shows a compact brand/language/Help header and an English/Chinese Settings link at the top right. Settings opens the current origin's /__saplingagent/runtime in a new tab, preserving the original chat, unsent text/attachments and current stream. The default application space is empty; no embedded kernel toolbar, Restart app/Kernel buttons or bottom version frame remains. Runtime restart/stop/status operations and direct /__saplingagent/kernel management remain available on their existing URLs. Kernel version stays0.9.6; this frontend change needs no backend restart, new service or dependency. Reload/HMR adopts the frontend; preserve conversations and configuration. Earlier embedded-control descriptions in this file are historical.
+
+
+## Project browser tab title (TASK-20261027-002)
+
+The application tab displays the configured project folder name from read-only GET /api/runtime/status.projectFolderName, not the native app display name. An older runtime falls back to the basename of applicationRoot (macOS/Windows paths); unavailable metadata retains the localized Saplingagent title. The name is plain text, remains unchanged when switching English/Chinese and is not stored in browser storage. Read once on mount and refresh on window focus with cancellation and a five-second deadline; temporary failures keep the last known name. No chat remount, model request, configuration write or new dependency/service. Frontend source/build deployment is required; kernel-only upgrades do not replace application UI. A cold controller restart enables the new explicit field.
