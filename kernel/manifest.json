@@ -1274,8 +1274,8 @@
     },
     {
       "path": "kernel/services/runtime-manager/CONTRACT.md",
-      "sha256": "0d91c6018fc3040998bfb946dcec8e1d7f7a9ac2e782d0a140c14efeacda9f70",
-      "bytes": 16313,
+      "sha256": "bfc0ad6da763943ee5c6efc540c7aacc476b2d9fdf06f90bb5fda4edd70d5e20",
+      "bytes": 17019,
       "executable": false
     },
     {
@@ -1340,8 +1340,8 @@
     },
     {
       "path": "kernel/services/runtime-manager/status.mjs",
-      "sha256": "aab08e937d3b2052f222d0e986889571d648ac27188923cf3380cd6d48cb6208",
-      "bytes": 2182,
+      "sha256": "f118174abb8033b88efb2c9b2027850f64407e014c902b610602ceca732d088e",
+      "bytes": 2379,
       "executable": false
     },
     {
@@ -1352,8 +1352,8 @@
     },
     {
       "path": "kernel/services/runtime-manager/test/manager.test.mjs",
-      "sha256": "cd404e834da6c3f4686fe86bd89de07b17191cb77719ea7a1aa3d48bc7484b40",
-      "bytes": 38909,
+      "sha256": "35ccc5cf97409815bd77307a5c4f451949fb51425cfc69231cd29a4e565f6627",
+      "bytes": 39516,
       "executable": false
     },
     {

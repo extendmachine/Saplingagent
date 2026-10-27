@@ -255,14 +255,20 @@ test('standalone kernel control works without an application frontend or Git',as
 test('status reads project metadata without initializing it and lists effective built-in and worker ports', async t => {
  const {root,manager,config,request}=await fixture(t,{gateway:true});
  const first=await (await request('/api/runtime/status')).json();
- assert.equal(first.projectName,path.basename(root));assert.equal(first.kernelVersion,null);assert.equal(first.canStop,true);
+ assert.equal(first.projectName,path.basename(root));assert.equal(first.projectFolderName,path.basename(root));assert.equal(first.kernelVersion,null);assert.equal(first.canStop,true);
  await assert.rejects(fs.access(path.join(root,'config/project.json')),{code:'ENOENT'});
- await fs.writeFile(path.join(root,'config/project.json'),JSON.stringify({name:'A <sample> project',privateField:'never-return-this'}));
+ await fs.writeFile(path.join(root,'config/project.json'),JSON.stringify({name:'A <sample> project',folderName:'课堂项目 & Demo',privateField:'never-return-this'}));
  await fs.mkdir(path.join(root,'kernel'));await fs.writeFile(path.join(root,'kernel/manifest.json'),JSON.stringify({version:'0.9.5',files:[]}));
  const current=await (await request('/api/runtime/status')).json();
- assert.equal(current.projectName,'A <sample> project');assert.equal(current.kernelVersion,'0.9.5');assert.equal(current.url,`http://127.0.0.1:${config.frontPort}/`);
+ assert.equal(current.projectName,'A <sample> project');assert.equal(current.projectFolderName,'课堂项目 & Demo');assert.equal(current.kernelVersion,'0.9.5');assert.equal(current.url,`http://127.0.0.1:${config.frontPort}/`);
  assert.equal(current.services.find(x=>x.name==='front').port,config.vitePort);assert.equal(current.services.find(x=>x.name==='agent').port,config.agentPort);
  assert.ok(!JSON.stringify(current).includes('never-return-this'));
+ for(const value of [undefined,null,42,'   ']) {
+  await fs.writeFile(path.join(root,'config/project.json'),JSON.stringify({name:'Native app',folderName:value}));
+  assert.equal((await (await request('/api/runtime/status')).json()).projectFolderName,path.basename(root));
+ }
+ await fs.writeFile(path.join(root,'config/project.json'),'{invalid');
+ assert.equal((await (await request('/api/runtime/status')).json()).projectFolderName,path.basename(root));
  await fs.writeFile(path.join(root,'worker.mjs'),'setInterval(()=>{},1000)');
  await manifest(root,[{name:'worker',file:'worker.mjs',healthCheck:'process'}]);manager.restart();await manager.operation;
  const worker=(await (await request('/api/runtime/status')).json()).services.find(x=>x.name==='worker');

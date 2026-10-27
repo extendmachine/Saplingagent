@@ -17,6 +17,10 @@
 <a href="seedagent-plan.html">Early plan</a>
 </nav>
 <h1>Callable interface v2</h1>
+<section><h2>Project browser tab name / 项目网页标签</h2>
+<p>The main page uses the project folder name saved during setup. Switching interface language preserves that name. / 主页面标签使用设置中保存的项目文件夹名称，切换中英文不会改变它。</p>
+<p><code>GET /api/runtime/status</code> (no body; existing local Host/Origin checks) returns an additional <code>projectFolderName</code> string, separately from <code>projectName</code> (native app display name). It reads <code>config/project.json.folderName</code>, falling back to the current folder basename without creating configuration. No credentials or complete configuration are exposed. Invalid local access retains the existing 403 response.</p>
+<p>The frontend loads the name on page entry and window focus. Older runtime responses use the basename of <code>applicationRoot</code>; unavailable metadata uses the localized Saplingagent fallback without blocking chat. Names are plain text and are not cached across page loads. Deploy the frontend as well as the runtime change; kernel-only updates do not replace custom application pages. Contract: runtime-manager and front CONTRACT.md, TASK-20261027-001/002.</p></section>
 <section>
 <h2>Conversation controls and context reporting</h2>
 <p><code>POST /api/sessions/:id/engine</code> accepts the full <code>{engine, providerId, modelId, expectedEngineRevision}</code> selection and returns <code>{session}</code>. Apply changes AI in the same idle conversation; ID, title, messages, drafts and attachments remain. It does not send a model request. Busy, unsaved, concurrent or stale changes return 409. Codex uses its configured model (null provider/model IDs).</p>
