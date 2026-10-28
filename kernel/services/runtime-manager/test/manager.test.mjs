@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
 import http from 'node:http';
@@ -16,13 +15,15 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function port() { const s = net.createServer(); await new Promise(r => s.listen(0, '127.0.0.1', r)); const p = s.address().port; await new Promise(r => s.close(r)); return p; }
 async function until(check) { const end = Date.now()+8000; while (Date.now()<end) { if (await check()) return; await delay(20); } throw new Error('Fixture condition timed out'); }
 async function fixture(t, options = {}) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'sapling-runtime-'));
-  const config = {}; for (const key of ['workspacePort','builderPort','pdfEditorPort','agentPort','frontPort','runtimeManagerPort','vitePort']) { do { config[key] = await port(); } while (Object.entries(config).some(([k,p]) => k!==key && p===config[key])); }
+  const temporary = new URL('../../../../.cache/runtime-manager-tests/', import.meta.url);
+  await fs.mkdir(temporary, { recursive: true });
+  const root = await fs.mkdtemp(new URL('runtime-', temporary));
+  const config = {}; for (const key of ['workspacePort','builderPort','pdfEditorPort','agentPort','frontPort','runtimeManagerPort','vitePort','openCodePort']) { do { config[key] = await port(); } while (Object.entries(config).some(([k,p]) => k!==key && p===config[key])); }
   await fs.mkdir(path.join(root,'config')); await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify(config));
   const code = `import http from 'node:http'; import fs from 'node:fs/promises';
 const name=process.env.FIXTURE_NAME; let prepared=false; const version=await fs.readFile('version.txt','utf8').catch(()=> 'initial');
-const key=name==='pdf-editor'?'PDF_EDITOR':name.toUpperCase();const port=Number(name==='front'?process.env.FIXTURE_PORT:process.env['SEED_'+key+'_PORT']||process.env.FIXTURE_PORT);
-const server=http.createServer(async(req,res)=>{let body={ready:true,authenticated:true,mcp:{ready:true},version},status=200;
+const key=name==='pdf-editor'?'PDF_EDITOR':name.toUpperCase();const port=Number(name==='front'?process.env[process.env.FIXTURE_FRONT_KEY]:process.env['SEED_'+key+'_PORT']||process.env.FIXTURE_PORT);
+const server=http.createServer(async(req,res)=>{let body={ready:true,authenticated:true,mcp:{ready:true},version,name,ports:{agent:Number(process.env.SEED_AGENT_PORT),workspace:Number(process.env.SEED_WORKSPACE_PORT),openCode:Number(process.env.SEED_OPENCODE_PORT)},services:JSON.parse(process.env.SEED_SERVICE_PORTS)},status=200;
 if(req.url==='/api/sessions')body={sessions:await fs.access('agent.busy').then(()=>[{id:'running'}],()=>[])};
 if(req.url==='/api/sessions/running')body={session:{running:true}};
 if(req.url==='/hold' && req.method==='POST'){await fs.writeFile('hold.started','1');while(!await fs.access('hold.release').then(()=>true,()=>false))await new Promise(r=>setTimeout(r,10))}
@@ -40,12 +41,13 @@ process.on('SIGTERM',()=>{server.close(()=>process.exit(0));server.closeAllConne
   await fs.writeFile(path.join(root,'fixture.mjs'),code);
   const names = [['workspace','workspacePort'],['builder','builderPort'],['pdf-editor','pdfEditorPort'],['agent','agentPort']];
   const definitions=names.map(([name,portKey])=>({name,portKey,file:'fixture.mjs',env:{FIXTURE_NAME:name,FIXTURE_PORT:String(config[portKey])}}));
-  const manager=new RuntimeManager({root,token:'fixture-token',definitions,frontDefinition:{name:'front',portKey:options.gateway?'vitePort':'frontPort',file:'fixture.mjs',env:{FIXTURE_NAME:'front',FIXTURE_PORT:String(options.gateway ? config.vitePort : config.frontPort)}},healthTimeout:1000,agentTimeout:300,stopTimeout:300,output:false,...options});
+  const manager=new RuntimeManager({root,token:'fixture-token',definitions,frontDefinition:{name:'front',portKey:options.gateway?'vitePort':'frontPort',file:'fixture.mjs',env:{FIXTURE_NAME:'front',FIXTURE_FRONT_KEY:options.gateway?'SEED_VITE_PORT':'SEED_FRONT_PORT'}},healthTimeout:1000,agentTimeout:300,stopTimeout:300,output:false,...options});
   const server=createManagerServer({manager,token:'fixture-token',frontPort:config.frontPort,managerPort:config.runtimeManagerPort,onMaintenance:options.onMaintenance,openLogs:options.openLogs});
   await new Promise(r=>server.listen(config.runtimeManagerPort,'127.0.0.1',r));
   let gateway; if(options.gateway) {gateway=createGateway({manager,token:'fixture-token',frontPort:config.frontPort,managerPort:config.runtimeManagerPort,onMaintenance:options.onMaintenance,openLogs:options.openLogs});await new Promise(r=>gateway.listen(config.frontPort,'127.0.0.1',r))}
   t.after(async()=>{gateway?.closeUpgrades();gateway?.closeAllConnections();if(gateway)await new Promise(r=>gateway.close(r));await manager.close();server.closeAllConnections();await new Promise(r=>server.close(r));await fs.rm(root,{recursive:true,force:true})});
   const request = (route, headers={}, method='GET',body)=>fetch(`http://127.0.0.1:${config.runtimeManagerPort}${route}`,{method,headers,...(body?{body:JSON.stringify(body)}:{})});
+  await options.beforeStart?.(manager);
   await manager.start(); await manager.operation;
   return {root,config,manager,request};
 }
@@ -91,12 +93,62 @@ test('restart HTTP rejects cross-site and unauthenticated scripts, keeps token p
  assert.equal((await request('/api/runtime/restart',{Origin:`http://127.0.0.1:${config.frontPort}`},'POST')).status,202);await manager.operation;const pids=manager.state().services.map(x=>x.pid);await manager.close();for(const pid of pids)assert.throws(()=>process.kill(pid,0));
 });
 
-test('foreign occupied port is reported without terminating its owner or the frontend',async t=>{
- const {root,config,manager}=await fixture(t);const frontPid=manager.children.get('front').pid;
- const old=manager.children.get('workspace'); old.kill('SIGTERM'); await until(()=>old.exitCode!==null);
- const foreign=net.createServer();await new Promise(resolve=>foreign.listen(config.workspacePort,'127.0.0.1',resolve));t.after(()=>{if(foreign.listening)return new Promise(resolve=>foreign.close(resolve))});
- manager.restart({scope:'backend'});await manager.operation;assert.equal(manager.error.code,'PORT_OCCUPIED');assert.equal(foreign.listening,true);assert.equal(manager.children.get('front').pid,frontPid);
- await new Promise(resolve=>foreign.close(resolve));manager.restart();await manager.operation;assert.equal(manager.phase,'ready');
+test('backend restart skips a foreign workspace owner and refreshes frontend endpoint env',async t=>{
+ const {root,config,manager}=await fixture(t,{gateway:true});const before=manager.state();
+ const source=await fs.readFile(path.join(root,'config/runtime.json'),'utf8');
+ await manager.stopChild('workspace');
+ const foreign=await occupy(t,config.workspacePort);
+ manager.restart({scope:'backend'});await manager.operation;
+ assert.equal(manager.phase,'ready',JSON.stringify(manager.error));assert.equal(manager.scope,'all');
+ assert.ok(manager.config.workspacePort>config.workspacePort);assert.equal(foreign.listening,true);
+ assert.notEqual(manager.children.get('front').pid,before.services.find(x=>x.name==='front').pid);
+ const front=await(await fetch(`http://127.0.0.1:${config.frontPort}/`)).json();
+ assert.equal(front.ports.workspace,manager.config.workspacePort);
+ assert.equal(await fs.readFile(path.join(root,'config/runtime.json'),'utf8'),source);
+ const after=manager.state();manager.restart({scope:'backend'});await manager.operation;
+ assert.equal(manager.phase,'ready');assert.deepEqual(manager.state().ports,after.ports);
+ assert.equal(manager.children.get('front').pid,after.services.find(x=>x.name==='front').pid);
+});
+
+async function occupy(t,port) {
+ const server=http.createServer((req,res)=>res.end('foreign'));
+ await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,'127.0.0.1',resolve)});
+ t.after(async()=>{server.closeAllConnections();if(server.listening)await new Promise(r=>server.close(r))});
+ return server;
+}
+
+test('failed Agent and frontend ports recover together; gateway and discovery follow new mapping',async t=>{
+ const {root,config,manager}=await fixture(t,{gateway:true});const before=manager.state();
+ await fs.mkdir(path.join(root,'.runtime'));const record={instanceId:manager.instanceId,pid:process.pid,ports:before.ports,url:`http://127.0.0.1:${config.frontPort}/`};
+ await fs.writeFile(path.join(root,'.runtime/runtime-address.json'),JSON.stringify(record));
+ const agent=manager.children.get('agent');agent.kill('SIGTERM');await until(()=>agent.exitCode!==null);
+ await manager.stopChild('front');
+ const foreignAgent=await occupy(t,config.agentPort),foreignFront=await occupy(t,config.vitePort),foreignProvider=await occupy(t,manager.config.openCodePort);
+ const oldProvider=manager.config.openCodePort;
+ manager.restart();await manager.operation;
+ assert.equal(manager.phase,'ready',JSON.stringify(manager.error));assert.equal(manager.instanceId,before.instanceId);
+ for(const key of ['agentPort','vitePort'])assert.ok(manager.config[key]>config[key]);
+ assert.ok(manager.config.openCodePort>oldProvider);assert.equal(manager.config.frontPort,config.frontPort);assert.equal(manager.config.runtimeManagerPort,config.runtimeManagerPort);
+ const api=await(await fetch(record.url+'api/status')).json();assert.equal(api.name,'agent');assert.equal(api.ports.agent,manager.config.agentPort);
+ const front=await(await fetch(record.url)).json();assert.equal(front.name,'front');assert.equal(front.ports.agent,manager.config.agentPort);assert.equal(front.ports.openCode,manager.config.openCodePort);
+ const saved=JSON.parse(await fs.readFile(path.join(root,'.runtime/runtime-address.json')));assert.deepEqual(saved.ports,manager.state().ports);assert.equal(saved.url,record.url);
+ for(const server of [foreignAgent,foreignFront,foreignProvider])assert.equal(await(await fetch(`http://127.0.0.1:${server.address().port}/`)).text(),'foreign');
+});
+
+test('backend restart applies a preference colliding with the live gateway by ascending',async t=>{
+ const {root,config,manager}=await fixture(t,{gateway:true});const requested={...config,agentPort:config.frontPort,frontPort:await port()};
+ await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify(requested));
+ manager.restart({scope:'backend'});await manager.operation;
+ assert.equal(manager.phase,'ready',JSON.stringify(manager.error));assert.equal(manager.scope,'all');assert.equal(manager.config.frontPort,config.frontPort);assert.ok(manager.config.agentPort>config.frontPort);
+ assert.equal((await(await fetch(`http://127.0.0.1:${config.frontPort}/api/status`)).json()).name,'agent');
+});
+
+test('backend restart can change the frontend preference while keeping the public URL',async t=>{
+ const {root,config,manager}=await fixture(t,{gateway:true});const vitePort=await port();
+ await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify({...config,vitePort}));
+ manager.restart({scope:'backend'});await manager.operation;
+ assert.equal(manager.phase,'ready',JSON.stringify(manager.error));assert.equal(manager.config.vitePort,vitePort);assert.equal(manager.scope,'all');
+ assert.equal((await fetch(`http://127.0.0.1:${config.frontPort}/`)).status,200);
 });
 
 test('full restart replaces frontend and backend PIDs while same-origin controls remain live', async t => {
@@ -367,4 +419,54 @@ test('invalid MCP settings preserve current services and do not silently skip mo
  await fs.writeFile(path.join(root,'config/mcp-access.json'),'{bad');
  manager.restart();await manager.operation;assert.equal(manager.phase,'failed');assert.equal(manager.error.code,'INVALID_MCP_CONFIG');
  assert.deepEqual(manager.state().services,before.services);
+});
+
+for (const phase of ['startup','backend','all']) {
+ test(`${phase} retries a real child bind race without stopping the competing listener`, async t=>{
+  let foreign,claimed,originalPid,launches=0;
+  const inject=manager=>{
+   const launch=manager.launch.bind(manager);
+   manager.launch=(definition,config)=>{
+    if(definition.name==='agent'){
+     launches++;
+     if(!foreign){claimed=config.agentPort;foreign=http.createServer((req,res)=>res.end('race-owner'));foreign.listen(claimed,'127.0.0.1');}
+    }
+    const child=launch(definition,config);if(definition.name==='agent'&&!originalPid)originalPid=child.pid;return child;
+   };
+  };
+  t.after(async()=>{foreign?.closeAllConnections();if(foreign?.listening)await new Promise(r=>foreign.close(r))});
+  const {manager,config}=await fixture(t,{gateway:true,...(phase==='startup'?{beforeStart:inject}:{})});
+  if(phase!=='startup'){inject(manager);manager.restart({scope:phase});await manager.operation;}
+  assert.equal(manager.phase,'ready',JSON.stringify(manager.error));assert.ok(launches>=2);assert.ok(manager.config.agentPort>claimed);
+  assert.throws(()=>process.kill(originalPid,0));assert.equal(await(await fetch(`http://127.0.0.1:${claimed}/`)).text(),'race-owner');
+  assert.equal((await(await fetch(`http://127.0.0.1:${config.frontPort}/api/status`)).json()).name,'agent');
+ });
+}
+
+test('frontend bind race retries the complete plan and keeps the public gateway', async t=>{
+ const {manager,config}=await fixture(t,{gateway:true});const start=manager.startFrontend.bind(manager);let foreign,attempts=0;
+ manager.startFrontend=async current=>{attempts++;if(!foreign)foreign=await occupy(t,current.vitePort);return start(current)};
+ manager.restart();await manager.operation;
+ assert.equal(manager.phase,'ready',JSON.stringify(manager.error));assert.equal(attempts,2);assert.ok(manager.config.vitePort>config.vitePort);
+ assert.equal((await(await fetch(`http://127.0.0.1:${config.frontPort}/`)).json()).name,'front');
+});
+
+test('repeated port races stop partial attempts and fail after the bounded retry budget', async t=>{
+ const {manager}=await fixture(t,{gateway:true});let attempts=0;
+ const start=manager.startBackends.bind(manager);
+ manager.startBackends=async(...args)=>{attempts++;await start(...args);throw Object.assign(new Error('Synthetic recurring port conflict'),{code:'PORT_OCCUPIED'})};
+ manager.restart();await manager.operation;
+ assert.equal(attempts,8);assert.equal(manager.phase,'failed');assert.equal(manager.error.code,'PORT_OCCUPIED');assert.equal(manager.children.size,0);assert.equal(manager.generation,1);
+});
+
+test('custom service port takeover refreshes argv and all dependent endpoint maps',async t=>{
+ const {root,manager,config}=await fixture(t,{gateway:true});
+ await projectEntry(root,'documents');await manifest(root,[{name:'documents',file:'backend/documents/server.mjs',args:['${PORT}']}]);
+ manager.restart();await manager.operation;assert.equal(manager.phase,'ready');
+ const old=manager.state().services.find(s=>s.name==='documents');await manager.stopChild('documents');await occupy(t,old.port);
+ manager.restart({scope:'backend'});await manager.operation;assert.equal(manager.phase,'ready',JSON.stringify(manager.error));assert.equal(manager.scope,'all');
+ const current=manager.state().services.find(s=>s.name==='documents');assert.ok(current.port>old.port);
+ const data=await(await fetch(`http://127.0.0.1:${current.port}/`)).json();assert.equal(data.arg,String(current.port));assert.equal(data.services.documents,current.port);
+ const front=await(await fetch(`http://127.0.0.1:${config.frontPort}/`)).json();assert.equal(front.services.documents,current.port);
+ const agent=await(await fetch(`http://127.0.0.1:${config.frontPort}/api/status`)).json();assert.equal(agent.services.documents,current.port);
 });

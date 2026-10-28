@@ -1070,8 +1070,8 @@
     },
     {
       "path": "kernel/scripts/test/runtime-ports.test.mjs",
-      "sha256": "9322e069f1766d4136331fb03c3a3e4fc3276ad99efcabcd95a97e28f7274525",
-      "bytes": 8772,
+      "sha256": "afe3682ec819d3e9eb9aa7da5ddbc597684ab277d2015fc8733fb612159c6166",
+      "bytes": 10903,
       "executable": false
     },
     {
@@ -1274,14 +1274,14 @@
     },
     {
       "path": "kernel/services/runtime-manager/CONTRACT.md",
-      "sha256": "bfc0ad6da763943ee5c6efc540c7aacc476b2d9fdf06f90bb5fda4edd70d5e20",
-      "bytes": 17019,
+      "sha256": "6d988931da0ae64f03312dc60756d065ad79b17a2587b0ef54684b7cd8b5fab4",
+      "bytes": 18919,
       "executable": false
     },
     {
       "path": "kernel/services/runtime-manager/DEPLOY.md",
-      "sha256": "be7d8ba78fdcf4666a17f90e0e7b2861290f026ab95d29e2a41a4b1ab37722fd",
-      "bytes": 7243,
+      "sha256": "c32c60e8f6da7d27e5ef951929f710d2763a2ad4e38d6af594882b0264a40234",
+      "bytes": 7953,
       "executable": false
     },
     {
@@ -1292,8 +1292,8 @@
     },
     {
       "path": "kernel/services/runtime-manager/manager.mjs",
-      "sha256": "ff7cfe77b8fa1da7bfd0c8cf993a833d7d66761a10edfc20946573fc9221a0d7",
-      "bytes": 21147,
+      "sha256": "1ce7d115c8101e4ea813ec333b6d01a2f35bddc6a6a65b65065695f9fb307e09",
+      "bytes": 23172,
       "executable": false
     },
     {
@@ -1322,8 +1322,8 @@
     },
     {
       "path": "kernel/services/runtime-manager/SERVICE.md",
-      "sha256": "ccce51d333a68b08003d59758ac6434b4b8a23daa393fb1c432b087658745818",
-      "bytes": 4593,
+      "sha256": "9365a7fda7162aa3371bf857425113b1fd31796106068b3ab6b24c25e93243e8",
+      "bytes": 5162,
       "executable": false
     },
     {
@@ -1352,8 +1352,8 @@
     },
     {
       "path": "kernel/services/runtime-manager/test/manager.test.mjs",
-      "sha256": "35ccc5cf97409815bd77307a5c4f451949fb51425cfc69231cd29a4e565f6627",
-      "bytes": 39516,
+      "sha256": "65e45a2bddd29126260ed9cbe7aad33b4e9ca5eaba3a9e1a2ffdaff79e23b647",
+      "bytes": 47671,
       "executable": false
     },
     {
