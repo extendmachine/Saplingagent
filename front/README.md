@@ -21,6 +21,15 @@ Use `bash Saplingagent.sh` or the exported app from the complete project. Open t
 
 See [CONTRACT.md](CONTRACT.md), [SERVICE.md](SERVICE.md), [DEPLOY.md](DEPLOY.md), [REFERENCES.md](REFERENCES.md) and the TASK-20261019-055 handoff.
 
+## GitHub application workflow prototype
+
+The application area now hosts the user-requested five-step GitHub workflow
+prototype: import, understand, select, upgrade and publish. All repository reports
+and generation/delivery views are explicitly illustrative; the module performs no
+download, inference, project creation or destination upload. It retains the shared
+language/header/chat/page bridge. See [module behavior](features/github-workflow/README.md)
+and [interactive prototype guide](../docs/github-workflow-prototype.html).
+
 ## Language and Help
 
 Choose English or 中文 in the page header. This updates application UI without reloading chat; the saved preference belongs to the project. Independently opened management pages load that project preference. Settings opens the same-origin runtime page in a new tab so chat drafts, attachments and live replies remain in the original tab. Help opens the built-in same-origin bilingual guide. If saving the language fails, keep using the page and choose Retry saving language after the service is available. User/model content is never translated. Error details remain available below localized explanations. The interface uses no remote translation service.

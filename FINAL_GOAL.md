@@ -150,3 +150,18 @@ explicit read-only account imports remain valid. Existing customer Agent Full
 Access is unchanged. Locks must cover concurrent setup, install, rename, compilation
 and cleanup without retaining project handles across rename or deleting live or
 unrelated helper directories.
+
+## User-requested GitHub workflow prototype (2026-10-28)
+
+This maintainer application's optional feature area hosts a five-step frontend
+prototype for GitHub URL intake, project-local source analysis, user-selected
+capabilities, Saplingagent adaptation and publication to the user's repository.
+The intended source/output directory is `projeccts/<owner>--<repository>/` with
+separate `source/` and `saplingagent/` children. Prototype reports, source trees,
+dependencies, features and delivery screens are illustrative and clearly labelled.
+No download, AI invocation, generated application or GitHub upload is implemented
+by this frontend task. Applicable source terms, access and runtime compatibility
+must be assessed before real adaptation; arbitrary URL intake does not guarantee
+complete reproduction. Preserve the current bilingual header, AI chat, context,
+application operation controls and kernel boundary. This optional application
+feature does not add a new mandatory kernel or service to every seed.
