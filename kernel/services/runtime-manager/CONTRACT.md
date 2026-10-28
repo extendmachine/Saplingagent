@@ -49,7 +49,7 @@ stop the page stops polling and tells the user to reopen the native app to start
 The operating-system launcher owns one persistent runtime manager. `frontPort` (5173) is its same-origin streaming HTTP/WebSocket gateway; Vite runs on `vitePort` (5174). `runtimeManagerPort` (4314) also exposes loopback control. The gateway survives frontend and backend restarts. No arbitrary commands, paths or PIDs are accepted through HTTP; project-owned startup metadata is read from disk.
 
 - GET `/api/runtime/status`: instanceId, generation, phase, busy, canRestart, jobId, scope, services [{name,pid,running}], error {code,message,service?}.
-- POST `/api/runtime/restart`: optional JSON `{scope: "all" | "backend"}`; defaults to all. 202 returns jobId/status. Concurrent requests share one job. All stops/relaunches frontend and all owned backends; backend preserves frontend. Generation advances only after selected components, authenticated Agent and MCP are ready.
+- POST `/api/runtime/restart`: optional JSON `{scope: "all" | "backend"}`; defaults to all. 202 returns jobId/status. Concurrent requests share one job. All stops/relaunches frontend and all owned backends; backend preserves a running frontend only while its endpoint mappings remain unchanged; otherwise it expands to all within the same job. Generation advances only after selected components, authenticated Agent and MCP are ready.
 - GET `/__saplingagent/runtime`: persistent English project-status/recovery page with status, restart choices, confirmed stop, logs-folder action and Open app. It works even if a selected older UI has no restart button or Vite fails. Non-control `/api/*` streams to Agent; other HTTP/WebSocket traffic goes to internal Vite without buffering SSE.
 - Internal POST `/internal/runtime/prepare` and `/internal/runtime/release`: existing Bearer token required on each backend. Prepare atomically refuses active writes, AI, Git operations or unsaved sessions; prepared services reject new mutations with 503. Shared gate is `kernel/contracts/runtime-drain.mjs`.
 
@@ -79,9 +79,9 @@ Native Windows10/11 x64 uses the shared kernel/contracts/local-process.mjs OS co
 
 ## Ascending ports (TASK-20261014-002)
 
-config/runtime.json ports are preferred starting values. The unified launcher selects distinct available loopback ports at or above each start (public frontPort first), without rewriting configuration or stopping occupied services. Effective ports stay fixed unless their internal preferences are deliberately edited and applied by Restart app. Public/control listener preferences apply on the next cold launch. A bind race on public/control listeners retries upward; a later internal bind race is reported for retry, never resolved by killing another process. Port exhaustion reports PORT_UNAVAILABLE.
+config/runtime.json ports are preferred starting values. The unified launcher selects distinct available loopback ports at or above each start (public frontPort first), without rewriting configuration or stopping occupied services. After owned shutdown, cold start and both restart scopes recheck internal ports, retaining each prior selection when available and otherwise searching upward. Configured preference changes also apply during restart. Public/control listeners stay fixed until the next cold launch. Internal bind conflicts retry up to eight launch attempts, stopping only partial owned children and rebuilding service port mappings/argv each time. Non-port startup failures are reported without automatic retry. A foreign listener is never terminated. Port exhaustion reports PORT_UNAVAILABLE.
 
-GET /api/runtime/status additionally returns ports containing frontPort, vitePort, runtimeManagerPort, agentPort, workspacePort, builderPort, pdfEditorPort and openCodePort. Manager-created children receive their selected existing SEED_*_PORT values plus SEED_FRONT_PORT. Host/Origin checks use actual public/control ports.
+GET /api/runtime/status additionally returns ports containing frontPort, vitePort, runtimeManagerPort, agentPort, workspacePort, builderPort, pdfEditorPort and openCodePort. Manager-created children receive their selected existing SEED_*_PORT values, including SEED_FRONT_PORT and SEED_VITE_PORT. Host/Origin checks use actual public/control ports.
 
 .runtime/runtime-address.json is ignored local discovery metadata: {instanceId,pid,ports,url}. It contains no token/credential/conversation. The launcher writes it atomically once listeners bind, and removes it only if still owned by this instance on normal shutdown. Diagnostics checks its instanceId against runtime status before trusting it. Stale or another-root metadata must not claim readiness.
 
@@ -120,3 +120,27 @@ The standalone status page and kernel controls render the shared `runtime-messag
 ## Project folder title (TASK-20261027-001)
 
 GET /api/runtime/status adds projectFolderName: the nonblank folderName saved in config/project.json, trimmed and limited to 160 characters; missing/invalid metadata falls back to the actual root basename. It is separate from projectName (the native app display name). This optional additive field is read-only, uses the existing local access checks and never initializes or returns the complete configuration. Application browser tabs can display it as plain text. Older controllers lack the field; applications may use the basename of their existing applicationRoot response until a cold controller restart. No account, runtime lifecycle or version change.
+
+## Restart port recovery (TASK-20261027-004)
+
+The same allocator/retry path handles cold startup, Restart app and Restart backend.
+Service declarations/commands and busy gates are checked before stopping owned
+children. Allocation runs after shutdown; it also rechecks OpenCode's reserved port
+and custom-service ports. A backend restart expands status.scope to all if frontend
+startup endpoint maps change (including SEED_SERVICE_PORTS), its own port preference
+changes, or the frontend is no longer running. Restarting an unchanged healthy
+backend cluster preserves the frontend PID. The public/control URLs, instanceId,
+configuration files and conversation data stay unchanged.
+
+Gateway HTTP/WebSocket routes use the new manager configuration. Every relaunched
+child gets the new selected environment; custom commands re-expand ${PORT}. Only
+a complete ready result increments generation and atomically refreshes this
+instance's runtime-address.json ports. Bind-retry exhaustion retains truthful
+failure/recovery controls with partial owned attempts stopped. Port exhaustion is
+PORT_UNAVAILABLE. An old Agent's untracked provider is not killed by its port;
+pre-existing listeners are skipped. Provider authentication/readiness failures
+remain provider failures, not permission to blindly retry or terminate processes.
+
+This changes the persistent JavaScript controller. Existing running instances
+require one normal owned stop and fresh launch to load it; an in-page restart
+cannot replace the controller. No native rebuild or dependency update is required.

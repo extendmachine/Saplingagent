@@ -104,3 +104,10 @@ Sessions add engineRevision(default0), engineHistory (prior selections/native th
 POST /api/chat additionally accepts engineRevision; current clients always send it. Request ledger entries also record engineRevision; old entries default0. A request belonging to a prior binding cannot be retried as a new-engine request. Generate a new requestId for new user input. Existing read/SSE shapes remain compatible and never insert handoff prompts as visible messages.
 
 Internal POST /sessions/:id/engine uses the same full selection plus required expectedRevision and expectedEngineRevision; Workspace serializes and atomically validates idle state/revisions before saving. PATCH /sessions/:id adds optional expectedEngineRevision and handoffDeliveredRequestId. Every Agent snapshot supplies the guard. Delivery acknowledgement requires a pending handoff and a completed request belonging to the current binding; ordinary PATCH cannot replace handoff/history. See backend/workspace/CONTRACT.md for exact validation.
+
+Runtime restart port recovery (TASK-20261027-004): both scopes reselect conflicting
+internal ports after owned shutdown and retry recognized bind races up to eight
+attempts. Backend mode expands to all when frontend endpoint maps need refreshing;
+status.scope reflects that effective scope. Public/control addresses remain fixed,
+generation advances only when ready, and discovery publishes successful mappings.
+No request shape, authentication, configuration or foreign-process ownership change.

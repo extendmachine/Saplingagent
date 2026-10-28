@@ -14,7 +14,7 @@ const alive = child => child && child.exitCode === null && child.signalCode === 
 export async function availablePort(port) {
   await new Promise((resolve, reject) => {
     const probe = net.createServer();
-    probe.once('error', () => reject(failure('PORT_OCCUPIED', `Port ${port} is occupied. Stop its existing service first.`)));
+    probe.once('error', () => reject(failure('PORT_OCCUPIED', `Port ${port} was claimed during startup. Retry the restart to select another available port.`)));
     probe.listen(port, '127.0.0.1', () => probe.close(resolve));
   });
 }
@@ -52,7 +52,7 @@ export class RuntimeManager {
     if (this.closed) throw failure('MANAGER_STOPPED', 'Runtime manager is stopping.');
     const projectEnv = Object.fromEntries(Object.entries(this.projectPorts).map(([name, port]) => [servicePortEnv(name), String(port)]));
     const spec = definition.launchSpec;
-    const env = { ...process.env, SEED_ROOT: this.root, SEED_FRONT_PORT: String(config.frontPort), SEED_RUNTIME_MANAGER_PORT: String(config.runtimeManagerPort), SEED_AGENT_PORT: String(config.agentPort), SEED_WORKSPACE_PORT: String(config.workspacePort), SEED_BUILDER_PORT: String(config.builderPort), SEED_PDF_EDITOR_PORT: String(config.pdfEditorPort), SEED_OPENCODE_PORT: String(config.openCodePort), SEED_SERVICE_PORTS: JSON.stringify(this.projectPorts), ...projectEnv, ...(spec?.env || definition.env), ...(definition.project && definition.port ? { PORT: String(definition.port), SEED_SERVICE_PORT: String(definition.port) } : {}) };
+    const env = { ...process.env, SEED_ROOT: this.root, SEED_FRONT_PORT: String(config.frontPort), SEED_VITE_PORT: String(config.vitePort), SEED_RUNTIME_MANAGER_PORT: String(config.runtimeManagerPort), SEED_AGENT_PORT: String(config.agentPort), SEED_WORKSPACE_PORT: String(config.workspacePort), SEED_BUILDER_PORT: String(config.builderPort), SEED_PDF_EDITOR_PORT: String(config.pdfEditorPort), SEED_OPENCODE_PORT: String(config.openCodePort), SEED_SERVICE_PORTS: JSON.stringify(this.projectPorts), ...projectEnv, ...(spec?.env || definition.env), ...(definition.project && definition.port ? { PORT: String(definition.port), SEED_SERVICE_PORT: String(definition.port) } : {}) };
     const child = spawn(spec?.command || process.execPath, spec?.args || [path.join(this.root, definition.file), ...(definition.args || [])], { cwd: spec?.cwd || this.root, env, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
     this.children.set(definition.name, child);
     child.stdout.on('data', chunk => { if (this.output) process.stdout.write(`[${definition.name}] ${chunk}`); });
@@ -124,7 +124,8 @@ export class RuntimeManager {
     this.sourcePorts ??= Object.fromEntries(ports.map(key => [key, config[key]]));
     const mcp = await readMcpAccess(this.root);
     const effective = { ...config, ...overrides, externalMcpOnly: mcp.enabled && mcp.externalOnly };
-    if (new Set(ports.map(key => effective[key])).size !== ports.length) throw failure('INVALID_CONFIG', 'Internal ports must differ from the current public and control addresses.');
+    // Effective preferences may collide with a previously allocated public port.
+    // Resolve these after owned shutdown, while retaining the live listeners.
     return effective;
   }
   async servicePlan(config) {
@@ -172,18 +173,54 @@ export class RuntimeManager {
   async start() {
     const config = await this.loadConfig(); this.config = config;
     this.scope = 'all';
-    this.startOperation(async () => {
-      for(let attempt=0;attempt<8;attempt++){
-        const current=this.config;const plan=await this.servicePlan(current);this.activatePlan(plan);
-        try{await this.startFrontend(current);await this.startBackends(current,plan);await this.ready();return;}
-        catch(error){if(error.code!=='PORT_OCCUPIED'||attempt===7)throw error;
-          await this.stopBackends();await this.stopChild('front');
-          const ports=await selectRuntimePorts(current,{fixed:{frontPort:current.frontPort,runtimeManagerPort:current.runtimeManagerPort}});
-          this.config={...current,...ports};this.portOverrides=ports;this.error=null;
-          await this.log('startup_port_retry',{attempt:attempt+1,ports});
-        }
+    this.startOperation(() => this.startServices(config, 'all', 'startup_port_retry'));
+  }
+  async startServices(config, scope, retryEvent = 'restart_port_retry') {
+    // Both startup and restart use the same allocation and bounded race recovery.
+    // Call only after the backends have stopped; never probe our own listeners
+    // as if they belonged to a competing project.
+    const previousConfig = this.config;
+    const frontKey = this.frontDefinition?.portKey || 'frontPort';
+    let restartFront = scope === 'all' || !alive(this.children.get('front')) || config[frontKey] !== previousConfig[frontKey];
+    if (restartFront) await this.stopChild('front');
+    const previousProjectPorts = this.projectPorts;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      if (this.closed) throw failure('MANAGER_STOPPED', 'Runtime manager is stopping.');
+      const fixed = { frontPort: config.frontPort, runtimeManagerPort: config.runtimeManagerPort };
+      if (!restartFront && this.frontDefinition) {
+        const key = this.frontDefinition.portKey || 'frontPort';
+        fixed[key] = previousConfig[key];
       }
-    });
+      const ports = await selectRuntimePorts(config, { fixed });
+      const current = { ...config, ...ports };
+      const plan = await this.servicePlan(current);
+      const projectPorts = Object.fromEntries(plan.filter(x => x.project && x.port).map(x => [x.name, x.port]));
+      const changed = portKeys.some(key => current[key] !== previousConfig[key]) ||
+        Object.keys({ ...previousProjectPorts, ...projectPorts }).some(key => previousProjectPorts[key] !== projectPorts[key]);
+      if (!restartFront && changed) {
+        // Vite/custom frontends capture backend endpoints in their startup env.
+        // Refresh them in this job if any mapping changed, keeping the gateway.
+        await this.stopChild('front'); restartFront = true; this.scope = 'all';
+        await this.log('restart_scope_expanded', { reason: 'ports_changed', jobId: this.jobId });
+      }
+      if (restartFront) this.scope = 'all';
+      this.config = current; this.activatePlan(plan); this.error = null;
+      try {
+        if (restartFront && retryEvent === 'startup_port_retry') await this.startFrontend(current);
+        await this.startBackends(current, plan);
+        if (restartFront && retryEvent !== 'startup_port_retry') await this.startFrontend(current);
+        await this.ready(); return;
+      } catch (error) {
+        if (error.code !== 'PORT_OCCUPIED') throw error;
+        // A listener can win the gap between probing and child binding. Release
+        // only this manager's partial attempt, then rebuild all endpoint env/argv.
+        await this.stopBackends();
+        await this.stopChild('front'); restartFront = true; this.scope = 'all';
+        if (attempt === 7) throw error;
+        config = current;
+        await this.log(retryEvent, { attempt: attempt + 1, ports, jobId: this.jobId });
+      }
+    }
   }
   async startFrontend(config) {
     if (!this.frontDefinition) return;
@@ -233,7 +270,6 @@ export class RuntimeManager {
       this.phase = 'preparing';
       const prepared = [];
       let config;
-      let plan;
       try {
         if (this.gatewayWrites) throw failure('RUNTIME_BUSY', 'A browser operation is still running. Wait before restarting.');
         // Gate Agent first so new AI/proxy/Git work cannot race the downstream gates.
@@ -246,8 +282,9 @@ export class RuntimeManager {
           catch (error) { if (error.status === 404) { prepared.pop(); await this.prepareLegacy(definition); } else { error.service = definition.name; throw error; } }
         }
         config = await this.loadConfig();
-        plan = await this.servicePlan(config);
-        if (scope === 'backend' && this.config && portKeys.some(key => config[key] !== this.config[key])) throw failure('FULL_RESTART_REQUIRED', 'Use Restart app to apply changed internal ports.');
+        // Validate registrations/commands before stopping working services.
+        // Rebuild their allocated ports and argv after shutdown on every attempt.
+        await this.servicePlan(config);
       } catch (error) {
         let released = true;
         for (const definition of prepared.reverse()) try { await this.json(definition.port, '/internal/runtime/release', 'POST'); } catch { released = false; }
@@ -259,10 +296,7 @@ export class RuntimeManager {
       this.phase = 'stopping'; await this.log('restart', { jobId: this.jobId, scope });
       if (scope === 'all') await this.stopChild('front');
       await this.stopBackends();
-      this.config = config; this.activatePlan(plan);
-      await this.startBackends(config, plan);
-      if (scope === 'all') await this.startFrontend(config);
-      await this.ready();
+      await this.startServices(config, scope);
     });
   }
   async prepareMaintenance() {
