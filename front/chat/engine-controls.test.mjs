@@ -83,6 +83,8 @@ test('Codex API mode is fixed, and account busy/submission guards preserve pendi
 
 test('Chinese Codex model labels distinguish a selection and unavailable actual usage',async()=>{
  const h=await fixture({language:'zh',engines:[{...accountEngine(),modelWarning:'ENGLISH warning that must not appear in Chinese'}]});assert.match(h.content,/所选模型：project-default/);assert.match(h.content,/实际模型：尚未报告/);assert.equal(h.node('刷新模型').props.disabled,undefined);assert.equal(h.node('AI 模型').props.value,'');assert.match(h.content,/预设模型 startup-preference 不可用/);assert.match(h.content,/自动模式将使用 project-default/);assert.doesNotMatch(h.content,/ENGLISH warning/);
+ h.node('AI 模型').props.onChange({target:{value:'account-alternative'}});await h.settle();assert.match(h.content,/所选模型：account-alternative/);assert.doesNotMatch(h.content,/预设模型|自动模式将使用/);assert.equal(h.calls.length,0);
+ h.node('AI 模型').props.onChange({target:{value:''}});await h.settle();assert.match(h.content,/预设模型 startup-preference 不可用/);assert.match(h.content,/自动模式将使用 project-default/);assert.equal(h.calls.length,0);
 });
 
 test('a former account choice in fixed API mode changes only after an explicit reset and Apply',async()=>{

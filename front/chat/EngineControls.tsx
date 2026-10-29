@@ -84,7 +84,7 @@ export function EngineControls({ agent, composer, changingSession }: { agent: Ag
     {codex && catalogError && <div className="engine-catalog-warning" role="status"><p>{t(models.length ? 'engine.modelsStale' : 'engine.modelsFailed')}</p><ErrorNotice compact error={message('engine.modelsRetry', undefined, catalogError)} /></div>}
     {accountModels && !agent.enginesLoading && !catalogError && !models.length && <p className="engine-note">{t('engine.modelsEmpty')}</p>}
     {missingModel && <p className="engine-note">{t('engine.modelUnavailable')}</p>}
-    {codex && engine?.modelWarning && <p className="engine-note">{engine.requestedModel ? t('engine.modelWarning', { requested: engine.requestedModel, model: engine.defaultModelId || engine.model || t('engine.autoModelUnknown') }) : t('engine.modelsRetry')}</p>}
+    {codex && !draft.modelId && engine?.modelWarning && <p className="engine-note">{engine.requestedModel ? t('engine.modelWarning', { requested: engine.requestedModel, model: engine.defaultModelId || engine.model || t('engine.autoModelUnknown') }) : t('engine.modelsRetry')}</p>}
     {agent.activeSessionId && changed && <p className="engine-note">{t('engine.staged')}</p>}
     {agent.handoff?.status === 'pending' && <p className="engine-note" role="status">{t('engine.handoff')}</p>}
     {error && <ErrorNotice className="session-navigation-error" error={error} />}

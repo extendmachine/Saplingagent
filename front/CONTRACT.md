@@ -12,6 +12,8 @@ An absent model cannot be newly applied or sent. Account automatic selections
 also require a successful nonempty catalog and a listed resolved default; failed
 refreshes block account requests until retry succeeds. API/legacy defaults remain
 compatible. Model selection is not silently rewritten by catalog refreshes.
+Startup-preference fallback warnings appear only for automatic selection; explicit
+models bypass that default and do not inherit its warning.
 
 Account conversations use {engine:'codex',providerId:null,modelId:string|null};
 null means the configured automatic default. Existing conversations use Apply
