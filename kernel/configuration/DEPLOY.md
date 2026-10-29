@@ -54,3 +54,10 @@ link or disable setup Host/Origin checks. Errors/slow startup point to
 logs/project-launcher; the existing bash Saplingagent.sh configure remains usable.
 This JavaScript controller change requires one cold launch for existing running
 instances; it does not require rebuilding the native app. Current kernel0.9.8.
+
+Direct development startup also supports Configure AI. The runtime bridge
+canonicalizes the project directory before launch and discovery, so the default
+directory URL's trailing separator cannot cause a successful configuration host
+to be reported as CONFIGURATION_START_FAILED. After updating this bridge, fully
+stop and start the owned runtime controller once; Restart app alone retains that
+controller. Do not delete a live configuration capsule to work around the error.

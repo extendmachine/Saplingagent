@@ -172,7 +172,7 @@ test('runtime setup bridge launches and reuses real external B after short-lived
  const {launchConfiguration}=await import('../runtime.mjs');
  const f=await fixture(t),opened=[],children=[];
  const options={env:{...process.env,SAPLING_CONFIG_PARENT_PID:String(process.pid),SAPLING_MANAGEMENT_PORT:'4318'},launch:(...args)=>{const child=spawn(...args);f.track(child);children.push(child);return child;},open:async url=>{opened.push(url)}};
- const result=await launchConfiguration(f.root,options);
+ const result=await launchConfiguration(f.root+path.sep,options);
  const address=await json(path.join(f.root,'.runtime/management-address.json')),session=await storedSession(f.root);f.setDirectory(session.directory);
  assert.equal(children[0].exitCode,0);assert.equal(result.url,`http://127.0.0.1:${address.port}/`);assert.equal(result.browserRequested,true);
  await until(async()=>!(await fetch(result.url+'health/project-launcher').then(r=>r.json())).busy);

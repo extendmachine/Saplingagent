@@ -96,6 +96,12 @@ The builtin-only MCP configuration contract is part of the copied configuration 
 
 Public runtime.mjs exports launchConfiguration(root): starts the fixed short-lived
 launcher/entry.mjs with --configuration-request and --no-open over local IPC.
+Before spawning, the bridge resolves the supplied project path with fs.realpath,
+matching A/B's canonical root for cwd, SEED_ROOT and discovery. Trailing separators,
+relative paths and aliases to the same existing directory therefore work in both
+development and native launches. An unresolved root fails before spawning with
+CONFIGURATION_START_FAILED and no raw filesystem details. Published root, live
+PID, instance ID and port checks remain strict; foreign receipts are not adopted.
 Only the structured non-secret success {port,instanceId} or sanitized failure code
 is reported. The bridge waits for A exit and verifies the matching B before asking
 the system browser to open its address; returns {url,browserRequested}. This is
