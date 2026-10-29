@@ -422,7 +422,7 @@ See [storage and process locks](docs/configuration-storage.html).
 
 Choose English or 中文 in the installer, AI setup or chat language selector. The explicit choice is saved in the application’s `config/ui-language.json`; it follows this project across ports and restarts, and is excluded from source packages. `--lang en` / `--lang zh` selects a language explicitly. Without a saved choice, supported device/browser language is used with English fallback.
 
-The chat’s **Help** link opens the independent bilingual quick guide. It covers installation, AI configuration, conversations, files, restart/stop, updates and common errors. Errors show a readable explanation and next action; expand Technical details for the original code/message. User messages, AI replies, filenames, model names and API identifiers are not translated. Changing interface language never sends a model request. Ask your AI to answer in your preferred language separately. See [the bilingual guide](docs/language-help.html).
+Open **Settings → Help** from the chat page to reach the independent bilingual quick guide. It covers installation, AI configuration, conversations, files, restart/stop, updates and common errors. Errors show a readable explanation and next action; expand Technical details for the original code/message. User messages, AI replies, filenames, model names and API identifiers are not translated. Changing interface language never sends a model request. Ask your AI to answer in your preferred language separately. See [the bilingual guide](docs/language-help.html).
 
 <a id="license"></a>
 

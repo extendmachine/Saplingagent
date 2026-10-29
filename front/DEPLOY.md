@@ -120,7 +120,7 @@ Verification:80 isolated frontend tests, TypeScript and Vite build passed. Check
 
 ## Compact header and runtime Settings (TASK-20261023-012)
 
-The default main page shows a compact brand/language/Help header and an English/Chinese Settings link at the top right. Settings opens the current origin's /__saplingagent/runtime in a new tab, preserving the original chat, unsent text/attachments and current stream. The default application space is empty; no embedded kernel toolbar, Restart app/Kernel buttons or bottom version frame remains. Runtime restart/stop/status operations and direct /__saplingagent/kernel management remain available on their existing URLs. Kernel version stays0.9.6; this frontend change needs no backend restart, new service or dependency. Reload/HMR adopts the frontend; preserve conversations and configuration. Earlier embedded-control descriptions in this file are historical.
+The default main page shows a compact brand/language header and an English/Chinese Settings link at the top right. Settings includes the existing localized Help link. Settings opens the current origin's /__saplingagent/runtime in a new tab, preserving the original chat, unsent text/attachments and current stream. The default application space is empty; no embedded kernel toolbar, Restart app/Kernel buttons or bottom version frame remains. Runtime restart/stop/status operations and direct /__saplingagent/kernel management remain available on their existing URLs. Kernel version stays0.9.6; this frontend change needs no backend restart, new service or dependency. Reload/HMR adopts the frontend; preserve conversations and configuration. Earlier embedded-control descriptions in this file are historical.
 
 
 ## Project browser tab title (TASK-20261027-002)

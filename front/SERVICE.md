@@ -2,8 +2,8 @@
 
 ## Conversation-only default (TASK-20261028-006)
 
-The main page starts with the existing AI conversation and compact language,
-Help and Settings controls. `main.tsx` mounts `ChatDock`/`ChatPanel` independently
+The main page starts with the existing AI conversation and compact language
+and Settings controls. Help is available inside Settings. `main.tsx` mounts `ChatDock`/`ChatPanel` independently
 from lazy `App`, wrapped in `ApplicationBoundary`. `App.tsx` returns null until
 an application feature is explicitly requested. Chat sessions, token displays,
 engine switching and PageContextBridge retain their existing behavior.
@@ -111,12 +111,12 @@ Rollback needs care: older application versions do not understand binding revisi
 
 ## English/Chinese interface (TASK-20261023-007)
 
-The application has a persistent project-wide English/Chinese selector and same-origin Help entry. `localization/` owns keyed application messages, state-preserving React context and localized error presentation; it consumes the kernel localization public helper/API. Chat content, titles and provider/model/file data remain original. All default chat controls and the optional application Git/restart/version modules use this context. No new service or dependency is introduced. See CONTRACT and the task handoff for persistence and test limits.
+The application has a persistent project-wide English/Chinese selector and a same-origin Help entry inside Settings. `localization/` owns keyed application messages, state-preserving React context and localized error presentation; it consumes the kernel localization public helper/API. Chat content, titles and provider/model/file data remain original. All default chat controls and the optional application Git/restart/version modules use this context. No new service or dependency is introduced. See CONTRACT and the task handoff for persistence and test limits.
 
 
 ## Compact header and runtime Settings (TASK-20261023-012)
 
-The default main page shows a compact brand/language/Help header and an English/Chinese Settings link at the top right. Settings opens the current origin's /__saplingagent/runtime in a new tab, preserving the original chat, unsent text/attachments and current stream. The default application space is empty; no embedded kernel toolbar, Restart app/Kernel buttons or bottom version frame remains. Runtime restart/stop/status operations and direct /__saplingagent/kernel management remain available on their existing URLs. Kernel version stays0.9.6; this frontend change needs no backend restart, new service or dependency. Reload/HMR adopts the frontend; preserve conversations and configuration. Earlier embedded-control descriptions in this file are historical.
+The default main page shows a compact brand/language header and an English/Chinese Settings link at the top right. Settings includes the existing localized Help link. Settings opens the current origin's /__saplingagent/runtime in a new tab, preserving the original chat, unsent text/attachments and current stream. The default application space is empty; no embedded kernel toolbar, Restart app/Kernel buttons or bottom version frame remains. Runtime restart/stop/status operations and direct /__saplingagent/kernel management remain available on their existing URLs. Kernel version stays0.9.6; this frontend change needs no backend restart, new service or dependency. Reload/HMR adopts the frontend; preserve conversations and configuration. Earlier embedded-control descriptions in this file are historical.
 
 
 ## Project browser tab title (TASK-20261027-002)
