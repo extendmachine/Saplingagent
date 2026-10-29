@@ -1,5 +1,12 @@
 # Saplingagent changelog
 
+## 0.9.8 maintenance — Codex account model selection (2026-10-29)
+
+- Add a per-conversation Codex account model picker and catalog refresh, retaining the native thread, saved history and composer draft on model-only changes.
+- Report the server-confirmed model separately from the requested model; disclose default substitutions and catalog failures, and reject unavailable explicit choices.
+- Preserve fixed API profiles and other engines. Deploy matching Agent, Workspace, frontend and kernel contract together; kernel-only upgrades do not replace custom chat code.
+- This is an update to the main/release branches at kernel0.9.8; existing public tags and GitHub Release assets remain unchanged.
+
 ## 0.9.8 — AI setup from Settings and restart port recovery (2026-10-28)
 
 - Add Settings → Configure AI, with an asynchronous per-project job, verified short-lived A / external B handoff, session reuse, English/Chinese progress/errors and a copyable address fallback. Preserve setup access checks; opening setup alone does not stop the app.
