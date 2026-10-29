@@ -33,6 +33,15 @@ previous engine's result with a new delivery. Native thread creation and model
 availability/history rendering remain Agent responsibilities. See CONTRACT.md and
 ai-tasks/TASK-20261023-005.md; no additional dependency or port is introduced.
 
+Codex sessions may select a model while providerId remains null. An idle change
+between Codex models preserves the native thread and existing handoff metadata,
+advances the binding revision, and clears stale context/model usage. Other engine
+changes continue to create a fresh native binding. The additive modelUsage field
+stores Agent-reported requested/actual models, evidence source, request ID and
+timestamp; unknown actual models remain null. Validation never infers provider
+capability or actual model identity. See CONTRACT.md and
+ai-tasks/TASK-20261029-005.md for guards, compatibility and verification.
+
 ## Daily record
 
 logs/workspace/workspace-YYYY-MM-DD.log, info/warn/error, field requestId/code; start and cross-day clean up the ordinary log 30 days ago, do not enter Git. The log does not record messages, preferences, request bodies or credentials.

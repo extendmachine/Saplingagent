@@ -66,7 +66,7 @@ async function harness({ language = 'en', savedId = null, route, engineCatalog =
       const request = { url, ...options, input: options.body ? JSON.parse(options.body) : undefined };
       requests.push(request);
       if (url === '/api/status') return json(runtimeStatus || { ready: true, authenticated: true, model: 'fixture-model' });
-      if (url === '/api/engines') return engineCatalog ? typeof engineCatalog === 'function' ? engineCatalog() : json(engineCatalog) : json({ defaultEngine: 'codex', engines: [{ id: 'codex', label: 'Codex', ready: true, authenticated: true, model: 'fixture-model' }] });
+      if (url === '/api/engines' || url === '/api/engines?refresh=codex') return engineCatalog ? typeof engineCatalog === 'function' ? engineCatalog(request) : json(engineCatalog) : json({ defaultEngine: 'codex', engines: [{ id: 'codex', label: 'Codex', ready: true, authenticated: true, model: 'fixture-model' }] });
       if (url === '/api/sessions') return list(request);
       const response = await route(request);
       if (!response) throw new Error(`Unhandled synthetic request: ${url}`);
@@ -531,4 +531,55 @@ test('language changes during streaming preserve the same session, messages and 
   h.setLanguage('zh');await h.settle();assert.equal(h.current.activity,'正在思考…');assert.equal(h.current.activeSessionId,'bilingual');assert.equal(h.current.isRunning,true);assert.equal(h.current.messages[0].text,'Keep this original English message');assert.equal(h.requests.length,count);
   emit({type:'text_delta',itemId:'bilingual-answer',delta:'Untranslated model response'});await h.settle();h.tick(100);await h.settle();assert.ok(h.current.messages.some(item=>item.text==='Untranslated model response'));
   h.setLanguage('en');await h.settle();assert.equal(h.current.activeSessionId,'bilingual');assert.equal(h.requests.filter(r=>r.url.startsWith('/api/events')).length,1);assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0);controller.close();
+});
+
+const codexCatalog = (models=['choice-a','choice-b'],extra={}) => ({defaultSelection:{engine:'codex',providerId:null,modelId:null},engines:[{id:'codex',label:'Codex',ready:true,authenticated:true,model:'choice-a',defaultModelId:'choice-a',requestedModel:'old-preference',modelSelection:'account',models:models.map(id=>({id,label:id})),...extra}]});
+
+test('Codex explicit account model change preserves the logical conversation/history and sends the chosen revision only on explicit input',async t=>{
+ const observed={requestedModel:'choice-a',actualModel:'routed-prior',requestId:'old-request',updatedAt:'2026-10-29T00:00:00Z',source:'thread/start'};
+ let saved={...session('same',[message('old-request','Keep this history')]),engine:'codex',modelId:'choice-a',modelUsage:observed};
+ const h=await harness({savedId:'same',engineCatalog:codexCatalog(),route:r=>{
+  if(r.url.endsWith('/engine'))saved={...saved,...r.input,engineRevision:1,modelUsage:null};
+  if(r.url==='/api/chat'){saved={...saved,messages:[...saved.messages,message(r.input.requestId,r.input.text)],modelUsage:{...observed,requestedModel:r.input.modelId,actualModel:'server-chosen',source:'model/rerouted',requestId:r.input.requestId}};return new Response([{type:'snapshot',session:saved},{type:'done',status:'completed'}].map(e=>`data: ${JSON.stringify(e)}\n\n`).join(''),{headers:{'X-Session-Id':'same'}})}
+  return json({session:saved});
+ }});t.after(()=>h.close());assert.equal(h.current.modelUsage.actualModel,'routed-prior');
+ assert.equal(await h.current.changeEngine({engine:'codex',providerId:null,modelId:'choice-b'}),true);await h.settle();assert.equal(h.current.modelUsage,null);assert.equal(h.current.messages[0].text,'Keep this history');assert.equal(h.current.activeSessionId,'same');assert.equal(h.current.selection.modelId,'choice-b');assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0);
+ await h.send('next explicit input');const post=h.requests.find(r=>r.url==='/api/chat').input;assert.equal(post.modelId,'choice-b');assert.equal(post.engineRevision,1);assert.equal(post.sessionId,'same');assert.equal(h.current.modelUsage.actualModel,'server-chosen');assert.equal(h.current.modelUsage.requestedModel,'choice-b');
+ h.current.startNew();await h.settle();assert.equal(h.current.modelUsage,null);
+});
+
+test('out-of-order Codex catalog refresh cannot overwrite a newer catalog or explicitly chosen model',async t=>{
+ const older=deferred(),fresh=deferred();let reads=0;
+ const h=await harness({engineCatalog:()=>++reads===1?json(codexCatalog()):reads===2?older.promise:fresh.promise,route:()=>undefined});t.after(()=>h.close());
+ h.current.setSelection({engine:'codex',providerId:null,modelId:'choice-b'});await h.settle();const old=h.current.refreshEngines(),next=h.current.refreshEngines(undefined,true);await h.settle();assert.equal(h.current.enginesLoading,true);
+ fresh.resolve(json(codexCatalog(['choice-b','choice-c'])));await next;await h.settle();older.resolve(json(codexCatalog(['choice-a'])));await old;await h.settle();assert.deepEqual([...h.current.engines[0].models].map(x=>x.id),['choice-b','choice-c']);assert.equal(h.current.selection.modelId,'choice-b');assert.equal(h.current.enginesLoading,false);assert.equal(h.requests.at(-1).url,'/api/engines?refresh=codex');
+});
+
+test('catalog failures retain cached choices but block unverifiable explicit sends until successful refresh',async t=>{
+ let response=()=>json(codexCatalog());const h=await harness({engineCatalog:()=>response(),route:()=>undefined});t.after(()=>h.close());h.current.setSelection({engine:'codex',providerId:null,modelId:'choice-b'});await h.settle();assert.equal(h.current.engineReady,true);
+ response=()=>json({error:{code:'CATALOG_OFFLINE',message:'fixture unavailable'}},503);await h.current.refreshEngines(undefined,true);await h.settle();assert.equal(h.current.engines[0].models.length,2);assert.equal(h.current.selection.modelId,'choice-b');assert.equal(h.current.engineReady,false);assert.equal(h.current.enginesError.code,'CATALOG_OFFLINE');
+ response=()=>json(codexCatalog(['choice-a'],{modelCatalogError:null}));await h.current.refreshEngines(undefined,true);await h.settle();assert.equal(h.current.enginesError,'');assert.equal(h.current.selection.modelId,'choice-b');assert.equal(h.current.engineReady,false);
+ response=()=>json(codexCatalog(['choice-b'],{modelCatalogError:'RPC list failed'}));await h.current.refreshEngines(undefined,true);await h.settle();assert.equal(h.current.engineReady,false);
+ response=()=>json(codexCatalog(['choice-b']));await h.current.refreshEngines(undefined,true);await h.settle();assert.equal(h.current.engineReady,true);assert.equal(h.current.selection.modelId,'choice-b');assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0);
+});
+
+test('new conversation preserves an explicit Codex choice through catalog reload and first send',async t=>{
+ let saved;const h=await harness({engineCatalog:codexCatalog(),route:r=>{if(r.url==='/api/chat'){saved={...session('new',[message(r.input.requestId,r.input.text)]),engine:'codex',modelId:r.input.modelId};return new Response([{type:'session',sessionId:'new'},{type:'snapshot',session:saved},{type:'done',status:'completed'}].map(e=>`data: ${JSON.stringify(e)}\n\n`).join(''),{headers:{'X-Session-Id':'new'}})}return json({session:saved})}});t.after(()=>h.close());h.current.setSelection({engine:'codex',providerId:null,modelId:'choice-b'});await h.settle();await h.current.refreshEngines(undefined,true);await h.settle();await h.send();assert.equal(h.requests.find(r=>r.url==='/api/chat').input.modelId,'choice-b');assert.equal(h.current.selection.modelId,'choice-b');assert.equal(h.current.modelUsage,null);
+});
+
+test('automatic account selection is blocked by an empty or failed catalog while legacy and fixed API defaults remain valid',async t=>{
+ let response=codexCatalog([]);const h=await harness({engineCatalog:()=>json(response),route:()=>undefined});t.after(()=>h.close());assert.equal(h.current.selection.modelId,null);assert.equal(h.current.engineReady,false);
+ response=codexCatalog(['choice-a'],{modelCatalogError:'catalog refresh failed'});await h.current.refreshEngines(undefined,true);await h.settle();assert.equal(h.current.engineReady,false);
+ response=codexCatalog(['choice-a']);await h.current.refreshEngines(undefined,true);await h.settle();assert.equal(h.current.engineReady,true);
+ response=codexCatalog([],{modelSelection:'api',model:'fixed-model',defaultModelId:'fixed-model'});await h.current.refreshEngines();await h.settle();assert.equal(h.current.engineReady,true);
+ const legacy=await harness({route:()=>undefined});t.after(()=>legacy.close());assert.equal(legacy.current.engineReady,true);
+});
+
+test('restoring a model-only Codex change never retries an old binding without a handoff',async t=>{
+ const failed=[message('old-request','Keep old task'),{...message('old-failure','Previous failure','assistant'),status:'failed'}];
+ let saved={...session('changed',failed),engine:'codex',modelId:'choice-b',engineRevision:1,handoff:null,requests:[{id:'old-request',status:'failed',engineRevision:0}]};
+ const h=await harness({savedId:'changed',engineCatalog:codexCatalog(),route:()=>json({session:saved})});t.after(()=>h.close());assert.equal(h.current.retryable,false);await h.current.retry();assert.equal(h.requests.filter(r=>r.url==='/api/chat').length,0);assert.equal(h.current.messages[0].text,'Keep old task');
+ // A later failed request actually recorded on the new binding remains retryable.
+ saved={...saved,messages:[...failed,message('new-request','New task'),{...message('new-failure','New failure','assistant'),status:'failed'}],requests:[...saved.requests,{id:'new-request',engineRevision:1,status:'failed'}]};
+ const current=await harness({savedId:'changed',engineCatalog:codexCatalog(),route:r=>r.url==='/api/chat'?json({error:{message:'fixture failed'}},503):json({session:saved})});t.after(()=>current.close());assert.equal(current.current.retryable,true);await current.current.retry();assert.equal(current.requests.find(r=>r.url==='/api/chat').input.requestId,'new-request');assert.equal(current.requests.find(r=>r.url==='/api/chat').input.engineRevision,1);
 });

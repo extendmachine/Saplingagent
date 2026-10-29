@@ -11,6 +11,7 @@ import { catalog } from '../localization/catalog.ts';
 import * as messages from '../localization/messages.ts';
 import * as shared from '../../kernel/localization/public.mjs';
 import { contextUsageView } from '../features/context-usage/context-usage.ts';
+import { codexModelSelectable } from './runtime-api.ts';
 const json = (body,status=200)=>new Response(JSON.stringify(body),{status});
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done});return{promise,resolve}};
 const turn=()=>new Promise(resolve=>setImmediate(resolve));
@@ -61,7 +62,7 @@ async function loadComponent(file,language='zh',extra={}){
  const context=vm.createContext({console,Error,Intl,Date,URL,Map,Set,Promise,AbortSignal});
  const jsx=(type,props)=>React.createElement(type,props);
  const primitive=new Proxy({}, {get:(_,name)=>({children,...props})=>React.createElement(name==='AddAttachment'||name==='Remove'?'button':'div',props,children)});
- const mocks={react:React,'react/jsx-runtime':jsxRuntime,'lucide-react':new Proxy({}, {get:()=>()=>null}),...extra};
+ const mocks={react:React,'react/jsx-runtime':jsxRuntime,'./runtime-api':{codexModelSelectable},'lucide-react':new Proxy({}, {get:()=>()=>null}),...extra};
  const cache=new Map();
  const synthetic=value=>new vm.SyntheticModule(Object.keys(value),function(){for(const[key,item]of Object.entries(value))this.setExport(key,item)},{context});
  async function load(url){const key=url.href;if(cache.has(key))return cache.get(key);const source=await readFile(url,'utf8');const mod=new vm.SourceTextModule(transformSync(url.pathname,source,{jsx:{runtime:'automatic'}}).code,{context,identifier:key});cache.set(key,mod);await mod.link(async spec=>{

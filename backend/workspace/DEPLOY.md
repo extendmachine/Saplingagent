@@ -41,3 +41,20 @@ migration, background cleanup or automatic rollback. After an authorized restart
 check that a single session survives a switch and refresh with its original title
 and messages. Real provider delivery and Windows native operation need their own
 acceptance; the service suite uses isolated synthetic local data and HTTP servers.
+
+## Codex model selection and model evidence (2026-10-29)
+
+Deploy the matching Agent/client model-selection changes with this Workspace
+extension. No package, port, credential or bulk migration change is required.
+Legacy reads leave absent modelUsage untouched; explicit edits atomically save
+model choices and evidence to the existing local session file. A Codex model-only
+change keeps its native thread; normal cross-engine changes still create a fresh
+one. Request/binding guards reject stale usage snapshots after either operation.
+
+Back up data/workspace and data/attachments before reverting application writers.
+Older writers do not understand nonnull Codex model selections in archived engine
+history and may reject those sessions. Do not run old and new writers together,
+silently remove history or replace customer data during source rollback. A full
+compatible writer or deliberate data recovery is required; source rollback is
+not conversation rollback. Service tests are synthetic and do not prove model
+entitlement, native provider behavior or Windows acceptance.

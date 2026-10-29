@@ -122,3 +122,19 @@ The default main page shows a compact brand/language header and an English/Chine
 ## Project browser tab title (TASK-20261027-002)
 
 The application tab displays the configured project folder name from read-only GET /api/runtime/status.projectFolderName, not the native app display name. An older runtime falls back to the basename of applicationRoot (macOS/Windows paths); unavailable metadata retains the localized Saplingagent title. The name is plain text, remains unchanged when switching English/Chinese and is not stored in browser storage. Read once on mount and refresh on window focus with cancellation and a five-second deadline; temporary failures keep the last known name. No chat remount, model request, configuration write or new dependency/service. Frontend source/build deployment is required; kernel-only upgrades do not replace application UI. A cold controller restart enables the new explicit field.
+
+## Codex account model controls (TASK-20261029-006)
+
+EngineControls now renders the server's account model catalog without provider
+selection or hardcoded model IDs. Refresh reads the paginated catalog through
+Agent; loading, stale, empty, failed and missing-choice states preserve the
+current conversation and composer. Existing conversations stage a model and Apply;
+new conversations retain an explicit choice through their first send. A fixed
+Codex API scheme shows its configured model, with no unrelated account picker.
+
+The compact model summary separates the chosen/default model from the most recent
+server-confirmed model in Session.modelUsage. Prior confirmed usage can retain its
+original request ID/time across turns; absent evidence stays unreported. The global
+status.model is never presented as the actual model of the selected conversation.
+The model-directory entitlement caveat is available on the picker title. No new
+service, dependency, credential access or model request is introduced by selection.

@@ -12,10 +12,10 @@ export const selections = {
   opencode: { engine: 'opencode', providerId: 'sapling-opencode', modelId: 'synthetic-model' },
 };
 export async function until(check) { for (let i = 0; i < 500; i++) { if (await check()) return; await new Promise(r => setTimeout(r, 10)); } throw Error('Synthetic condition did not finish'); }
-export async function handoffFixture() {
+export async function handoffFixture(options = {}) {
   const cache = fileURLToPath(new URL('../../../.cache/session-handoff/', import.meta.url));
   await fs.mkdir(cache, { recursive: true });
-  const root = await fs.mkdtemp(path.join(cache, 'app-')), prompts = [], providers = new Map(), channels = [];
+  const root = await fs.mkdtemp(path.join(cache, 'app-')), prompts = [], providers = new Map(), channels = [], codexCalls = [];
   const token = 'synthetic-handoff-test-token'; let rpc, nextThread = 0, nextTurn = 0, autoComplete = true, ready = true, catalogGate, writeFault = '', rejectReads = false;
   const gates = [];
   const finish = (entry, status = 'completed') => {
@@ -31,15 +31,17 @@ export async function handoffFixture() {
   class FakeCodex extends EventEmitter {
     constructor() { super(); rpc = this; this.closed = false; }
     async call(method, p = {}) {
-      if (method === 'initialize') return {};
+      codexCalls.push({ method, params: structuredClone(p) });
+      if (method === 'initialize') return options.codexInitialize ? options.codexInitialize() : {};
       if (method === 'account/read') return { account: { type: 'synthetic' } };
-      if (method === 'model/list') return { data: [{ model: 'synthetic-model', isDefault: true, supportedReasoningEfforts: [{ reasoningEffort: 'medium' }], defaultReasoningEffort: 'medium' }] };
+      if (method === 'model/list') return options.codexCatalog ? options.codexCatalog(p) : { data: [{ model: 'synthetic-model', isDefault: true, supportedReasoningEfforts: [{ reasoningEffort: 'medium' }], defaultReasoningEffort: 'medium' }] };
       if (method === 'skills/list') return { data: [] };
       if (method === 'mcpServerStatus/list') return { data: [{ name: 'seedagent', tools: { synthetic: {} } }] };
-      if (method === 'thread/start') return { thread: { id: `codex-${++nextThread}` }, sandbox: { type: 'dangerFullAccess' }, approvalPolicy: 'never' };
-      if (method === 'thread/resume') return {};
+      if (method === 'thread/start') return { thread: { id: `codex-${++nextThread}` }, sandbox: { type: 'dangerFullAccess' }, approvalPolicy: 'never', ...(options.codexReport ? { model: options.codexReport(p.model, method) } : {}) };
+      if (method === 'thread/resume') return options.codexReport ? { model: options.codexReport(p.model, method) } : {};
       if (method === 'turn/start') {
-        const entry = { engine: 'codex', requestId: p.clientUserMessageId, text: p.input[0].text, threadId: p.threadId, turnId: `turn-${++nextTurn}` };
+        const entry = { engine: 'codex', requestId: p.clientUserMessageId, text: p.input[0].text, threadId: p.threadId, turnId: `turn-${++nextTurn}`, model: p.model, effort: p.effort };
+        await options.beforeTurnAck?.(entry, this);
         prompts.push(entry); if (autoComplete) setTimeout(() => finish(entry), 5);
         return { turn: { id: entry.turnId } };
       }
@@ -65,7 +67,9 @@ export async function handoffFixture() {
   };
   for (const dir of ['config', 'local-secrets/runtime', 'local-secrets/ai-config']) await fs.mkdir(path.join(root, dir), { recursive: true });
   await fs.writeFile(path.join(root, 'local-secrets/runtime/service-token'), token);
-  await fs.writeFile(path.join(root, 'local-secrets/ai-config/connections.json'), JSON.stringify({ schemaVersion: 1, revision: 0, activeId: null, profiles: ['claude', 'opencode'].map(engine => ({ id: engine, label: engine, engine, kind: 'api', protocol: engine === 'claude' ? 'anthropic' : 'chat', model: 'synthetic-model', baseUrl: 'http://127.0.0.1:1/v1', noAuth: true, contextWindow: 128000, maxOutput: 1000 })) }));
+  const profiles = ['claude', 'opencode'].map(engine => ({ id: engine, label: engine, engine, kind: 'api', protocol: engine === 'claude' ? 'anthropic' : 'chat', model: 'synthetic-model', baseUrl: 'http://127.0.0.1:1/v1', noAuth: true, contextWindow: 128000, maxOutput: 1000 }));
+  if (options.apiModel) profiles.push({ ...profiles[0], engine: 'codex', id: 'codex-api', protocol: 'responses', model: options.apiModel });
+  await fs.writeFile(path.join(root, 'local-secrets/ai-config/connections.json'), JSON.stringify({ schemaVersion: 1, revision: 0, activeId: options.apiModel ? 'codex-api' : null, profiles }));
   const workspace = await createWorkspaceServer({ root, token });
   await new Promise(resolve => workspace.listen(0, '127.0.0.1', resolve));
   const proxy = http.createServer(async (req, res) => {
@@ -79,13 +83,15 @@ export async function handoffFixture() {
     res.writeHead(response.status, { 'Content-Type': 'application/json' }); res.end(result);
   });
   await new Promise(resolve => proxy.listen(0, '127.0.0.1', resolve));
-  await fs.writeFile(path.join(root, 'config/runtime.json'), JSON.stringify({ workspacePort: proxy.address().port, frontPort: 6120, agentPort: 4310, builderPort: 4312, reasoningEffort: 'medium' }));
+  await fs.writeFile(path.join(root, 'config/runtime.json'), JSON.stringify({ workspacePort: proxy.address().port, frontPort: 6120, agentPort: 4310, builderPort: 4312, reasoningEffort: 'medium', preferredModel: options.preferredModel }));
   const server = await createAgentServer({ root, AppServerClass: FakeCodex, OpenCodeProviderClass: providerClass('opencode'), ClaudeProviderClass: providerClass('claude') });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); await server.startAgent();
   const base = `http://127.0.0.1:${server.address().port}`;
   const request = (route, data, method = data === undefined ? 'GET' : 'POST') => fetch(base + route, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: data === undefined ? undefined : JSON.stringify(data) });
   return {
-    root, base, token, server, workspace, prompts, request, finish,
+    root, base, token, server, workspace, prompts, request, finish, codexCalls,
+    notify(message) { rpc.emit('notification', message); },
+    disconnectCodex() { rpc.closed = true; rpc.emit('disconnect', Error('Synthetic disconnect')); },
     set autoComplete(value) { autoComplete = value; }, set ready(value) { ready = value; },
     set writeFault(value) { writeFault = value; if (!value) rejectReads = false; },
     delayCatalog() { let release; const gate = { entered: false, promise: new Promise(r => { release = r; }), release: () => release() }; gates.push(gate); catalogGate = gate; return gate; },

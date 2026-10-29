@@ -184,6 +184,8 @@ Scheme metadata stays in `local-secrets/ai-config/connections.json`, API keys in
 
 Startup uses the saved default scheme. **An OpenCode-only or custom Codex API scheme does not require ChatGPT login.** After reconfiguration, restart to load available schemes. In an idle conversation, choose the desired AI/provider/model and Apply: its messages and draft stay in the same conversation, and the next Send hands history to the new AI. Native sessions remain engine-specific. See [AI configuration guide](docs/ai-configuration.html) and [configuration service contract](kernel/services/ai-config/CONTRACT.md).
 
+**Codex account models:** choose a model in the chat panel and use **Refresh models** to reload the App Server catalog. In an existing idle conversation, click **Apply**; its history, native Codex thread and draft remain. The separate server-confirmed model label shows the most recent reported model, or unknown before a report. An unavailable explicit choice is not silently replaced. Custom Codex API schemes keep their configured model. See [model switching and deployment](docs/conversation-handoff.html).
+
 Startup opens the **actual address printed in the terminal** after local readiness checks. Port5173 is the default starting point; occupied public/internal ports are skipped upward. Send a message to verify an actual response. Installation and saved login do not prove model access or available quota.
 
 ### Command-line actions

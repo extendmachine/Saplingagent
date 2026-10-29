@@ -20,6 +20,7 @@ import { checkoutGitVersion, commitGitVersion, GitVersionError, nameGitVersion, 
 import { ClaudeProvider } from '../../kernel/engines/providers/claude.mjs';
 import { OpenCodeProvider } from '../../kernel/engines/providers/opencode.mjs';
 import { assertSessionSelection, validateEngineSelection } from '../../kernel/engines/providers/contract.mjs';
+import { readCodexModels, defaultCodexModel, selectCodexModel, reportedModel } from '../../kernel/engines/codex-models.mjs';
 
 const defaultRoot = fileURLToPath(new URL('../../', import.meta.url));
 const safeError = error => String(error?.message || 'Agent operation failed').replace(/Bearer\s+\S+|(?:sk-|eyJ)[\w.\-]{12,}/g, '[redacted]').slice(0, 800);
@@ -40,7 +41,8 @@ const contextUsage = tokenUsage => {
   if (!Number.isSafeInteger(usedTokens) || usedTokens < 0 || !Number.isSafeInteger(contextWindow) || contextWindow < 1) return undefined;
   return { usedTokens, contextWindow, updatedAt: new Date().toISOString() };
 };
-const usagePatch = session => session.contextUsage === undefined ? {} : { contextUsage: structuredClone(session.contextUsage) };
+const usagePatch = session => Object.fromEntries(['contextUsage', 'modelUsage'].filter(key => session[key] !== undefined).map(key => [key, structuredClone(session[key])]));
+const modelCatalogFailure = 'Unable to refresh the Codex model catalog. Check the connection and refresh models before choosing or sending.';
 
 export async function createAgentServer({ root = process.env.SEED_ROOT || defaultRoot, AppServerClass = AppServer, OpenCodeProviderClass = OpenCodeProvider, ClaudeProviderClass = ClaudeProvider, progressClock } = {}) {
   root = await fs.realpath(root);
@@ -92,9 +94,13 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   let status = { ready: false, authenticated: false, provider: 'Codex App Server', model: '', skills: [], mcp: { ready: false, tools: [] }, permissions };
   let openCodeStatus = { id: 'opencode', label: 'OpenCode', ready: false, authenticated: false, providers: [], error: null };
   let claudeStatus = { id: 'claude', label: 'Claude Agent', ready: false, authenticated: false, providers: [], error: null };
-  const active = new Map(), threads = new Map(), resumed = new Set(), subscribers = new Map(), approvals = new Map(), requestSessions = new Map(), dirtySessions = new Map(), titleWrites = new Map(), switchingSessions = new Set();
+  const active = new Map(), threads = new Map(), resumed = new Map(), subscribers = new Map(), approvals = new Map(), requestSessions = new Map(), dirtySessions = new Map(), titleWrites = new Map(), switchingSessions = new Set();
+  const codexProfile = connections.profiles.find(profile => profile.id === connections.activeId && profile.engine === 'codex');
+  const apiModel = codexProfile?.kind === 'api' ? codexProfile.model : null;
+  let codexModels = [], modelCatalogLoading;
+  const modelState = { modelSelection: apiModel ? 'api' : 'account', requestedModel: apiModel || config.preferredModel || null, defaultModelId: apiModel, modelWarning: null, modelCatalogError: null };
   const currentRun = run => !run.finished && run.session && active.get(run.session.id) === run;
-  let effort = config.reasoningEffort;
+  const taskModel = run => run.codexChoice?.model || run.session.modelId || status.model;
   const publicSession = session => {
     const run = active.get(session.id);
     return { ...session, ...(run && !run.finished && run.progress ? { progress: run.progress.snapshot() } : {}), pendingApprovals: [...approvals.values()].filter(a => a.sessionId === session.id).map(a => a.event) };
@@ -124,6 +130,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           if ((saved.engineRevision || 0) === snapshot.expectedEngineRevision && !saved.running && saved.activeRequestId === null && saved.threadId === snapshot.threadId &&
               isDeepStrictEqual(saved.requests, snapshot.requests) && isDeepStrictEqual(storedMessages(saved.messages), storedMessages(snapshot.messages)) &&
               (!Object.hasOwn(snapshot, 'contextUsage') || isDeepStrictEqual(saved.contextUsage, snapshot.contextUsage)) &&
+              (!Object.hasOwn(snapshot, 'modelUsage') || isDeepStrictEqual(saved.modelUsage, snapshot.modelUsage)) &&
               (!snapshot.handoffDeliveredRequestId || saved.handoff?.status === 'delivered' && saved.handoff.deliveredRequestId === snapshot.handoffDeliveredRequestId)) return value;
         } catch {}
       }
@@ -137,6 +144,14 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     return run.saving;
   }
   function scheduleSave(run) { if (run.saveTimer || run.finished) return; run.saveTimer = setTimeout(() => { run.saveTimer = null; save(run).catch(() => abortRun(run, new Error('Unable to save the session. Check local storage'))); }, 1000); }
+  function reportModel(run, actualModel, source) {
+    // Keep the last authoritative report with its original request ID when the
+    // same requested model continues without new native evidence.
+    if (!reportedModel(actualModel) && run.session.modelUsage?.actualModel && run.session.modelUsage.requestedModel === run.codexChoice.model) return;
+    run.session.modelUsage = { requestedModel: run.codexChoice.model, actualModel: reportedModel(actualModel), requestId: run.requestId, updatedAt: new Date().toISOString(), source: reportedModel(actualModel) ? source : 'unreported' };
+    broadcast(run.session.id, { type: 'snapshot', session: publicSession(run.session) });
+    scheduleSave(run);
+  }
   function finish(run, result, error) {
     if (run.finishing) return run.finishing;
     if (run.finished) return Promise.resolve();
@@ -150,7 +165,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     if (request) { request.status = result; request.completedAt = new Date().toISOString(); if (error) request.error = safeError(error); }
     for (const message of run.session.messages) if (message.requestId === run.requestId && message.role === 'assistant') message.status = result;
     for (const [id, approval] of approvals) if (approval.sessionId === run.session.id) approvals.delete(id);
-    try { if (run.taskRegistered) await registerTask({ requestId: run.requestId, sessionId: run.session.id, model: run.session.modelId || status.model, status: result }); }
+    try { if (run.taskRegistered) await registerTask({ requestId: run.requestId, sessionId: run.session.id, model: taskModel(run), status: result }); }
     catch {
       broadcast(run.session.id, { type: 'status', label: 'Runtime task record could not be updated; execution results are retained' });
       await log('task_registration_warning', { requestId: run.requestId }).catch(() => {});
@@ -189,6 +204,9 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     if (turnId !== run.turnId) return;
     if (!run.cancelRequested) run.progress?.notification(message.method, p);
     if (message.method === 'turn/started') { if (run.cancelRequested) await interrupt(run); }
+    else if (message.method === 'model/rerouted') {
+      if (reportedModel(p.toModel)) reportModel(run, p.toModel, 'model/rerouted');
+    }
     else if (message.method === 'thread/tokenUsage/updated') {
       const usage = contextUsage(p.tokenUsage);
       if (usage === undefined) return;
@@ -317,13 +335,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       await rpc.call('initialize', { clientInfo: { name: 'seedagent', title: 'Saplingagent', version: '0.1.0' }, capabilities: { experimentalApi: true } });
       rpc.send({ method: 'initialized', params: {} });
       const account = await rpc.call('account/read', { refreshToken: false }); status.authenticated = !!account.account || account.requiresOpenaiAuth === false;
-      const models = await rpc.call('model/list', { limit: 50, includeHidden: false });
-      const requestedModel = connection.profile?.kind === 'api' ? connection.profile.model : config.preferredModel;
-      const selected = models.data.find(m => m.model === requestedModel) || models.data.find(m => m.isDefault) || models.data[0];
-      if (!selected && connection.profile?.kind !== 'api') throw new Error('No available model');
-      status.model = connection.profile?.kind === 'api' ? connection.profile.model : selected.model;
-      if(connection.profile?.kind === 'api' && !models.data.some(m=>m.model===status.model))effort=null;
-      else if (!selected.supportedReasoningEfforts.some(e => e.reasoningEffort === effort)) effort = selected.defaultReasoningEffort;
+      await refreshCodexModels();
       const initialThread = await rpc.call('thread/start', { cwd: root, model: status.model, ...threadPermissions, developerInstructions: instructions, ephemeral: true });
       if (initialThread.sandbox?.type !== 'dangerFullAccess' || initialThread.approvalPolicy !== 'never') throw new Error('Codex did not enable the requested Full Access permissions. Check runtime configuration');
       await catalog();
@@ -333,6 +345,29 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       await log('agent_ready', { model: status.model, authenticated: status.authenticated, tools: status.mcp.tools.length, sandbox: initialThread.sandbox.type, approvalPolicy: initialThread.approvalPolicy });
     })().catch(error => { status.ready = false; status.error = safeError(error); if (rpc && !rpc.closed) rpc.close(); throw error; }).finally(() => { startup = null; });
     return startup;
+  }
+  async function refreshCodexModels() {
+    if (apiModel) { status.model = apiModel; return; }
+    if (modelCatalogLoading) return modelCatalogLoading;
+    const connection = rpc;
+    modelCatalogLoading = (async () => {
+      try {
+        if (!connection || connection.closed) throw new Error('Not connected');
+        const models = await readCodexModels(connection);
+        if (rpc !== connection || connection.closed) throw new Error('Connection changed');
+        const resolved = defaultCodexModel(models, config.preferredModel);
+        codexModels = models; status.model = resolved.model;
+        Object.assign(modelState, { defaultModelId: resolved.model, modelWarning: resolved.warning, modelCatalogError: null });
+      } catch {
+        modelState.modelCatalogError = modelCatalogFailure;
+        throw new ApiError('MODEL_CATALOG_UNAVAILABLE', modelState.modelCatalogError, 503);
+      }
+    })().finally(() => { modelCatalogLoading = null; });
+    return modelCatalogLoading;
+  }
+  function codexChoice(selection) {
+    if (!apiModel && modelState.modelCatalogError) throw new ApiError('MODEL_CATALOG_UNAVAILABLE', modelState.modelCatalogError, 503);
+    return selectCodexModel({ models: codexModels, defaultModelId: modelState.defaultModelId, modelId: selection.modelId ?? null, apiModel, reasoningEffort: config.reasoningEffort });
   }
   function runtimeStatus() {
     if (configuredSelection.engine === 'codex') return {...status,ready:status.ready&&!startup&&!drain.prepared};
@@ -403,16 +438,18 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       if (!currentRun(run)) return;
       if (closing || run.cancelRequested) { await finishStopped(); return; }
       if (!status.ready) throw new Error(status.error || 'Agent is not ready');
+      const { model, effort } = run.codexChoice;
+      reportModel(run, null, 'unreported');
       if (!run.session.threadId) {
-        const result = await rpc.call('thread/start', { cwd: root, model: status.model, ...threadPermissions, developerInstructions: instructions });
+        const result = await rpc.call('thread/start', { cwd: root, model, ...(effort ? { config: { model_reasoning_effort: effort } } : {}), ...threadPermissions, developerInstructions: instructions });
         if (!currentRun(run)) return;
         if (closing || run.cancelRequested) { await finishStopped(); return; }
-        run.session.threadId = result.thread.id; resumed.add(result.thread.id); await save(run);
-      } else if (!resumed.has(run.session.threadId)) {
-        await rpc.call('thread/resume', { threadId: run.session.threadId, cwd: root, model: status.model, ...threadPermissions, developerInstructions: instructions });
+        run.session.threadId = result.thread.id; resumed.set(result.thread.id, model); reportModel(run, result.model, 'thread/start'); await save(run);
+      } else if (resumed.get(run.session.threadId) !== model) {
+        const result = await rpc.call('thread/resume', { threadId: run.session.threadId, cwd: root, model, ...(effort ? { config: { model_reasoning_effort: effort } } : {}), ...threadPermissions, developerInstructions: instructions });
         if (!currentRun(run)) return;
         if (closing || run.cancelRequested) { await finishStopped(); return; }
-        resumed.add(run.session.threadId);
+        resumed.set(run.session.threadId, model); reportModel(run, result.model, 'thread/resume');
       }
       if (!currentRun(run)) return;
       if (closing || run.cancelRequested) { await finishStopped(); return; }
@@ -428,7 +465,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       run.turnReady = new Promise(resolve => { turnReady = resolve; });
       try {
         const input = [{ type: 'text', text: text + context, text_elements: [] }, ...(run.attachments || []).filter(value => value.kind === 'image').map(value => ({ type: 'localImage', path: path.resolve(root, value.path) }))];
-        const result = await rpc.call('turn/start', { threadId: run.session.threadId, input, clientUserMessageId: run.requestId, model: status.model, effort, summary: 'auto' });
+        const result = await rpc.call('turn/start', { threadId: run.session.threadId, input, clientUserMessageId: run.requestId, model, effort, summary: 'auto' });
         run.turnId = result.turn.id;
       } finally { turnReady(); }
       if (!currentRun(run)) return;
@@ -485,7 +522,8 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     if (selection.engine === 'codex') {
       if ((!rpc || rpc.closed) && (configuredSelection.engine === 'codex' || canStartOptionalCodex)) await startCodex();
       if (!status.ready || !status.authenticated || startup) throw new ApiError('AGENT_NOT_READY', status.error || 'Codex is not ready. Check AI configuration.', 503);
-      return;
+      await refreshCodexModels();
+      return codexChoice(selection);
     }
     const catalog = selection.engine === 'claude' ? await startClaude() : await startOpenCode();
     if (!catalog.ready || !catalog.authenticated) throw new ApiError('AGENT_NOT_READY', catalog.error || 'The selected AI is not ready. Check AI configuration.', 503);
@@ -545,9 +583,9 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         if (candidates.length !== 1) throw new ApiError('TASK_CONTEXT_UNAVAILABLE', 'Runtime record ownership cannot be uniquely identified; the tool returns execution results', 409);
         const run = candidates[0];
         if (!run.taskRegistered) {
-          run.registering ||= registerTask({ requestId: run.requestId, sessionId: run.session.id, model: status.model, status: 'inProgress' }).then(async taskId => {
+          run.registering ||= registerTask({ requestId: run.requestId, sessionId: run.session.id, model: taskModel(run), status: 'inProgress' }).then(async taskId => {
             run.taskRegistered = true;
-            if (run.finished) await registerTask({ requestId: run.requestId, sessionId: run.session.id, model: status.model, status: run.session.requests.find(r => r.id === run.requestId)?.status || 'interrupted' });
+            if (run.finished) await registerTask({ requestId: run.requestId, sessionId: run.session.id, model: taskModel(run), status: run.session.requests.find(r => r.id === run.requestId)?.status || 'interrupted' });
             return taskId;
           }).catch(error => { run.registering = null; throw error; });
           await run.registering;
@@ -561,7 +599,14 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         if (!openCode.ready && !openCodeStartup) await startOpenCode();
         if (connections.profiles.some(p=>p.engine==='claude') && !claude.ready && !claudeStartup) await startClaude();
         if(canStartOptionalCodex && !rpc && !startup)startCodex().catch(()=>{});
-        const codex = { id: 'codex', label: 'Codex', ready: status.ready && !startup, authenticated: status.authenticated, model: status.model, error: status.error || null };
+        if (url.searchParams.get('refresh') === 'codex') {
+          try {
+            if (startup) await startup;
+            else if ((!rpc || rpc.closed) && !drain.prepared && (configuredSelection.engine === 'codex' || canStartOptionalCodex)) await startCodex();
+            await refreshCodexModels();
+          } catch { if (!apiModel) modelState.modelCatalogError = modelCatalogFailure; }
+        }
+        const codex = { id: 'codex', label: 'Codex', ready: status.ready && !startup, authenticated: status.authenticated, model: status.model, ...modelState, models: codexModels, error: status.error || null };
         return send(res, 200, { defaultEngine: configuredSelection.engine, defaultSelection: configuredSelection, engines: [codex, openCodeStatus, claudeStatus] });
       }
       if (req.method === 'GET' && url.pathname === '/api/git') return send(res, 200, { git: await readGitVersion(root, { limit: url.searchParams.has('limit') ? Number(url.searchParams.get('limit')) : 25 }) });
@@ -602,6 +647,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           const same = (session.engine || 'codex') === selection.engine && (session.providerId || null) === selection.providerId && (session.modelId || null) === selection.modelId;
           if (!same) await validateAvailableSelection(selection);
           const result = await ws(`/sessions/${engineSessionId}/engine`, 'POST', { ...selection, expectedEngineRevision: input.expectedEngineRevision, expectedRevision: session.revision });
+          if (!same && (session.engine || 'codex') === 'codex' && selection.engine === 'codex' && session.threadId) resumed.delete(session.threadId);
           return send(res, 200, { session: publicSession(result.session) });
         } finally { switchingSessions.delete(engineSessionId); }
       }
@@ -672,6 +718,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
                 const { session } = await ws(`/sessions/${summary.id}`);
                 if (session.messages.some(m => m.id === requestId || m.requestId === requestId)) return session.id;
               }
+              if (requestedSelection?.engine === 'codex') await validateAvailableSelection(requestedSelection);
               return (await ws('/sessions', 'POST', { title: (input.text.trim() || resolvedAttachments[0]?.name || 'Attachments').slice(0, 60), ...requestedSelection })).session.id;
             })());
             if (requestSessions.size > 1000) requestSessions.delete(requestSessions.keys().next().value);
@@ -706,6 +753,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           const priorUser = run.session.messages.find(m => m.id === requestId);
           if ((prior || priorUser) && (prior?.engineRevision || 0) !== (run.session.engineRevision || 0)) throw new ApiError('SESSION_ENGINE_CHANGED', 'This request belongs to a previous AI. Send a new message to continue the conversation.', 409);
           if (priorUser && (priorUser.text !== input.text || JSON.stringify((priorUser.attachments || []).map(value => value.id)) !== JSON.stringify(ids))) throw new ApiError('IDEMPOTENCY_CONFLICT', 'The same request ID cannot be used for different text or attachments', 409);
+          if (prior?.status !== 'completed' && (run.session.engine || 'codex') === 'codex') run.codexChoice = await validateAvailableSelection(validateEngineSelection(run.session));
           const emit = subscribe(id, res);
           if (prior?.status === 'completed') { run.finished = true; emit({ type: 'snapshot', session: publicSession(run.session) }); emit({ type: 'done', status: 'completed' }); res.end(); active.delete(id); return; }
           if (!priorUser) run.session.messages.push({ id: requestId, role: 'user', text: input.text, requestId, ...(resolvedAttachments.length ? { attachments: resolvedAttachments.map(publicAttachment) } : {}) });

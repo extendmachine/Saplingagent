@@ -30,6 +30,12 @@ button:focus-visible { outline: 2px solid #647954; outline-offset: 4px; }
 .conversation-engine-controls .engine-picker { display: flex; flex-wrap: wrap; }
 .engine-apply { height: 27px; padding: 0 10px; border: 1px solid #ced8c5; border-radius: 8px; background: #edf3e8; color: #41533b; font-size: 11px; cursor: pointer; }
 .engine-apply:disabled { opacity: .5; cursor: default; }
+.engine-refresh { min-height: 27px; padding: 0 6px; border: 0; background: transparent; color: #536748; font-size: 10px; }
+.engine-refresh:disabled { opacity: .5; }
+.model-observation { display: flex; flex-wrap: wrap; gap: 3px 10px; margin-top: 6px; font-size: 10px; line-height: 1.5; color: #65705d; overflow-wrap: anywhere; }
+.engine-catalog-warning { margin: 6px 0; color: #916146; font-size: 11px; }
+.engine-catalog-warning p { margin: 0 0 4px; }
+.engine-catalog-warning .localized-error { font-size: 11px; }
 .engine-note { margin: 6px 0 0; color: #65705d; font-size: 11px; line-height: 1.5; }
 .input-hint { font-size: 11px; color: #a0a69b; }
 .send-button { width: 34px; height: 34px; border: 0; border-radius: 11px; background: #495c3b; color: #fff; display: grid; place-items: center; flex-shrink: 0; }

@@ -9,8 +9,8 @@ export function validateEngineSelection(input = {}) {
   const providerId = input.providerId ?? null;
   const modelId = input.modelId ?? null;
   if (engine === ENGINE_CODEX) {
-    if (providerId !== null || modelId !== null) throw Object.assign(new Error('Codex uses the project model and does not accept provider or model overrides'), { code: 'INVALID_ENGINE_SELECTION', status: 400 });
-    return { engine, providerId: null, modelId: null };
+    if (providerId !== null || (modelId !== null && (typeof modelId !== 'string' || !modelId.trim() || modelId !== modelId.trim() || modelId.length > 240 || /[\x00-\x1f\x7f]/.test(modelId)))) throw Object.assign(new Error('Select a valid Codex model without a provider override'), { code: 'INVALID_ENGINE_SELECTION', status: 400 });
+    return { engine, providerId: null, modelId };
   }
   if (typeof providerId !== 'string' || !/^[a-zA-Z0-9_.:/-]{1,160}$/.test(providerId) || typeof modelId !== 'string' || !modelId.trim() || modelId.length > 240) {
     throw Object.assign(new Error('This engine requires a valid provider and model'), { code: 'INVALID_ENGINE_SELECTION', status: 400 });

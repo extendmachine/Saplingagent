@@ -126,3 +126,20 @@ The default main page shows a compact brand/language header and an English/Chine
 ## Project browser tab title (TASK-20261027-002)
 
 The application tab displays the configured project folder name from read-only GET /api/runtime/status.projectFolderName, not the native app display name. An older runtime falls back to the basename of applicationRoot (macOS/Windows paths); unavailable metadata retains the localized Saplingagent title. The name is plain text, remains unchanged when switching English/Chinese and is not stored in browser storage. Read once on mount and refresh on window focus with cancellation and a five-second deadline; temporary failures keep the last known name. No chat remount, model request, configuration write or new dependency/service. Frontend source/build deployment is required; kernel-only upgrades do not replace application UI. A cold controller restart enables the new explicit field.
+
+## Codex account model controls (TASK-20261029-006)
+
+Deploy the matching Agent, Workspace and frontend changes together. Frontend
+source/build is application-owned and is not replaced by a kernel-only upgrade.
+Use the existing project Node and locked front dependencies; build TypeScript/Vite
+and run the chat tests. No dependency or process is added. Restart the project to
+load the matching backend, then reload its page without clearing sessions.
+
+Check an idle account conversation: load/refresh models, select one and Apply;
+verify the same messages/text/files remain and no request is sent until Send.
+Missing choices stay visible; failed catalog reads retain a labelled stale list
+and offer retry. API schemes retain their fixed model; an old incompatible account
+choice can be explicitly reset with Use API profile model, then Apply. The compact
+last-confirmed label must follow session observations, including reported routing,
+not the process-wide configured default. Account access/quota requires a separate
+real request by the user; synthetic checks do not establish it.

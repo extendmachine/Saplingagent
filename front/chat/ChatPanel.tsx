@@ -51,7 +51,7 @@ export function ChatPanel() {
   const selectedEngine = agent.engines.find(engine => engine.id === agent.selection.engine);
   const selectedProvider = selectedEngine?.providers?.find(provider => provider.id === agent.selection.providerId);
   const offline = !agent.isLoading && !agent.engineReady;
-  const caption = agent.isLoading ? t('runtime.connecting') : offline ? t('chat.offline') : agent.activity || (agent.selection.engine !== 'codex' ? selectedProvider?.models.find(model => model.id === agent.selection.modelId)?.label : agent.status?.model) || t('chat.local');
+  const caption = agent.isLoading ? t('runtime.connecting') : offline ? t('chat.offline') : agent.activity || (agent.selection.engine !== 'codex' ? selectedProvider?.models.find(model => model.id === agent.selection.modelId)?.label : null) || t('chat.local');
 
   return <AssistantRuntimeProvider runtime={runtime}>
     <ConversationControls agent={agent} composer={runtime.thread.composer} onChanging={setChangingSession} />

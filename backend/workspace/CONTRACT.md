@@ -8,7 +8,7 @@
 | GET /sessions |Nothing|{sessions:[{id,title,updatedAt,engine,providerId,modelId,engineRevision}]}, update time in reverse order|
 | POST /sessions | {title?,engine?,providerId?,modelId?} | 201 {session} |
 | GET /sessions/:id |UUID/Security ID| {session} |
-| PATCH /sessions/:id | {threadId?,messages?,title?,running?,activeRequestId?,requests?,contextUsage?,expectedRevision?,expectedEngineRevision?,handoffDeliveredRequestId?} | {session} |
+| PATCH /sessions/:id | {threadId?,messages?,title?,running?,activeRequestId?,requests?,contextUsage?,modelUsage?,expectedRevision?,expectedEngineRevision?,handoffDeliveredRequestId?} | {session} |
 | POST /sessions/:id/engine | {engine,providerId,modelId,expectedRevision,expectedEngineRevision} | {session} |
 | GET /preferences |Nothing| {preferences} |
 | POST /preferences | {key,value,evidence} | 201 {preference} |
@@ -60,7 +60,7 @@ these defaults in memory only; they never rewrite existing files. Session lists
 also expose engineRevision for optimistic browser selection.
 
 Authenticated POST /sessions/:id/engine requires all selection fields (Codex uses
-providerId:null and modelId:null) plus expectedRevision>=1 and
+providerId:null and modelId:string|null) plus expectedRevision>=1 and
 expectedEngineRevision>=0, both safe integers. It serializes with every other
 Workspace write, rejects stale versions with409 CONFLICT, and rejects a running
 session, nonempty activeRequestId or inProgress request with409 SESSION_BUSY.
@@ -68,9 +68,9 @@ The Agent separately reserves its session and validates actual engine availabili
 Workspace never calls a model or starts a native session. Same-selection requests
 are no-ops after revision and idle checks, preserving timestamps and file bytes.
 
-Each actual switch archives
+Except for the Codex model-only change described below, each actual switch archives
 {engine,providerId,modelId,threadId,engineRevision,closedAt} in engineHistory,
-increments engineRevision, clears threadId and contextUsage to null, and preserves
+increments engineRevision, clears threadId, contextUsage and modelUsage to null, and preserves
 all messages and request records. Returning to a previously used engine also
 starts a fresh native binding. History holds at most1000 records;409
 ENGINE_HISTORY_FULL refuses the next switch without discarding older records.
@@ -108,3 +108,40 @@ Malformed stored switching metadata returns500 CORRUPT_STORAGE without overwriti
 it. All new writes retain the existing authenticated loopback, mutation-drain,
 atomic replacement and single-writer storage rules. No kernel/dependency/permission
 change or bulk data migration is needed.
+
+## Codex model selection and reported model (2026-10-29, TASK-20261029-005)
+
+Codex sessions accept an explicit nonblank modelId of at most240 characters or
+null for the configured default; providerId must remain null. Creation, lists,
+reads and archived bindings preserve the selection. Workspace does not enumerate
+models or assert account access; Agent validates choices against its catalog.
+
+An idle Codex-to-Codex model-only change uses the same guarded engine endpoint.
+It increments revision and engineRevision, retains the existing native threadId,
+messages, attachments, requests and engineHistory, and clears contextUsage and
+modelUsage to null. It does not archive a native binding or create another history
+handoff. Existing pending/delivered handoff identity, cutoff, timestamp and status
+are retained with bindingRevision adjusted to the new engineRevision. A pending
+handoff still requires completion in the new binding; an already delivered one
+must not be sent again. Old request entries retain their original engineRevision.
+Model-only changes remain possible when engineHistory is full because they do not
+add entries. Busy/stale/revision-exhaustion checks and same-selection no-ops are
+unchanged. Crossing engines/providers, including changing an API engine's model,
+keeps the existing fresh-native-thread and handoff behavior.
+
+Sessions may add modelUsage:null or an object with exactly these five fields:
+requestedModel (nonblank string, maximum240), actualModel (same string limit or
+null), requestId (nonblank string, maximum160), updatedAt (canonical UTC ISO8601
+timestamp as produced by Date.toISOString, maximum80), source ('thread/start', 'thread/resume', 'model/rerouted' or
+'unreported'). Strings must not contain control characters. The source identifies
+Agent's evidence; Workspace never replaces a missing actual model with the
+requested model. An unreported source requires actualModel:null. Omitted PATCH
+fields retain the prior value; explicit null clears it. Legacy records without
+modelUsage remain without it and are not rewritten on read. Ordinary lightweight
+session lists omit usage, while full session reads and run snapshots retain it.
+
+Malformed usage patches return400 INVALID_INPUT with no partial write or revision
+advance. Malformed stored modelUsage returns500 CORRUPT_STORAGE and leaves bytes
+intact for recovery. The standard expectedEngineRevision guard rejects old-model
+snapshots after a model change. Storage is additive, local and atomic; no schema
+rewrite, account request, dependency or new endpoint is required.

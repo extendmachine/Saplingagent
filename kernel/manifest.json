@@ -397,15 +397,21 @@
       "executable": false
     },
     {
+      "path": "kernel/engines/codex-models.mjs",
+      "sha256": "1af3dbc82ff4b39835ed64ec8bd47bdd0672c83179a187575142495ad4e32843",
+      "bytes": 3813,
+      "executable": false
+    },
+    {
       "path": "kernel/engines/CONTRACT.md",
-      "sha256": "6ae2f8027da320a0e62f993579b7e3b688142d15694625fcc8303d648e4c4efc",
-      "bytes": 1627,
+      "sha256": "118f4f0649b5d2f6a44aa095b3fa35625294cdc7e885bca41d5b977b2b0a7186",
+      "bytes": 2581,
       "executable": false
     },
     {
       "path": "kernel/engines/DEPLOY.md",
-      "sha256": "730073c350e1774508646d9d786f5875f55497097546a2c125ebd5825e4e0958",
-      "bytes": 1719,
+      "sha256": "f5a1440108c9ee42c2cd50bd8d3be783163a5813398f2750f93a8777b76fd607",
+      "bytes": 2214,
       "executable": false
     },
     {
@@ -422,8 +428,8 @@
     },
     {
       "path": "kernel/engines/providers/contract.mjs",
-      "sha256": "61efc3970773b00427b91ad8b757e1f2e87613791814d84d1b73617282425407",
-      "bytes": 1779,
+      "sha256": "4833c6918a0e36070aaac15784aa3ed082965ee41fe2c40712e1610a574c7e72",
+      "bytes": 1894,
       "executable": false
     },
     {
@@ -434,14 +440,14 @@
     },
     {
       "path": "kernel/engines/README.md",
-      "sha256": "10e26eb993eb42fc0f38b84277bd7a47241ef2153badf743f1b8403e80fc2806",
-      "bytes": 3670,
+      "sha256": "b3638bea0fa9c563ea59e792f70e375d1cbb67252e10447d21ff5bbce5f4cd62",
+      "bytes": 4099,
       "executable": false
     },
     {
       "path": "kernel/engines/REFERENCES.md",
-      "sha256": "ba4328466931ce1ecb5262a86b5b5f29054c7af3228f242ed8ac8a571015298a",
-      "bytes": 3974,
+      "sha256": "ad98b61b28063ce0548654af45274e1c3a036645fa8487e68d43697c60399391",
+      "bytes": 4701,
       "executable": false
     },
     {
@@ -481,6 +487,12 @@
       "executable": false
     },
     {
+      "path": "kernel/engines/test/codex-models.test.mjs",
+      "sha256": "7b1e8994d98c725cdc2e2282a4700618333be20be497f53d397bd948d9038c04",
+      "bytes": 2827,
+      "executable": false
+    },
+    {
       "path": "kernel/engines/test/configured-engine.test.mjs",
       "sha256": "d2d7f138797dca87cdf1aa8977609a48565efb7c27681740cf505f5fd73afbf7",
       "bytes": 8948,
@@ -512,8 +524,8 @@
     },
     {
       "path": "kernel/engines/test/provider-contract.test.mjs",
-      "sha256": "3316374e637df086353fffda01901d5c918c7e92a084a96d630af070e4c4279b",
-      "bytes": 1757,
+      "sha256": "e801c99b9875da73b3331d076946aa478da4273e7ef3d353c0b75eb1c11ca8c7",
+      "bytes": 2020,
       "executable": false
     },
     {

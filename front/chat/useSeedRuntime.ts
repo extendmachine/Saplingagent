@@ -2,7 +2,7 @@ import { useLanguage } from '../localization/LanguageProvider';
 import { message, resolveText, type UiText } from '../localization/messages';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AppendMessage } from '@assistant-ui/react';
-import { changeSessionEngine, checkedFetch, cleanMessages, getSession, getSessions, isMissingSession, readSessionId, rememberSession, renameSession as saveSessionTitle, sortSessionSummaries, type Approval, type ContextUsage, type EngineHandoff, type EngineOption, type EngineSelection, type Message, type Request, type RuntimeStatus, type Session, type SessionSummary } from './runtime-api';
+import { changeSessionEngine, checkedFetch, cleanMessages, codexModelSelectable, getSession, getSessions, isMissingSession, readSessionId, rememberSession, renameSession as saveSessionTitle, sortSessionSummaries, type Approval, type ContextUsage, type EngineHandoff, type EngineOption, type EngineSelection, type ModelUsage, type Message, type Request, type RuntimeStatus, type Session, type SessionSummary } from './runtime-api';
 import { consumeEvents, type ServerEvent } from './sse';
 
 type ToolActivity = { id: string; name: string; status: string };
@@ -22,6 +22,9 @@ export function useSeedRuntime() {
   const [retryable, setRetryable] = useState(false);
   const [approvalBusy, setApprovalBusy] = useState(false);
   const [engines, setEngines] = useState<EngineOption[]>([]);
+  const [enginesLoading, setEnginesLoading] = useState(true);
+  const [enginesError, setEnginesError] = useState<Error | string>('');
+  const enginesEpoch = useRef(0);
   const [selection, setSelectionState] = useState<EngineSelection>({ engine: 'codex', providerId: null, modelId: null });
   const [isChangingEngine, setIsChangingEngine] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
@@ -29,6 +32,7 @@ export function useSeedRuntime() {
   const [handoff, setHandoff] = useState<EngineHandoff | null>(null);
   const changingEngine = useRef(false), bindingRevision = useRef(0);
   const [contextUsage, setContextUsage] = useState<ContextUsage | null>(null);
+  const [modelUsage, setModelUsage] = useState<ModelUsage | null>(null);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(() => readSessionId());
   const [sessionsLoading, setSessionsLoading] = useState(false);
@@ -36,7 +40,7 @@ export function useSeedRuntime() {
   const selectionChosen = useRef(false);
   const setSelection = useCallback((value: EngineSelection) => {
     if (session.current || running.current || restarting.current || changingEngine.current) return false;
-    selectionChosen.current = true; setSelectionState(value); return true;
+    selectionChosen.current = true; setSelectionState(value); setModelUsage(null); return true;
   }, []);
   const session = useRef<string | null>(readSessionId());
   const running = useRef(false);
@@ -81,6 +85,7 @@ export function useSeedRuntime() {
     flush();
     session.current = null;
     setActiveSessionId(null);
+    setModelUsage(null);
     // Another same-origin tab may have already stored a different conversation.
     if (readSessionId() === id) rememberSession(null);
     if (lastRequest.current?.sessionId === id) {
@@ -103,7 +108,15 @@ export function useSeedRuntime() {
     }
     const boundary = saved.handoff ? saved.messages.findIndex(message => message.id === saved.handoff?.throughMessageId) : -1;
     const userIndex = saved.messages.reduce((last, message, index) => message.role === 'user' ? index : last, -1);
-    const retryBelongsToBinding = !saved.handoff || boundary >= 0 && userIndex > boundary;
+    const requestId = saved.messages[userIndex]?.requestId || saved.messages[userIndex]?.id;
+    const recordedRequest = saved.requests?.find(request => request.id === requestId);
+    const afterHandoff = !saved.handoff || boundary >= 0 && userIndex > boundary;
+    // A same-Codex model change keeps the native thread and can have no handoff.
+    // Never resurrect an older failed request under its new binding after reload.
+    const requestMatchesBinding = recordedRequest ? (recordedRequest.engineRevision ?? 0) === revision
+      : lastRequest.current && lastRequest.current.requestId === requestId ? (lastRequest.current.engineRevision ?? 0) === revision
+      : revision === 0 || Boolean(saved.handoff && afterHandoff);
+    const retryBelongsToBinding = afterHandoff && requestMatchesBinding;
     session.current = saved.id;
     setActiveSessionId(saved.id);
     rememberSession(saved.id);
@@ -113,6 +126,7 @@ export function useSeedRuntime() {
     setMessages(cleanMessages(saved.messages));
     setApprovals(Array.isArray(saved.pendingApprovals) ? saved.pendingApprovals : []);
     setContextUsage(saved.contextUsage && Number.isSafeInteger(saved.contextUsage.usedTokens) && saved.contextUsage.usedTokens >= 0 && Number.isSafeInteger(saved.contextUsage.contextWindow) && saved.contextUsage.contextWindow > 0 ? saved.contextUsage : null);
+    setModelUsage(saved.modelUsage && typeof saved.modelUsage.requestedModel === 'string' && typeof saved.modelUsage.requestId === 'string' && typeof saved.modelUsage.updatedAt === 'string' && ['thread/start', 'thread/resume', 'model/rerouted', 'unreported'].includes(saved.modelUsage.source) ? saved.modelUsage : null);
     selectionChosen.current = true;
     setSelectionState({ engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null });
     bindingRevision.current = revision;
@@ -156,16 +170,25 @@ export function useSeedRuntime() {
     }
   }, []);
 
-  const refreshEngines = useCallback(async (signal?: AbortSignal) => {
+  const refreshEngines = useCallback(async (signal?: AbortSignal, refreshCodex = false) => {
+    const request = ++enginesEpoch.current;
+    setEnginesLoading(true);
     try {
-      const response = await checkedFetch('/api/engines', { signal });
+      const response = await checkedFetch(refreshCodex ? '/api/engines?refresh=codex' : '/api/engines', { signal });
       const value = await response.json() as { engines?: EngineOption[]; defaultSelection?: EngineSelection };
-      if (!signal?.aborted && Array.isArray(value.engines)) {
+      if (!Array.isArray(value.engines)) throw new Error('Invalid engine catalog format.');
+      if (!signal?.aborted && request === enginesEpoch.current) {
         setEngines(value.engines);
+        setEnginesError('');
         if(!session.current && !running.current && !selectionChosen.current && value.defaultSelection)setSelectionState(value.defaultSelection);
       }
     } catch (failure) {
-      if (!signal?.aborted && !isAborted(failure)) setEngines(current => current.length ? current : [{ id: 'codex', label: 'Codex', ready: false, authenticated: false, error: errorText(failure) }]);
+      if (!signal?.aborted && request === enginesEpoch.current && !isAborted(failure)) {
+        setEnginesError(failure instanceof Error ? failure : errorText(failure));
+        setEngines(current => current.length ? current : [{ id: 'codex', label: 'Codex', ready: false, authenticated: false, error: errorText(failure) }]);
+      }
+    } finally {
+      if (!signal?.aborted && request === enginesEpoch.current) setEnginesLoading(false);
     }
   }, []);
 
@@ -327,6 +350,7 @@ export function useSeedRuntime() {
       }
     })();
     return () => {
+      ++enginesEpoch.current;
       bootstrap.abort();
       stream.current?.abort();
       if (statusTimer) clearInterval(statusTimer);
@@ -348,6 +372,7 @@ export function useSeedRuntime() {
       const signal = controller.signal, expected = epoch.current, id = session.current;
       void (async () => {
         await refreshStatus(signal);
+        void refreshEngines(signal);
         if (!currentTarget(signal, expected, id) || running.current || changingEngine.current) return;
         if (id) { try { const saved = await getSession(id, signal); if (currentTarget(signal, expected, id)) snapshot(saved); } catch (failure) { detachMissingSession(failure, id, signal, expected); } }
         if (currentTarget(signal, expected, id)) setActivity('');
@@ -355,7 +380,7 @@ export function useSeedRuntime() {
     };
     window.addEventListener('saplingagent:runtime', changed);
     return () => { controller?.abort(); window.removeEventListener('saplingagent:runtime', changed); };
-  }, [currentTarget, detachMissingSession, refreshStatus, snapshot]);
+  }, [currentTarget, detachMissingSession, refreshEngines, refreshStatus, snapshot]);
 
   const runRequest = useCallback(async (request: Request, isRetry = false) => {
     if (running.current || restarting.current || changingEngine.current) return;
@@ -450,6 +475,7 @@ export function useSeedRuntime() {
     setApprovals([]);
     setApprovalBusy(false);
     setContextUsage(null);
+    setModelUsage(null);
     bindingRevision.current = 0; setEngineRevision(0); setHandoff(null);
     setError('');
     setRetryable(false);
@@ -477,6 +503,7 @@ export function useSeedRuntime() {
     setApprovals([]);
     setApprovalBusy(false);
     setContextUsage(null);
+    setModelUsage(null);
     bindingRevision.current = 0; setEngineRevision(0); setHandoff(null);
     setError('');
     setRetryable(false);
@@ -575,7 +602,8 @@ export function useSeedRuntime() {
   }, []);
 
   const selectedEngine = engines.find(engine => engine.id === selection.engine);
-  const engineReady = selection.engine === 'codex' ? Boolean(status?.codexReady ?? status?.ready) : Boolean(selectedEngine?.ready && selectedEngine.authenticated && selection.providerId && selection.modelId);
-  const engineError = selection.engine !== 'codex' && !selectedEngine?.authenticated ? message('chat.configure') : selectedEngine?.error || '';
-  return { messages, status, engines, selection, setSelection, changeEngine, isChangingEngine, isRestarting, engineRevision, handoff, contextUsage, sessions, activeSessionId, sessionsLoading, sessionsError, refreshSessions, switchSession, renameSession, engineReady, engineError: resolveText(engineError, language), engineErrorIssue: engineError, canSelectEngine: !isRunning && !isLoading && !isChangingEngine && !isRestarting, isLoading, isRunning, activity: resolveText(activity, language), tools, approvals, approvalBusy, error: resolveText(error, language), errorIssue: error, retryable, onNew, onCancel, startNew, retry, respondApproval, refreshStatus, refreshEngines };
+  const modelReady = codexModelSelectable(selectedEngine, selection.modelId, Boolean(enginesError));
+  const engineReady = selection.engine === 'codex' ? Boolean(status?.codexReady ?? status?.ready) && modelReady : Boolean(selectedEngine?.ready && selectedEngine.authenticated && selection.providerId && selection.modelId);
+  const engineError = selection.engine === 'codex' && !modelReady ? message('engine.modelUnavailable') : selection.engine !== 'codex' && !selectedEngine?.authenticated ? message('chat.configure') : selectedEngine?.error || '';
+  return { messages, status, engines, enginesLoading, enginesError, modelUsage, selection, setSelection, changeEngine, isChangingEngine, isRestarting, engineRevision, handoff, contextUsage, sessions, activeSessionId, sessionsLoading, sessionsError, refreshSessions, switchSession, renameSession, engineReady, engineError: resolveText(engineError, language), engineErrorIssue: engineError, canSelectEngine: !isRunning && !isLoading && !isChangingEngine && !isRestarting, isLoading, isRunning, activity: resolveText(activity, language), tools, approvals, approvalBusy, error: resolveText(error, language), errorIssue: error, retryable, onNew, onCancel, startNew, retry, respondApproval, refreshStatus, refreshEngines };
 }
