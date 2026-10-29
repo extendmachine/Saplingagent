@@ -1,6 +1,9 @@
 # GitHub-to-Saplingagent workflow prototype
 
-TASK-20261028-001. Application-owned React module composed by `front/App.tsx`.
+TASK-20261028-001. Optional application-owned React module. Since
+TASK-20261028-006, `front/App.tsx` no longer imports or mounts it; the default
+page is conversation-only. These instructions describe the retained prototype
+when explicitly composed into an application.
 It preserves the header, language controller, chat mount and PageContextBridge.
 No kernel source, dependency, backend API or persistent process is added.
 

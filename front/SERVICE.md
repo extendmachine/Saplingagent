@@ -1,17 +1,18 @@
 # Frontend service
 
-## GitHub workflow prototype (TASK-20261028-001)
+## Conversation-only default (TASK-20261028-006)
 
-The user-requested application area now composes `features/github-workflow/` from
-App.tsx. This supersedes the empty application-area description for this maintainer
-application only. Five local screens cover link intake, illustrative source review,
-feature selection, adaptation/delivery preview and destination review. Shared
-language, header, chat and page-inspection bridge remain. No new backend,
-dependency, persistent service, kernel change or real GitHub/AI operation is added.
-See the module README and docs/github-workflow-prototype.html. Other historical
-service descriptions below retain their original scope.
+The main page starts with the existing AI conversation and compact language
+and Settings controls. Help is available inside Settings. `main.tsx` mounts `ChatDock`/`ChatPanel` independently
+from lazy `App`, wrapped in `ApplicationBoundary`. `App.tsx` returns null until
+an application feature is explicitly requested. Chat sessions, token displays,
+engine switching and PageContextBridge retain their existing behavior.
 
-React single-page chat and requested application components. `main.tsx` mounts `ChatDock`/`ChatPanel` independently from lazy `App`, wrapped in `ApplicationBoundary`; `App` hosts the requested GitHub workflow prototype. Runtime operations remain available from the shared Settings entry. Previous empty-App or embedded-control descriptions in task records are historical.
+The optional GitHub workflow prototype remains in `features/github-workflow/`
+but is not imported or mounted by the default page. Its example-only behavior
+and limitations are documented in the module README and
+`docs/github-workflow-prototype.html`. No kernel, dependency or backend change
+is needed to restore this starting layout.
 
 ## Responsibilities and boundaries
 
@@ -110,12 +111,12 @@ Rollback needs care: older application versions do not understand binding revisi
 
 ## English/Chinese interface (TASK-20261023-007)
 
-The application has a persistent project-wide English/Chinese selector and same-origin Help entry. `localization/` owns keyed application messages, state-preserving React context and localized error presentation; it consumes the kernel localization public helper/API. Chat content, titles and provider/model/file data remain original. All default chat controls and the optional application Git/restart/version modules use this context. No new service or dependency is introduced. See CONTRACT and the task handoff for persistence and test limits.
+The application has a persistent project-wide English/Chinese selector and a same-origin Help entry inside Settings. `localization/` owns keyed application messages, state-preserving React context and localized error presentation; it consumes the kernel localization public helper/API. Chat content, titles and provider/model/file data remain original. All default chat controls and the optional application Git/restart/version modules use this context. No new service or dependency is introduced. See CONTRACT and the task handoff for persistence and test limits.
 
 
 ## Compact header and runtime Settings (TASK-20261023-012)
 
-The default main page shows a compact brand/language/Help header and an English/Chinese Settings link at the top right. Settings opens the current origin's /__saplingagent/runtime in a new tab, preserving the original chat, unsent text/attachments and current stream. The default application space is empty; no embedded kernel toolbar, Restart app/Kernel buttons or bottom version frame remains. Runtime restart/stop/status operations and direct /__saplingagent/kernel management remain available on their existing URLs. Kernel version stays0.9.6; this frontend change needs no backend restart, new service or dependency. Reload/HMR adopts the frontend; preserve conversations and configuration. Earlier embedded-control descriptions in this file are historical.
+The default main page shows a compact brand/language header and an English/Chinese Settings link at the top right. Settings includes the existing localized Help link. Settings opens the current origin's /__saplingagent/runtime in a new tab, preserving the original chat, unsent text/attachments and current stream. The default application space is empty; no embedded kernel toolbar, Restart app/Kernel buttons or bottom version frame remains. Runtime restart/stop/status operations and direct /__saplingagent/kernel management remain available on their existing URLs. Kernel version stays0.9.6; this frontend change needs no backend restart, new service or dependency. Reload/HMR adopts the frontend; preserve conversations and configuration. Earlier embedded-control descriptions in this file are historical.
 
 
 ## Project browser tab title (TASK-20261027-002)

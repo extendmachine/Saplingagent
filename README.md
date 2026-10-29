@@ -100,7 +100,7 @@ Open **Settings → Configure AI** from the main page to launch or reuse the ind
 
 Startup, Restart backend and Restart app now reselect occupied internal ports, preserve the live public/control addresses and refresh frontend endpoint mappings when necessary. Existing running controllers need one full exit/reopen to load the new code; these changes do not require rebuilding the native launcher.
 
-The complete source also includes the labelled GitHub-to-Saplingagent workflow **UI prototype**. Its analysis, generation and publication are examples, not implemented backend operations. **Kernel-only upgrades preserve your application frontend/backend** and do not install this prototype or overwrite customized chat. Existing tags and third-party terms remain unchanged.
+The default page is conversation-only. The complete source retains an optional GitHub-to-Saplingagent workflow **UI prototype**, which is not mounted by the default page. Its analysis, generation and publication are examples, not implemented backend operations. **Kernel-only upgrades preserve your application frontend/backend** and do not install this prototype or overwrite customized chat. Existing tags and third-party terms remain unchanged.
 
 ## Configure and launch
 
@@ -470,7 +470,7 @@ See [storage and process locks](docs/configuration-storage.html).
 
 Choose English or 中文 in the installer, AI setup or chat language selector. The explicit choice is saved in the application’s `config/ui-language.json`; it follows this project across ports and restarts, and is excluded from source packages. `--lang en` / `--lang zh` selects a language explicitly. Without a saved choice, supported device/browser language is used with English fallback.
 
-The chat’s **Help** link opens the independent bilingual quick guide. It covers installation, AI configuration, conversations, files, restart/stop, updates and common errors. Errors show a readable explanation and next action; expand Technical details for the original code/message. User messages, AI replies, filenames, model names and API identifiers are not translated. Changing interface language never sends a model request. Ask your AI to answer in your preferred language separately. See [the bilingual guide](docs/language-help.html).
+Open **Settings → Help** from the chat page to reach the independent bilingual quick guide. It covers installation, AI configuration, conversations, files, restart/stop, updates and common errors. Errors show a readable explanation and next action; expand Technical details for the original code/message. User messages, AI replies, filenames, model names and API identifiers are not translated. Changing interface language never sends a model request. Ask your AI to answer in your preferred language separately. See [the bilingual guide](docs/language-help.html).
 
 <a id="license"></a>
 

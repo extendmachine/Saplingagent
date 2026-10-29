@@ -11,6 +11,19 @@ const project = fileURLToPath(new URL('../../../', import.meta.url));
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(check) { const end = Date.now() + 8000; while (Date.now() < end) { if (await check()) return; await delay(30); } throw new Error('Runtime fixture timed out'); }
 
+// Exercise the delivered runtime graph, including setup imports, without copying
+// application code, credentials, installed dependencies or other test fixtures.
+async function copyRuntimeFixture(root) {
+  const manifest = JSON.parse(await fs.readFile(path.join(project, 'kernel/manifest.json'), 'utf8'));
+  for (const {path: file} of manifest.files) {
+    if (file.includes('/test/') || file.endsWith('.md')) continue;
+    const target = path.join(root, file);
+    await fs.mkdir(path.dirname(target), {recursive: true});
+    await fs.copyFile(path.join(project, file), target);
+  }
+}
+
+
 test('real launcher skips foreign ports, routes actual addresses, retains them across restart and cleans discovery', { timeout: 20000 }, async t => {
   const parent = path.join(project, '.cache/runtime-ports-tests'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "运行 app's "));
@@ -24,13 +37,10 @@ test('real launcher skips foreign ports, routes actual addresses, retains them a
     for (const server of [foreign, foreignBackend, takeover].filter(Boolean)) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
     await fs.rm(root, { recursive: true, force: true });
   });
-  for (const file of ['kernel/http.mjs','kernel/control-page.mjs','kernel/handoff.mjs','kernel/manager.mjs','kernel/storage.mjs','kernel/contracts/release.mjs', 'scripts/dev.mjs', 'kernel/scripts/dev.mjs', 'kernel/contracts/kernel.mjs','kernel/contracts/mcp-access.mjs','kernel/contracts/local-storage.mjs','kernel/contracts/configuration-write.mjs','kernel/compat/paths.mjs','kernel/scripts/setup.mjs', 'kernel/services/runtime-manager/manager.mjs', 'kernel/services/runtime-manager/services.mjs', 'kernel/services/runtime-manager/ports.mjs', 'kernel/services/runtime-manager/gateway.mjs', 'kernel/services/runtime-manager/server.mjs', 'kernel/services/runtime-manager/status.mjs', 'kernel/services/runtime-manager/status-page.mjs', 'kernel/contracts/local-process.mjs', 'kernel/contracts/engine-dependencies.mjs', 'contracts/kernel.mjs']) {
-    await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
-  }
-  await fs.cp(path.join(project,'kernel/localization'),path.join(root,'kernel/localization'),{recursive:true});
+  await copyRuntimeFixture(root);
   const config = Object.fromEntries(portKeys.map((key, index) => [key, start + index]));
   const configText = JSON.stringify(config);
-  await fs.mkdir(path.join(root, 'config')); await fs.writeFile(path.join(root, 'config/runtime.json'), configText);
+  await fs.mkdir(path.join(root, 'config'), {recursive: true}); await fs.writeFile(path.join(root, 'config/runtime.json'), configText);
   const code = `import http from 'node:http';
 const i=process.argv.indexOf('--port');const port=i>=0?Number(process.argv[i+1]):Number(process.env.SEED_WORKSPACE_PORT || process.env.SEED_BUILDER_PORT || process.env.SEED_AGENT_PORT);
 const s=http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({ready:true,authenticated:true,mcp:{ready:true,tools:[]},skills:[],pid:process.pid,frontPort:Number(process.env.SEED_FRONT_PORT),agentPort:Number(process.env.SEED_AGENT_PORT),port}))});s.listen(port,'127.0.0.1');process.on('SIGTERM',()=>{s.closeAllConnections();s.close(()=>process.exit(0))});`;
@@ -83,10 +93,8 @@ const s=http.createServer((req,res)=>{res.setHeader('Content-Type','application/
 
 test('startup publishes recovery controls even when the application frontend is missing', {timeout:15000}, async t=>{
  const parent=path.join(project,'.cache/runtime-core-only');await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,'app-'));
- for(const directory of ['kernel','kernel/contracts','kernel/compat','kernel/services/runtime-manager','contracts'])for(const name of await fs.readdir(path.join(project,directory)))if(name.endsWith('.mjs')){const target=path.join(root,directory,name);await fs.mkdir(path.dirname(target),{recursive:true});await fs.copyFile(path.join(project,directory,name),target);}
- for(const file of ['scripts/dev.mjs','kernel/scripts/dev.mjs','kernel/scripts/setup.mjs']){await fs.mkdir(path.dirname(path.join(root,file)),{recursive:true});await fs.copyFile(path.join(project,file),path.join(root,file));}
- await fs.cp(path.join(project,'kernel/localization'),path.join(root,'kernel/localization'),{recursive:true});
- const control=http.createServer();const start=await listenAscending(control,35000);await new Promise(r=>control.close(r));await fs.mkdir(path.join(root,'config'));await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify(Object.fromEntries(portKeys.map((k,i)=>[k,start+i]))));
+ await copyRuntimeFixture(root);
+ const control=http.createServer();const start=await listenAscending(control,35000);await new Promise(r=>control.close(r));await fs.mkdir(path.join(root,'config'), {recursive:true});await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify(Object.fromEntries(portKeys.map((k,i)=>[k,start+i]))));
  const child=spawn(process.execPath,[path.join(root,'scripts/dev.mjs')],{cwd:root,env:{...process.env,SEED_ROOT:root,SEED_IMPORT_EXISTING_AUTH:'0'},stdio:'ignore'});
  t.after(async()=>{if(child.exitCode===null){child.kill('SIGTERM');await until(()=>child.exitCode!==null);}await fs.rm(root,{recursive:true,force:true});});
  let address;await until(async()=>{try{address=JSON.parse(await fs.readFile(path.join(root,'.runtime/runtime-address.json'),'utf8'));return true;}catch{return false;}});

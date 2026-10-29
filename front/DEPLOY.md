@@ -1,13 +1,13 @@
 # Frontend run and recovery
 
-## GitHub workflow prototype (TASK-20261028-001)
+## Conversation-only default (TASK-20261028-006)
 
-Build/deploy the application frontend to adopt the five-step prototype. It uses
-the existing locked dependencies and service; no kernel update, backend restart,
-new process or credentials are needed. The prototype is labelled and performs no
-real GitHub/AI operation. `npm run build` and `npm test` remain the standard checks;
-`node --test features/github-workflow/model.test.mjs` adds local URL/selection/i18n
-checks. See docs/github-workflow-prototype.html for usage and unimplemented work.
+The application entry is empty; the existing chat and shared header render
+independently. Vite reloads this frontend-only change, while static deployments
+need `npm run build`. No kernel update, backend restart or new dependency is
+required. The optional GitHub workflow source is retained but not mounted;
+its isolated checks remain available through
+`node --test features/github-workflow/model.test.mjs`.
 
 Use the project-local Mac installer and launcher described in root README. Mac runtime is pinned to Node 24.21.0; dependencies belong to front/node_modules with this service's lockfile. No global dependency installation or frontend credential file is required.
 
@@ -120,7 +120,7 @@ Verification:80 isolated frontend tests, TypeScript and Vite build passed. Check
 
 ## Compact header and runtime Settings (TASK-20261023-012)
 
-The default main page shows a compact brand/language/Help header and an English/Chinese Settings link at the top right. Settings opens the current origin's /__saplingagent/runtime in a new tab, preserving the original chat, unsent text/attachments and current stream. The default application space is empty; no embedded kernel toolbar, Restart app/Kernel buttons or bottom version frame remains. Runtime restart/stop/status operations and direct /__saplingagent/kernel management remain available on their existing URLs. Kernel version stays0.9.6; this frontend change needs no backend restart, new service or dependency. Reload/HMR adopts the frontend; preserve conversations and configuration. Earlier embedded-control descriptions in this file are historical.
+The default main page shows a compact brand/language header and an English/Chinese Settings link at the top right. Settings includes the existing localized Help link. Settings opens the current origin's /__saplingagent/runtime in a new tab, preserving the original chat, unsent text/attachments and current stream. The default application space is empty; no embedded kernel toolbar, Restart app/Kernel buttons or bottom version frame remains. Runtime restart/stop/status operations and direct /__saplingagent/kernel management remain available on their existing URLs. Kernel version stays0.9.6; this frontend change needs no backend restart, new service or dependency. Reload/HMR adopts the frontend; preserve conversations and configuration. Earlier embedded-control descriptions in this file are historical.
 
 
 ## Project browser tab title (TASK-20261027-002)

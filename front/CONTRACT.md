@@ -1,15 +1,12 @@
 # Front single-page chat contract
 
-## GitHub workflow prototype (TASK-20261028-001)
+## Conversation-only default (TASK-20261028-006)
 
-App.tsx composes the application-owned GitHub workflow module. Its five steps and
-dialogs are local React state only; it adds no HTTP/SSE route or browser permission.
-All repository/source/license/feature/delivery data is illustrative. Review-state
-selectors simulate blockers, not actual access or license findings. Upload is
-disabled, destination equality is checked locally, and no account is requested.
-The existing LanguageProvider supplies the language to keyed module resources.
-Chat and PageContextBridge remain mounted independently of prototype navigation
-and reset. Reload discards prototype selections, not persisted conversations.
+The default `App.tsx` returns null. The independently mounted ChatDock,
+PageContextBridge, language controls and Settings entry remain available.
+The optional GitHub workflow source is not imported or rendered by this page.
+Restoring the entry does not delete sessions, reset conversation state, change
+engine selection or add/remove any HTTP/SSE interface.
 
 Version 4; 2026-10-09; TASK-20261009-013. SSE fields continue to be compatible with TASK009; public fields are subject to ../contracts/runtime-api.md, and the front-end calls agent-runtime through HTTP.
 
@@ -141,7 +138,7 @@ GET /api/runtime/language and POST /api/runtime/language {language:'en'|'zh'} re
 
 The front catalog is keyed English/Chinese, not inline translation pairs. Numbers/dates, document.lang, accessible labels, empty/progress/tool/validation states and optional controls follow the same context. User/model text, titles, file names, provider labels, models, actual paths and protocol values remain unchanged. Only exact known runtime status phrases are localized; unknown provider-generated content remains original.
 
-The default App no longer embeds kernel control/version frames or their message bridge. PageHeader contains the compact brand, language selector, Help and Settings. Settings is an ordinary same-origin link to /__saplingagent/runtime, using the current allocated port and a new tab with noopener/noreferrer. The original chat remains mounted with its draft, attachments and stream. Its localized title announces the new tab. Language persists through the existing project preference API; the runtime page reads it on arrival. Help remains /__saplingagent/help?lang=en|zh. Existing pagehide text-draft recovery remains unchanged. No navigation triggers a model request.
+The default App no longer embeds kernel control/version frames or their message bridge. PageHeader contains the compact brand, language selector and Settings. Help is available in the Settings page, not the chat header. Settings is an ordinary same-origin link to /__saplingagent/runtime, using the current allocated port and a new tab with noopener/noreferrer. The original chat remains mounted with its draft, attachments and stream. Its localized title announces the new tab. Language persists through the existing project preference API; the runtime page reads it on arrival. The Settings Help link remains /__saplingagent/help?lang=en|zh and follows that page's current language. Existing pagehide text-draft recovery remains unchanged. No navigation triggers a model request.
 
 Structured error causes retain code/message. UI displays a localized explanation and actionable next step with expandable original technical details processed by kernel/localization/public.mjs. Credentials are redacted by that shared classifier. Known UI validation phrases use catalog entries; errors never rewrite conversation messages. Full Access and all existing operation guards remain unchanged.
 

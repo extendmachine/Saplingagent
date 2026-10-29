@@ -18,7 +18,6 @@ export function LanguageSelector() {
   const { language, t, select, saving, error } = useLanguage();
   return <div className="language-tools" data-page-capture-exclude>
     <select aria-label={t('common.language')} value={language} onChange={event => { void select(event.target.value); }} aria-busy={saving}><option value="en">English</option><option value="zh">中文</option></select>
-    <a href={`/__saplingagent/help?lang=${language}`} target="_blank" rel="noopener noreferrer">{t('common.help')}</a>
     {error ? <span role="status" className="language-save-error">{t('language.failed')} <button type="button" onClick={() => { void select(language); }}>{t('language.retry')}</button><details><summary>{t('common.details')}</summary><code>{describeError(error, language).code}</code><pre>{describeError(error, language).details}</pre></details></span> : null}
   </div>;
 }
