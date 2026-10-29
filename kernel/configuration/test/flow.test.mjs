@@ -167,3 +167,19 @@ test('fixture removal waits for returning A to exit and flush its real local Nod
  for(const owner of f.returnedProcesses){assert.equal(owner.compileCache,path.join(f.root,'.cache/node-compile'));assert.ok(owner.cacheEntries.length>0,'Node wrote its enabled compile cache before fixture removal');assert.throws(()=>process.kill(owner.pid,0),{code:'ESRCH'});}
  assert.equal(await exists(f.temp),false);
 });
+
+test('runtime setup bridge launches and reuses real external B after short-lived A exits',{skip:process.platform!=='darwin',timeout:45000},async t=>{
+ const {launchConfiguration}=await import('../runtime.mjs');
+ const f=await fixture(t),opened=[],children=[];
+ const options={env:{...process.env,SAPLING_CONFIG_PARENT_PID:String(process.pid),SAPLING_MANAGEMENT_PORT:'4318'},launch:(...args)=>{const child=spawn(...args);f.track(child);children.push(child);return child;},open:async url=>{opened.push(url)}};
+ const result=await launchConfiguration(f.root,options);
+ const address=await json(path.join(f.root,'.runtime/management-address.json')),session=await storedSession(f.root);f.setDirectory(session.directory);
+ assert.equal(children[0].exitCode,0);assert.equal(result.url,`http://127.0.0.1:${address.port}/`);assert.equal(result.browserRequested,true);
+ await until(async()=>!(await fetch(result.url+'health/project-launcher').then(r=>r.json())).busy);
+ assert.equal((await readSession(session.directory,f.root)).bootstrapPids.includes(process.pid),false);
+ assert.equal((await fetch(result.url)).status,200);
+ assert.equal((await fetch(result.url,{headers:{'Sec-Fetch-Site':'same-site',Origin:'http://127.0.0.1:5173'}})).status,403);
+ const again=await launchConfiguration(f.root,options);assert.equal(again.url,result.url);assert.equal((await json(path.join(f.root,'.runtime/management-address.json'))).pid,address.pid);assert.equal(opened.length,2);
+ assert.equal(await fs.readFile(path.join(f.root,'business.txt'),'utf8'),'preserve application');
+ assert.equal(await fs.readFile(path.join(f.root,'.git/HEAD'),'utf8'),'ref: refs/heads/customer\n');
+});

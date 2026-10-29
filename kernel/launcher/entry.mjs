@@ -14,6 +14,12 @@ import {dailyLog} from './io.mjs';
 import {statusPageOpener,launchProgress} from './status.mjs';
 
 const root=await fs.realpath(process.env.SEED_ROOT||fileURLToPath(new URL('../../',import.meta.url)));
+const configurationRequest=process.argv.includes('--configuration-request')&&typeof process.send==='function';
+async function reportConfiguration(result){
+  if(!configurationRequest||!process.connected)return;
+  await new Promise(resolve=>process.send({type:'sapling-configuration',...result},()=>resolve()));
+  process.disconnect();
+}
 try{
   process.env.SAPLING_LANG=process.env.SAPLING_LANG_EXPLICIT==='1'?normalizeLanguage(process.env.SAPLING_LANG):await readLanguage(root,normalizeLanguage(process.env.LC_ALL||process.env.LANG));
   const dockAction=process.argv.find(value=>/^--dock-(start|open|stop|status)$/.test(value));
@@ -49,11 +55,13 @@ try{
       }
     }else{
       const address=await openConfiguration(root,{noOpen});
+      await reportConfiguration({ok:true,port:address.port,instanceId:address.instanceId});
       console.log(formatMessage(launcherMessages,process.env.SAPLING_LANG,'Project setup: {url}',{url:`http://127.0.0.1:${address.port}/`}));
     }
   }
   }
 }catch(error){
+  await reportConfiguration({ok:false,code:/^[A-Z][A-Z0-9_]{0,63}$/.test(error.code||'')?error.code:'CONFIGURATION_START_FAILED'});
   if(process.argv.includes('--launch'))launchProgress('failed');
   await dailyLog(root,'launcher_failed',{code:error.code||'LAUNCHER_FAILED'}).catch(()=>{});
   const info=describeError(error,process.env.SAPLING_LANG);

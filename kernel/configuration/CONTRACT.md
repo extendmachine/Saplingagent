@@ -90,3 +90,17 @@ The published `configuration/public.mjs` operation `moveProject(previous, curren
 ## External MCP connection during relocation (2026-10-21)
 
 The builtin-only MCP configuration contract is part of the copied configuration capsule; the SDK and standalone stdio server are not capsule dependencies. B can save enabled/externalOnly settings without a provider account. An active or unverifiable MCP ownership receipt blocks finalization before stopping app services and again after maintenance leases are held. The user disconnects this project's MCP connection, then retries. No external client host is killed. Exported MCP command/args are regenerated against the final root after relocation.
+
+
+## Runtime Settings entry
+
+Public runtime.mjs exports launchConfiguration(root): starts the fixed short-lived
+launcher/entry.mjs with --configuration-request and --no-open over local IPC.
+Only the structured non-secret success {port,instanceId} or sanitized failure code
+is reported. The bridge waits for A exit and verifies the matching B before asking
+the system browser to open its address; returns {url,browserRequested}. This is
+not an HTTP redirect. Inherited setup/maintenance/parent/Node injection variables
+are removed. Existing B reuse, sibling storage, leases, authentication, save/build
+and cleanup remain unchanged. Startup may be slow; callers must keep their
+operation gate until completion and may display a waiting notice without killing
+A or removing configuration receipts. No new daemon or dependency is installed.
