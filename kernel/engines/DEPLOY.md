@@ -28,3 +28,7 @@ Expired/revoked tokens need an explicit new official token and a setup save/rest
 There is no automatic refresh, credential fallback, conversation replay or rollback.
 Restore known source only on an explicit request; preserve private credentials and
 session history. Native Windows and real subscription acceptance are separate.
+
+## Codex model catalog checks (2026-10-29)
+
+Run `node --test kernel/engines/test/codex-models.test.mjs kernel/engines/test/provider-contract.test.mjs` with project-local Node. Tests use synthetic RPC responses, including pagination and explicit/API selection failures, with no account or model request. App Server remains pinned; no dependency installation or authentication migration is introduced. Runtime catalog refresh is a metadata RPC, not inference or account-entitlement verification.

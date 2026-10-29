@@ -61,3 +61,7 @@ subscription token cannot fall back to a key or an inherited account. Setup and
 credential persistence belong to the configuration service. See CONTRACT.md,
 DEPLOY.md and the dated Claude entries in REFERENCES.md for the precise boundary
 and tests. Saved credentials/local startup do not prove model access or quota.
+
+## Codex model selection
+
+The catalog helper follows all model/list pages and returns native IDs, labels and reasoning options. Explicit account-model choices never fall back. API profiles remain fixed; automatic legacy choices disclose preferred-model fallback. The application Agent owns per-conversation selection, actual-model reporting and persistence. See CONTRACT.md and the focused codex-models/provider-contract tests.

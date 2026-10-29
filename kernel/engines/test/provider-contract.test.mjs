@@ -6,7 +6,8 @@ test('provider selection defaults to Codex and validates OpenCode coordinates', 
   assert.deepEqual(validateEngineSelection({}), { engine: 'codex', providerId: null, modelId: null });
   assert.deepEqual(validateEngineSelection({ engine: 'opencode', providerId: 'anthropic', modelId: 'claude-sonnet-4-6' }), { engine: 'opencode', providerId: 'anthropic', modelId: 'claude-sonnet-4-6' });
   assert.throws(() => validateEngineSelection({ engine: 'opencode', providerId: 'anthropic' }), error => error.code === 'INVALID_ENGINE_SELECTION');
-  assert.throws(() => validateEngineSelection({ engine: 'codex', modelId: 'override' }), error => error.code === 'INVALID_ENGINE_SELECTION');
+  assert.deepEqual(validateEngineSelection({ engine: 'codex', modelId: 'explicit-model' }), { engine: 'codex', providerId: null, modelId: 'explicit-model' });
+  for (const input of [{ providerId: 'other' }, { modelId: '' }, { modelId: ' padded' }, { modelId: 'bad\nmodel' }]) assert.throws(() => validateEngineSelection({ engine: 'codex', ...input }), error => error.code === 'INVALID_ENGINE_SELECTION');
 });
 
 test('saved session engine is immutable and legacy sessions remain Codex', () => {

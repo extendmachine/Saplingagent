@@ -36,3 +36,7 @@ share accounts, route traffic for other users or assert free/unlimited usage.
 Future distribution should review the current conditions independently. Token
 values remain outside documentation and Git; the adapter receives them only from
 the project's shared private configuration contract.
+
+## Codex account model selection (TASK-20261029-003)
+
+Checked2026-10-29 by Codex using the public [App Server documentation](https://learn.chatgpt.com/docs/app-server), plus the existing pinned0.146.1 local JSON schemas. No login is required for the documentation; schema inspection uses no model request. `ModelListParams.cursor` / `ModelListResponse.nextCursor` paginate the catalog; `ThreadStartResponse.model` and `ThreadResumeResponse.model` report native model selection. `ModelReroutedNotification` binds `threadId`, `turnId`, `fromModel`, `toModel` and `reason`. TurnStartResponse has no authoritative model field. Account/model access still needs actual provider acceptance; catalog membership alone is insufficient.
