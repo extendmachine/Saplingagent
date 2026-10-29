@@ -1082,8 +1082,8 @@
     },
     {
       "path": "kernel/scripts/test/runtime-ports.test.mjs",
-      "sha256": "afe3682ec819d3e9eb9aa7da5ddbc597684ab277d2015fc8733fb612159c6166",
-      "bytes": 10903,
+      "sha256": "f9609c59e8d38942c43f2466392030699f1742da4b7d7d6bc0a9d1cf65dfe85d",
+      "bytes": 9787,
       "executable": false
     },
     {
