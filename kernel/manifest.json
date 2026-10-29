@@ -314,8 +314,8 @@
     },
     {
       "path": "kernel/CONTRACT.md",
-      "sha256": "7e6e497ee761df36e2a3317f00ce0c8aa9988dd0a89f2ad236d1653ff02d7d26",
-      "bytes": 18565,
+      "sha256": "979f5b3965a4f0c0187d534a8a490b833428bea33ae4099404c8ab0ae63dad62",
+      "bytes": 18757,
       "executable": false
     },
     {
@@ -380,8 +380,8 @@
     },
     {
       "path": "kernel/control-page.mjs",
-      "sha256": "dca1f6bba82336e615422fa3638a5cd6fc4ee3d73db2acd6dfa194477038c748",
-      "bytes": 10678,
+      "sha256": "aca51bd98cb6307a78d6f57ea603564d51233cdda1349c70b921f2540f3b9f35",
+      "bytes": 10619,
       "executable": false
     },
     {
