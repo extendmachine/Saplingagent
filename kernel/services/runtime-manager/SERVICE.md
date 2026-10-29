@@ -27,3 +27,18 @@ races clean only owned partial attempts before retrying (eight attempts maximum)
 Public/control listeners remain stable. Changed builtin/custom endpoint maps
 restart the frontend so captured proxies/env follow the new addresses. Logs add
 restart_port_retry and restart_scope_expanded metadata, without credentials.
+
+
+## Configure AI from the application
+
+Open the main page's top-right Settings, then Configure AI. The runtime gateway
+starts a short-lived local bootstrap and opens/reuses the independent setup page
+in the default system browser. Preparation is asynchronous; repeated clicks share
+one job. Opening setup leaves current application services running. Save work
+before Save & build; existing finalization owns stop/rename/build, and users open
+the app again after Finish setup. If the browser cannot open, copy the displayed
+loopback URL into a new tab's address bar. Do not replace this with a fixed-port
+link or disable setup Host/Origin checks. Errors/slow startup point to
+logs/project-launcher; the existing bash Saplingagent.sh configure remains usable.
+This JavaScript controller change requires one cold launch for existing running
+instances; it does not require rebuilding the native app. Kernel0.9.7 unchanged.

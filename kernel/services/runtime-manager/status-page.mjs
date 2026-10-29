@@ -7,7 +7,7 @@ export const runtimeStatusPage = `<!doctype html>
 <nav style="display:flex;justify-content:flex-end;gap:10px;padding:8px"><label><span data-i18n="Language">Language</span> <select id="language" data-language aria-label="Language / 语言"><option value="en">English</option><option value="zh">中文</option></select></label><a data-help href="/__saplingagent/help" target="_blank" rel="noopener" data-i18n="Help">Help</a></nav><header><div><span class="eyebrow" data-i18n="SAPLINGAGENT · PROJECT STATUS">SAPLINGAGENT · PROJECT STATUS</span><h1 id="name" data-i18n="Your project">Your project</h1><span id="version" class="muted" data-i18n="Kernel version: checking…">Kernel version: checking…</span></div><div id="phase" class="badge" role="status" data-i18n="Connecting…">Connecting…</div></header>
 <section><h2 data-i18n="Project">Project</h2><dl><dt data-i18n="Folder">Folder</dt><dd id="folder" data-i18n="Checking…">Checking…</dd><dt data-i18n="App address">App address</dt><dd><a id="address" target="_blank" rel="noopener" data-i18n="Checking…">Checking…</a></dd><dt data-i18n="Control port">Control port</dt><dd id="control-port" data-i18n="Checking…">Checking…</dd></dl></section>
 <section><h2 data-i18n="Services">Services</h2><div class="table-wrap"><table><caption id="observed" data-i18n="Waiting for the runtime…">Waiting for the runtime…</caption><thead><tr><th data-i18n="Service">Service</th><th data-i18n="Process">Process</th><th data-i18n="PID">PID</th><th data-i18n="Assigned port">Assigned port</th></tr></thead><tbody id="services"><tr><td colspan="4" data-i18n="No status received yet.">No status received yet.</td></tr></tbody></table></div><p class="note" data-i18n="Running means the owned process has not exited. Ready means startup checks passed; this page does not continuously check service health. Assigned ports do not confirm a healthy listener.">Running means the owned process has not exited. Ready means startup checks passed; this page does not continuously check service health. Assigned ports do not confirm a healthy listener.</p></section>
-<section><div class="actions"><a id="open" class="primary" target="_blank" rel="noopener" aria-disabled="true" data-i18n="Open app">Open app</a><button id="restart" disabled data-i18n="Restart app">Restart app</button><button id="backend" disabled data-i18n="Restart backend">Restart backend</button><button id="stop" class="danger" disabled data-i18n="Stop app">Stop app</button><button id="logs" disabled data-i18n="Open logs">Open logs</button><button id="reconnect" hidden data-i18n="Reconnect">Reconnect</button></div><p id="message" role="status" aria-live="polite"></p><p class="note" data-i18n="Closing this browser tab does not stop the project. Use Stop app, or Quit the macOS Dock app. After stopping, reopen your native app to start again.">Closing this browser tab does not stop the project. Use Stop app, or Quit the macOS Dock app. After stopping, reopen your native app to start again.</p></section>
+<section><div class="actions"><a id="open" class="primary" target="_blank" rel="noopener" aria-disabled="true" data-i18n="Open app">Open app</a><button id="configure" disabled data-i18n="Configure AI">Configure AI</button><button id="restart" disabled data-i18n="Restart app">Restart app</button><button id="backend" disabled data-i18n="Restart backend">Restart backend</button><button id="stop" class="danger" disabled data-i18n="Stop app">Stop app</button><button id="logs" disabled data-i18n="Open logs">Open logs</button><button id="reconnect" hidden data-i18n="Reconnect">Reconnect</button></div><p id="configuration-message" role="status" aria-live="polite"></p><input id="configuration-address" hidden readonly aria-label="Configuration address / 配置地址" style="width:100%;padding:8px" /><p class="note" data-i18n="Opening setup keeps the app running. Save your work before Save & build; reopen the app after Finish setup.">Opening setup keeps the app running. Save your work before Save & build; reopen the app after Finish setup.</p><p id="message" role="status" aria-live="polite"></p><p class="note" data-i18n="Closing this browser tab does not stop the project. Use Stop app, or Quit the macOS Dock app. After stopping, reopen your native app to start again.">Closing this browser tab does not stop the project. Use Stop app, or Quit the macOS Dock app. After stopping, reopen your native app to start again.</p></section>
 <script>${runtimeLanguageScript()}
 
 const byId=id=>document.getElementById(id);
@@ -15,14 +15,17 @@ const controls=['restart','backend','stop','logs'].map(byId);
 const expectedRoot = null;
 let last=null,pending=false,connected=false,stopped=false,polling=false,timer=null;
 let languageSaving=false,languageEpoch=0;
-function changeLanguage(value){if(value===uiLanguage)return;const text=byId('message').textContent;const key=Object.entries(runtimeMessages[uiLanguage]).find(([,v])=>v===text)?.[0];applyLanguage(value);if(last)render(last);if(key)message(t(key));else if(last?.error)message(errorText(last.error))}
+let configuration={phase:'idle'},configurationSubmitting=false,configurationEpoch=0;
+function changeLanguage(value){if(value===uiLanguage)return;const text=byId('message').textContent;const key=Object.entries(runtimeMessages[uiLanguage]).find(([,v])=>v===text)?.[0];applyLanguage(value);if(last)render(last);renderConfiguration();if(key)message(t(key));else if(last?.error)message(errorText(last.error))}
 async function syncLanguage(){if(languageSaving)return;const epoch=languageEpoch;try{const data=await request('/api/runtime/language',null,1500);if(epoch===languageEpoch&&!languageSaving&&['en','zh'].includes(data.language)&&data.language!==uiLanguage)changeLanguage(data.language)}catch{}}
 byId('language').onchange=async()=>{if(languageSaving)return;const value=byId('language').value;languageEpoch++;if(!connected||!last||stopped){changeLanguage(value);return}languageSaving=true;byId('language').disabled=true;try{const data=await request('/api/runtime/language',{language:value});changeLanguage(data.language)}catch{byId('language').value=uiLanguage;message(t('Language could not be saved. Check this runtime and retry.'))}finally{languageSaving=false;byId('language').disabled=false}};
 function message(text){byId('message').textContent=text}
 function enable(){
   const active=connected&&!pending&&!stopped&&last;
-  byId('restart').disabled=!active||!last.canRestart;byId('backend').disabled=!active||!last.canRestart;
-  byId('stop').disabled=!active||!last.canStop;byId('logs').disabled=!active;
+  const configuring=configurationSubmitting||configuration.phase==='starting';
+  byId('configure').disabled=!active||configuring;
+  byId('restart').disabled=!active||configuring||!last.canRestart;byId('backend').disabled=!active||configuring||!last.canRestart;
+  byId('stop').disabled=!active||configuring||!last.canStop;byId('logs').disabled=!active;
   byId('open').setAttribute('aria-disabled',String(!active||last.phase!=='ready'));byId('reconnect').disabled=pending;
 }
 function render(s){
@@ -37,10 +40,36 @@ function render(s){
   if(!rows.length){const row=document.createElement('tr'),cell=document.createElement('td');cell.colSpan=4;cell.textContent=t("No managed services are running.");row.appendChild(cell);rows.push(row)}byId('services').replaceChildren(...rows);
 }
 async function request(route,body,timeout=5000){const response=await fetch(route,{method:body?'POST':'GET',cache:'no-store',headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(timeout)});const data=await response.json();if(!response.ok)throw Object.assign(Error(data.error?.message||t("The operation could not be completed.")),{code:data.error?.code});return data}
+function renderConfiguration(){
+  const address=byId('configuration-address');address.hidden=true;address.value='';
+  let text='';
+  if(configuration.phase==='starting')text=t(configuration.slow?'Setup is still preparing. Keep waiting or inspect logs/project-launcher; do not start another installer.':'Preparing the AI configuration page…');
+  else if(configuration.phase==='failed')text=t('Could not open AI configuration. Check logs/project-launcher, then retry Configure AI or run bash Saplingagent.sh configure.')+'\\n'+(configuration.error?.code||'CONFIGURATION_START_FAILED');
+  else if(configuration.phase==='ready'){
+    let url;try{url=new URL(configuration.url)}catch{}
+    if(url&&url.protocol==='http:'&&url.hostname==='127.0.0.1'&&url.port&&url.pathname==='/'&&!url.search&&!url.hash&&!url.username&&!url.password){
+      address.value=url.href;address.hidden=false;
+      text=t(configuration.browserRequested?'Requested AI setup in your default browser. If no window appears, copy the address below into a new tab.':'Setup is ready, but the browser could not open. Copy the address below into a new tab.');
+    }
+  }
+  byId('configuration-message').textContent=text;enable();
+}
+async function syncConfiguration(){
+  if(configurationSubmitting)return;const epoch=configurationEpoch,instance=last?.instanceId;
+  try{const result=await request('/api/runtime/configuration');if(epoch!==configurationEpoch||instance!==last?.instanceId||pending||stopped)return;if(result.configuration&&['idle','starting','ready','failed'].includes(result.configuration.phase)){configuration=result.configuration;renderConfiguration()}}
+  catch{if(configuration.phase==='starting')byId('configuration-message').textContent=t('Setup status is unavailable. Reconnect before retrying; the launcher may still be preparing.');}
+}
+async function configureAI(){
+  if(!connected||!last||pending||configurationSubmitting||configuration.phase==='starting')return;
+  configurationEpoch++;configurationSubmitting=true;configuration={phase:'starting'};renderConfiguration();
+  try{const result=await request('/api/runtime/configuration/open',{instanceId:last.instanceId});configuration=result.configuration;renderConfiguration()}
+  catch(error){if(error.code){configuration={phase:'failed',error};renderConfiguration()}else{configuration={phase:'starting'};byId('configuration-message').textContent=t('Setup status is unavailable. Reconnect before retrying; the launcher may still be preparing.')}}
+  finally{configurationSubmitting=false;enable();schedule()}
+}
 function schedule(){clearTimeout(timer);if(!stopped)timer=setTimeout(update,2000)}
 async function update(){
   if(pending||polling||stopped){schedule();return}polling=true;
-  try{const s=await request('/api/runtime/status',null,3000);if(pending||stopped)return;if(!s.instanceId||!Array.isArray(s.services))throw Error(t("Invalid status"));if(expectedRoot&&s.applicationRoot!==expectedRoot)throw Object.assign(Error(t("This port now belongs to a different project. Reopen the original project’s native app; its address may have changed.")),{code:'ROOT_CHANGED'});const previous=last,wasConnected=connected,changed=last&&last.instanceId!==s.instanceId;last=s;connected=true;render(s);void syncLanguage();byId('reconnect').hidden=true;if(changed)message(t("A new runtime is connected. Review its status before using the controls."));else if(s.error)message(errorText(s.error));else if(s.phase==='ready'&&(!wasConnected||previous?.error||previous?.phase!=='ready'))message(t("Startup checks passed. Open app to continue."));}
+  try{const s=await request('/api/runtime/status',null,3000);if(pending||stopped)return;if(!s.instanceId||!Array.isArray(s.services))throw Error(t("Invalid status"));if(expectedRoot&&s.applicationRoot!==expectedRoot)throw Object.assign(Error(t("This port now belongs to a different project. Reopen the original project’s native app; its address may have changed.")),{code:'ROOT_CHANGED'});const previous=last,wasConnected=connected,changed=last&&last.instanceId!==s.instanceId;if(changed)configuration={phase:'idle'};last=s;connected=true;render(s);void syncLanguage();await syncConfiguration();byId('reconnect').hidden=true;if(changed)message(t("A new runtime is connected. Review its status before using the controls."));else if(s.error)message(errorText(s.error));else if(s.phase==='ready'&&(!wasConnected||previous?.error||previous?.phase!=='ready'))message(t("Startup checks passed. Open app to continue."));}
   catch(error){if(pending||stopped)return;connected=false;byId('phase').textContent=error.code==='ROOT_CHANGED'?t("Different project"):t("Connection lost");byId('reconnect').hidden=false;message(error.code==='ROOT_CHANGED'?error.message:t("Cannot reach this runtime. Stopped is not confirmed. Reopen your native app if needed, then reconnect; the table shows the last observed state."));}
   finally{polling=false;enable();schedule()}
 }
@@ -57,6 +86,7 @@ async function action(kind){
   }catch(error){message(kind==='stop'?t("Stop not confirmed. ")+errorText(error)+t(" Reconnect to check the runtime before retrying."):errorText(error));if(kind==='stop'){connected=false;byId('phase').textContent=t("Stop unconfirmed");byId('reconnect').hidden=false;}}
   finally{pending=false;enable();schedule()}
 }
+byId('configure').onclick=()=>configureAI();
 byId('restart').onclick=()=>action('restart');byId('backend').onclick=()=>action('backend');byId('stop').onclick=()=>action('stop');byId('logs').onclick=()=>action('logs');byId('reconnect').onclick=()=>{stopped=false;message(t("Reconnecting…"));void update()};
 void update();
 </script></body></html>`;

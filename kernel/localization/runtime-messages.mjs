@@ -2,6 +2,15 @@ import { browserErrorSource } from './public.mjs';
 // User-facing messages only. Keep protocol IDs, paths and diagnostics intact.
 export const runtimeMessages = {
   "en": {
+    "Configure AI": "Configure AI",
+    "Opening setup keeps the app running. Save your work before Save & build; reopen the app after Finish setup.": "Opening setup keeps the app running. Save your work before Save & build; reopen the app after Finish setup.",
+    "Preparing the AI configuration page…": "Preparing the AI configuration page…",
+    "Setup is still preparing. Keep waiting or inspect logs/project-launcher; do not start another installer.": "Setup is still preparing. Keep waiting or inspect logs/project-launcher; do not start another installer.",
+    "Could not open AI configuration. Check logs/project-launcher, then retry Configure AI or run bash Saplingagent.sh configure.": "Could not open AI configuration. Check logs/project-launcher, then retry Configure AI or run bash Saplingagent.sh configure.",
+    "Requested AI setup in your default browser. If no window appears, copy the address below into a new tab.": "Requested AI setup in your default browser. If no window appears, copy the address below into a new tab.",
+    "Setup is ready, but the browser could not open. Copy the address below into a new tab.": "Setup is ready, but the browser could not open. Copy the address below into a new tab.",
+    "Setup status is unavailable. Reconnect before retrying; the launcher may still be preparing.": "Setup status is unavailable. Reconnect before retrying; the launcher may still be preparing.",
+
     "Saplingagent runtime": "Saplingagent runtime",
     "SAPLINGAGENT · PROJECT STATUS": "SAPLINGAGENT · PROJECT STATUS",
     "Your project": "Your project",
@@ -135,6 +144,15 @@ export const runtimeMessages = {
     "Language could not be saved. Check this runtime and retry.": "Language could not be saved. Check this runtime and retry."
   },
   "zh": {
+    "Configure AI": "配置 AI",
+    "Opening setup keeps the app running. Save your work before Save & build; reopen the app after Finish setup.": "打开配置不会停止应用。请在“保存并构建”前保存工作，完成配置后重新打开 App。",
+    "Preparing the AI configuration page…": "正在准备 AI 配置页面…",
+    "Setup is still preparing. Keep waiting or inspect logs/project-launcher; do not start another installer.": "配置仍在准备中。请继续等待，或检查 logs/project-launcher；不要重复启动安装。",
+    "Could not open AI configuration. Check logs/project-launcher, then retry Configure AI or run bash Saplingagent.sh configure.": "无法打开 AI 配置。请检查 logs/project-launcher，再重试“配置 AI”或运行 bash Saplingagent.sh configure。",
+    "Requested AI setup in your default browser. If no window appears, copy the address below into a new tab.": "已请求默认浏览器打开 AI 配置。如果没有出现窗口，请复制下方地址到新标签页。",
+    "Setup is ready, but the browser could not open. Copy the address below into a new tab.": "配置页已就绪，但浏览器未能打开。请复制下方地址到新标签页。",
+    "Setup status is unavailable. Reconnect before retrying; the launcher may still be preparing.": "暂时无法获取配置状态。启动器可能仍在准备，请重新连接确认后再重试。",
+
     "Saplingagent runtime": "Saplingagent 运行状态",
     "SAPLINGAGENT · PROJECT STATUS": "SAPLINGAGENT · 项目状态",
     "Your project": "你的项目",

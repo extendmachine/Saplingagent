@@ -111,3 +111,17 @@ attempts. Backend mode expands to all when frontend endpoint maps need refreshin
 status.scope reflects that effective scope. Public/control addresses remain fixed,
 generation advances only when ready, and discovery publishes successful mappings.
 No request shape, authentication, configuration or foreign-process ownership change.
+
+
+## AI setup entry (2026-10-28)
+
+POST /api/runtime/configuration/open requires exactly {instanceId}, returns202
+{configuration:{id,phase:'starting'}} or the currently pending job. GET
+/api/runtime/configuration returns {configuration:{phase:'idle'}} before use,
+starting with optional slow:true, ready with verified url/browserRequested, or
+failed with error.code. Same local-access and runtime-instance rules apply;
+invalid input400, wrong instance/busy409, foreign/unauthorized401/403. No command,
+root or credential is accepted/returned. A pending job survives browser disconnect
+and prevents competing normal runtime mutations until short-lived bootstrap exit.
+No model request or app stop happens merely by opening configuration. The full
+contract is kernel/services/runtime-manager/CONTRACT.md.

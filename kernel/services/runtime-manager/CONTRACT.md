@@ -144,3 +144,34 @@ remain provider failures, not permission to blindly retry or terminate processes
 This changes the persistent JavaScript controller. Existing running instances
 require one normal owned stop and fresh launch to load it; an in-page restart
 cannot replace the controller. No native rebuild or dependency update is required.
+
+
+## Open AI setup from Settings (TASK-20261028-002)
+
+The runtime page exposes Configure AI / 配置 AI. POST /api/runtime/configuration/open
+accepts only {instanceId}, using the existing local Host/Origin/Bearer and exact
+runtime-instance validation. It returns202 {configuration:{id,phase}} immediately.
+GET /api/runtime/configuration returns {configuration}; phase is idle, starting,
+ready or failed. Starting may include slow:true. Ready includes the verified
+loopback url and browserRequested:boolean; failed includes a sanitized error code.
+No account/token/command/path inputs or credential outputs are accepted.
+
+A job is shared across both control handlers on the manager. Repeated starts
+reuse the pending job; after completion, another click reopens/reuses a verified
+configuration session. During preparation the existing gateway-write counter
+prevents competing normal restart/stop/maintenance. Client disconnection does
+not cancel the job. Slow startup stays pending until the owned A actually exits;
+there is no timeout that releases the gate while A is still writing. Existing
+setup build/lock deadlines remain. All exit/error paths release the counter once.
+
+The public kernel/configuration/runtime.mjs launchConfiguration(root) operation
+spawns fixed project-local Node/launcher A without shell or inherited configuration
+parent PID. A exits after reporting B; the bridge verifies B identity and health,
+then requests the OS browser opener. It never calls openConfiguration in the
+resident runtime. Copy/paste the displayed address into a new browser tab if the
+OS opener fails; do not navigate across origins or weaken setup request checks.
+Opening setup does not stop services or call a model. Existing B owns saving,
+finalization/owned stop/rename/build and Finish setup cleanup. Reopen the native
+app after finalization. Invalid request400, stale instance/busy409, startup errors
+are reported by the job. Logs remain logs/project-launcher. Older runtimes need
+one normal cold launch; no native rebuild or version increment is required.

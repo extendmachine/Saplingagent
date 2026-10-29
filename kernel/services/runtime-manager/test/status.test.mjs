@@ -60,7 +60,7 @@ test('an old status page refuses a different project after its port is reused', 
   await h.flush();different=true;await h.run('update()');
   assert.equal(h.elements.get('phase').textContent,'Different project');assert.equal(h.elements.get('stop').disabled,true);assert.equal(h.elements.get('restart').disabled,true);
   assert.equal(h.elements.get('name').textContent,state.projectName);assert.match(h.elements.get('message').textContent,/original project/);
-  await h.elements.get('stop').onclick();assert.ok(calls.every(route=>(route.endsWith('/status')||route.endsWith('/language'))));
+  await h.elements.get('stop').onclick();assert.ok(calls.every(route=>(route.endsWith('/status')||route.endsWith('/language')||route.endsWith('/configuration'))));
 });
 
 test('same-project replacement is visible and restart uses the newly observed instance', async()=>{
@@ -94,7 +94,7 @@ test('an older failed poll does not replace progress while stop confirmation is 
   let statusRequests=0,rejectPoll,confirmStop;
   const deferredPoll=new Promise((resolve,reject)=>{rejectPoll=reject});
   const deferredStop=new Promise(resolve=>{confirmStop=resolve});
-  const h=pageHarness(async route=>route.endsWith('/status')?(++statusRequests===1?response(state):deferredPoll):deferredStop);
+  const h=pageHarness(async route=>route.endsWith('/configuration')?response({configuration:{phase:'idle'}}):route.endsWith('/status')?(++statusRequests===1?response(state):deferredPoll):deferredStop);
   await h.flush();const oldPoll=h.run('update()');const stopping=h.elements.get('stop').onclick();
   rejectPoll(Error('Connection closed during shutdown'));await oldPoll;
   assert.match(h.elements.get('message').textContent,/Waiting for confirmed exit/);
@@ -107,4 +107,35 @@ test('runtime status changes language without navigation or changing the stop re
  const calls=[];let language='zh';const h=pageHarness(async(route,options)=>{calls.push({route,options});if(route.endsWith('/status'))return response(state);if(route.endsWith('/language')){if(options.method==='POST')language=JSON.parse(options.body).language;return response({language})}return response({stopped:true,instanceId:state.instanceId})});
  await h.flush();assert.equal(h.elements.get('phase').textContent,'就绪');assert.match(h.elements.get('version').textContent,/内核/);assert.equal(h.elements.get('services').children[0].children[1].textContent,'运行中');
  h.elements.get('language').value='en';await h.elements.get('language').onchange();assert.equal(h.elements.get('phase').textContent,'Ready');await h.elements.get('stop').onclick();assert.equal(h.elements.get('phase').textContent,'Stopped');assert.equal(h.timers.filter(x=>!x.cancelled).length,0);assert.deepEqual(JSON.parse(calls.find(x=>x.route.endsWith('/stop-and-wait')).options.body),{instanceId:state.instanceId});
+});
+
+
+test('Configure AI opens an async job without navigating or stopping chat and renders a manual address',async()=>{
+ const calls=[];let job={phase:'idle'};
+ const h=pageHarness(async(route,options)=>{calls.push({route,options});if(route.endsWith('/status'))return response(state);if(route.endsWith('/configuration/open'))job={id:'setup-job',phase:'starting'};if(route.includes('/configuration'))return response({configuration:job});return response({language:'zh'})});
+ await h.flush();assert.equal(h.elements.get('configure').disabled,false);
+ await h.elements.get('configure').onclick();assert.equal(h.elements.get('configure').disabled,true);assert.equal(h.elements.get('stop').disabled,true);
+ assert.match(h.elements.get('configuration-message').textContent,/正在准备/);
+ await h.elements.get('configure').onclick();assert.equal(calls.filter(c=>c.route.endsWith('/open')).length,1);
+ assert.deepEqual(JSON.parse(calls.find(c=>c.route.endsWith('/open')).options.body),{instanceId:state.instanceId});
+ job={id:'setup-job',phase:'ready',url:'http://127.0.0.1:61234/',browserRequested:false};await h.run('update()');
+ assert.equal(h.elements.get('configure').disabled,false);assert.equal(h.elements.get('configuration-address').value,job.url);assert.equal(h.elements.get('configuration-address').hidden,false);
+ assert.match(h.elements.get('configuration-message').textContent,/复制/);assert.equal(calls.filter(c=>c.route.endsWith('/restart')||c.route.endsWith('/stop-and-wait')).length,0);
+ job={phase:'failed',error:{code:'UI_BUILD_FAILED'}};await h.run('update()');assert.match(h.elements.get('configuration-message').textContent,/UI_BUILD_FAILED/);assert.match(h.elements.get('configuration-message').textContent,/logs\/project-launcher/);assert.equal(h.elements.get('configuration-address').hidden,true);
+});
+
+test('a delayed setup poll cannot overwrite a newer opening request',async()=>{
+ let delayed=false,finish;const held=new Promise(resolve=>{finish=resolve});
+ const h=pageHarness(async route=>{if(route.endsWith('/status'))return response(state);if(route.endsWith('/configuration/open'))return response({configuration:{id:'new',phase:'starting'}});if(route.endsWith('/configuration'))return delayed?held:response({configuration:{phase:'idle'}});return response({language:'en'})});
+ await h.flush();delayed=true;const poll=h.run('update()');await h.flush();await h.elements.get('configure').onclick();finish(response({configuration:{phase:'idle'}}));await poll;
+ assert.equal(h.elements.get('configure').disabled,true);assert.match(h.elements.get('configuration-message').textContent,/Preparing/);
+});
+
+
+test('a lost opening response remains unconfirmed until setup polling resolves it',async()=>{
+ let job={phase:'idle'};
+ const h=pageHarness(async route=>{if(route.endsWith('/status'))return response(state);if(route.endsWith('/configuration/open')){job={id:'accepted',phase:'starting'};throw Error('Lost response')}if(route.endsWith('/configuration'))return response({configuration:job});return response({language:'en'})});
+ await h.flush();await h.elements.get('configure').onclick();assert.equal(h.elements.get('configure').disabled,true);assert.match(h.elements.get('configuration-message').textContent,/may still be preparing/);
+ await h.run('update()');assert.equal(h.elements.get('configure').disabled,true);
+ job={id:'accepted',phase:'ready',url:'http://127.0.0.1:61234/',browserRequested:true};await h.run('update()');assert.equal(h.elements.get('configure').disabled,false);assert.match(h.elements.get('configuration-message').textContent,/Requested AI setup/);
 });

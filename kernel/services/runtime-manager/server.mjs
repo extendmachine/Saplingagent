@@ -4,6 +4,7 @@ import { normalizeLanguage, supportedLanguages } from '../../localization/public
 import { kernelRequest } from '../../http.mjs';
 import { timingSafeEqual } from 'node:crypto';
 import { projectStatus, openProjectLogs } from './status.mjs';
+import { configurationStatus, openRuntimeConfiguration } from './configuration.mjs';
 
 export function localAccess(req, { token, frontPort, managerPort }) {
   const hosts = [`127.0.0.1:${frontPort}`, `localhost:${frontPort}`, `127.0.0.1:${managerPort}`, `localhost:${managerPort}`];
@@ -41,6 +42,11 @@ export function createControlHandler(options) {
     try {
       localAccess(req, options);
       const route = new URL(req.url, 'http://127.0.0.1').pathname;
+      if (req.method === 'GET' && route === '/api/runtime/configuration') return send(res,200,{configuration:configurationStatus(manager)});
+      if (req.method === 'POST' && route === '/api/runtime/configuration/open') {
+        await instanceRequest(req,manager);
+        return send(res,202,{configuration:openRuntimeConfiguration(manager,{launch:options.launchConfiguration})});
+      }
       if (route === '/api/runtime/language' && ['GET','POST'].includes(req.method)) {
         let language, holdingWrite = false;
         try {
