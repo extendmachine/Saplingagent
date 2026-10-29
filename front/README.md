@@ -33,3 +33,19 @@ and [interactive prototype guide](../docs/github-workflow-prototype.html).
 ## Language and Help
 
 Choose English or 中文 in the page header. This updates application UI without reloading chat; the saved preference belongs to the project. Independently opened management pages load that project preference. Settings opens the same-origin runtime page in a new tab so chat drafts, attachments and live replies remain in the original tab. Help is available inside Settings and opens the built-in same-origin bilingual guide in the current project language; the chat header no longer repeats this link. If saving the language fails, keep using the page and choose Retry saving language after the service is available. User/model content is never translated. Error details remain available below localized explanations. The interface uses no remote translation service.
+
+## Choose a Codex account model
+
+With a Codex account, use the chat model picker and **Refresh models** to read the
+App Server catalog. **Automatic** uses the resolved project default. An explicit
+selection stays selected when refreshing; a missing model is marked unavailable.
+Retry a failed/stale catalog before applying or sending an explicit model choice.
+Catalog presence is not proof of account access or quota.
+
+Existing conversations use **Apply**, keeping their messages, text and attachments.
+Choosing or refreshing never sends a model prompt. Fixed API profiles show the
+configured model instead of an account picker; edit that scheme in Settings. If
+an old account selection differs, **Use API profile model** stages an explicit
+reset for Apply. The compact **Last confirmed model** comes only from a server
+observation for this conversation and may describe an earlier request; a preference
+or configured default is never substituted when actual usage was not reported.

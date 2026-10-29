@@ -4,13 +4,24 @@ export type Approval = { id: string; kind: string; description: string; choices?
 export type EngineSelection = { engine: 'codex' | 'opencode' | 'claude'; providerId?: string | null; modelId?: string | null };
 export type ModelOption = { id: string; label: string };
 export type ProviderOption = { id: string; label: string; defaultModelId?: string | null; models: ModelOption[] };
-export type EngineOption = { id: 'codex' | 'opencode' | 'claude'; label: string; ready: boolean; authenticated: boolean; model?: string; providers?: ProviderOption[]; error?: string | null };
+export type EngineOption = { id: 'codex' | 'opencode' | 'claude'; label: string; ready: boolean; authenticated: boolean; model?: string | null; providers?: ProviderOption[]; error?: string | null; models?: ModelOption[]; defaultModelId?: string | null; requestedModel?: string | null; modelSelection?: 'account' | 'api'; modelWarning?: string | null; modelCatalogError?: string | null };
+export type ModelUsage = { requestedModel: string; actualModel: string | null; requestId: string; updatedAt: string; source: 'thread/start' | 'thread/resume' | 'model/rerouted' | 'unreported' };
 export type ContextUsage = { usedTokens: number; contextWindow: number; updatedAt: string };
 export type EngineHandoff = { id: string; bindingRevision: number; status: 'pending' | 'delivered'; throughMessageId: string; createdAt: string; deliveredRequestId?: string };
-export type Session = EngineSelection & { id: string; title?: string; updatedAt?: string; messages: Message[]; running?: boolean; activeRequestId?: string | null; pendingApprovals?: Approval[]; contextUsage?: ContextUsage | null; engineRevision?: number; engineHistory?: (EngineSelection & { engineRevision: number; threadId?: string | null; closedAt: string })[]; handoff?: EngineHandoff | null };
+export type Session = EngineSelection & { id: string; title?: string; updatedAt?: string; messages: Message[]; requests?: { id: string; engineRevision?: number }[]; running?: boolean; activeRequestId?: string | null; pendingApprovals?: Approval[]; contextUsage?: ContextUsage | null; modelUsage?: ModelUsage | null; engineRevision?: number; engineHistory?: (EngineSelection & { engineRevision: number; threadId?: string | null; closedAt: string })[]; handoff?: EngineHandoff | null };
 export type SessionSummary = EngineSelection & { id: string; title?: string; updatedAt?: string };
 export type RuntimeStatus = { ready: boolean; codexReady?: boolean; defaultEngine?: 'codex' | 'opencode' | 'claude'; authenticated: boolean; provider?: string; model?: string; skills?: { name: string; description: string }[]; mcp?: { ready: boolean; tools?: { name: string; description: string }[] }; error?: string };
 export type Request = EngineSelection & { requestId: string; sessionId?: string; engineRevision?: number; text: string; attachmentIds?: string[] };
+
+// Catalog membership is necessary for an explicit account choice, not proof of
+// entitlement. API profiles only accept their fixed configured model.
+export function codexModelSelectable(engine: EngineOption | undefined, modelId?: string | null, catalogFailed = false): boolean {
+  if (engine?.modelSelection === 'api') return !modelId || modelId === (engine.model || engine.defaultModelId);
+  if (engine?.modelSelection !== 'account') return !modelId;
+  if (catalogFailed || engine.modelCatalogError) return false;
+  const chosen = modelId || engine.defaultModelId || engine.model;
+  return Boolean(chosen && engine.models?.some(model => model.id === chosen));
+}
 
 export const SESSION_KEY = 'seedagent.active-session.v1';
 const sessionTitle = (item: SessionSummary) => item.title?.trim() || 'Untitled conversation';

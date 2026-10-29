@@ -1,5 +1,37 @@
 # Front single-page chat contract
 
+## Codex account model choice (TASK-20261029-006)
+
+GET /api/engines adds Codex models [{id,label}], defaultModelId,
+requestedModel, model (runtime default), modelSelection account/api, optional
+modelWarning and modelCatalogError. GET /api/engines?refresh=codex explicitly
+refreshes that server catalog. Loading/error state is separate from chat state;
+older responses cannot replace newer reads. Cached models remain visibly stale
+after errors. A missing explicit choice remains visible, never silently replaced.
+An absent model cannot be newly applied or sent. Account automatic selections
+also require a successful nonempty catalog and a listed resolved default; failed
+refreshes block account requests until retry succeeds. API/legacy defaults remain
+compatible. Model selection is not silently rewritten by catalog refreshes.
+
+Account conversations use {engine:'codex',providerId:null,modelId:string|null};
+null means the configured automatic default. Existing conversations use Apply
+and the existing revision-checked session endpoint without changing composer,
+messages or session ID. API profiles retain their configured model and do not
+offer the unrelated account catalog. Listing a model does not prove entitlement.
+
+Session.modelUsage optionally records requestedModel, actualModel, requestId,
+updatedAt and source (thread/start, thread/resume, model/rerouted or unreported).
+Only a reported actualModel is displayed as the last server-confirmed model;
+configuration preferences/runtime defaults are labelled as choices, never actual
+execution. The latest confirmed observation may belong to a prior turn and keeps
+its request ID/time; missing evidence must not be labelled as a current report.
+Snapshots restore usage, and selection/session changes clear it. Old
+backends without these additive fields retain legacy Codex default behavior.
+
+Request retry reconstruction checks requests[].engineRevision against the current
+session binding. A model-only Codex change can retain the native thread without
+handoff metadata; old failed requests must not reappear as retryable after reload.
+
 ## Conversation-only default (TASK-20261028-006)
 
 The default `App.tsx` returns null. The independently mounted ChatDock,
@@ -130,7 +162,7 @@ A refused runtime-busy switch restores the source composer and leaves the target
 
 Existing conversations stage a target engine/provider/model and apply it through POST /api/sessions/:id/engine with expectedEngineRevision (legacy0). The response updates the same logical session, never calls New conversation or resets its composer, and clears only old tool/approval/usage/retry state. ID, title, visible history, draft text and in-memory draft attachments remain. While switching, submitting, loading, restarting or running, conflicting actions are disabled. Request epochs reject stale responses; server revision checks protect other tabs. Errors retain existing content; an unknown response outcome can require reloading the authoritative session. Pending handoff is explained separately from the message transcript.
 
-No model request is sent by changing AI. The next explicit send includes the current engineRevision and triggers Agent history delivery. Snapshot recovery does not recreate a Retry action for requests before the current handoff boundary. Codex uses its configured project model; this change does not add a Codex model catalog. Separate historic conversations remain separate.
+No model request is sent by changing AI. The next explicit send includes the current engineRevision and triggers Agent history delivery when needed. Snapshot recovery does not recreate a Retry action for requests before the current handoff boundary or from an older binding. Codex account model selection is defined in TASK-20261029-006 above; fixed API profiles retain their configured model. Separate historic conversations remain separate.
 
 ## UI language and error contract (2026-10-23)
 

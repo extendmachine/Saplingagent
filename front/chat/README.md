@@ -34,7 +34,7 @@ ChatLauncher implements only the chat edge-tab preference; no shared business pa
 
 ## Keep a conversation when changing AI (TASK-20261023-006)
 
-New conversations select an engine/provider/model immediately. Existing conversations stage that choice and use **Apply** to request `POST /api/sessions/:id/engine` with the complete selection and `expectedEngineRevision` (legacy sessions default to0). The response supplies the same logical session with authoritative selection/revision, original messages/title, and optional handoff metadata. Codex continues to use its configured project model; the picker offers no unsupported Codex model override. Claude/OpenCode use the actual configured provider/model catalog.
+New conversations select an engine/provider/model immediately. Existing conversations stage that choice and use **Apply** to request `POST /api/sessions/:id/engine` with the complete selection and `expectedEngineRevision` (legacy sessions default to0). The response supplies the same logical session with authoritative selection/revision, original messages/title, and optional handoff metadata. Codex account choices now use the catalog described in TASK-20261029-006 below; Codex API profiles retain their configured model. Claude/OpenCode use the actual configured provider/model catalog.
 
 The switch changes no composer state: text, completed or uploading attachments and message IDs remain in place. A pending attachment submission must finish first. Running/loading/restarting/changing states block the operation; the backend also enforces idle/reservation/revision checks. A rejected or malformed response preserves the old visible binding and content, and reports an error. If the connection result is uncertain, reload the conversation before retrying. Switching never sends a model prompt, creates a second logical conversation, or inserts the internal history handoff as a visible user message.
 
@@ -45,3 +45,24 @@ Tests load the actual hook/API/SSE and EngineControls modules with synthetic fet
 ## Interface language
 
 The page header switches English/中文 without replacing the mounted chat runtime. The preference is project-wide through /api/runtime/language; guarded browser storage is only a fallback. Drafts, uploaded/pending attachments, title edits, current conversation, active streams and engine handoff metadata remain in place. No chat is automatically resent. Known UI/status/error phrases are localized; conversation/model text, titles, providers, file names and protocol IDs remain original. Context numbers/dates and accessibility labels follow the selected locale. Technical errors expose localized guidance and expandable sanitized original details. See ../localization/ and TASK-20261023-007.
+
+## Codex account model catalog (TASK-20261029-006)
+
+This supersedes the earlier configured-model-only Codex description. Account
+model choices use GET /api/engines.models and explicit ?refresh=codex; each complete
+server response is isolated by a local request generation. Failed reads preserve
+cached choices with an error; no late response resets an explicit selection. An
+absent/stale account choice cannot be applied/sent until verified or explicitly
+changed, including automatic mode without a valid catalog/default. null remains
+automatic; API mode remains fixed. Restart refreshes the
+catalog so configuration-mode changes are visible.
+
+modelUsage is restored from session snapshots and cleared when moving to another
+session or selecting a new binding. Last confirmed usage is not renamed as the
+current request: its original requestId/time/source may precede the current turn.
+No report means unavailable. ChatPanel no longer displays global status.model as
+a conversation's actual model. EngineControls uses keyed English/Chinese labels,
+including missing startup preference/default notices. Full Access, native-thread
+handling, drafts, attachments and session revision protection remain unchanged.
+On reload, the request ledger's engineRevision prevents an old failed request from
+becoming retryable after a model-only binding change with no handoff boundary.
