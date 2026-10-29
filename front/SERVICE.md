@@ -1,17 +1,18 @@
 # Frontend service
 
-## GitHub workflow prototype (TASK-20261028-001)
+## Conversation-only default (TASK-20261028-006)
 
-The user-requested application area now composes `features/github-workflow/` from
-App.tsx. This supersedes the empty application-area description for this maintainer
-application only. Five local screens cover link intake, illustrative source review,
-feature selection, adaptation/delivery preview and destination review. Shared
-language, header, chat and page-inspection bridge remain. No new backend,
-dependency, persistent service, kernel change or real GitHub/AI operation is added.
-See the module README and docs/github-workflow-prototype.html. Other historical
-service descriptions below retain their original scope.
+The main page starts with the existing AI conversation and compact language,
+Help and Settings controls. `main.tsx` mounts `ChatDock`/`ChatPanel` independently
+from lazy `App`, wrapped in `ApplicationBoundary`. `App.tsx` returns null until
+an application feature is explicitly requested. Chat sessions, token displays,
+engine switching and PageContextBridge retain their existing behavior.
 
-React single-page chat and requested application components. `main.tsx` mounts `ChatDock`/`ChatPanel` independently from lazy `App`, wrapped in `ApplicationBoundary`; `App` hosts the requested GitHub workflow prototype. Runtime operations remain available from the shared Settings entry. Previous empty-App or embedded-control descriptions in task records are historical.
+The optional GitHub workflow prototype remains in `features/github-workflow/`
+but is not imported or mounted by the default page. Its example-only behavior
+and limitations are documented in the module README and
+`docs/github-workflow-prototype.html`. No kernel, dependency or backend change
+is needed to restore this starting layout.
 
 ## Responsibilities and boundaries
 

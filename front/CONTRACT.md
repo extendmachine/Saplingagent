@@ -1,15 +1,12 @@
 # Front single-page chat contract
 
-## GitHub workflow prototype (TASK-20261028-001)
+## Conversation-only default (TASK-20261028-006)
 
-App.tsx composes the application-owned GitHub workflow module. Its five steps and
-dialogs are local React state only; it adds no HTTP/SSE route or browser permission.
-All repository/source/license/feature/delivery data is illustrative. Review-state
-selectors simulate blockers, not actual access or license findings. Upload is
-disabled, destination equality is checked locally, and no account is requested.
-The existing LanguageProvider supplies the language to keyed module resources.
-Chat and PageContextBridge remain mounted independently of prototype navigation
-and reset. Reload discards prototype selections, not persisted conversations.
+The default `App.tsx` returns null. The independently mounted ChatDock,
+PageContextBridge, language controls and Settings entry remain available.
+The optional GitHub workflow source is not imported or rendered by this page.
+Restoring the entry does not delete sessions, reset conversation state, change
+engine selection or add/remove any HTTP/SSE interface.
 
 Version 4; 2026-10-09; TASK-20261009-013. SSE fields continue to be compatible with TASK009; public fields are subject to ../contracts/runtime-api.md, and the front-end calls agent-runtime through HTTP.
 

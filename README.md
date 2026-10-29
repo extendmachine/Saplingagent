@@ -52,7 +52,7 @@ Open **Settings → Configure AI** from the main page to launch or reuse the ind
 
 Startup, Restart backend and Restart app now reselect occupied internal ports, preserve the live public/control addresses and refresh frontend endpoint mappings when necessary. Existing running controllers need one full exit/reopen to load the new code; these changes do not require rebuilding the native launcher.
 
-The complete source also includes the labelled GitHub-to-Saplingagent workflow **UI prototype**. Its analysis, generation and publication are examples, not implemented backend operations. **Kernel-only upgrades preserve your application frontend/backend** and do not install this prototype or overwrite customized chat. Existing tags and third-party terms remain unchanged.
+The default page is conversation-only. The complete source retains an optional GitHub-to-Saplingagent workflow **UI prototype**, which is not mounted by the default page. Its analysis, generation and publication are examples, not implemented backend operations. **Kernel-only upgrades preserve your application frontend/backend** and do not install this prototype or overwrite customized chat. Existing tags and third-party terms remain unchanged.
 
 ## Configure and launch
 

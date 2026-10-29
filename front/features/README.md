@@ -1,7 +1,8 @@
 # Application function area
 
-`github-workflow/`: user-requested bilingual GitHub-to-Saplingagent frontend
-prototype (TASK-20261028-001). Local five-step navigation, source-reference
+`github-workflow/`: optional bilingual GitHub-to-Saplingagent frontend
+prototype (TASK-20261028-001), retained as source but not mounted by the
+default conversation-only page (TASK-20261028-006). Local five-step navigation, source-reference
 placeholders, feature selection/dependencies, upgrade/delivery preview and
 destination review. No actual download, inference, generated application or push.
 See its README and `docs/github-workflow-prototype.html`.

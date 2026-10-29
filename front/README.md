@@ -23,8 +23,8 @@ See [CONTRACT.md](CONTRACT.md), [SERVICE.md](SERVICE.md), [DEPLOY.md](DEPLOY.md)
 
 ## GitHub application workflow prototype
 
-The application area now hosts the user-requested five-step GitHub workflow
-prototype: import, understand, select, upgrade and publish. All repository reports
+The source retains an optional five-step GitHub workflow prototype, which is
+not imported or mounted by the default conversation-only page: import, understand, select, upgrade and publish. All repository reports
 and generation/delivery views are explicitly illustrative; the module performs no
 download, inference, project creation or destination upload. It retains the shared
 language/header/chat/page bridge. See [module behavior](features/github-workflow/README.md)

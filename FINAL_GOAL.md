@@ -151,10 +151,11 @@ Access is unchanged. Locks must cover concurrent setup, install, rename, compila
 and cleanup without retaining project handles across rename or deleting live or
 unrelated helper directories.
 
-## User-requested GitHub workflow prototype (2026-10-28)
+## Optional GitHub workflow prototype source (2026-10-28)
 
-This maintainer application's optional feature area hosts a five-step frontend
-prototype for GitHub URL intake, project-local source analysis, user-selected
+The owner restored the conversation-only starting page on 2026-10-28. The optional
+feature source is retained but is not imported or mounted by the default page.
+It contains a five-step frontend prototype for GitHub URL intake, project-local source analysis, user-selected
 capabilities, Saplingagent adaptation and publication to the user's repository.
 The intended source/output directory is `projeccts/<owner>--<repository>/` with
 separate `source/` and `saplingagent/` children. Prototype reports, source trees,
