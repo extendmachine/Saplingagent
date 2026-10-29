@@ -101,3 +101,12 @@ The kernel build includes the setup catalog and shared language/error modules.
 Regenerate/check the maintainer manifest after integration. Do not regenerate a
 recipient baseline. Native launcher language handoff belongs to the configuration
 and launcher owners; this service reads the final actual project preference again.
+
+
+## Reconfigure AI without repeating project setup (TASK-20261029-013)
+
+An existing app's Configure AI entry opens the external capsule in `ai` mode. Change or add an endpoint, import an explicitly chosen credential file, sign in again, select a scheme or adjust external MCP access; no project name/icon/folder or launcher export step is required. The first actual AI change pauses the verified owned runtime before replacing configuration or opening account login, so an old engine cannot continue using rotating credentials. Viewing settings, changing UI language or fetching a custom endpoint's model catalog does not pause it.
+
+Finish AI settings closes owned account operations, completes the lifecycle handback and cleanup, then resumes according to the capsule's recorded intent. Wait for the returned application state before testing the new connection; saved configuration alone does not validate a model request. A busy project or failed owned-process stop leaves credentials unchanged and displays a retryable error. Failed finish retains the capsule for inspection/retry. Install/full project setup remains `setup` mode with its original identity/compile flow.
+
+Verification: isolated HTTP tests cover mode snapshots, saved/activated/imported profiles, repeat synthetic login, all forged project mutations, preparation failure/concurrency, shutdown draining, read-only catalogs, failed-finish retry and legacy setup. They use local synthetic credentials/processes and do not test actual remote authentication or native Windows behavior. No new dependency or persistent service is introduced.

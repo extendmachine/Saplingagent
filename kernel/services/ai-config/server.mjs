@@ -14,17 +14,24 @@ import {normalizeLanguage, formatMessage, describeError} from '../../localizatio
 import {setupMessages} from '../../localization/setup-messages.mjs';
 import {wantsConfigurationErrorPage,renderConfigurationError} from './error-page.mjs';
 const defaultRoot=fileURLToPath(new URL('../../../',import.meta.url));
-export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRoot,assets=path.join(root,'kernel/.cache/setup'),language,authOptions={},importOptions={},onClose,token:providedToken,projectController,onProjectRename,instanceId,beforeClose}={}){
+export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRoot,assets=path.join(root,'kernel/.cache/setup'),language,authOptions={},importOptions={},onClose,token:providedToken,projectController,onProjectRename,instanceId,beforeClose,configurationMode}={}){
   root=path.resolve(root);
+  const mode=configurationMode??projectController?.configurationMode??'setup',aiOnly=mode==='ai';
+  if(!['setup','ai'].includes(mode)||projectController?.configurationMode&&projectController.configurationMode!==mode||aiOnly&&(!projectController||typeof projectController.prepareAIChange!=='function'||typeof projectController.prepareAIFinish!=='function'))throw failure('CONFIGURATION_MODE_CONFLICT','Reopen the matching configuration entry for this project.',409);
   let store=new ConfigurationStore(root),auth=new AccountSetup(root,store,authOptions),imports=new CredentialImport(store,importOptions);const token=providedToken||randomBytes(32).toString('hex');let closing=false,shutdown,directoryOperation=false,finalizing=false,activeAIRequests=0;const project=projectController||new ProjectLauncher(root);
   const preferredLanguage=req=>normalizeLanguage(language ?? String(req.headers['accept-language']||'').split(',').map(part=>part.trim().split(';')[0]).find(tag=>/^(en|zh)(?:-|$)/i.test(tag)));
   const currentLanguage=req=>readLanguage(root,preferredLanguage(req));
   const languageState=async req=>({language:await currentLanguage(req),supported:['en','zh']});
   const aiRoutes=new Set(['profiles','activate','models','login','credentials/import','mcp']);
+  let activeAIAction=null;const idleWaiters=new Set();
+  const requestFinished=()=>{activeAIRequests--;if(!activeAIRequests){activeAIAction=null;for(const resolve of idleWaiters)resolve();idleWaiters.clear();}};
+  const requestsIdle=()=>activeAIRequests?new Promise(resolve=>idleWaiters.add(resolve)):Promise.resolve();
+  const ensureOpen=()=>{if(closing||finalizing)throw failure('CLOSING','Configuration is closing or restarting. Wait for the operation to finish.',503);};
+  const projectState=async()=>aiOnly?{configurationMode:mode,root:project.root,busy:project.busy,configurationHost:project.configurationHost}:{...await project.state(),configurationMode:mode};
   const pendingLogin=()=>['starting','pending','completing'].includes(auth.login.phase);
   const settingsSaved=async()=>{const state=await project.state();return state.settingsSaved===true;};
   const mcpSummary=async()=>{const {revision,enabled,externalOnly,available}=await getMcpAccess(root);return {revision,enabled,externalOnly,available};};
-  const configurationState=async(state)=>({...state,login:auth.snapshot(),mcp:await mcpSummary()});
+  const configurationState=async(state)=>({...state,configurationMode:mode,login:auth.snapshot(),mcp:await mcpSummary()});
   const accessConfigured=async()=>{if((await store.state()).activeId)return true;const mcp=await readMcpAccess(root);return mcp.enabled&&mcp.externalOnly;};
   const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"};
   const send=(res,status,body)=>{res.writeHead(status,{...headers,'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
@@ -34,8 +41,8 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
       if(req.headers.host!==host||req.headers.origin&&req.headers.origin!==origin||['cross-site','same-site'].includes(req.headers['sec-fetch-site']))throw failure('CROSS_SITE','Open this configuration page from its local launcher URL.',403);
       const url=new URL(req.url,origin);
       if(req.method==='GET'&&url.pathname==='/health/project-launcher'){
-        const state=await project.state();
-        return send(res,200,{root:project.root,instanceId,busy:project.busy,...(state.finalization?{finalization:{id:state.finalization.id,phase:state.finalization.phase}}:{})});
+        const state=await projectState();
+        return send(res,200,{root:project.root,instanceId,configurationMode:mode,busy:project.busy,...(state.finalization?{finalization:{id:state.finalization.id,phase:state.finalization.phase}}:{})});
       }
       if(url.pathname.startsWith('/api/')){
         const supplied=Buffer.from(String(req.headers['x-sapling-config']||''));const expected=Buffer.from(token);
@@ -45,16 +52,17 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
         if(req.method==='GET'&&url.pathname==='/api/config/language')return send(res,200,await languageState(req));
         if(req.method==='GET'&&url.pathname==='/api/config/state')return send(res,200,await configurationState(await store.state()));
         if(req.method==='GET'&&url.pathname==='/api/config/mcp')return send(res,200,await getMcpAccess(root));
-        if(req.method==='GET'&&url.pathname==='/api/config/project')return send(res,200,await project.state());
+        if(req.method==='GET'&&url.pathname==='/api/config/project')return send(res,200,await projectState());
         if(req.method!=='POST')throw failure('NOT_FOUND','Configuration endpoint not found.',404);
         if(req.headers.origin!==origin||!/^application\/json(?:;|$)/i.test(req.headers['content-type']||''))throw failure('CROSS_SITE','Use the local configuration page to make changes.',403);
         let size=0,parts=[];for await(const chunk of req){size+=chunk.length;if(size>(['/api/config/project/save','/api/config/project/prepare'].includes(url.pathname)?2*1024*1024:65536))throw failure('BODY_TOO_LARGE','Configuration request is too large.',413);parts.push(chunk);}
         let body;try{body=JSON.parse(Buffer.concat(parts).toString('utf8'));}catch{throw failure('INVALID_CONFIG','Invalid configuration JSON.');}
         if(!body||typeof body!=='object'||Array.isArray(body))throw failure('INVALID_CONFIG','Expected a configuration object.');
         if(directoryOperation)throw failure('PROJECT_BUSY','Wait for project directory confirmation to finish.',409);
-        const setupPhase=(await project.state()).finalization?.phase;
+        if(aiOnly&&url.pathname.startsWith('/api/config/project/'))throw failure('AI_CONFIGURATION_ONLY','Project name, folder, icon and app build are unavailable in AI settings. Open full project setup to change them.',409);
+        const setupPhase=aiOnly?undefined:(await project.state()).finalization?.phase;
         if(directoryOperation||finalizing||closing||['waiting-release','restarting'].includes(setupPhase))throw failure('PROJECT_BUSY','Wait for setup to finish saving or restarting before changing settings.',409);
-        if(['/api/config/profiles','/api/config/activate','/api/config/credentials/import','/api/config/mcp'].includes(url.pathname)&&pendingLogin())throw failure('LOGIN_BUSY','Finish or cancel the current sign-in before changing schemes.',409);
+        if((['/api/config/profiles','/api/config/activate','/api/config/credentials/import','/api/config/mcp'].includes(url.pathname)||aiOnly&&url.pathname==='/api/config/models')&&pendingLogin())throw failure('LOGIN_BUSY','Finish or cancel the current sign-in before changing schemes.',409);
         if(['/api/config/profiles','/api/config/activate','/api/config/login','/api/config/close','/api/config/mcp'].includes(url.pathname)&&imports.busy)throw failure('IMPORT_BUSY','Wait for credential import to finish.',409);
         if(url.pathname.startsWith('/api/config/project/')){
           if(pendingLogin()||imports.busy)throw failure('LOGIN_BUSY','Finish account configuration before project operations.',409);
@@ -99,24 +107,26 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
           if(Object.keys(body).length!==1||!['en','zh'].includes(body.language))throw failure('INVALID_LANGUAGE','Choose English or Chinese.');
           activeAIRequests++;
           try{await writeLanguage(root,body.language);return send(res,200,await languageState(req));}
-          finally{activeAIRequests--;}
+          finally{requestFinished();}
         }
         const aiRoute=url.pathname.slice('/api/config/'.length);
         if(aiRoutes.has(aiRoute)){
-          activeAIRequests++;
+          if(aiOnly&&activeAIRequests)throw failure('CONFIG_BUSY','Wait for the current AI configuration request to finish.',409);
+          activeAIRequests++;activeAIAction=aiRoute;
           try{
-            if(!await settingsSaved())throw failure('PROJECT_SETTINGS_REQUIRED','Save project settings before configuring AI.',409);
+            if(!aiOnly&&!await settingsSaved())throw failure('PROJECT_SETTINGS_REQUIRED','Save project settings before configuring AI.',409);
             if(project.busy)throw failure('PROJECT_BUSY','Wait for the project operation before changing configuration.',409);
-            if(aiRoute==='mcp'){await saveMcpAccess(root,body);await project.invalidateSetup();return send(res,200,await getMcpAccess(root));}
-            if(aiRoute!=='models')await project.invalidateSetup();
+            if(aiOnly){if(aiRoute!=='models')await project.prepareAIChange();ensureOpen();}
+            if(aiRoute==='mcp'){await saveMcpAccess(root,body);if(!aiOnly)await project.invalidateSetup();return send(res,200,await getMcpAccess(root));}
+            if(!aiOnly&&aiRoute!=='models')await project.invalidateSetup();
             if(aiRoute==='credentials/import')return send(res,200,await configurationState(await imports.run(body)));
             if(aiRoute==='profiles')return send(res,200,await configurationState(await store.save(body)));
             if(aiRoute==='activate')return send(res,200,await configurationState(await store.activate(body)));
             if(aiRoute==='models')return send(res,200,await store.models(body));
             if(aiRoute==='login')return send(res,200,{login:await auth.begin(body.mode)});
-          }finally{activeAIRequests--;}
+          }finally{requestFinished();}
         }
-        if(url.pathname==='/api/config/login/cancel'){activeAIRequests++;try{return send(res,200,{login:await auth.cancel()});}finally{activeAIRequests--;}}
+        if(url.pathname==='/api/config/login/cancel'){if(aiOnly&&activeAIRequests&&!(activeAIAction==='login'&&pendingLogin()))throw failure('CONFIG_BUSY','Wait for the current AI configuration request to finish.',409);activeAIRequests++;try{return send(res,200,{login:await auth.cancel()});}finally{requestFinished();}}
         if(url.pathname==='/api/config/close'&&(project.busy||activeAIRequests))throw failure('PROJECT_BUSY','Wait for project and AI configuration operations before closing setup.',409);
         if(url.pathname==='/api/config/close'){closing=true;try{await auth.close();await prepareClose();}catch(error){closing=false;throw error;}send(res,200,{closed:true,...(project.configurationHost==='external'?{handoff:true}:{})});setImmediate(()=>void server.shutdown());return;}
         throw failure('NOT_FOUND','Configuration endpoint not found.',404);
@@ -157,10 +167,10 @@ export function createConfigurationServer({root=process.env.SEED_ROOT||defaultRo
     }
   });
   let closePreparation;
-  const prepareClose=()=>closePreparation||(closePreparation=Promise.resolve().then(()=>beforeClose?.()).catch(error=>{closePreparation=null;throw error;}));
+  const prepareClose=()=>closePreparation||(closePreparation=Promise.resolve().then(async()=>{if(aiOnly)await project.prepareAIFinish();await beforeClose?.();}).catch(error=>{closePreparation=null;throw error;}));
   server.relocate=async current=>{await auth.close();root=path.resolve(current);store=new ConfigurationStore(root);auth=new AccountSetup(root,store,authOptions);imports=new CredentialImport(store,importOptions);server.configStore=store;server.accountSetup=auth;await onProjectRename?.();};
   server.requestTimeout=90000;server.headersTimeout=10000;
-  server.shutdown=()=>shutdown||=(async()=>{closing=true;if(!finalizing)await project.cancel();await auth.close();await prepareClose();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await onClose?.();})().catch(error=>{shutdown=null;closing=false;throw error;});
+  server.shutdown=()=>shutdown||=(async()=>{closing=true;if(aiOnly)await requestsIdle();else if(!finalizing)await project.cancel();await auth.close();await prepareClose();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await onClose?.();})().catch(error=>{shutdown=null;closing=false;throw error;});
   server.configStore=store;server.accountSetup=auth;server.projectLauncher=project;
   return server;
 }

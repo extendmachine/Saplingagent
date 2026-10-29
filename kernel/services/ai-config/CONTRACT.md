@@ -192,3 +192,16 @@ existing security headers, escapes all text, and provides a reload link, Help
 link and collapsed code/original-details disclosure. It runs no script, repair,
 build or external request. API routes, asset requests and non-HTML clients retain
 the JSON error contract. `text/html;q=0` does not request the fallback page.
+
+
+## AI-only mode for an existing application (TASK-20261029-013)
+
+`createConfigurationServer` accepts a trusted `configurationMode:'setup'|'ai'`, inferred from the supplied controller when omitted and otherwise defaulting to `setup`. A conflicting/unknown mode or AI controller without the required lifecycle barriers fails with409 `CONFIGURATION_MODE_CONFLICT`; the HTTP body/query cannot select or change the mode. `GET /api/config/state` and successful profiles/activate/credentials-import state responses include `configurationMode`. `GET /health/project-launcher` includes the same value for capsule discovery. Existing clients without a discriminator use full setup.
+
+AI-only mode never calls the project controller's identity state, `stageSetup`, `invalidateSetup`, build or directory methods. `GET /api/config/project` exposes only mode/root/busy/configurationHost, with no identity initialization. Every authenticated POST under `/api/config/project/`, including save/prepare/finalize/build/rename/open/restart/stop/reveal, is rejected with409 `AI_CONFIGURATION_ONLY`. This is the settings-mode HTTP contract, not a restriction on Agent tools or customer code. Full setup behavior and its saved-settings/export prerequisites remain unchanged.
+
+AI profiles, activation, credential imports, Codex login and MCP writes reserve an exclusive request slot, then await `project.prepareAIChange()` before any possible credential/configuration mutation or authentication process. A failed/busy barrier returns its error and performs no such write. Existing Host/Origin/token, revision, credential replacement, import and login guards remain. API model-list discovery is read-only and does not pause the application, invoke a model prompt or invalidate setup; it is serialized with other AI requests and refuses a pending sign-in. Language changes remain independent of model configuration and do not trigger the pause barrier.
+
+`POST /api/config/close {}` refuses in-flight AI writes/imports, closes only owned authentication (including pending asynchronous completion), awaits `project.prepareAIFinish()`, then the existing external handback. Success remains `{closed:true,handoff:true}` for an external capsule. It does not require an identity/settingsSaved/exportReady/build or an active AI profile. `prepareAIFinish` is idempotent; failed preparation/handback stays retryable and is never reported as a successful restart. Direct service shutdown blocks new requests, drains active AI requests, then closes auth and performs the same finish barrier before handback. Capsule cleanup and conditional application resumption belong to the configuration lifecycle contract, not the HTTP response alone.
+
+AI-mode mutations never reset source, conversations, project identity/icon, compiled App, customer Git or Full Access. Stored profile changes are not proof of remote login entitlement, model access or successful inference.
