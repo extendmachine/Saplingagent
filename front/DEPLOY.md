@@ -1,5 +1,14 @@
 # Frontend run and recovery
 
+## GitHub workflow prototype (TASK-20261028-001)
+
+Build/deploy the application frontend to adopt the five-step prototype. It uses
+the existing locked dependencies and service; no kernel update, backend restart,
+new process or credentials are needed. The prototype is labelled and performs no
+real GitHub/AI operation. `npm run build` and `npm test` remain the standard checks;
+`node --test features/github-workflow/model.test.mjs` adds local URL/selection/i18n
+checks. See docs/github-workflow-prototype.html for usage and unimplemented work.
+
 Use the project-local Mac installer and launcher described in root README. Mac runtime is pinned to Node 24.21.0; dependencies belong to front/node_modules with this service's lockfile. No global dependency installation or frontend credential file is required.
 
 For separate frontend development:

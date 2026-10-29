@@ -23,7 +23,7 @@
 
 <p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 & ARM64 · MIT open source · Commercial use permitted</sub></p>
 
-**Saplingagent · Kernel 0.9.7 · Contained kernel layout.** Use the release-branch download or one-line installer below for this source version. See [project setup and local compilation](docs/project-launcher.html).
+**Saplingagent · Kernel 0.9.8 · Contained kernel layout.** Use the release-branch download or one-line installer below for this source version. See [project setup and local compilation](docs/project-launcher.html).
 
 <a id="demo"></a>
 
@@ -94,9 +94,13 @@ Office editing covers basic changes. Word controls format whole paragraphs; Powe
 
 </details>
 
-## Kernel 0.9.7 update
+## Kernel 0.9.8 update
 
-Browser tabs now use the project folder name configured during setup. This full source also includes the bilingual interface, same-conversation AI handoff and compact Settings entry. **Kernel-only upgrades preserve your application frontend/backend**: adopt matching application source deliberately to receive these page/chat features. Rebuild an existing native launcher when adopting compiled launcher changes. Existing tags remain unchanged.
+Open **Settings → Configure AI** from the main page to launch or reuse the independent setup website. Progress, English/Chinese errors and a copyable local address keep setup usable when the default browser cannot open. Opening setup alone does not stop your application.
+
+Startup, Restart backend and Restart app now reselect occupied internal ports, preserve the live public/control addresses and refresh frontend endpoint mappings when necessary. Existing running controllers need one full exit/reopen to load the new code; these changes do not require rebuilding the native launcher.
+
+The complete source also includes the labelled GitHub-to-Saplingagent workflow **UI prototype**. Its analysis, generation and publication are examples, not implemented backend operations. **Kernel-only upgrades preserve your application frontend/backend** and do not install this prototype or overwrite customized chat. Existing tags and third-party terms remain unchanged.
 
 ## Configure and launch
 
@@ -104,7 +108,7 @@ The right-hand chat supports saved-conversation switching and renaming, per-conv
 
 Run `bash Saplingagent.sh`. The script installs the minimal local kernel and opens configuration in a temporary process outside the project. Save the project name, folder, icon and AI connection, then choose **Save & build app**. Wait for completion and choose **Finish setup**. The returning launcher removes the external configuration files after that process exits.
 
-Open the generated `.app` or `.exe` inside the complete project folder. It checks and installs missing/changed project dependencies, displays startup progress, then opens the **Project status** page at the runtime's actual selected address. This page shows your project, kernel version, service processes and ports; choose **Open app** to enter the application. It stays a small bootstrap; your editable source and data remain in the folder. Reopen `bash Saplingagent.sh configure` to change settings or rebuild the launcher. Normal app startup does not reopen configuration. See the [project status guide](docs/project-status.html) and [A/B lifecycle and recovery guide](docs/project-launcher.html).
+Open the generated `.app` or `.exe` inside the complete project folder. It checks and installs missing/changed project dependencies, displays startup progress, then opens the **Project status** page at the runtime's actual selected address. This page shows your project, kernel version, service processes and ports; choose **Open app** to enter the application. It stays a small bootstrap; your editable source and data remain in the folder. Choose **Settings → Configure AI**, or run `bash Saplingagent.sh configure`, to change settings or rebuild the launcher. Normal app startup does not reopen configuration. See the [project status guide](docs/project-status.html) and [A/B lifecycle and recovery guide](docs/project-launcher.html).
 
 On macOS, the app stays in the Dock while the existing project services run. Click its Dock icon to reopen project status; choose **Quit** or press **Command-Q** to stop this project's backend and exit. On both systems, **Stop app** on the status page waits for owned application services to exit before confirming; reopening the compiled app starts them again. Closing the browser or hiding startup progress leaves services running. A disconnected page is not proof of shutdown. If shutdown fails, inspect `logs/project-launcher/` and retry. Configuration waits for the native app and startup helper to exit before renaming or replacing the launcher. After updating an existing installation, use **Save & build app** once to rebuild an older exported `.app`/`.exe` with the new progress display. Application source and the service cluster remain unchanged.
 
@@ -208,7 +212,7 @@ The Git-free delivery workflow downloads the release snapshot without `.git`. In
 
 The chat page has a compact top-right **Settings** link to `/__saplingagent/runtime` for status, restart and stop; it opens a new tab to retain your chat and draft. It has no bottom kernel badge or embedded restart/kernel buttons. For updates, open `/__saplingagent/kernel` directly, then **Check for kernel update → Upgrade kernel & restart**. Review the verified release SHA, paths and conflicts, then accept the compatibility warning. A copied temporary progress process stops owned services, backs up/applies core, repairs its own dependencies and restarts the complete application at its actual selected port. App/chat pages, application-owned MCP, Skills, demos, business code, application dependency manifests, configuration, data and customer Git are retained. Restart app/backend remains available without an upgrade. Recovery is explicit; no automatic rollback. Direct control: `/__saplingagent/kernel`.
 
-This source declares **Kernel0.9.7 / schema3 / layout1**, the single Saplingagent version. Release promotion is separate from main development; inspect the committed release metadata before downloading. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
+This source declares **Kernel0.9.8 / schema3 / layout1**, the single Saplingagent version. Release promotion is separate from main development; inspect the committed release metadata before downloading. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
 
 ## Import existing local credentials
 
@@ -443,9 +447,9 @@ Use the paperclip, drop files into AI chat or paste an image. Attachments stay i
 
 ## Release identity
 
-The installed **Kernel0.9.7** is the only Saplingagent version, read from `kernel/manifest.json`. Setup, runtime/kernel management, Bash and packages use it. There is no separate product version. Missing/invalid metadata is unavailable. Legacy `config/release.json` and `releaseVersion` receipt names remain compatibility mirrors/aliases; they are not runtime authority.
+The installed **Kernel0.9.8** is the only Saplingagent version, read from `kernel/manifest.json`. Setup, runtime/kernel management, Bash and packages use it. There is no separate product version. Missing/invalid metadata is unavailable. Legacy `config/release.json` and `releaseVersion` receipt names remain compatibility mirrors/aliases; they are not runtime authority.
 
-Downloadable source ZIPs record `kernelVersion` and the exact `sourceCommit` in `delivery.json`; `releaseVersion` remains an equal compatibility alias. For **0.9.7**, use the [v0.9.7 release](https://github.com/extendmachine/Saplingagent/releases/tag/v0.9.7) for pinned macOS/Windows source ZIPs and SHA-256 checksums, or the one-line installer for the current `release` branch. The immutable tag, release page and package receipts must identify the same checked source. Existing tags are preserved. See the [release checklist](docs/release-checklist.html). Source packages are not signed native installers; real-device/model acceptance is recorded separately.
+Downloadable source ZIPs record `kernelVersion` and the exact `sourceCommit` in `delivery.json`; `releaseVersion` remains an equal compatibility alias. For **0.9.8**, use the [v0.9.8 release](https://github.com/extendmachine/Saplingagent/releases/tag/v0.9.8) for pinned macOS/Windows source ZIPs and SHA-256 checksums, or the one-line installer for the current `release` branch. The immutable tag, release page and package receipts must identify the same checked source. Existing tags are preserved. See the [release checklist](docs/release-checklist.html). Source packages are not signed native installers; real-device/model acceptance is recorded separately.
 
 ### Kernel source boundary
 

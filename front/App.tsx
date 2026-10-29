@@ -1,5 +1,5 @@
-// Application-owned space for features requested by the user.
-// Project operations are available from the header Settings link.
+import { GitHubWorkflow } from './features/github-workflow/GitHubWorkflow';
+
 export function App() {
-  return null;
+  return <GitHubWorkflow />;
 }

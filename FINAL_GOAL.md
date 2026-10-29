@@ -138,7 +138,7 @@ old distributed layout; restoring an explicit backup remains available.
 
 ## One kernel version (2026-10-19)
 
-The current version is **kernel0.9.7**. There is no separate product version. kernel/manifest.json is authoritative for display, setup, installation, maintenance and packaging. Old API/receipt field names can remain compatibility aliases, but they must not establish a second current version. Missing metadata is unavailable, not a hardcoded historical baseline. Keep old version records/backups factual and handle their numeric migration deliberately without hiding local edits. See contracts/release.md and docs/kernel-version-migration.html.
+The current version is **kernel0.9.8**. There is no separate product version. kernel/manifest.json is authoritative for display, setup, installation, maintenance and packaging. Old API/receipt field names can remain compatibility aliases, but they must not establish a second current version. Missing metadata is unavailable, not a hardcoded historical baseline. Keep old version records/backups factual and handle their numeric migration deliberately without hiding local edits. See contracts/release.md and docs/kernel-version-migration.html.
 
 
 Owner storage clarification (2026-10-19): configuration execution uses a visible
@@ -150,3 +150,18 @@ explicit read-only account imports remain valid. Existing customer Agent Full
 Access is unchanged. Locks must cover concurrent setup, install, rename, compilation
 and cleanup without retaining project handles across rename or deleting live or
 unrelated helper directories.
+
+## User-requested GitHub workflow prototype (2026-10-28)
+
+This maintainer application's optional feature area hosts a five-step frontend
+prototype for GitHub URL intake, project-local source analysis, user-selected
+capabilities, Saplingagent adaptation and publication to the user's repository.
+The intended source/output directory is `projeccts/<owner>--<repository>/` with
+separate `source/` and `saplingagent/` children. Prototype reports, source trees,
+dependencies, features and delivery screens are illustrative and clearly labelled.
+No download, AI invocation, generated application or GitHub upload is implemented
+by this frontend task. Applicable source terms, access and runtime compatibility
+must be assessed before real adaptation; arbitrary URL intake does not guarantee
+complete reproduction. Preserve the current bilingual header, AI chat, context,
+application operation controls and kernel boundary. This optional application
+feature does not add a new mandatory kernel or service to every seed.

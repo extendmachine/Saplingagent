@@ -1,5 +1,12 @@
 # Saplingagent changelog
 
+## 0.9.8 — AI setup from Settings and restart port recovery (2026-10-28)
+
+- Add Settings → Configure AI, with an asynchronous per-project job, verified short-lived A / external B handoff, session reuse, English/Chinese progress/errors and a copyable address fallback. Preserve setup access checks; opening setup alone does not stop the app.
+- Recover occupied internal ports across cold startup, backend and full app restart; keep public/control listeners stable and refresh frontend endpoint mappings when needed. Existing runtimes need a normal full exit/reopen.
+- Include the clearly labelled GitHub-to-Saplingagent frontend workflow prototype in complete source. Repository analysis, generation and destination publication remain synthetic examples with no real backend effects. Kernel-only upgrades preserve customized application source and do not install this prototype.
+- Declare kernel0.9.8 consistently in source/package metadata and guides; publish immutable v0.9.8 with macOS/Windows source ZIPs and SHA256 checksums. Historical tags/assets remain unchanged. Real-account and native Windows acceptance remain separate from automated and Mac fixture checks.
+
 ## 0.9.7 — Project identity and accumulated main improvements (2026-10-27)
 
 - The complete seed uses the configured project folder name for the browser tab, independently from the native app name. Language changes preserve it; older runtime and missing-metadata fallbacks keep chat usable. The kernel exposes the separate read-only projectFolderName status field.

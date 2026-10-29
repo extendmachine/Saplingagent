@@ -1,6 +1,17 @@
 # Frontend service
 
-React single-page chat and requested application components. `main.tsx` mounts `ChatDock`/`ChatPanel` independently from lazy `App`, wrapped in `ApplicationBoundary`; `App` hosts independent kernel controls/version frames. Previous empty-App descriptions in task records are historical.
+## GitHub workflow prototype (TASK-20261028-001)
+
+The user-requested application area now composes `features/github-workflow/` from
+App.tsx. This supersedes the empty application-area description for this maintainer
+application only. Five local screens cover link intake, illustrative source review,
+feature selection, adaptation/delivery preview and destination review. Shared
+language, header, chat and page-inspection bridge remain. No new backend,
+dependency, persistent service, kernel change or real GitHub/AI operation is added.
+See the module README and docs/github-workflow-prototype.html. Other historical
+service descriptions below retain their original scope.
+
+React single-page chat and requested application components. `main.tsx` mounts `ChatDock`/`ChatPanel` independently from lazy `App`, wrapped in `ApplicationBoundary`; `App` hosts the requested GitHub workflow prototype. Runtime operations remain available from the shared Settings entry. Previous empty-App or embedded-control descriptions in task records are historical.
 
 ## Responsibilities and boundaries
 
