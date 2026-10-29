@@ -129,7 +129,7 @@ test('invalid selections and missing revision guards leave stored data and revis
   const valid = switching(session, claude);
   const inputs = [null, [], {}, ...['engine', 'providerId', 'modelId', 'expectedRevision', 'expectedEngineRevision'].map(key => { const input = { ...valid }; delete input[key]; return input; }),
     { ...valid, engine: 'unknown' }, { ...valid, modelId: '' }, { ...valid, providerId: null },
-    { ...valid, ...codex, modelId: 'override' },
+    { ...valid, ...codex, providerId: 'override' },
     ...[-1, 0.5, Number.MAX_SAFE_INTEGER + 1, '0', null].map(expectedEngineRevision => ({ ...valid, expectedEngineRevision })),
     ...[0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, '2', null].map(expectedRevision => ({ ...valid, expectedRevision })),
   ];

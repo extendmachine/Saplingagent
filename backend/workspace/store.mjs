@@ -42,9 +42,30 @@ const timestamp = (value, name) => {
   if (!Number.isFinite(Date.parse(result))) fail(`Invalid ${name}`);
   return result;
 };
+function modelUsage(value) {
+  if (value === null) return null;
+  const fields = ['requestedModel', 'actualModel', 'requestId', 'updatedAt', 'source'];
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !fields.includes(key))) fail('modelUsage must contain only its five documented fields');
+  const usageText = (input, name, limit) => {
+    const result = text(input, `modelUsage.${name}`, limit);
+    if (/[\u0000-\u001f\u007f]/u.test(result)) fail(`modelUsage.${name} must not contain control characters`);
+    return result;
+  };
+  const result = {
+    requestedModel: usageText(value.requestedModel, 'requestedModel', 240),
+    actualModel: value.actualModel === null ? null : usageText(value.actualModel, 'actualModel', 240),
+    requestId: usageText(value.requestId, 'requestId', 160),
+    updatedAt: usageText(value.updatedAt, 'updatedAt', 80),
+    source: value.source,
+  };
+  if (!Number.isFinite(Date.parse(result.updatedAt)) || new Date(result.updatedAt).toISOString() !== result.updatedAt) fail('modelUsage.updatedAt must be an ISO UTC timestamp');
+  if (!['thread/start', 'thread/resume', 'model/rerouted', 'unreported'].includes(result.source)) fail('Invalid modelUsage.source');
+  if (result.source === 'unreported' && result.actualModel !== null) fail('Unreported model usage cannot contain an actual model');
+  return result;
+}
 function selection(input) {
   const selected = { engine: engine(input.engine), providerId: providerId(input.providerId), modelId: modelId(input.modelId) };
-  if (selected.engine === 'codex' && (selected.providerId !== null || selected.modelId !== null)) fail('Codex sessions do not accept providerId or modelId');
+  if (selected.engine === 'codex' && selected.providerId !== null) fail('Codex sessions do not accept providerId');
   if (selected.engine !== 'codex' && (!selected.providerId || !selected.modelId)) fail('API agent sessions require providerId and modelId');
   return selected;
 }
@@ -75,7 +96,10 @@ function normalizeSession(session) {
   let switching;
   try { switching = switchingMetadata(session); }
   catch { throw new WorkspaceError('CORRUPT_STORAGE', 'Stored session switching metadata requires recovery', 500); }
-  return { ...session,
+  let usage = {};
+  try { if (session.modelUsage !== undefined) usage = { modelUsage: modelUsage(session.modelUsage) }; }
+  catch { throw new WorkspaceError('CORRUPT_STORAGE', 'Stored session model usage requires recovery', 500); }
+  return { ...session, ...usage,
     engine: session.engine === undefined ? 'codex' : engine(session.engine),
     providerId: session.providerId === undefined ? null : providerId(session.providerId),
     modelId: session.modelId === undefined ? null : modelId(session.modelId),
@@ -188,8 +212,7 @@ export async function createStore(applicationRoot) {
         const now = new Date().toISOString();
         const selectedEngine = input.engine === undefined ? 'codex' : engine(input.engine);
         const session = { id: randomUUID(), title: input.title === undefined ? 'New conversation' : text(input.title, 'title', 200), engine: selectedEngine, providerId: input.providerId === undefined ? null : providerId(input.providerId), modelId: input.modelId === undefined ? null : modelId(input.modelId), threadId: null, messages: [], running: false, activeRequestId: null, createdAt: now, updatedAt: now, revision: 1, engineRevision: 0, engineHistory: [], handoff: null };
-        if (selectedEngine === 'codex' && (session.providerId !== null || session.modelId !== null)) fail('Codex sessions do not accept providerId or modelId');
-        if (selectedEngine !== 'codex' && (!session.providerId || !session.modelId)) fail('API agent sessions require providerId and modelId');
+        selection(session);
         await atomicJson(root, `data/workspace/sessions/${session.id}.json`, session);
         return session;
       });
@@ -204,14 +227,22 @@ export async function createStore(applicationRoot) {
         if (input.expectedRevision !== session.revision) throw new WorkspaceError('CONFLICT', 'Session revision has changed', 409);
         if (session.running || session.activeRequestId || session.requests?.some(item => item.status === 'inProgress')) throw new WorkspaceError('SESSION_BUSY', 'This conversation is still running', 409);
         if (selected.engine === session.engine && selected.providerId === session.providerId && selected.modelId === session.modelId) return session;
-        if (session.engineHistory.length >= 1000) throw new WorkspaceError('ENGINE_HISTORY_FULL', 'Conversation engine history is full', 409);
+        const codexModelOnly = selected.engine === 'codex' && session.engine === 'codex';
+        if (!codexModelOnly && session.engineHistory.length >= 1000) throw new WorkspaceError('ENGINE_HISTORY_FULL', 'Conversation engine history is full', 409);
         if (!Number.isSafeInteger(session.revision + 1) || !Number.isSafeInteger(session.engineRevision + 1)) throw new WorkspaceError('CONFLICT', 'Session revision is exhausted', 409);
         const now = new Date().toISOString();
-        const history = { engine: session.engine, providerId: session.providerId, modelId: session.modelId, threadId: session.threadId ?? null, engineRevision: session.engineRevision, closedAt: now };
-        session.engineHistory.push(history);
+        if (!codexModelOnly) {
+          const history = { engine: session.engine, providerId: session.providerId, modelId: session.modelId, threadId: session.threadId ?? null, engineRevision: session.engineRevision, closedAt: now };
+          session.engineHistory.push(history);
+        }
         session.engineRevision++;
-        Object.assign(session, selected, { threadId: null, contextUsage: null });
-        session.handoff = session.messages.length ? { id: randomUUID(), bindingRevision: session.engineRevision, status: 'pending', throughMessageId: validId(session.messages.at(-1).id), createdAt: now } : null;
+        Object.assign(session, selected, { contextUsage: null, modelUsage: null });
+        if (codexModelOnly) {
+          if (session.handoff) session.handoff = { ...session.handoff, bindingRevision: session.engineRevision };
+        } else {
+          session.threadId = null;
+          session.handoff = session.messages.length ? { id: randomUUID(), bindingRevision: session.engineRevision, status: 'pending', throughMessageId: validId(session.messages.at(-1).id), createdAt: now } : null;
+        }
         session.updatedAt = now; session.revision++;
         await atomicJson(root, `data/workspace/sessions/${validId(id)}.json`, session);
         return session;
@@ -236,6 +267,7 @@ export async function createStore(applicationRoot) {
         }
         if (input.activeRequestId !== undefined) session.activeRequestId = input.activeRequestId === null ? null : text(input.activeRequestId, 'activeRequestId', 160);
         if (input.contextUsage !== undefined) session.contextUsage = contextUsage(input.contextUsage);
+        if (input.modelUsage !== undefined) session.modelUsage = modelUsage(input.modelUsage);
         if (input.requests !== undefined) {
           if (!Array.isArray(input.requests) || input.requests.length > 500) fail('requests must contain at most 500 items');
           const requestIds = new Set();
