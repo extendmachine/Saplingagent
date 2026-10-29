@@ -94,3 +94,7 @@ Public sources need no login. Exact installed schema/types take precedence over 
 - Synthetic HTTP/notification tests verify attribution and optional persistence.
   No provider-specific compression threshold, billing cost, unsupported engine
   count or new external protocol behavior is claimed.
+
+## Codex account model picker (TASK-20261029-004)
+
+Checked2026-10-29: https://learn.chatgpt.com/docs/app-server (OpenAI, public; no login needed to read). Used for model/list pagination, thread model overrides, per-turn effort and model/rerouted thread/turn identity. Pinned0.146.1 generated schemas additionally confirm thread start/resume top-level model and no model in TurnStartResponse. All regression calls are synthetic; these sources do not certify real account model entitlement.
