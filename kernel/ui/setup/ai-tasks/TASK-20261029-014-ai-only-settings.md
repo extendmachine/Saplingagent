@@ -20,3 +20,5 @@ English/Chinese titles, saved/default/import/MCP notices and help distinguish AI
 ## Integration
 
 Cherry-pick the independent scoped commit with service/lifecycle commits; root regenerates/checks the official manifest and carries requested main/customer deployment. Service state/profiles/activate/import snapshots carry configurationMode. Lifecycle owns restart/cleanup; UI never claims services ready from a close acknowledgement. Public help was updated to avoid sending existing-project AI users back to a build/export workflow. No dependency declaration/version changes; kernel stays0.9.8.
+
+Lifecycle handoff follow-up: add the dedicated configure --ai-only CLI help and three AI-only status messages in both languages (preparing, sibling temporary folder cleanup, AI URL/Finish). Full project setup messages remain unchanged. Launcher catalog parity/interpolation and8shared-localization checks passed; no runtime mutation.
