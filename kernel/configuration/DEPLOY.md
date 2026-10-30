@@ -1,7 +1,7 @@
 # Configuration capsule deployment
 
 The complete source folder is required. Installation prepares the project-local
-kernel dependencies; Configure AI builds the page and stages a self-contained
+kernel dependencies; full project setup builds the page and stages a self-contained
 management capsule. A copies it plus Node to `../sapling-config-<random>/`,
 a visible sibling beside the current project,
 starts B and exits. Complete settings and choose Save & build app, wait for success,
@@ -44,16 +44,34 @@ in the project's `.runtime/`.
 ## Configure AI from the application
 
 Open the main page's top-right Settings, then Configure AI. The runtime gateway
-starts a short-lived local bootstrap and opens/reuses the independent setup page
-in the default system browser. Preparation is asynchronous; repeated clicks share
-one job. Opening setup leaves current application services running. Save work
-before Save & build; existing finalization owns stop/rename/build, and users open
-the app again after Finish setup. If the browser cannot open, copy the displayed
-loopback URL into a new tab's address bar. Do not replace this with a fixed-port
-link or disable setup Host/Origin checks. Errors/slow startup point to
-logs/project-launcher; the existing bash Saplingagent.sh configure remains usable.
-This JavaScript controller change requires one cold launch for existing running
-instances; it does not require rebuilding the native app. Current kernel0.9.8.
+starts a short-lived bootstrap and opens/reuses an AI-only page in the default
+browser. Repeated clicks share one job. The page contains account/API/MCP
+configuration, without project-name, folder, icon or app-build steps. Opening or
+reading it leaves services running. The first AI write/login pauses this project's
+owned processes before credentials can change. Finish closes the login process,
+cleans the external capsule and restarts the existing app without recompiling it.
+Save current work before editing credentials; busy shutdown is reported rather
+than interrupting an active AI task. Existing conversations and application source
+are retained. A read-only visit can simply be closed through Finish with no restart.
+
+If the browser cannot open, paste the verified loopback URL into a new address
+bar. The explicit terminal fallback is:
+
+```sh
+bash Saplingagent.sh configure --ai-only
+# Optional: print the configuration URL without opening a browser.
+bash Saplingagent.sh configure --ai-only --no-open
+```
+
+Plain `configure`, the installation menu and initial setup retain the full project
+workflow. An already open page in the other mode must be finished or closed first;
+its unsaved work is not silently discarded. Do not bypass Host/Origin checks or
+use a fixed port. After Finish, inspect `.runtime/ai-configuration.json` and
+`.runtime/configuration-complete.json` if restart did not succeed. Saved AI
+configuration and failed application startup are separate results. Logs remain
+under `logs/project-launcher`. A code update requires one cold launch of an
+existing runtime controller; no native recompilation is required. Kernel remains
+0.9.9.
 
 Direct development startup also supports Configure AI. The runtime bridge
 canonicalizes the project directory before launch and discovery, so the default

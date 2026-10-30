@@ -54,8 +54,8 @@ try{
         launchProgress('ready');
       }
     }else{
-      const address=await openConfiguration(root,{noOpen});
-      await reportConfiguration({ok:true,port:address.port,instanceId:address.instanceId});
+      const address=await openConfiguration(root,{noOpen,configurationMode:process.argv.includes('--ai-only')?'ai':'setup'});
+      await reportConfiguration({ok:true,port:address.port,instanceId:address.instanceId,configurationMode:address.configurationMode});
       console.log(formatMessage(launcherMessages,process.env.SAPLING_LANG,'Project setup: {url}',{url:`http://127.0.0.1:${address.port}/`}));
     }
   }

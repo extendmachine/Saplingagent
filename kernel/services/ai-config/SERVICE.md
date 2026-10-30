@@ -68,3 +68,8 @@ TASK040 uses kernel/contracts/local-storage.mjs for project-derived managed outp
 and configuration-write.mjs for the shared script/service credential ledger lock.
 No new dependencies. Logs and configuration remain local; read-only account import
 sources and customer Full Access are unchanged. See CONTRACT.md for failures.
+
+
+## Existing-project AI settings (TASK-20261029-013)
+
+The HTTP service accepts a trusted configurationMode of setup or ai; omitted mode remains setup. AI-only mode uses the external capsule controller's owned-runtime pause and finish barriers without reading/initializing project identity. It retains the same profile, credential import, Codex sign-in, personal Claude token, MCP and language services. It does not compile, rename, reset setup or change customer application files. The mode is published in public configuration snapshots and health. See CONTRACT.md for guards and DEPLOY.md for lifecycle.

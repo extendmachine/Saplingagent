@@ -23,7 +23,7 @@
 
 <p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 & ARM64 · MIT open source · Commercial use permitted</sub></p>
 
-**Saplingagent · Kernel 0.9.8 · Contained kernel layout.** Use the release-branch download or one-line installer below for this source version. See [project setup and local compilation](docs/project-launcher.html).
+**Saplingagent · Kernel 0.9.9 · Contained kernel layout.** Use the release-branch download or one-line installer below for this source version. See [project setup and local compilation](docs/project-launcher.html).
 
 <a id="demo"></a>
 
@@ -94,9 +94,11 @@ Office editing covers basic changes. Word controls format whole paragraphs; Powe
 
 </details>
 
-## Kernel 0.9.8 update
+## Kernel 0.9.9 update
 
 Open **Settings → Configure AI** from the main page to launch or reuse the independent setup website. Progress, English/Chinese errors and a copyable local address keep setup usable when the default browser cannot open. Opening setup alone does not stop your application.
+
+For an existing project, this entry opens **AI settings only**: change the account, provider, model or MCP connection, then **Finish & restart**. The first AI change pauses owned services; project name, folder, icon, conversations and compiled launcher stay intact. Terminal fallback: `bash Saplingagent.sh configure --ai-only`. Plain `configure` still opens full project setup.
 
 Startup, Restart backend and Restart app now reselect occupied internal ports, preserve the live public/control addresses and refresh frontend endpoint mappings when necessary. Existing running controllers need one full exit/reopen to load the new code; these changes do not require rebuilding the native launcher.
 
@@ -214,7 +216,7 @@ The Git-free delivery workflow downloads the release snapshot without `.git`. In
 
 The chat page has a compact top-right **Settings** link to `/__saplingagent/runtime` for status, restart and stop; it opens a new tab to retain your chat and draft. It has no bottom kernel badge or embedded restart/kernel buttons. For updates, open `/__saplingagent/kernel` directly, then **Check for kernel update → Upgrade kernel & restart**. Review the verified release SHA, paths and conflicts, then accept the compatibility warning. A copied temporary progress process stops owned services, backs up/applies core, repairs its own dependencies and restarts the complete application at its actual selected port. App/chat pages, application-owned MCP, Skills, demos, business code, application dependency manifests, configuration, data and customer Git are retained. Restart app/backend remains available without an upgrade. Recovery is explicit; no automatic rollback. Direct control: `/__saplingagent/kernel`.
 
-This source declares **Kernel0.9.8 / schema3 / layout1**, the single Saplingagent version. Release promotion is separate from main development; inspect the committed release metadata before downloading. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
+This source declares **Kernel0.9.9 / schema3 / layout1**, the single Saplingagent version. Release promotion is separate from main development; inspect the committed release metadata before downloading. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
 
 ## Import existing local credentials
 
@@ -449,9 +451,9 @@ Use the paperclip, drop files into AI chat or paste an image. Attachments stay i
 
 ## Release identity
 
-The installed **Kernel0.9.8** is the only Saplingagent version, read from `kernel/manifest.json`. Setup, runtime/kernel management, Bash and packages use it. There is no separate product version. Missing/invalid metadata is unavailable. Legacy `config/release.json` and `releaseVersion` receipt names remain compatibility mirrors/aliases; they are not runtime authority.
+The installed **Kernel0.9.9** is the only Saplingagent version, read from `kernel/manifest.json`. Setup, runtime/kernel management, Bash and packages use it. There is no separate product version. Missing/invalid metadata is unavailable. Legacy `config/release.json` and `releaseVersion` receipt names remain compatibility mirrors/aliases; they are not runtime authority.
 
-Downloadable source ZIPs record `kernelVersion` and the exact `sourceCommit` in `delivery.json`; `releaseVersion` remains an equal compatibility alias. For **0.9.8**, use the [v0.9.8 release](https://github.com/extendmachine/Saplingagent/releases/tag/v0.9.8) for pinned macOS/Windows source ZIPs and SHA-256 checksums, or the one-line installer for the current `release` branch. The immutable tag, release page and package receipts must identify the same checked source. Existing tags are preserved. See the [release checklist](docs/release-checklist.html). Source packages are not signed native installers; real-device/model acceptance is recorded separately.
+Downloadable source ZIPs record `kernelVersion` and the exact `sourceCommit` in `delivery.json`; `releaseVersion` remains an equal compatibility alias. For **0.9.9**, use the [v0.9.9 release](https://github.com/extendmachine/Saplingagent/releases/tag/v0.9.9) for pinned macOS/Windows source ZIPs and SHA-256 checksums, or the one-line installer for the current `release` branch. The immutable tag, release page and package receipts must identify the same checked source. Existing tags are preserved. See the [release checklist](docs/release-checklist.html). Source packages are not signed native installers; real-device/model acceptance is recorded separately.
 
 ### Kernel source boundary
 

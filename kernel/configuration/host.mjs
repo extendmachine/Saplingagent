@@ -22,13 +22,13 @@ const controller=new ConfigurationController(session.root,{session,onRelocate:as
 }});
 const publish=async()=>{
   session=controller.session;
-  const address={root:controller.root,fingerprint:session.fingerprint,pid:process.pid,instanceId:session.id,port:server.address().port,configurationHost:'external',relativeDirectory:path.relative(controller.root,directory)};
+  const address={root:controller.root,fingerprint:session.fingerprint,pid:process.pid,instanceId:session.id,port:server.address().port,configurationHost:'external',configurationMode:controller.configurationMode,relativeDirectory:path.relative(controller.root,directory)};
   await writeJSON(path.join(controller.root,'.runtime/management-address.json'),address);
   await writeJSON(path.join(controller.root,'.runtime/management.lock/owner.json'),{root:controller.root,pid:process.pid,id:session.id});
   await writeJSON(path.join(directory,'address.json'),address);
 };
-server=createConfigurationServer({root:controller.root,assets:path.join(directory,'ui'),language:session.language,token,projectController:controller,instanceId:session.id,onProjectRename:publish,
-  beforeClose:()=>handBack(controller.session),onClose:async()=>{
+server=createConfigurationServer({root:controller.root,configurationMode:controller.configurationMode,assets:path.join(directory,'ui'),language:session.language,token,projectController:controller,instanceId:session.id,onProjectRename:publish,
+  beforeClose:async()=>{await controller.prepareAIFinish();return handBack(controller.session);},onClose:async()=>{
     // A owns discovery cleanup after it observes B exit. No failing I/O here
     // may leave a headless B keeping its executable open.
     process.exit(0);

@@ -5,6 +5,7 @@ import { exportMcpConfiguration, mcpSettingsChanged, saveMcpSettings, type Confi
 export type McpAccessHandle = { save: () => Promise<void>; refresh: () => Promise<void> };
 export type McpAccessStatus = { dirty: boolean; busy: boolean };
 type Props = {
+  configurationMode?: 'setup' | 'ai';
   request: ConfigRequest;
   t: Translation;
   language: Language;
@@ -14,7 +15,7 @@ type Props = {
   onStatus: (status: McpAccessStatus) => void;
 };
 
-export const McpAccess = forwardRef<McpAccessHandle, Props>(function McpAccess({ request, t, language, disabled, refreshKey, onSaved, onStatus }, ref) {
+export const McpAccess = forwardRef<McpAccessHandle, Props>(function McpAccess({ configurationMode = 'setup', request, t, language, disabled, refreshKey, onSaved, onStatus }, ref) {
   const [state, setState] = useState<McpState | null>(null);
   const [draft, setDraft] = useState<McpSettings | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState<unknown>(null), [notice, setNotice] = useState<Message|null>(null);
@@ -47,7 +48,7 @@ export const McpAccess = forwardRef<McpAccessHandle, Props>(function McpAccess({
     if (!draft) throw setupError("mcp.read.mcp.settings.before.saving");
     await operation(async () => {
       accept(await saveMcpSettings(request, draft), true);
-      setNotice(msg("mcp.mcp.settings.saved.choose.save.build.app"));
+      setNotice(msg(configurationMode==='ai'?'mcp.ai.saved':'mcp.mcp.settings.saved.choose.save.build.app'));
     });
   }
   useImperativeHandle(ref, () => ({ save, refresh }));
@@ -85,7 +86,7 @@ export const McpAccess = forwardRef<McpAccessHandle, Props>(function McpAccess({
     <Notice value={notice} language={language}/>
     {state?.warnings.map((warning, index) => <div className="note" key={index}>{warning.code === 'PROJECT_LOCAL_NODE_REQUIRED' ? t("mcp.install.or.repair.this.project.to.prepare") : warning.code === 'MCP_DEPENDENCIES_REQUIRED' ? t("mcp.install.or.repair.the.kernel.to.prepare") : <ErrorNotice issue={warning} language={language}/>}</div>)}
     <h3>{t("mcp.client.configuration")}</h3>
-    <p className="hint">{t("mcp.save.and.build.first.after.renaming.or")}</p>
+    <p className="hint">{t(configurationMode==='ai'?'mcp.ai.client.guidance':'mcp.save.and.build.first.after.renaming.or')}</p>
     {state?.enabled && state.available && <pre className="mcp-json" tabIndex={0} aria-label={t("mcp.mcp.client.json")}>{JSON.stringify(state.configuration, null, 2)}</pre>}
     {state && !state.enabled && <p className="muted">{t("mcp.mcp.access.is.disabled")}</p>}
     {state?.enabled && !state.available && <p className="muted">{t("mcp.repair.the.kernel.dependencies.before.connecting")}</p>}

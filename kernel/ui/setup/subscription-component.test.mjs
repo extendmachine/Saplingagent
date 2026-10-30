@@ -1,29 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
-import vm from 'node:vm';
-import {loadComponentModule} from './component-test-loader.mjs';
+import {fixture} from './app-test-fixture.mjs';
 
-const children = node => [node?.props?.children].flat(Infinity);
-const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...children(node).flatMap(nodes)];
-const text = node => typeof node === 'string' || typeof node === 'number' ? String(node) : !node || typeof node !== 'object' ? '' : children(node).map(text).join('');
 const savedApi = {id:'api-one',label:'Existing API',engine:'claude',kind:'api',protocol:'anthropic',baseUrl:'https://provider.example/v1',model:'model-one',noAuth:false,hasKey:true};
 const savedSubscription = {id:'subscription-one',label:'Existing subscription',engine:'claude',kind:'subscription',model:'sonnet',hasKey:true};
 
-async function fixture({profiles=[],lang='en',initialLanguage}={}) {
- const slots=[],effects=[],calls=[];let cursor=0,tree,App,scheduled=false,failure,languageFailure;
- let state={revision:4,activeId:profiles[0]?.id||null,profiles,codex:{saved:false,chatgpt:false,type:null},login:{phase:'idle'},mcp:{revision:0,enabled:false,externalOnly:false,available:false}};
- const same=(a,b)=>a&&b&&a.length===b.length&&a.every((value,index)=>Object.is(value,b[index]));
- const schedule=()=>{if(!scheduled){scheduled=true;queueMicrotask(()=>{scheduled=false;render();});}};
- const react={default:{},useState(initial){const i=cursor++;if(!(i in slots))slots[i]={value:typeof initial==='function'?initial():initial};return [slots[i].value,next=>{slots[i].value=typeof next==='function'?next(slots[i].value):next;schedule();}];},useRef(initial){const i=cursor++;return slots[i]||=( {current:initial});},useCallback(fn){cursor++;return fn;},useEffect(effect,deps){const i=cursor++;if(!same(slots[i]?.deps,deps)){const old=slots[i];slots[i]={deps};effects.push(()=>{old?.cleanup?.();slots[i].cleanup=effect();});}}};
- const ProjectSetup=()=>null,McpAccess=()=>null,jsx=(type,props)=>['ErrorNotice','Notice','LanguageSelector'].includes(type?.name)?type(props):({type,props});
- const context=vm.createContext({Error,Promise,JSON,setInterval,clearInterval,window:{open(){throw Error('Unexpected sign-in');}},document:{documentElement:{lang},title:'',querySelector(selector){return {content:selector.includes('language')?lang:'fixture-page-token'};},getElementById(){return {}; }},async fetch(url,options){const route=url.replace('/api/config/',''),body=options.body?JSON.parse(options.body):undefined;calls.push({route,body});if(route==='language'){if(body&&languageFailure)return {ok:false,json:async()=>({error:languageFailure})};if(!body&&initialLanguage)return {ok:true,json:()=>initialLanguage};if(body)lang=body.language;return {ok:true,json:async()=>({language:lang,supported:['en','zh']})};}if(failure&&body)return {ok:false,json:async()=>({error:failure})};if(route==='profiles') {const {apiKey,revision,activate,...profile}=body;profile.id||='new-subscription';profile.hasKey=!!apiKey||state.profiles.some(p=>p.id===profile.id&&p.kind===profile.kind&&p.hasKey);state={...state,revision:state.revision+1,activeId:profile.id,profiles:[profile]};}else assert.equal(route,'state');return {ok:true,json:async()=>structuredClone(state)};}});
- const mocks={react,'react/jsx-runtime':{jsx,jsxs:jsx,Fragment:'fragment'},'react-dom/client':{createRoot:()=>({render(element){App=element.type;}})},'./styles.css':{},'./import-file':{readCredentialFile(){throw Error('Unexpected credential import');}},'./ProjectSetup':{ProjectSetup},'./setup-flow':{configurationClosed:()=>false},'./McpAccess':{McpAccess},'./mcp-access':{aiConnectionReady:(id,mcp)=>!!id||!!(mcp?.enabled&&mcp.externalOnly)}};
- const module=await loadComponentModule('./main.tsx',{context,mocks});await module.evaluate();
- function render(){cursor=0;tree=App();const form=nodes(tree).find(node=>node.type==='form');if(form)form.props.ref.current={reportValidity:()=>nodes(form).filter(node=>node.type==='input'&&node.props.required&&!node.props.disabled).every(node=>!!node.props.value)};while(effects.length)effects.shift()();}
- const settle=async()=>{for(let i=0;i<8;i++)await new Promise(resolve=>setImmediate(resolve));};render();await settle();
- return {calls,settle,document:context.document,async language(value){const control=nodes(tree).find(node=>node.type==='select'&&['Interface language','界面语言'].includes(node.props['aria-label']));assert.ok(control);control.props.onChange({target:{value}});await settle();},button(label){return nodes(tree).find(node=>node.type==='button'&&(text(node)===label||children(node).some(child=>child?.type==='strong'&&text(child)===label)));},field(label){const parent=nodes(tree).find(node=>node.type==='label'&&children(node)[0]===label);return nodes(parent).find(node=>['input','select'].includes(node.type));},form(){return nodes(tree).find(node=>node.type==='form');},project(){return nodes(tree).find(node=>node.type===ProjectSetup).props;},hasImport(){return nodes(tree).some(node=>typeof node.type==='function'&&node.type.name==='CredentialButtons'&&node.props.engine==='claude');},text:()=>text(tree),password:()=>nodes(tree).find(node=>node.type==='input'&&node.props.type==='password'),async click(label){const button=this.button(label);assert.ok(button,label);assert.ok(!button.props.disabled,label);button.props.onClick();await settle();},async change(label,value){const field=this.field(label);assert.ok(field,label);field.props.onChange({target:{value,checked:!!value}});this.form()?.props.onChange();await settle();},async save(){this.form().props.onSubmit({preventDefault(){}});await settle();},fail(code){failure={code,message:'Sanitized configuration error'};},failLanguage(code){languageFailure=code?{code,message:'Synthetic language write failure'}:undefined;}};
-}
 
 async function subscription(h){await h.click('Claude');await h.click('Subscription token (personal use)');}
 const writes=h=>h.calls.filter(call=>call.route==='profiles');

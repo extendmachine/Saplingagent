@@ -175,14 +175,15 @@ async function configureOpenCode() {
   if (result.code !== 0) throw new Error(t("OpenCode provider setup failed (exit code {p0}).",{p0:(result.code)}));
   console.log(t("OpenCode provider saved. Restart Saplingagent, start a new conversation, then choose OpenCode."));
 }
-async function configureAI(noOpen) {
+async function configureAI(noOpen,aiOnly=false) {
   if (!await coreInstalled()) throw new Error(t("Install the local kernel first: bash Saplingagent.sh install"));
-  await localSetup();
-  console.log(t("Preparing independent AI configuration and project setup…"));
+  // AI-only visits leave credential metadata unchanged until B owns maintenance.
+  if(!aiOnly)await localSetup();
+  console.log(t(aiOnly?"Preparing independent AI configuration…":"Preparing independent AI configuration and project setup…"));
   const {openConfiguration}=await import('../../configuration/bootstrap.mjs');
-  const address=await openConfiguration(root,{noOpen:noOpen||process.env.SAPLING_NO_OPEN==='1'});
-  if(address.relativeDirectory)console.log(t("Temporary configuration folder (beside this project): {p0} — removed after Finish setup.",{p0:(address.relativeDirectory)}));
-  console.log(t("Project setup: http://127.0.0.1:{p0}/. Continue in your browser. This script will close.",{p0:(address.port)}));
+  const address=await openConfiguration(root,{noOpen:noOpen||process.env.SAPLING_NO_OPEN==='1',configurationMode:aiOnly?'ai':'setup'});
+  if(address.relativeDirectory)console.log(t(aiOnly?"Temporary configuration folder (beside this project): {p0} — removed after finishing AI configuration.":"Temporary configuration folder (beside this project): {p0} — removed after Finish setup.",{p0:(address.relativeDirectory)}));
+  console.log(t(aiOnly?"AI configuration: http://127.0.0.1:{p0}/. Save your AI settings, then finish and restart. This script will close.":"Project setup: http://127.0.0.1:{p0}/. Continue in your browser. This script will close.",{p0:(address.port)}));
 }
 async function installKernelAndConfigure(repair=false){
  if(!await exists(path.join(root,'kernel/package.json')))return install(repair);
@@ -316,7 +317,7 @@ try {
   else if (action === 'ensure-dependencies' && !args.length) { const {ensureApplicationDependencies}=await import('../../launcher/dependencies.mjs'); await ensureApplicationDependencies(root,{onProgress:message=>console.log(message)}); }
   else if (action === 'doctor' && !args.length) await doctor();
   else if (action === 'logout' && !args.length) await logout();
-  else if (action === 'configure' && args.every(x=>x==='--no-open')) await configureAI(args.includes('--no-open'));
+  else if (action === 'configure' && args.every(x=>['--no-open','--ai-only'].includes(x))) await configureAI(args.includes('--no-open'),args.includes('--ai-only'));
   else if (action === 'opencode' && !args.length) await configureOpenCode();
-  else throw new Error(t("Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--no-open] / opencode / kernel."));
+  else throw new Error(t("Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--ai-only] [--no-open] / opencode / kernel."));
 } catch (error) { const info=describeError(error,process.env.SAPLING_LANG);console.error([info.summary,info.action,info.code,info.details].filter(Boolean).join('\n')); process.exitCode = 1; }

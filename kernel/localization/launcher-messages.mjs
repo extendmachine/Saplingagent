@@ -127,7 +127,11 @@ export const launcherMessages = {
     "Project-local dependencies installed. Run: node scripts/dev.mjs": "Project-local dependencies installed. Run: node scripts/dev.mjs",
     "Install the official Codex CLI before signing in.": "Install the official Codex CLI before signing in.",
     "Local services prepared; existing Codex login imported into this project.": "Local services prepared; existing Codex login imported into this project.",
-    "Local services prepared; project login preserved.": "Local services prepared; project login preserved."
+    "Local services prepared; project login preserved.": "Local services prepared; project login preserved.",
+    "Preparing independent AI configuration…": "Preparing independent AI configuration…",
+    "Temporary configuration folder (beside this project): {p0} — removed after finishing AI configuration.": "Temporary configuration folder (beside this project): {p0} — removed after finishing AI configuration.",
+    "AI configuration: http://127.0.0.1:{p0}/. Save your AI settings, then finish and restart. This script will close.": "AI configuration: http://127.0.0.1:{p0}/. Save your AI settings, then finish and restart. This script will close.",
+    "Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--ai-only] [--no-open] / opencode / kernel.": "Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--ai-only] [--no-open] / opencode / kernel."
   },
   "zh": {
     "Project launcher": "项目启动器",
@@ -256,6 +260,10 @@ export const launcherMessages = {
     "Project-local dependencies installed. Run: node scripts/dev.mjs": "项目本地依赖已安装。请运行：node scripts/dev.mjs",
     "Install the official Codex CLI before signing in.": "请先安装官方 Codex CLI，再进行登录。",
     "Local services prepared; existing Codex login imported into this project.": "本地服务已准备好，现有 Codex 登录已导入此项目。",
-    "Local services prepared; project login preserved.": "本地服务已准备好，项目登录信息已保留。"
+    "Local services prepared; project login preserved.": "本地服务已准备好，项目登录信息已保留。",
+    "Preparing independent AI configuration…": "正在准备独立 AI 配置网页…",
+    "Temporary configuration folder (beside this project): {p0} — removed after finishing AI configuration.": "临时配置目录（项目旁）：{p0}；完成 AI 配置后自动清理。",
+    "AI configuration: http://127.0.0.1:{p0}/. Save your AI settings, then finish and restart. This script will close.": "AI 配置：http://127.0.0.1:{p0}/。请保存 AI 设置，然后完成并重启。此脚本将退出。",
+    "Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--ai-only] [--no-open] / opencode / kernel.": "可用操作：install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--ai-only] [--no-open] / opencode / kernel。"
   }
 };

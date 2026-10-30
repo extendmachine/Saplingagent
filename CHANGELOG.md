@@ -1,5 +1,13 @@
 # Saplingagent changelog
 
+## 0.9.9 — AI settings without rebuilding your project (2026-10-29)
+
+- Settings → Configure AI now opens a dedicated account/provider/model/MCP page. Project name, folder, icon, existing app and conversation history are retained.
+- Finish & restart saves pending AI edits, closes the configuration host, removes its owned temporary sibling and resumes the existing app. The first AI change safely pauses owned services before changing credentials; read-only opening does not reset project configuration.
+- Add `bash Saplingagent.sh configure --ai-only` for macOS and Windows Git Bash. Plain `configure` retains full project setup. Update English/Chinese notices, errors and help.
+- Include the existing Codex account model selector and conversation handoff from main. Kernel version, package metadata, tag and downloaded source receipts use 0.9.9; historical tags/assets remain unchanged.
+- Automated and macOS browser/lifecycle checks are recorded separately from real authentication, model requests and native Windows acceptance. Source ZIPs are not pre-signed native installers.
+
 ## 0.9.8 maintenance — Codex account model selection (2026-10-29)
 
 - Add a per-conversation Codex account model picker and catalog refresh, retaining the native thread, saved history and composer draft on model-only changes.

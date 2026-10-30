@@ -1,6 +1,11 @@
 // Stable codes remain technical identifiers. This catalog only explains failures.
 export const errorMessages = {
   en: {
+    configurationModeInvalid: ['This configuration mode is not supported.', 'Close this page and reopen AI settings or full project setup from the current launcher.'],
+    configurationClosing: ['AI settings are being returned to the launcher.', 'Wait for the app to resume before opening configuration again. Check Project status if it does not resume.'],
+    configurationRestart: ['AI settings were saved, but the project could not restart.', 'Open the existing app and check Project status and logs/project-launcher. Keep the saved settings; no rebuild or repeated credential import is needed.'],
+    configurationMode: ['Another configuration mode is already active for this project.', 'Finish or close the existing configuration page, then reopen AI settings or full project setup from the launcher.'],
+    aiOnly: ['This page changes AI settings only.', 'Use full project setup from the launcher to change the project name, folder, icon or app build. Your current project and saved AI settings are retained.'],
     unknown: ['The operation could not finish.', 'Try again. If it still fails, open Project status and check the project logs.'],
     network: ['The local service or AI provider could not be reached.', 'Check your connection and Project status. Start or restart the app if its services are unavailable, then retry.'],
     auth: ['The AI account could not be authenticated.', 'Open AI settings, sign in again or update this scheme’s credentials, then retry.'],
@@ -22,6 +27,11 @@ export const errorMessages = {
     storage: ['The project could not save or read a local file.', 'Check available disk space and folder access. Keep this window open and retry saving before closing.']
   },
   zh: {
+    configurationModeInvalid: ['不支持此配置模式。', '关闭此页面，并从当前启动器重新打开 AI 设置或完整项目配置。'],
+    configurationClosing: ['正在将 AI 设置交回启动器。', '等待应用恢复后再打开配置；未恢复时，请检查“项目状态”。'],
+    configurationRestart: ['AI 设置已保存，但项目未能重启。', '打开已有应用，检查“项目状态”和 logs/project-launcher。保留已保存的设置，无需重新构建或重复导入凭据。'],
+    configurationMode: ['此项目已打开另一种配置模式。', '请先完成或关闭已有配置页面，再从启动器重新打开 AI 设置或完整项目配置。'],
+    aiOnly: ['此页面仅用于修改 AI 设置。', '如需更改项目名称、文件夹、图标或构建应用，请从启动器进入完整项目配置。当前项目和已保存的 AI 设置会保留。'],
     unknown: ['操作未能完成。', '请重试；仍然失败时，打开“项目状态”并检查项目日志。'],
     network: ['无法连接本地服务或 AI 服务商。', '检查网络和“项目状态”；如果应用服务未运行，请启动或重启应用后重试。'],
     auth: ['AI 账号认证失败。', '打开 AI 设置，重新登录或更新当前方案的凭据，然后重试。'],
@@ -44,6 +54,8 @@ export const errorMessages = {
   }
 };
 const groups = {
+  configurationModeInvalid: ['CONFIGURATION_MODE_INVALID'], configurationClosing: ['CONFIGURATION_CLOSING'], configurationRestart: ['CONFIGURATION_RESTART_FAILED'],
+  configurationMode: ['CONFIGURATION_MODE_CONFLICT'], aiOnly: ['AI_CONFIGURATION_ONLY'],
   auth: ['UNAUTHENTICATED','AUTH_REQUIRED','LOGIN_REQUIRED','LOGIN_FAILED','INVALID_API_KEY','TOKEN_EXPIRED','AUTHENTICATION_ERROR'],
   network: ['SERVICE_UNAVAILABLE','MANAGER_UNAVAILABLE','ECONNREFUSED','ENOTFOUND','ETIMEDOUT','NETWORK_ERROR','FETCH_FAILED','ENGINE_UNAVAILABLE','RUNTIME_RESTARTING'],
   credentials: ['INVALID_CREDENTIALS','UNSUPPORTED_AUTH','CREDENTIALS_TOO_LARGE','LOCAL_AUTH_UNREADABLE'],

@@ -15,7 +15,7 @@ export async function launchConfiguration(root, { launch = spawn, find = findCon
   for (const key of ['SAPLING_CONFIG_PARENT_PID', 'SAPLING_CONFIGURATION_DIR', 'SAPLING_SETUP_JOB', 'SAPLING_MAINTENANCE_JOB', 'SAPLING_MANAGEMENT_PORT', 'NODE_OPTIONS', 'NODE_PATH']) delete childEnv[key];
   const receipt = await new Promise((resolve, reject) => {
     let result;
-    const child = launch(process.execPath, [path.join(root, 'kernel/launcher/entry.mjs'), '--configuration-request', '--no-open'], {
+    const child = launch(process.execPath, [path.join(root, 'kernel/launcher/entry.mjs'), '--configuration-request', '--ai-only', '--no-open'], {
       cwd: root, env: childEnv, shell: false, windowsHide: true, detached: true,
       stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
     });
@@ -24,12 +24,12 @@ export async function launchConfiguration(root, { launch = spawn, find = findCon
     // An early IPC message is not completion: B waits for bootstrap A to exit.
     child.once('exit', code => {
       if (code !== 0 || !result?.ok) return reject(failure(/^[A-Z][A-Z0-9_]{0,63}$/.test(result?.code || '') ? result.code : 'CONFIGURATION_START_FAILED'));
-      if (!Number.isInteger(result.port) || result.port < 1 || result.port > 65535 || typeof result.instanceId !== 'string') return reject(failure('CONFIGURATION_START_FAILED'));
+      if (result.configurationMode !== 'ai' || !Number.isInteger(result.port) || result.port < 1 || result.port > 65535 || typeof result.instanceId !== 'string') return reject(failure('CONFIGURATION_START_FAILED'));
       resolve(result);
     });
   });
   const address = await find(root);
-  if (!address || address.root !== root || address.configurationHost !== 'external' || address.port !== receipt.port || address.instanceId !== receipt.instanceId) throw failure('CONFIGURATION_START_FAILED');
+  if (!address || address.root !== root || address.configurationHost !== 'external' || address.configurationMode !== 'ai' || address.port !== receipt.port || address.instanceId !== receipt.instanceId) throw failure('CONFIGURATION_START_FAILED');
   const url = `http://127.0.0.1:${address.port}/`;
   let browserRequested = false;
   try { await open(url); browserRequested = true; } catch { /* Keep the verified address for manual opening. */ }

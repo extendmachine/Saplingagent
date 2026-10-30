@@ -7,3 +7,10 @@ Project preference is `config/ui-language.json`, schemaVersion1, language en|zh.
 GET /api/runtime/language and protected GET /api/config/language return `{language,supported:["en","zh"]}`. POST accepts only `{language:"en"|"zh"}` and returns the same object after persistence. Existing Host/Origin/authentication checks remain. Invalid input400; shared configuration/runtime busy409; disk failure503. No model request, process restart, credential access or conversation rewrite. Runtime language writes hold the existing gateway-write drain count from request-body reading through actual persistence or failure, including client disconnect; maintenance cannot terminate a pending preference save. Stale initial reads cannot replace an explicit UI choice. Same-origin browser language events are presentation-only and contain no secrets.
 
 Errors retain stable protocol codes and sanitized raw technical details, alongside localized summary/action. User conversation data, model output, paths, provider names and IDs are not translated. UI language is independent from AI output language. Public helper imports are a supported boundary, not private cross-service imports. No third-party dependency, directory restriction or added tool approval.
+
+
+## AI settings mode (TASK-20261029-014)
+
+Setup messages distinguish full project setup from `configurationMode: "ai"`. AI-only completion says the launcher accepted returning to the app, not that the project has already started; unchanged running applications may continue. Profile/default/import/MCP notices point to Finish & restart without rename/build/export instructions. CONFIGURATION_MODE_CONFLICT explains finishing the existing incompatible configuration; AI_CONFIGURATION_ONLY directs project identity/build work to full setup. Both codes retain sanitized original details and matching English/Chinese actions.
+
+CONFIGURATION_MODE_INVALID, CONFIGURATION_CLOSING and CONFIGURATION_RESTART_FAILED explain unsupported mode, pending return and saved-settings/start failure respectively, without instructing an unnecessary rebuild or credential re-import.
