@@ -50,7 +50,7 @@
 
 <a id="quick-start"></a>
 
-## 内核 0.9.8 更新
+## 内核 0.9.9 更新
 
 从主页面选择 **设置 → 配置 AI**，即可打开或复用独立配置网页。支持中英文、准备进度、错误说明和可复制的本地地址；仅打开配置不会停止应用。 这里现在只修改 AI 账号、服务商、模型及 MCP 接入，不要求重新填写项目名称、改名或编译 App。首次保存账号／方案前请先保存工作，所属服务会暂停；完成后选择 **完成并重启**。已有文件、会话、图标和编译结果保留。终端备用入口为 `bash Saplingagent.sh configure --ai-only`；不带此参数仍进入完整项目配置。
 
@@ -58,9 +58,9 @@
 
 默认页面恢复为纯对话布局。源码保留可选的 GitHub → Saplingagent 工作流**界面原型**，但默认页面不再加载；分析、生成和发布仍为示例，尚未实现对应后端。**仅升级内核会保留用户自己的前后端**，不会安装该原型或覆盖自定义聊天界面。旧标签与第三方条款保持不变。
 
-## 0.9.8：网页配置、本机启动器与内核归并
+## 0.9.9：网页配置、本机启动器与内核归并
 
-当前源码版本为 **内核 0.9.8**。请通过下方一行安装命令或 release 分支下载本版本。
+当前源码版本为 **内核 0.9.9**。请通过下方一行安装命令或 release 分支下载本版本。
 
 1. 运行 `bash Saplingagent.sh`，检测设备、安装最小管理内核后直接打开配置网页。
 2. 在网页修改项目名称、目标文件夹名称和图标，先点击“保存项目设置”；这一步只保存，不移动目录。再完成 AI 账号或接口配置并保存。
@@ -187,7 +187,7 @@ bash Saplingagent.sh logout
 
 主页面右上角的**设置（Settings）**会在新标签页打开当前项目的 `/__saplingagent/runtime`，保留原聊天页与草稿，在那里查看状态、重启或停止应用。主页面不再显示底部内核标识和独立的重启／内核按钮。更新内核时直接打开 `/__saplingagent/kernel`，依次选择**检查内核更新 → 升级内核并重启**（英文界面对应 Check for kernel update → Upgrade kernel & restart）。升级器固定 release 提交并校验清单，显示变更和冲突，再停止当前应用、备份和替换内核、修复内核自己的依赖、完整重启并跳转到实际端口。页面、聊天、MCP、Skills、自定义业务和应用依赖声明保留。独立进度网页在原服务停止后继续工作，失败时可重试或手动恢复；不自动回退。
 
-当前内核版本为 **0.9.8 / schema3**；release 分支同步本版本；GitHub Releases 的旧标签和附件另行管理。0.9.1 的 schema2 原型不能直接跨边界升级：请下载0.9.2到新目录，保留原目录，再人工迁移自己的应用/数据/配置；不要覆盖真实凭据或重新生成旧目录基线。之后同 schema3 内核可在网页升级。完整说明：[内核管理](docs/kernel-management.html)。
+当前内核版本为 **0.9.9 / schema3**；release 分支同步本版本；GitHub Releases 的旧标签和附件另行管理。0.9.1 的 schema2 原型不能直接跨边界升级：请下载0.9.2到新目录，保留原目录，再人工迁移自己的应用/数据/配置；不要覆盖真实凭据或重新生成旧目录基线。之后同 schema3 内核可在网页升级。完整说明：[内核管理](docs/kernel-management.html)。
 
 
 ## 导入已有的本地凭据
@@ -381,9 +381,9 @@ Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍
 
 ## 发布版本识别
 
-当前统一称为 **内核版本 0.9.8**，唯一依据为 `kernel/manifest.json`，不再区分产品版本。页面、配置、安装和更新均读取内核版本；数据不可用时如实显示不可用。旧 `config/release.json` 与 `releaseVersion` 字段仅为兼容别名，不作为运行时版本依据。
+当前统一称为 **内核版本 0.9.9**，唯一依据为 `kernel/manifest.json`，不再区分产品版本。页面、配置、安装和更新均读取内核版本；数据不可用时如实显示不可用。旧 `config/release.json` 与 `releaseVersion` 字段仅为兼容别名，不作为运行时版本依据。
 
-源码 ZIP 的 `delivery.json` 记录 `kernelVersion` 和精确的 `sourceCommit`，`releaseVersion` 是同值兼容别名。固定下载 **0.9.8** 请使用 [v0.9.8 发布页面](https://github.com/extendmachine/Saplingagent/releases/tag/v0.9.8) 中的 macOS/Windows 源码 ZIP 和 SHA-256 校验文件；一行安装命令下载当前 release 分支。不可移动的标签、发布页面和包内回执必须对应同一份已核对源码，旧标签保持不变。参见[发布检查表](docs/release-checklist.html)。源码包不是已签名的原生安装器；真机和真实模型验收单独记录。
+源码 ZIP 的 `delivery.json` 记录 `kernelVersion` 和精确的 `sourceCommit`，`releaseVersion` 是同值兼容别名。固定下载 **0.9.9** 请使用 [v0.9.9 发布页面](https://github.com/extendmachine/Saplingagent/releases/tag/v0.9.9) 中的 macOS/Windows 源码 ZIP 和 SHA-256 校验文件；一行安装命令下载当前 release 分支。不可移动的标签、发布页面和包内回执必须对应同一份已核对源码，旧标签保持不变。参见[发布检查表](docs/release-checklist.html)。源码包不是已签名的原生安装器；真机和真实模型验收单独记录。
 
 ## 旧内核编号的一次性升级
 

@@ -41,4 +41,4 @@ loopback URL into a new tab's address bar. Do not replace this with a fixed-port
 link or disable setup Host/Origin checks. Errors/slow startup point to
 logs/project-launcher; the existing bash Saplingagent.sh configure remains usable.
 This JavaScript controller change requires one cold launch for existing running
-instances; it does not require rebuilding the native app. Current kernel0.9.8.
+instances; it does not require rebuilding the native app. Current kernel0.9.9.

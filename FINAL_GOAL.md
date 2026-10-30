@@ -138,7 +138,7 @@ old distributed layout; restoring an explicit backup remains available.
 
 ## One kernel version (2026-10-19)
 
-The current version is **kernel0.9.8**. There is no separate product version. kernel/manifest.json is authoritative for display, setup, installation, maintenance and packaging. Old API/receipt field names can remain compatibility aliases, but they must not establish a second current version. Missing metadata is unavailable, not a hardcoded historical baseline. Keep old version records/backups factual and handle their numeric migration deliberately without hiding local edits. See contracts/release.md and docs/kernel-version-migration.html.
+The current version is **kernel0.9.9**. There is no separate product version. kernel/manifest.json is authoritative for display, setup, installation, maintenance and packaging. Old API/receipt field names can remain compatibility aliases, but they must not establish a second current version. Missing metadata is unavailable, not a hardcoded historical baseline. Keep old version records/backups factual and handle their numeric migration deliberately without hiding local edits. See contracts/release.md and docs/kernel-version-migration.html.
 
 
 Owner storage clarification (2026-10-19): configuration execution uses a visible
@@ -170,4 +170,4 @@ feature does not add a new mandatory kernel or service to every seed.
 
 ## AI-only settings for existing projects (2026-10-29)
 
-Existing projects have a separate AI-only configuration entry from runtime Settings (or `configure --ai-only`). It retains project identity/folder/icon/native launcher and existing data; its first AI configuration write pauses owned services, and Finish resumes the existing application after the external host exits and is cleaned. Installation and plain configure retain the full project setup workflow. The server mode, not only hidden UI, separates these operations. Kernel remains0.9.8.
+Existing projects have a separate AI-only configuration entry from runtime Settings (or `configure --ai-only`). It retains project identity/folder/icon/native launcher and existing data; its first AI configuration write pauses owned services, and Finish resumes the existing application after the external host exits and is cleaned. Installation and plain configure retain the full project setup workflow. The server mode, not only hidden UI, separates these operations. Kernel remains0.9.9.

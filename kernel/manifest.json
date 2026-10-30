@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "layoutVersion": 1,
-  "version": "0.9.8",
+  "version": "0.9.9",
   "appApi": 1,
   "minNode": "24.11.0",
   "notes": "Independent platform kernel. Updates may invalidate custom applications; back up, inspect conflicts and verify after dependency repair.",
@@ -224,7 +224,7 @@
     },
     {
       "path": "kernel/configuration/CONTRACT.md",
-      "sha256": "fdd7ba3e5edc1220553b2c5ec50387fd059cd9e55a6b99aec34f3940f2c0c8d3",
+      "sha256": "596097e48ce2a436c737724922d236d264e1717d882d9998f69191de0cfe3961",
       "bytes": 11213,
       "executable": false
     },
@@ -236,7 +236,7 @@
     },
     {
       "path": "kernel/configuration/DEPLOY.md",
-      "sha256": "2556da32f3efa27f0045748a328e31cbc9a8e260074b3195e8e61f40975bb534",
+      "sha256": "0c3579bf0553de1d36bdc2d67d582ec6764c9f0ddf08afc42eced2970469ece2",
       "bytes": 4946,
       "executable": false
     },
@@ -326,7 +326,7 @@
     },
     {
       "path": "kernel/CONTRACT.md",
-      "sha256": "979f5b3965a4f0c0187d534a8a490b833428bea33ae4099404c8ab0ae63dad62",
+      "sha256": "d5bbd48c03d6a3d0285dfb35ebc775da352cd7334139cc47937630125a387834",
       "bytes": 18757,
       "executable": false
     },
@@ -398,7 +398,7 @@
     },
     {
       "path": "kernel/DEPLOY.md",
-      "sha256": "602db279b73306d2694b2f72b3290d2e5b44fd745f36ce21d72297217015bc84",
+      "sha256": "95d8f2ef79e8b948a6c29c18c0df940ad15d966341bbc5317776c9e40370e0b0",
       "bytes": 16904,
       "executable": false
     },
@@ -602,7 +602,7 @@
     },
     {
       "path": "kernel/launcher/CONTRACT.md",
-      "sha256": "6ce17e486e4b324473feb4516e0aea936f683542400dc4620752cfa85b7cf418",
+      "sha256": "4a2908b5e5f6ce37be5cd0de4cbc201e56c9a913e431d18779af88d7d7efdba1",
       "bytes": 25712,
       "executable": false
     },
@@ -932,13 +932,13 @@
     },
     {
       "path": "kernel/package-lock.json",
-      "sha256": "20814ee3c6db8238a46706a04f8e60cfcd9c992a7b6c12f012a94eb4bdbc5508",
+      "sha256": "b192a6231a28a3442e204326836d857576c8d690b02b460dde4513d06dd911c5",
       "bytes": 97520,
       "executable": false
     },
     {
       "path": "kernel/package.json",
-      "sha256": "7146ae9326c1203cac1639278a9f74e9844f827392d7a61bf7ea5faaaafb84ff",
+      "sha256": "6c7b9f93e87523eef09db501e31affd423df53f78b277b0b4f6ccc1d8a38c561",
       "bytes": 644,
       "executable": false
     },
@@ -980,7 +980,7 @@
     },
     {
       "path": "kernel/scripts/launcher/README.md",
-      "sha256": "edfeaab598f60559084d8a46457d2ed06daef1d15daa0800977a84b058e388b2",
+      "sha256": "4d97c7893eaca07f53aa388ca724f1c178c1d2816d15550105108e5c208bb85e",
       "bytes": 9795,
       "executable": false
     },
@@ -1016,7 +1016,7 @@
     },
     {
       "path": "kernel/scripts/macos/README.md",
-      "sha256": "6db76d48222fceee235406cc7cecd14094a5990982647a331c37bfe326f4cfbc",
+      "sha256": "8f0094a64eeab414c1d42acf4b916bb683938337e837fba5b1bb6efd90be714e",
       "bytes": 21468,
       "executable": false
     },
@@ -1148,7 +1148,7 @@
     },
     {
       "path": "kernel/scripts/windows/README.md",
-      "sha256": "de56d6ed2e28c7c613e20e095cc508c62d9e1eab85a9d918b18f1a3c11816719",
+      "sha256": "2ec93bda39436e9b5d74786a99f624408a3b81215e23c6bfa72286f6aa8d3563",
       "bytes": 17323,
       "executable": false
     },
@@ -1328,7 +1328,7 @@
     },
     {
       "path": "kernel/services/runtime-manager/DEPLOY.md",
-      "sha256": "0df0311f306d5b83c5435ab431e3629eebc14a7bf6f7fcf1dd8b0b6014e30971",
+      "sha256": "f107d8471bcfde866fb9ef7c56b137a77c1366bd1773d7794ed2f804d519786f",
       "bytes": 9075,
       "executable": false
     },
@@ -1370,7 +1370,7 @@
     },
     {
       "path": "kernel/services/runtime-manager/SERVICE.md",
-      "sha256": "718eb8e6efb9a5099041de58ead6f787eda96eaf8c61ddb8032517d875c38f5b",
+      "sha256": "d527bd78343590ac400b9596f9643807b3bdf99177b6fe15195375ec4f5a3f3f",
       "bytes": 6080,
       "executable": false
     },

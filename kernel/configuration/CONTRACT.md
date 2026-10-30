@@ -1,6 +1,6 @@
 # External configuration capsule (A / B)
 
-TASK-20261019-031/034, updated by TASK-20261019-038. Current kernel0.9.8, Node built-ins only. `launcher/entry.mjs` is A:
+TASK-20261019-031/034, updated by TASK-20261019-038. Current kernel0.9.9, Node built-ins only. `launcher/entry.mjs` is A:
 `--launch` checks project dependencies and starts the application; its default
 configuration action prepares `kernel/.cache/configuration/`, copies the closed
 backend module graph and built UI plus a private Node executable to an external
@@ -112,7 +112,7 @@ operation gate until completion and may display a waiting notice without killing
 A or removing configuration receipts. No new daemon or dependency is installed.
 
 
-## AI-only configuration (TASK-20261029-012, kernel 0.9.8)
+## AI-only configuration (TASK-20261029-012, kernel 0.9.9)
 
 `configurationMode` is `setup` or `ai`. Missing fields in older schema2 receipts
 mean `setup`; unknown modes and mismatched local/external receipts are refused.

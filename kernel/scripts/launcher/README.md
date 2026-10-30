@@ -38,7 +38,7 @@ The root startup holds the shared `.runtime/kernel-operation.lock` until runtime
 
 ## Code-first release identity (2026-10-17)
 
-The Bash menu reads config/release.json; the source downloader resolves an immutable release commit before reading its declared version and stores releaseVersion plus sourceCommit in delivery.json. Source ZIP filenames include both version and short commit. Packaging and kernel/scripts/verify-release.mjs read committed metadata, never uncommitted local values. Follow contracts/release.md: freeze/check code, finalize version, main-first integration, requested release promotion, exact-commit/tag/hash checks, packages and GitHub Release, then downloaded-artifact verification. Use the owner-selected kernel version. Preserve public tags by default; correct mistaken labels only on explicit owner instruction with saved previous targets and publication evidence. Current release identity uses the unified kernel version 0.9.8; customer Git history remains independent.
+The Bash menu reads config/release.json; the source downloader resolves an immutable release commit before reading its declared version and stores releaseVersion plus sourceCommit in delivery.json. Source ZIP filenames include both version and short commit. Packaging and kernel/scripts/verify-release.mjs read committed metadata, never uncommitted local values. Follow contracts/release.md: freeze/check code, finalize version, main-first integration, requested release promotion, exact-commit/tag/hash checks, packages and GitHub Release, then downloaded-artifact verification. Use the owner-selected kernel version. Preserve public tags by default; correct mistaken labels only on explicit owner instruction with saved previous targets and publication evidence. Current release identity uses the unified kernel version 0.9.9; customer Git history remains independent.
 
 ## Current configuration and thin app workflow
 
@@ -48,7 +48,7 @@ Customer launcher management uses the public kernel/launcher/public.mjs facade. 
 
 ## Current kernel version
 
-The Bash menu/downloader now read kernel/manifest.json; kernelVersion in delivery receipts is authoritative and releaseVersion is the same compatibility alias. Build/package/config metadata mirrors are checked against that one version (currently0.9.8). Previous product/kernel distinction notes above are historical. Old updater transition: docs/kernel-version-migration.html.
+The Bash menu/downloader now read kernel/manifest.json; kernelVersion in delivery receipts is authoritative and releaseVersion is the same compatibility alias. Build/package/config metadata mirrors are checked against that one version (currently0.9.9). Previous product/kernel distinction notes above are historical. Old updater transition: docs/kernel-version-migration.html.
 
 
 ## Personal Claude subscription startup (2026-10-22)

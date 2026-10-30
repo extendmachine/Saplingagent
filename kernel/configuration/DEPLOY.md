@@ -71,7 +71,7 @@ use a fixed port. After Finish, inspect `.runtime/ai-configuration.json` and
 configuration and failed application startup are separate results. Logs remain
 under `logs/project-launcher`. A code update requires one cold launch of an
 existing runtime controller; no native recompilation is required. Kernel remains
-0.9.8.
+0.9.9.
 
 Direct development startup also supports Configure AI. The runtime bridge
 canonicalizes the project directory before launch and discovery, so the default
