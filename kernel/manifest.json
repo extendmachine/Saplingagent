@@ -205,9 +205,15 @@
       "executable": false
     },
     {
+      "path": "kernel/configuration/ai-lifecycle.mjs",
+      "sha256": "8da27fb23cb56d3845be04ef0a2a97782bb5fb0bef7472a432a595a945f2a55c",
+      "bytes": 7221,
+      "executable": false
+    },
+    {
       "path": "kernel/configuration/bootstrap.mjs",
-      "sha256": "86187a613d02707c7feebb045af5a203ce7d0bbed23acc79ad582b77eb7b8355",
-      "bytes": 8047,
+      "sha256": "a026499914c167b937cc003d3b52ae37ed9772ac5542944597e91dd3775bc09b",
+      "bytes": 8550,
       "executable": false
     },
     {
@@ -218,32 +224,32 @@
     },
     {
       "path": "kernel/configuration/CONTRACT.md",
-      "sha256": "c31633bef195bfff6f59c5a406c981a682911f0a2f90c495951f98b7f19e04ed",
-      "bytes": 8616,
+      "sha256": "fdd7ba3e5edc1220553b2c5ec50387fd059cd9e55a6b99aec34f3940f2c0c8d3",
+      "bytes": 11213,
       "executable": false
     },
     {
       "path": "kernel/configuration/controller.mjs",
-      "sha256": "ab97afbacbd0fe7da1717ccbff603739b2b8ede3764fa237cf5dfb5f79c9db98",
-      "bytes": 7460,
+      "sha256": "e823954f2d89442f302e5d4a3013c498ab8f985298e0c119de896073e2ebdb8c",
+      "bytes": 8526,
       "executable": false
     },
     {
       "path": "kernel/configuration/DEPLOY.md",
-      "sha256": "065bf422e36a92d79dce59d2dd3d13b22702436d6d63b7e20e7e9446a8047c30",
-      "bytes": 4079,
+      "sha256": "2556da32f3efa27f0045748a328e31cbc9a8e260074b3195e8e61f40975bb534",
+      "bytes": 4946,
       "executable": false
     },
     {
       "path": "kernel/configuration/handoff.mjs",
-      "sha256": "4557bbbd1fdb36b792744e9dee0b273e70a9a66dee2dc26b705cfbf93782ccdf",
-      "bytes": 4483,
+      "sha256": "73201ac548147d857266ecb6b21f12fa674abdc5228119c597fd6e4d122485b5",
+      "bytes": 5994,
       "executable": false
     },
     {
       "path": "kernel/configuration/host.mjs",
-      "sha256": "730444c68c19148f0bbb8bd0dcdaa655ee1359117b8507cd33579d7aa5a14e53",
-      "bytes": 3103,
+      "sha256": "36811946f12ffbf9d85d44fb70a56cf7af6464f0532f7e92b1146b1c36b8e11a",
+      "bytes": 3247,
       "executable": false
     },
     {
@@ -266,8 +272,8 @@
     },
     {
       "path": "kernel/configuration/runtime.mjs",
-      "sha256": "dbccc849a7e8227ece2fefde3e5b8af439c033c01dd152694bc14d427d4eb5c9",
-      "bytes": 2645,
+      "sha256": "5064d9dd46f8f5a597f22ac7ad947b95fba2365a35dc2bba77cefef3954a7a01",
+      "bytes": 2733,
       "executable": false
     },
     {
@@ -278,14 +284,20 @@
     },
     {
       "path": "kernel/configuration/session.mjs",
-      "sha256": "e5b59c7b1e4b8d15f88ce5dba693daa0fe8008fbbde1e71d51d5b4ff1d41ee7c",
-      "bytes": 4384,
+      "sha256": "3ccfe08c59762a9e91df5f5599e40c52d84942305a62da3c775f68e517ec1a08",
+      "bytes": 5284,
+      "executable": false
+    },
+    {
+      "path": "kernel/configuration/test/ai-lifecycle.test.mjs",
+      "sha256": "2c271c7145b1a67e5e3ce6521555fab27a0e151a333e454ca2ac601d7d9fe63b",
+      "bytes": 10699,
       "executable": false
     },
     {
       "path": "kernel/configuration/test/closure.test.mjs",
-      "sha256": "b8369514d07294504b1ece1e62dc3ba00547ffd0d89c331828de0fcd14c061e1",
-      "bytes": 2731,
+      "sha256": "b7f59776a22d31702e9b96c67c1cafd191d8a4610fe851dcb0679c6d790e094c",
+      "bytes": 2922,
       "executable": false
     },
     {
@@ -296,8 +308,8 @@
     },
     {
       "path": "kernel/configuration/test/flow.test.mjs",
-      "sha256": "25e70905f6a67d403be108ab2087223201f2cbd137c64aa059c84cb3b0e2c316",
-      "bytes": 21124,
+      "sha256": "44b189055083913a8e0c4ac6f6a44743253e0ac690a89bda16969d49044f27d7",
+      "bytes": 23389,
       "executable": false
     },
     {
@@ -308,8 +320,8 @@
     },
     {
       "path": "kernel/configuration/test/runtime.test.mjs",
-      "sha256": "fd25474e739f85f382d82109397850086edb378b5098d762098595a90668c013",
-      "bytes": 5278,
+      "sha256": "7a0a56c82f2eb76fef592db2e799421fccea96617f34d3a4b15fca77de81b6a6",
+      "bytes": 5360,
       "executable": false
     },
     {
@@ -386,8 +398,8 @@
     },
     {
       "path": "kernel/DEPLOY.md",
-      "sha256": "09ba497f1205db1f00eaf24ec91972a04af1b52ac65b726bfe2586f680408981",
-      "bytes": 16354,
+      "sha256": "602db279b73306d2694b2f72b3290d2e5b44fd745f36ce21d72297217015bc84",
+      "bytes": 16904,
       "executable": false
     },
     {
@@ -590,8 +602,8 @@
     },
     {
       "path": "kernel/launcher/CONTRACT.md",
-      "sha256": "d358b0a018196b800a0290e212c70e158f7c139deba16651b97ef42c80c1a238",
-      "bytes": 24854,
+      "sha256": "6ce17e486e4b324473feb4516e0aea936f683542400dc4620752cfa85b7cf418",
+      "bytes": 25712,
       "executable": false
     },
     {
@@ -620,8 +632,8 @@
     },
     {
       "path": "kernel/launcher/entry.mjs",
-      "sha256": "c35c2e855a2d1bf2636bbea4d4022593cd630ec0b03ba62344a1dee63d15bfe3",
-      "bytes": 3972,
+      "sha256": "e8f558646fe4598faee95c4eb97044fcc2d545c819c7a03599453dfcf632f505",
+      "bytes": 4082,
       "executable": false
     },
     {
@@ -842,20 +854,20 @@
     },
     {
       "path": "kernel/localization/CONTRACT.md",
-      "sha256": "6710d97d444ddf3a6274fa53b6df3a5e739b56f96d4b98ed3ac9713fdde2b1ae",
-      "bytes": 2471,
+      "sha256": "c9957e326857540aab125c68d0fbc840fe18291b397aaaf14ede7264a8b24635",
+      "bytes": 3334,
       "executable": false
     },
     {
       "path": "kernel/localization/errors.mjs",
-      "sha256": "b1cef344f32f436c5849bbc22c4465ab7fe07c300263364d24fdb5bbaf36684a",
-      "bytes": 9326,
+      "sha256": "e516a66bb5e6bbc7f17a3d2f4bf40d4035ae7e56aed22678a58f9f16a977b7a8",
+      "bytes": 11521,
       "executable": false
     },
     {
       "path": "kernel/localization/help.mjs",
-      "sha256": "c749e18bdedae0733ddeb8c9d040b7650b5e19542268258a2fadfc3fe2d0f9ce",
-      "bytes": 13463,
+      "sha256": "fcb694f7dcfc6456c7493083fe2d1c0f61e30b16a2cf27e9086042fac95c62cb",
+      "bytes": 15135,
       "executable": false
     },
     {
@@ -872,8 +884,8 @@
     },
     {
       "path": "kernel/localization/launcher-messages.mjs",
-      "sha256": "085cb66ba928debdab5ab8516b8c8ef6eb1d77fe3d5ec781cf421a5abde63712",
-      "bytes": 35777,
+      "sha256": "d549a224c170fce119caf3835af313668bda9f2f939335b9b87cf47a1bcb27e8",
+      "bytes": 37487,
       "executable": false
     },
     {
@@ -896,8 +908,8 @@
     },
     {
       "path": "kernel/localization/setup-messages.mjs",
-      "sha256": "8e43d72bd7ea1ff91666152c0d42e8d85028d3135255fcd85b3a12960f2ee598",
-      "bytes": 42600,
+      "sha256": "3e4673e1750eedb77f301570ec44bac80b9dc2c316668d95f7d5080b5b47162a",
+      "bytes": 46424,
       "executable": false
     },
     {
@@ -962,14 +974,14 @@
     },
     {
       "path": "kernel/scripts/launcher/cli.mjs",
-      "sha256": "91a5e79fcd492528e4ee4396143be393b19dd1bf868a339fd86aafeaac030e3e",
-      "bytes": 25494,
+      "sha256": "0f0523dc1a5e038f05bac32592989436b9774515409eedb5b2bb79c0d4fc3da9",
+      "bytes": 25987,
       "executable": false
     },
     {
       "path": "kernel/scripts/launcher/README.md",
-      "sha256": "d71bd8f711ce5f4126f1f7c80465036745d04133ae5fc949c6d4240ee2aa9f72",
-      "bytes": 9353,
+      "sha256": "edfeaab598f60559084d8a46457d2ed06daef1d15daa0800977a84b058e388b2",
+      "bytes": 9795,
       "executable": false
     },
     {
@@ -1100,8 +1112,8 @@
     },
     {
       "path": "kernel/scripts/test/shell-routing.test.mjs",
-      "sha256": "92beab37a90766ae2f7107b362b33f9ece2599455384e076ebdf8b2352aaa831",
-      "bytes": 6301,
+      "sha256": "328d27d730756ac381aa8c799a20676500657c4ea5b603b790e9ea01e42e210d",
+      "bytes": 6958,
       "executable": false
     },
     {
@@ -1130,8 +1142,8 @@
     },
     {
       "path": "kernel/scripts/windows/bootstrap.sh",
-      "sha256": "79ebeab802ed4978c5d1cbe7cf86027c38005fe8af6dd42250013539865dee98",
-      "bytes": 2483,
+      "sha256": "c761d47f2ebedb3565d6036728a52413ab9eff68b5c3a7665ee54e2c568e1df1",
+      "bytes": 2675,
       "executable": true
     },
     {
@@ -1154,8 +1166,8 @@
     },
     {
       "path": "kernel/services/ai-config/CONTRACT.md",
-      "sha256": "0736d75d8ea51e1a0f95fd0cbc0f11d48f38c7c9bd5063147f6755c485579a42",
-      "bytes": 23001,
+      "sha256": "9743ae27d3ece2d1fdf8e49b990edfffdaa4f7f97bfd93ee9ed2c08c09db24e6",
+      "bytes": 25928,
       "executable": false
     },
     {
@@ -1166,8 +1178,8 @@
     },
     {
       "path": "kernel/services/ai-config/DEPLOY.md",
-      "sha256": "c66d8dfbc67413270f582afba8bc30b7f2671e0178b16265c6b0a256f695ad58",
-      "bytes": 12328,
+      "sha256": "1a236a8a3c36290bad1e075e4127a3975ac8f096b457a51c797289114026edba",
+      "bytes": 13934,
       "executable": false
     },
     {
@@ -1184,20 +1196,26 @@
     },
     {
       "path": "kernel/services/ai-config/server.mjs",
-      "sha256": "4b5e57d59669fe8baa42f01d4031a334e6821e77740f88bb30b3cec72d49c59f",
-      "bytes": 17710,
+      "sha256": "078cd1309b48b4ef20aef6121da698c1c1bb711790852ed29496e88df202b4be",
+      "bytes": 19725,
       "executable": false
     },
     {
       "path": "kernel/services/ai-config/SERVICE.md",
-      "sha256": "d447a154d47b3ce38a29c1fd9bc14030fef79b4f4eafc41eabf1f63d07116a69",
-      "bytes": 7078,
+      "sha256": "cfbf33ad1cf703ae69b203e63dedc9024b86ea9093fda52b5ce8abbf99fc0d80",
+      "bytes": 7685,
       "executable": false
     },
     {
       "path": "kernel/services/ai-config/store.mjs",
       "sha256": "65147b54e32a4c9410dec695dc823a8d3a40407cdcd80a85f3aa951f2a6b000f",
       "bytes": 15251,
+      "executable": false
+    },
+    {
+      "path": "kernel/services/ai-config/test/ai-mode.test.mjs",
+      "sha256": "17480f20543b91c5c1f1626675a15f015c59e115a05243a07eac59c0214af0a3",
+      "bytes": 11244,
       "executable": false
     },
     {
@@ -1304,14 +1322,14 @@
     },
     {
       "path": "kernel/services/runtime-manager/CONTRACT.md",
-      "sha256": "be7340f978c6d0035d0a7402ca0e1e799b15c630deda4030d6f8845183516f54",
-      "bytes": 20977,
+      "sha256": "0c40eef8abc5e571f9bdebb7e57fbd9bc6fffa69ae514cbf6881171acffbd188",
+      "bytes": 21268,
       "executable": false
     },
     {
       "path": "kernel/services/runtime-manager/DEPLOY.md",
-      "sha256": "ed54c30c79b9c29b6ac128de9766574b5cde76988da9fd6d2dbf2219be788468",
-      "bytes": 8871,
+      "sha256": "0df0311f306d5b83c5435ab431e3629eebc14a7bf6f7fcf1dd8b0b6014e30971",
+      "bytes": 9075,
       "executable": false
     },
     {
@@ -1465,6 +1483,18 @@
       "executable": false
     },
     {
+      "path": "kernel/ui/setup/ai-only-component.test.mjs",
+      "sha256": "57fc22d75b647eb498ccf4823489361ad3ee25f6ef65acda66098d989aae44a6",
+      "bytes": 8541,
+      "executable": false
+    },
+    {
+      "path": "kernel/ui/setup/app-test-fixture.mjs",
+      "sha256": "cc1b65693383be3119dda631f4f0e1a497e786c289a4d7423ff92ea3604bb278",
+      "bytes": 7166,
+      "executable": false
+    },
+    {
       "path": "kernel/ui/setup/component-test-loader.mjs",
       "sha256": "26f24a9c5e0ac7fb4ba1bf6b355a09e12fd9373dbd04304cac85aea192779291",
       "bytes": 1287,
@@ -1502,8 +1532,8 @@
     },
     {
       "path": "kernel/ui/setup/main.tsx",
-      "sha256": "edcb2ba058c3cc52d1ea56ab92b46150d5c6b8eee9d496d4035da0436d89bacd",
-      "bytes": 24997,
+      "sha256": "c3653e8762bff0e1943ce734ced672045c3350ab316b309c2ab516e9cf4d260d",
+      "bytes": 27163,
       "executable": false
     },
     {
@@ -1520,14 +1550,14 @@
     },
     {
       "path": "kernel/ui/setup/mcp-component.test.mjs",
-      "sha256": "e7eaaaefe70097880cb10939f32834597ba56761ffedbba0fec81c1fee39d934",
-      "bytes": 8336,
+      "sha256": "48d261da7d9bfd258510d8e2d3d0405548b5ae6aeae442723483effe94b98540",
+      "bytes": 9074,
       "executable": false
     },
     {
       "path": "kernel/ui/setup/McpAccess.tsx",
-      "sha256": "36dc331f94e1769326ec69e05e8f5300572d49ba8b515693e2d3a88cd63f5731",
-      "bytes": 6640,
+      "sha256": "ca29eb7ba713481b171d011706dd7d61c20fa9502f804513c17265715d994be0",
+      "bytes": 6797,
       "executable": false
     },
     {
@@ -1550,8 +1580,8 @@
     },
     {
       "path": "kernel/ui/setup/README.md",
-      "sha256": "c17d5cb97a7d5ef52770acf0058839f6cecee756177b49fe51bffe271b9b30ec",
-      "bytes": 12444,
+      "sha256": "1496639fe923b82d8f5b734fd3fb3cf964d040fef91ac7eb8ebfc1d2dc547517",
+      "bytes": 14351,
       "executable": false
     },
     {
@@ -1574,8 +1604,8 @@
     },
     {
       "path": "kernel/ui/setup/subscription-component.test.mjs",
-      "sha256": "0784706c3e4139af76544ac598fc58b4a187a5a5928c961bd6a0e86c91fc9025",
-      "bytes": 13904,
+      "sha256": "0835af00f83b57e583d50672a78598ecc0c7a1556d20df21f2c49b20812a23a6",
+      "bytes": 8497,
       "executable": false
     },
     {

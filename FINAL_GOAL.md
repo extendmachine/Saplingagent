@@ -166,3 +166,8 @@ must be assessed before real adaptation; arbitrary URL intake does not guarantee
 complete reproduction. Preserve the current bilingual header, AI chat, context,
 application operation controls and kernel boundary. This optional application
 feature does not add a new mandatory kernel or service to every seed.
+
+
+## AI-only settings for existing projects (2026-10-29)
+
+Existing projects have a separate AI-only configuration entry from runtime Settings (or `configure --ai-only`). It retains project identity/folder/icon/native launcher and existing data; its first AI configuration write pauses owned services, and Finish resumes the existing application after the external host exits and is cleaned. Installation and plain configure retain the full project setup workflow. The server mode, not only hidden UI, separates these operations. Kernel remains0.9.8.

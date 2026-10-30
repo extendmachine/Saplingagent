@@ -50,6 +50,8 @@ The public project introduction, videos and application examples are maintained 
 
 Open **Settings → Configure AI** from the main page to launch or reuse the independent setup website. Progress, English/Chinese errors and a copyable local address keep setup usable when the default browser cannot open. Opening setup alone does not stop your application.
 
+For an existing project, this entry opens **AI settings only**: change the account, provider, model or MCP connection, then **Finish & restart**. The first AI change pauses owned services; project name, folder, icon, conversations and compiled launcher stay intact. Terminal fallback: `bash Saplingagent.sh configure --ai-only`. Plain `configure` still opens full project setup.
+
 Startup, Restart backend and Restart app now reselect occupied internal ports, preserve the live public/control addresses and refresh frontend endpoint mappings when necessary. Existing running controllers need one full exit/reopen to load the new code; these changes do not require rebuilding the native launcher.
 
 The default page is conversation-only. The complete source retains an optional GitHub-to-Saplingagent workflow **UI prototype**, which is not mounted by the default page. Its analysis, generation and publication are examples, not implemented backend operations. **Kernel-only upgrades preserve your application frontend/backend** and do not install this prototype or overwrite customized chat. Existing tags and third-party terms remain unchanged.

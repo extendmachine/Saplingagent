@@ -170,8 +170,11 @@ parent PID. A exits after reporting B; the bridge verifies B identity and health
 then requests the OS browser opener. It never calls openConfiguration in the
 resident runtime. Copy/paste the displayed address into a new browser tab if the
 OS opener fails; do not navigate across origins or weaken setup request checks.
-Opening setup does not stop services or call a model. Existing B owns saving,
-finalization/owned stop/rename/build and Finish setup cleanup. Reopen the native
-app after finalization. Invalid request400, stale instance/busy409, startup errors
+Opening AI settings does not stop services or call a model. The runtime bridge
+requests configurationMode:'ai', never the full project setup mode. The first
+AI credential/profile change prepares an owned maintenance pause; Finish closes
+authentication, hands back to A, waits for B exit and cleanup, then resumes the
+existing app. Identity, folder, icon and native launcher are retained. Another
+live full-setup capsule is reported as a mode conflict instead of reusing it. Invalid request400, stale instance/busy409, startup errors
 are reported by the job. Logs remain logs/project-launcher. Older runtimes need
 one normal cold launch; no native rebuild or version increment is required.

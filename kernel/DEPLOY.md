@@ -121,3 +121,8 @@ The independent maintenance worker copies its full localization module closure b
 ### Bilingual interface maintenance (2026-10-23)
 
 Keep locale catalogs and their public helpers with the kernel source. Shared-catalog changes invalidate the setup asset fingerprint; prepare the configuration page through the launcher before serving. Existing native apps need export/rebuild for newly compiled launcher behavior, then read the project's current saved language on launch. Browser language saves require the existing local origin/authentication contract; do not publish configuration endpoints. Verify locale parity, interpolation, in-flight state, request drain, both builds and copied configuration/maintenance closures before distribution. Current kernel version remains0.9.8.
+
+
+## AI-only settings for existing projects (2026-10-29)
+
+Existing projects have a separate AI-only configuration entry from runtime Settings (or `configure --ai-only`). It retains project identity/folder/icon/native launcher and existing data; its first AI configuration write pauses owned services, and Finish resumes the existing application after the external host exits and is cleaned. Installation and plain configure retain the full project setup workflow. The server mode, not only hidden UI, separates these operations. Kernel remains0.9.8.

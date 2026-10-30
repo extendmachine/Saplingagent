@@ -42,3 +42,5 @@ Maintain only concise project guidance here. Do not remove the import, required 
 - All platform implementation and the setup website belong in `kernel/`; see `kernel/AGENTS.md` and `kernel/CONTRACT.md`. Ordinary application features belong outside it and register services through `config/services.json`. External compatibility files are forwarding entries only. Explicit user-requested kernel maintenance remains possible with unchanged Full Access.
 
 - Configuration storage: derive managed paths from the actual project. Temporary configuration B runs only in a session-owned direct sibling `../sapling-config-*`; persistent config/cache/data/output stays project-local. No system-temp/home fallback. Internal canonical ownership paths and explicit read-only account imports are valid; Agent Full Access is unchanged. See docs/configuration-storage.html and kernel/configuration/CONTRACT.md.
+
+- Runtime Configure AI opens a separate AI-only settings mode. Keep project identity/folder/icon/native App intact; save account/provider settings and finish to resume services. Installation and plain configure retain full setup. See kernel/configuration/CONTRACT.md.
