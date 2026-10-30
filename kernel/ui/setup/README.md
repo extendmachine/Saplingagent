@@ -194,3 +194,13 @@ Synthetic tests cover catalog parity/interpolation, all UI message references,
 late preference responses, credential and project-draft retention, relocalized
 notices/errors, and unchanged MCP save/export behavior. Tests make no account or
 model calls. Native Windows and real provider acceptance remain separate.
+
+
+## AI-only configuration (TASK-20261029-014)
+
+The protected state snapshot selects `configurationMode: "setup" | "ai"`; omitted mode preserves full setup compatibility. The UI waits for this snapshot before mounting any project setup. AI mode mounts only account/API/subscription/import/profile/MCP controls: it does not mount ProjectSetup or request project identity, folder, icon, build, rename or export operations. Existing application source, conversations and the native launcher remain in place.
+
+Finish & restart validates enabled pending API fields before disabling inputs, saves the pending AI scheme and MCP settings, then requests POST `/api/config/close {}`. Pending login, a running operation, invalid input or save errors retain the page and draft. A hidden unsaved API draft is brought back for review before finishing. Only `{closed:true,handoff:true}` acknowledges the return to the launcher; this is not proof that the restarted app is already ready. The lifecycle owner cleans the external capsule before starting the existing project. AI-mode notices and help text do not instruct users to rename or build/export an app. Full setup retains its project-readiness/build flow.
+
+
+AI-only validation uses the real setup App with explicit React/HTTP/MCP fixture adapters. It covers delayed mode discovery, no project component, legacy setup fallback, unsaved API validation before busy state, ordered API/MCP/close writes, failed saves and handoffs, pending sign-in cancellation, imported/saved/default notices, hidden draft review, language retention and duplicate Finish clicks. The shared fixture is also used by existing subscription regressions. Specific mode/closing/restart failure messages retain original technical codes. Configuration return does not imply a completed restart: an unchanged running app may continue, while changed connections restart through the lifecycle owner.

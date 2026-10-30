@@ -229,7 +229,22 @@ export const setupMessages = {
     "common.language.unsaved": "This language is shown, but could not be saved to the project.",
     "common.language.retry": "Retry saving language",
     "common.setup.unavailable": "Configuration page unavailable",
-    "common.reload.page": "Reload page"
+    "common.reload.page": "Reload page",
+    "setup.ai.title": "AI settings",
+    "setup.ai.connect": "CONNECT YOUR AI",
+    "setup.ai.finish": "Finish & restart",
+    "setup.ai.intro": "Manage accounts, API providers and external AI / MCP access. Save your work first: changing a connection pauses this project’s services until Finish & restart. Your project name, folder, files, conversation history and existing app are retained.",
+    "setup.ai.footer": "Finish your AI changes, then choose Finish & restart and wait for the app to reopen. No app export or rebuild is needed.",
+    "setup.ai.profile.saved": "AI scheme saved. Choose Finish & restart to apply it.",
+    "setup.ai.account.saved": "Saved account selected. Choose Finish & restart to apply it.",
+    "setup.ai.default.saved": "Default AI changed. Choose Finish & restart to apply it.",
+    "setup.ai.credentials.saved": "Credentials imported and selected. Network, expiry and quota are not verified. Choose Finish & restart to apply them.",
+    "setup.ai.restart.accepted": "Returning to your app",
+    "setup.ai.restart.details": "AI settings are saved and the launcher has accepted the return to your app. Changed connections restart the project; an unchanged running app can continue. You can close this page. If the app does not reopen, open your existing app and check Project status.",
+    "setup.ai.close.unconfirmed": "The launcher has not acknowledged the restart. Keep this page open and retry Finish & restart. Your saved settings remain in the project.",
+    "setup.ai.review.draft": "Review the unsaved AI scheme before finishing. Its fields are still here; complete or save the scheme, then choose Finish & restart.",
+    "mcp.ai.saved": "MCP settings saved. Choose Finish & restart when you have finished configuring AI.",
+    "mcp.ai.client.guidance": "Save MCP settings before copying or downloading the current client configuration. The project folder and existing app stay in place."
   },
   "zh": {
     "setup.use.an.existing.codex.login": "使用已有 Codex 登录",
@@ -460,6 +475,21 @@ export const setupMessages = {
     "common.language.unsaved": "页面已切换语言，但尚未成功保存到项目。",
     "common.language.retry": "重新保存语言",
     "common.setup.unavailable": "配置页面暂时无法显示",
-    "common.reload.page": "重新加载页面"
+    "common.reload.page": "重新加载页面",
+    "setup.ai.title": "AI 设置",
+    "setup.ai.connect": "连接你的 AI",
+    "setup.ai.finish": "完成并重启",
+    "setup.ai.intro": "管理账号、API 服务商和外部 AI／MCP 接入。请先保存工作：修改连接后，本项目服务会暂停，点击“完成并重启”后恢复。项目名称、文件夹、文件、对话历史和已有应用保持不变。",
+    "setup.ai.footer": "完成 AI 修改后，点击“完成并重启”并等待应用重新打开。无需导出或重新编译应用。",
+    "setup.ai.profile.saved": "AI 方案已保存。点击“完成并重启”使其生效。",
+    "setup.ai.account.saved": "已选择保存的账号。点击“完成并重启”使其生效。",
+    "setup.ai.default.saved": "默认 AI 已更改。点击“完成并重启”使其生效。",
+    "setup.ai.credentials.saved": "凭据已导入并选用，尚未验证网络、有效期和额度。点击“完成并重启”使其生效。",
+    "setup.ai.restart.accepted": "正在返回应用",
+    "setup.ai.restart.details": "AI 设置已保存，启动器已接收返回应用的请求。连接有修改时会重启项目；没有修改时，正在运行的应用可以继续使用。可以关闭此页面；如果应用没有打开，请启动已有应用并查看“项目状态”。",
+    "setup.ai.close.unconfirmed": "启动器尚未确认接收重启请求。请保留此页面并重试“完成并重启”；已保存的设置仍在项目内。",
+    "setup.ai.review.draft": "完成前请检查尚未保存的 AI 方案。字段已保留；补齐或保存方案后，再点击“完成并重启”。",
+    "mcp.ai.saved": "MCP 设置已保存。完成 AI 配置后，点击“完成并重启”。",
+    "mcp.ai.client.guidance": "保存 MCP 设置后，再复制或下载当前客户端配置。项目文件夹和已有应用保持不变。"
   }
 };

@@ -111,3 +111,10 @@ test('MCP language changes keep unsaved choices and translate notices and error 
  await h.ref.current.save();await h.settle();assert.match(h.text(),/MCP 设置已保存/);h.props.language='en';h.render();assert.match(h.text(),/MCP settings saved/);
  h.conflict();h.check(1).props.onChange({target:{checked:true}});await h.settle();await assert.rejects(h.ref.current.save());await h.settle();h.props.language='zh';h.render();assert.match(h.text(),/等待期间项目或对话已发生变化/);assert.match(h.text(),/技术详情/);assert.match(h.text(),/CONFIG_CHANGED/);
 });
+
+
+test('AI-only MCP guidance and saved feedback require restart without a project build',async()=>{
+ const h=await fixture();h.props.configurationMode='ai';h.render();await h.settle();assert.match(h.text(),/project folder and existing app stay in place/);assert.doesNotMatch(h.text(),/Save and build first/);
+ h.check(0).props.onChange({target:{checked:true}});await h.settle();await h.ref.current.save();await h.settle();assert.match(h.text(),/MCP settings saved. Choose Finish & restart/);assert.doesNotMatch(h.text(),/Choose Save & build app/);
+ h.props.language='zh';h.render();await h.settle();assert.match(h.text(),/MCP 设置已保存/);assert.match(h.text(),/完成并重启/);assert.doesNotMatch(h.text(),/保存并构建/);
+});
