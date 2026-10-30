@@ -7,6 +7,7 @@ import {openConfiguration} from '../bootstrap.mjs';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {readSession,storedSession} from '../session.mjs';
+import {codexBinary,claudeBinary,openCodeBinary} from '../../contracts/local-process.mjs';
 const repo=fileURLToPath(new URL('../../../',import.meta.url));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const json=async file=>JSON.parse(await fs.readFile(file,'utf8'));
@@ -85,7 +86,7 @@ export async function fixture(t){
   await fs.rm(temp,{recursive:true,force:true});cleaned=true;
  }
  t.after(cleanup);
- function start(){const child=spawn(localNode,[path.join(root,'kernel/launcher/entry.mjs'),'--no-open'],{cwd:temp,env:{...process.env,SEED_ROOT:root,SAPLING_NO_OPEN:'1',SAPLING_LANG:'zh',TMPDIR:path.join(root,'.runtime/tmp'),NODE_COMPILE_CACHE:path.join(root,'.cache/node-compile')},stdio:['ignore','pipe','pipe']});children.push(child);let errors='';child.stderr.on('data',b=>errors+=b);return {child,get errors(){return errors;}};}
+ function start({aiOnly=false}={}){const child=spawn(localNode,[path.join(root,'kernel/launcher/entry.mjs'),'--no-open',...(aiOnly?['--ai-only']:[])],{cwd:temp,env:{...process.env,SEED_ROOT:root,SAPLING_NO_OPEN:'1',SAPLING_LANG:'zh',TMPDIR:path.join(root,'.runtime/tmp'),NODE_COMPILE_CACHE:path.join(root,'.cache/node-compile')},stdio:['ignore','pipe','pipe']});children.push(child);let errors='';child.stderr.on('data',b=>errors+=b);return {child,get errors(){return errors;}};}
  return {root,temp,localNode,roots,start,cleanup,returnedProcesses,track:child=>children.push(child),setDirectory:value=>directory=value};
 }
 test('real external B keeps its page across rename, then returned A removes B after exit',{skip:process.platform!=='darwin',timeout:45000},async t=>{
@@ -182,4 +183,23 @@ test('runtime setup bridge launches and reuses real external B after short-lived
  const again=await launchConfiguration(f.root,options);assert.equal(again.url,result.url);assert.equal((await json(path.join(f.root,'.runtime/management-address.json'))).pid,address.pid);assert.equal(opened.length,2);
  assert.equal(await fs.readFile(path.join(f.root,'business.txt'),'utf8'),'preserve application');
  assert.equal(await fs.readFile(path.join(f.root,'.git/HEAD'),'utf8'),'ref: refs/heads/customer\n');
+});
+
+
+test('an active setup capsule cannot be silently reused or replaced for AI-only configuration',{skip:process.platform!=='darwin',timeout:45000},async t=>{
+ const f=await fixture(t),first=f.start();await until(()=>first.child.exitCode!==null);assert.equal(first.child.exitCode,0,first.errors);
+ const old=await storedSession(f.root);f.setDirectory(old.directory);assert.equal(old.configurationMode,'setup');
+ const blocked=f.start({aiOnly:true});await until(()=>blocked.child.exitCode!==null);assert.equal(blocked.child.exitCode,1);assert.match(blocked.errors,/CONFIGURATION_MODE_CONFLICT/);
+ assert.equal((await storedSession(f.root)).id,old.id);assert.equal(await exists(old.directory),true);
+});
+
+
+test('AI-only CLI opens a real capsule without rewriting credential metadata or initializing identity',{skip:process.platform!=='darwin',timeout:45000},async t=>{
+ const f=await fixture(t);
+ for(const binary of [codexBinary(f.root),claudeBinary(f.root),openCodeBinary(f.root)]){await fs.mkdir(path.dirname(binary),{recursive:true});await fs.writeFile(binary,'');}
+ const ledger=path.join(f.root,'local-secrets/notes/project-secrets.json');await fs.mkdir(path.dirname(ledger),{recursive:true});
+ const original=JSON.stringify({schema_version:1,project:{name:'Preserved',root:'customer-owned-reference',last_updated:'2000-01-01'},credentials:[]})+'\n';await fs.writeFile(ledger,original);
+ const child=spawn(f.localNode,[path.join(f.root,'kernel/scripts/launcher/cli.mjs'),'configure','--ai-only','--no-open'],{cwd:f.root,env:{...process.env,SEED_ROOT:f.root,SAPLING_NO_OPEN:'1',SAPLING_LANG_EXPLICIT:'0'},stdio:['ignore','pipe','pipe']});f.track(child);let errors='';child.stderr.on('data',b=>errors+=b);
+ await until(()=>child.exitCode!==null);assert.equal(child.exitCode,0,errors);const session=await storedSession(f.root);f.setDirectory(session.directory);assert.equal(session.configurationMode,'ai');
+ assert.equal(await fs.readFile(ledger,'utf8'),original);assert.equal(await exists(path.join(f.root,'local-secrets/codex/config.toml')),false);assert.equal(await exists(path.join(f.root,'config/project.json')),false);
 });

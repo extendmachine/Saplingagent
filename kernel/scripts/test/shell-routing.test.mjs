@@ -71,3 +71,12 @@ test('invalid Windows action flags stop before PowerShell or downloads', async t
 });
 
 test('Windows kernel routes optional update acknowledgement and recovery ID without shell interpolation',async t=>{const f=await fixture(t),id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';for(const args of [[],['status'],['check'],['update','--accept-risk'],['restore',id]])assert.equal((await run(f,['kernel',...args])).code,7);const rows=await records(f.root);assert.deepEqual(rows.map(x=>[x.action,x.flag,x.secondFlag]),[['kernel','',''],['kernel','status',''],['kernel','check',''],['kernel','update','--accept-risk'],['kernel','restore',id]]);assert.equal((await run(f,['kernel','restore','../escape'])).code,2);assert.equal((await records(f.root)).length,5);});
+
+
+test('Windows configure preserves AI-only and no-open flags in either order',async t=>{
+ const f=await fixture(t);
+ for(const flags of [['--ai-only'],['--ai-only','--no-open'],['--no-open','--ai-only']])assert.equal((await run(f,['configure',...flags])).code,7);
+ assert.deepEqual((await records(f.root)).map(r=>[r.flag,r.secondFlag]),[['--ai-only',''],['--ai-only','--no-open'],['--no-open','--ai-only']]);
+ for(const flags of [['--ai-only','--other'],['--ai-only','--ai-only'],['--no-open','--no-open'],['--ai-only','--no-open','--other']])assert.equal((await run(f,['configure',...flags])).code,2);
+ assert.equal((await records(f.root)).length,3);
+});

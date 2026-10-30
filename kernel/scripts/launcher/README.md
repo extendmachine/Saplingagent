@@ -54,3 +54,11 @@ The Bash menu/downloader now read kernel/manifest.json; kernelVersion in deliver
 ## Personal Claude subscription startup (2026-10-22)
 
 A saved Claude subscription profile is checked through the shared Claude credential contract before startup. It does not require Codex login and never falls back to it when its own token is missing. Runtime/Agent readiness checks still apply; saving a token is not proof of model quota or inference.
+
+
+Use `bash Saplingagent.sh configure --ai-only [--no-open]` for AI configuration
+without project renaming or launcher compilation. Both flags are forwarded by
+macOS and Windows Git Bash. Plain `configure` and the installer/menu still open
+full project setup. Finish on the AI page restarts the existing app after its
+configuration capsule has closed and been cleaned; reading and closing without
+AI changes does not stop or restart the app.

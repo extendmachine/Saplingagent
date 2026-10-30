@@ -3,6 +3,7 @@ import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {setTimeout as delay} from 'node:timers/promises';
 import {acquireKernelLock} from '../contracts/kernel.mjs';
+import {resumeAIConfiguration} from './ai-lifecycle.mjs';
 import {realDirectory,regularJSON} from './paths.mjs';
 import {nodeForRoot,buildEnv} from '../launcher/build.mjs';
 import {json,writeJSON,issue,dailyLog} from '../launcher/io.mjs';
@@ -34,7 +35,7 @@ export async function handBack(session,{spawnProcess=spawn,timeout=15000}={}){
   }
   throw issue('CONFIGURATION_RETURN_FAILED','The project launcher did not acknowledge cleanup. Saved configuration remains in this project.');
 }
-export async function finishConfiguration(root,directory,{timeout=30000}={}){
+export async function finishConfiguration(root,directory,{timeout=30000,resume=resumeAIConfiguration}={}){
   const session=await readSession(directory,root);
   if(!alive(session.pid))throw issue('CONFIGURATION_OWNERSHIP','The configuration process exited before the handoff. Inspect its saved session.');
   const release=await acquireKernelLock(root,'configuration-cleanup');
@@ -59,9 +60,23 @@ export async function finishConfiguration(root,directory,{timeout=30000}={}){
     if(value?.pid===session.pid)await fs.rm(file,{recursive:true,force:true});
   }
   await removeSessionDirectory(session);
-  await writeJSON(path.join(root,'.runtime/configuration-complete.json'),{schemaVersion:1,id:session.id,root,phase:'complete',completedAt:new Date().toISOString(),temporaryFilesRemoved:true});
+  await writeJSON(path.join(root,'.runtime/configuration-complete.json'),{schemaVersion:1,id:session.id,root,phase:session.configurationMode==='ai'&&session.restartAfterClose&&session.restartAfterClose!=='none'?'restarting':'complete',completedAt:new Date().toISOString(),temporaryFilesRemoved:true});
   if((await json(sessionFile(root)))?.id===session.id)await fs.rm(sessionFile(root));
   await dailyLog(root,'configuration_cleanup_complete',{sessionId:session.id});
-  return {complete:true,root};
   }finally{try{if(ownsLock&&(await json(path.join(lock,'owner.json')))?.pid===process.pid)await fs.rm(lock,{recursive:true,force:true});}finally{await release();}}
+  if(session.configurationMode==='ai'){
+    try{
+      const restarted=await resume(root,session);
+      await writeJSON(path.join(root,'.runtime/ai-configuration.json'),{schemaVersion:1,id:session.id,root,phase:'complete',...restarted,completedAt:new Date().toISOString()});
+      await writeJSON(path.join(root,'.runtime/configuration-complete.json'),{schemaVersion:1,id:session.id,root,phase:'complete',temporaryFilesRemoved:true,...restarted,completedAt:new Date().toISOString()});
+      await dailyLog(root,'ai_configuration_finished',{sessionId:session.id,restarted:restarted.restarted});
+      return {complete:true,root,...restarted};
+    }catch(error){
+      await writeJSON(path.join(root,'.runtime/ai-configuration.json'),{schemaVersion:1,id:session.id,root,phase:'restart-failed',error:{code:error.code||'CONFIGURATION_RESTART_FAILED'},saved:true,temporaryFilesRemoved:true}).catch(()=>{});
+      await writeJSON(path.join(root,'.runtime/configuration-complete.json'),{schemaVersion:1,id:session.id,root,phase:'restart-failed',temporaryFilesRemoved:true,error:{code:error.code||'CONFIGURATION_RESTART_FAILED'}}).catch(()=>{});
+      await dailyLog(root,'ai_configuration_restart_failed',{sessionId:session.id,code:error.code||'CONFIGURATION_RESTART_FAILED'}).catch(()=>{});
+      throw error;
+    }
+  }
+  return {complete:true,root};
 }

@@ -7,17 +7,25 @@ import {relocationLedger,completeRelocation} from '../launcher/relocation.mjs';
 import {acquireConfigurationWrite} from '../contracts/configuration-write.mjs';
 import {assertKernelOffline} from '../contracts/kernel.mjs';
 import {assertMcpClientsStopped} from '../contracts/mcp-access.mjs';
-import {saveSession,waitForExit} from './session.mjs';
+import {saveSession,waitForExit,configurationMode} from './session.mjs';
+import {prepareAIChange,prepareAIFinish,nativeRestartArtifact} from './ai-lifecycle.mjs';
 import {moveProject} from './move.mjs';
 
 export class ConfigurationController extends ProjectLauncher {
-  constructor(root,{session,onRelocate=async()=>{},closeNative=closeDockForMaintenance,...options}={}) {
-    super(root,options);this.session=session;this.onRelocate=onRelocate;this.closeNative=closeNative;this.configurationHost='external';
+  constructor(root,{session,onRelocate=async()=>{},closeNative=closeDockForMaintenance,nativeRestartArtifact:readNativeRestartArtifact=nativeRestartArtifact,...options}={}) {
+    super(root,options);this.session=session;this.onRelocate=onRelocate;this.closeNative=closeNative;this.configurationHost='external';this.configurationMode=configurationMode(session?.configurationMode);this.nativeRestartArtifact=readNativeRestartArtifact;
   }
-  async state(){return {...await super.state(),configurationHost:'external'};}
+  async state(){
+    if(this.configurationMode==='ai')return {configurationHost:'external',configurationMode:'ai',root:this.root,device:{platform:process.platform,arch:process.arch},job:this.job,runtime:await this.runtime(),aiConfiguration:{phase:this.aiPhase||'idle'}};
+    return {...await super.state(),configurationHost:'external',configurationMode:'setup'};
+  }
+  async prepareAIChange(){return prepareAIChange(this);}
+  async prepareAIFinish(){return prepareAIFinish(this);}
+  async stageSetup(input){if(this.configurationMode==='ai')throw issue('AI_CONFIGURATION_ONLY','Project identity and launcher operations are unavailable in AI configuration.');return super.stageSetup(input);}
   async openProject(){throw issue('CONFIGURATION_FINISH_REQUIRED','Finish setup, then open the app to check dependencies and start the project.');}
   async restart(){return this.openProject();}
   async finalizeSetup(){
+    if(this.configurationMode==='ai')throw issue('AI_CONFIGURATION_ONLY','Project identity and launcher operations are unavailable in AI configuration.');
     this.assertIdle();
     if(!await this.settingsSaved())throw issue('PROJECT_SETTINGS_REQUIRED','Save project settings before building the app.');
     const project=await readProject(this.root);

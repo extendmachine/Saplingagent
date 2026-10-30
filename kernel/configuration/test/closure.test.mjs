@@ -7,8 +7,8 @@ import {moduleClosure,prepareConfigurationBundle,copyConfigurationBundle} from '
 import {readSession,saveSession} from '../session.mjs';
 const repo=fileURLToPath(new URL('../../../',import.meta.url));
 test('configuration import closure is self-contained and includes frontend/backend handoff modules',async()=>{
- const files=await moduleClosure(repo);for(const name of ['kernel/configuration/host.mjs','kernel/services/ai-config/server.mjs','kernel/services/ai-config/auth.mjs','kernel/configuration/move.mjs','kernel/configuration/handoff.mjs','kernel/launcher/public.mjs','kernel/launcher/dock.mjs'])assert.ok(files.has(name),name);
- assert.ok(files.size<40);assert.equal([...files.keys()].some(name=>name.includes('node_modules')),false);
+ const files=await moduleClosure(repo);for(const name of ['kernel/configuration/host.mjs','kernel/services/ai-config/server.mjs','kernel/services/ai-config/auth.mjs','kernel/configuration/move.mjs','kernel/configuration/handoff.mjs','kernel/launcher/public.mjs','kernel/launcher/dock.mjs','kernel/configuration/ai-lifecycle.mjs'])assert.ok(files.has(name),name);
+ assert.ok([...files.keys()].every(name=>name.startsWith('kernel/')),'Configuration depends only on contained kernel modules');assert.equal([...files.keys()].some(name=>/(?:node_modules|backend\/agent-runtime|backend\/workspace|front\/)/.test(name)),false);
 });
 test('bundle rejects third-party and project-external imports instead of relying on a developer checkout',async t=>{
  const dir=path.join(repo,'.cache/configuration-tests');await fs.mkdir(dir,{recursive:true});const root=await fs.mkdtemp(path.join(dir,'invalid-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));await fs.mkdir(path.join(root,'kernel/configuration'),{recursive:true});

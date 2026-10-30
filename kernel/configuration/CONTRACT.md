@@ -110,3 +110,44 @@ are removed. Existing B reuse, sibling storage, leases, authentication, save/bui
 and cleanup remain unchanged. Startup may be slow; callers must keep their
 operation gate until completion and may display a waiting notice without killing
 A or removing configuration receipts. No new daemon or dependency is installed.
+
+
+## AI-only configuration (TASK-20261029-012, kernel 0.9.8)
+
+`configurationMode` is `setup` or `ai`. Missing fields in older schema2 receipts
+mean `setup`; unknown modes and mismatched local/external receipts are refused.
+The runtime Configure AI bridge requests `--ai-only`. Ordinary installation and
+`configure` continue full project setup; `configure --ai-only` explicitly opens
+the narrower mode. Discovery, IPC acknowledgements and the configuration server
+carry the mode. A live capsule is reused only for the same mode and fingerprint;
+opening the opposite mode reports `CONFIGURATION_MODE_CONFLICT` without closing
+the existing page or discarding its drafts.
+
+AI mode never saves project identity, stages a rename, compiles a launcher or
+invalidates full setup. The controller rejects identity/build calls and returns a
+minimal state without requiring a project-settings marker. Before the first
+credential or AI-setting mutation, `prepareAIChange()` waits for bootstrap A,
+records restart intent, closes the verified native app/startup worker, stops the
+owned runtime and waits for process exit. It then holds the shared kernel
+operation lease and rechecks offline ownership. A busy or uncertain shutdown
+fails before authentication/configuration writes. Subsequent writes reuse this
+lease. Read-only visits do not stop services or request a restart.
+
+After all writes and owned login children have finished, `prepareAIFinish()`
+retains the saved configuration, writes an independent AI completion receipt and
+releases its operation lease for the existing B-to-A handoff. Only an already
+valid, ready full-setup receipt may have its connections fingerprint refreshed;
+its identity/build evidence is retained. New or unfinished setup is not marked
+ready. A failed handoff permits retrying Finish but no additional writes through
+a released maintenance lease.
+
+Returning A waits for B exit, deletes only the matched capsule/discovery, releases
+the cleanup lease, then restarts the existing application. A verified macOS app
+is reopened without compilation; otherwise the ordinary runtime start/status
+flow is used. AI changes made while the app was stopped also request startup.
+Read-only close leaves the running state unchanged.
+`.runtime/configuration-complete.json` and `.runtime/ai-configuration.json`
+distinguish saved/restarting, complete and restart-failed. A restart failure never
+rolls back credentials or claims readiness; reopen the app and inspect
+`logs/project-launcher`. Unknown or interrupted owner leases remain available for
+inspection and are not automatically deleted.

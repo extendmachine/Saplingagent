@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchConfiguration } from '../runtime.mjs';
 
-const receipt = { type: 'sapling-configuration', ok: true, port: 61234, instanceId: 'fixture' };
+const receipt = { type: 'sapling-configuration', ok: true, configurationMode: 'ai', port: 61234, instanceId: 'fixture' };
 const addressFor = root => ({ root, configurationHost: 'external', ...receipt });
 async function fixture(t) {
   const parent = fileURLToPath(new URL('../../../.cache/configuration-runtime-tests/', import.meta.url));
@@ -31,7 +31,7 @@ test('runtime bridge waits for A exit, clears inherited launch ownership and req
   }).then(result => { settled = true; return result; });
   await launched;
   child.emit('message', receipt); await new Promise(setImmediate); assert.equal(settled, false);
-  assert.equal(calls[0].command, process.execPath); assert.deepEqual(calls[0].args, [path.join(root, 'kernel/launcher/entry.mjs'), '--configuration-request', '--no-open']);
+  assert.equal(calls[0].command, process.execPath); assert.deepEqual(calls[0].args, [path.join(root, 'kernel/launcher/entry.mjs'), '--configuration-request', '--ai-only', '--no-open']);
   assert.equal(calls[0].options.shell, false); assert.equal(calls[0].options.windowsHide, true);
   assert.deepEqual(calls[0].options.env, { SEED_ROOT: root, SAPLING_NO_OPEN: '1' });
   child.emit('exit', 0);
@@ -40,7 +40,7 @@ test('runtime bridge waits for A exit, clears inherited launch ownership and req
 });
 test('runtime bridge refuses stale/foreign discovery and keeps a verified URL when the browser fails', async t => {
   const root = await fixture(t), address = addressFor(root), launch = successfulLaunch;
-  for (const found of [null, { ...address, root: path.join(root, 'other') }, { ...address, instanceId: 'old' }, { ...address, port: 4318 }, { ...address, configurationHost: 'internal' }]) {
+  for (const found of [null, { ...address, root: path.join(root, 'other') }, { ...address, instanceId: 'old' }, { ...address, port: 4318 }, { ...address, configurationHost: 'internal' }, { ...address, configurationMode: 'setup' }]) {
     await assert.rejects(launchConfiguration(root, { launch, find: async () => found, open: () => assert.fail('Must not open') }), { code: 'CONFIGURATION_START_FAILED' });
   }
   assert.deepEqual(await launchConfiguration(root, { launch, find: async () => address, open: async () => { throw Error('No browser'); } }), { url: 'http://127.0.0.1:61234/', browserRequested: false });

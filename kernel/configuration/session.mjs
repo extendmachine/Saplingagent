@@ -9,6 +9,15 @@ export async function waitForExit(pids,{timeout=30000}={}) {
   const deadline=Date.now()+timeout;
   while(pids.some(alive)){if(Date.now()>deadline)throw issue('CONFIGURATION_PROCESS_PENDING','An owned process has not exited. Close the original installer/launcher and retry.');await delay(50);}
 }
+export function configurationMode(value='setup') {
+  if(!['setup','ai'].includes(value))throw issue('CONFIGURATION_MODE_INVALID','Choose project setup or AI configuration.');
+  return value;
+}
+function restartIntent(value) {
+  const target=value.restartAfterClose??'none';
+  if(!['none','runtime','native'].includes(target)||target!=='none'&&configurationMode(value.configurationMode)!=='ai'||target==='native'&&(!name(value.restartArtifact)||!value.restartArtifact.endsWith('.app')))throw invalid();
+  return target;
+}
 const invalid=()=>issue('CONFIGURATION_OWNERSHIP','Configuration handoff no longer matches this project. Preserve it and inspect the saved session.');
 const name=value=>typeof value==='string'&&value!=='.'&&value!=='..'&&value===path.basename(value)&&!/[\\/\x00-\x1f]/.test(value);
 export async function storedSession(root) {
@@ -26,9 +35,10 @@ export async function readSession(directory,root) {
   const local=await regularJSON(sessionFile(root));
   const matches=value=>value?.schemaVersion===2&&value.projectDirectory===path.basename(root)&&value.configurationDirectory===path.basename(directory)&&sameIdentity(value.projectIdentity,location.projectIdentity)&&sameIdentity(value.directoryIdentity,location.directoryIdentity)&&sameIdentity(value.parentIdentity,location.parentIdentity);
   if(!matches(external)||!matches(local)||external.id!==local.id||external.nonce!==local.nonce||external.pid!==local.pid||external.projectId!==local.projectId||!Number.isSafeInteger(local.pid)||local.pid<=0||!/^[a-f0-9]{64}$/.test(local.nonce)||!/^[a-f0-9-]{36}$/.test(local.id))throw invalid();
+  if(configurationMode(external.configurationMode)!==configurationMode(local.configurationMode)||restartIntent(external)!==restartIntent(local)||(external.restartArtifact??null)!==(local.restartArtifact??null))throw invalid();
   const project=await json(path.join(root,'config/project.json'));
   if(external.projectId!==null&&external.projectId!==project?.projectId)throw invalid();
-  return {...external,root,directory};
+  return {...external,configurationMode:configurationMode(external.configurationMode),root,directory};
 }
 export async function saveSession(session) {
   const location=await siblingLocation(session.root,session.directory);
@@ -36,7 +46,8 @@ export async function saveSession(session) {
   for(const key of ['projectIdentity','directoryIdentity','parentIdentity'])
     if(session[key]&&!sameIdentity(session[key],location[key]))throw invalid();
   const {root,directory,...fields}=session;
-  const value={...fields,schemaVersion:2,projectDirectory:path.basename(root),configurationDirectory:path.basename(directory),projectIdentity:location.projectIdentity,directoryIdentity:location.directoryIdentity,parentIdentity:location.parentIdentity};
+  restartIntent(session);
+  const value={...fields,configurationMode:configurationMode(session.configurationMode),schemaVersion:2,projectDirectory:path.basename(root),configurationDirectory:path.basename(directory),projectIdentity:location.projectIdentity,directoryIdentity:location.directoryIdentity,parentIdentity:location.parentIdentity};
   Object.assign(session,value);
   await writeJSON(path.join(directory,'session.json'),value);
   await writeJSON(sessionFile(root),value);

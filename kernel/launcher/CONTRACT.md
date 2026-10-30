@@ -198,3 +198,18 @@ Launcher and installation UI use `config/ui-language.json` (`schemaVersion:1`, `
 `kernel/localization/launcher-messages.mjs` is the source for Node launcher messages and generated Go/AppleScript data. Pre-Node Bash and PowerShell vocabulary lives in `installer-messages.sh` and `installer-messages.ps1`; the standalone source downloader carries its own bootstrap prompts because no kernel files exist yet. Tool/vendor stdout and low-level diagnostic details remain original text. Installer/entry errors display the shared localized summary and next action with the original error code and redacted details.
 
 Native builds hash the catalog and embed it in Go plus the macOS `Contents/Resources/launcher-messages.json`. Existing exported applications require an explicit rebuild to receive new native messages. Language preferences are read at each activation; lifecycle tokens, nonce/PID ownership, Quit confirmation, open-handle handling and service topology are unchanged. Windows source is cross-compiled on macOS; native Windows UI acceptance must be reported separately.
+
+
+## Runtime AI configuration without rebuilding (2026-10-29)
+
+The runtime's Configure AI action uses the external capsule with
+`configurationMode:'ai'`. `entry.mjs --ai-only` and the explicit
+`Saplingagent.sh configure --ai-only` fallback select this mode; ordinary setup
+remains unchanged. AI-only work does not rename the folder, save identity or
+replace the native launcher. Before credential writes, the verified owned native
+app and runtime stop using their normal lifecycle. After authentication closes,
+returning A cleans the capsule first and then reopens the existing native app, or
+uses ordinary runtime startup when no native app exists. It never compiles as part
+of AI configuration. Completion and startup failure are separately recorded;
+user conversations, source, identity and launcher remain intact. See
+`kernel/configuration/CONTRACT.md`.
