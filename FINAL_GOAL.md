@@ -1,6 +1,6 @@
 # Saplingagent Final Goal
 
-Updated: 2026-10-19. This document defines current product positioning and how future requirements are interpreted. History and implementation/acceptance status belong in TODO.md and AI_TASKS.md; live development records are authoritative in .worktrees/coordination/ when present. Public control rules remain in rules/README.md.
+Updated: 2026-11-03. This document defines current product positioning and how future requirements are interpreted. History and implementation/acceptance status belong in TODO.md and AI_TASKS.md; live development records are authoritative in .worktrees/coordination/ when present. Public control rules remain in rules/README.md.
 
 ## Product positioning
 
@@ -171,3 +171,8 @@ feature does not add a new mandatory kernel or service to every seed.
 ## AI-only settings for existing projects (2026-10-29)
 
 Existing projects have a separate AI-only configuration entry from runtime Settings (or `configure --ai-only`). It retains project identity/folder/icon/native launcher and existing data; its first AI configuration write pauses owned services, and Finish resumes the existing application after the external host exits and is cleaned. Installation and plain configure retain the full project setup workflow. The server mode, not only hidden UI, separates these operations. Kernel remains0.9.9.
+
+
+## Reusable tool environment (2026-11-03)
+
+The owner-approved installation default first detects compatible local Node/Codex/Claude/OpenCode programs, then reuses a per-user versioned tool/SDK library, downloading only missing tested versions. Go is prepared for native compilation. Detection errors fall through to installation; account setup is separate. Shared tool versions do not share project processes, credentials, conversations, configuration, business data, application dependencies or build output. Each project keeps its source and repair/bootstrap code. Portable mode retains an entirely project-contained tool store. This is the explicit environment/storage exception in rule11, replacing older project-local-only descriptions for these declared third-party dependencies. Original installed programs are retained; Full Access is unchanged. Main-first development and separate release promotion continue.

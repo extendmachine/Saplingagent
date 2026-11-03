@@ -46,6 +46,11 @@ The public project introduction, videos and application examples are maintained 
 
 </details>
 
+## Shared local tools
+
+The installer reuses compatible installed Node, Codex CLI and Claude Code, or prepares tested versions in one per-user library for later projects. OpenCode uses the same resolver; Go is prepared only for native compilation. Initial reuse requires the exact tested release pins; incompatible programs are retained and a supported version is installed alongside them. Credentials, conversations, data and application dependencies stay separate. Use `SAPLING_RUNTIME_MODE=portable bash Saplingagent.sh install` for a project-contained tool store. See [shared tools and repair](docs/shared-runtime.html). This main development feature is published to release separately.
+
+
 ## Kernel 0.9.9 update
 
 Open **Settings → Configure AI** from the main page to launch or reuse the independent setup website. Progress, English/Chinese errors and a copyable local address keep setup usable when the default browser cannot open. Opening setup alone does not stop your application.

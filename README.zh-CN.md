@@ -50,6 +50,11 @@
 
 <a id="quick-start"></a>
 
+## 本机工具复用与共享环境
+
+安装器优先复用版本兼容的本机 Node、Codex CLI、Claude Code；未找到、检测失败或版本不匹配时，将已验证版本装入当前用户的共享工具库，后续项目直接复用。OpenCode 使用同一机制，Go 仅在编译启动器时准备。首版以 release 固定版本作为复用标准，不覆盖用户已有程序。账号、会话、业务数据和应用依赖继续独立。需要完整文件夹自包含时运行 `SAPLING_RUNTIME_MODE=portable bash Saplingagent.sh install`。详见[共享工具与修复](docs/shared-runtime.html)。此项 main 开发内容另行同步 release。
+
+
 ## 内核 0.9.9 更新
 
 从主页面选择 **设置 → 配置 AI**，即可打开或复用独立配置网页。支持中英文、准备进度、错误说明和可复制的本地地址；仅打开配置不会停止应用。 这里现在只修改 AI 账号、服务商、模型及 MCP 接入，不要求重新填写项目名称、改名或编译 App。首次保存账号／方案前请先保存工作，所属服务会暂停；完成后选择 **完成并重启**。已有文件、会话、图标和编译结果保留。终端备用入口为 `bash Saplingagent.sh configure --ai-only`；不带此参数仍进入完整项目配置。
