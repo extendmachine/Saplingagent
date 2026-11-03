@@ -83,7 +83,7 @@ test('shared install failure never replaces the previously published version',as
   good=false;
   await assert.rejects(ensureShared(f.home,'example-1',{validate:async()=>false,create:async()=>{throw Error('fixture network failure');}}),/fixture network/);
   assert.equal(await fs.readFile(path.join(first,'ok'),'utf8'),'yes');
-  const index=JSON.parse(await fs.readFile(path.join(f.home,'index/example-1.json')));assert.equal(index.directory,first);
+  const index=JSON.parse(await fs.readFile(path.join(f.home,'index/example-1.json')));assert.equal(path.resolve(f.home,index.directory),first);
 });
 test('portable mode keeps shared-store machinery inside the project',async t=>{
   const f=await fixture(t),a=await f.app('portable');
@@ -102,4 +102,15 @@ test('ordinary preexisting alias directories are retained; explicit bindings wor
 test('a shared-store index cannot escape the runtime directory',async t=>{
   const f=await fixture(t);await atomicJSON(path.join(f.home,'index/escape.json'),{directory:f.base});
   assert.equal(await sharedEntry(f.home,'escape',async()=>true),null);
+});
+
+test('portable folder rename rebinds programs and SDK without reinstalling them',async t=>{
+ const f=await fixture(t),a=await f.app('portable before');
+ await write(path.join(a,'.runtime/runtime-mode'),'portable\n');
+ await write(path.join(a,`.runtime/node-v${process.versions.node}-${process.platform==='win32'?'win':'darwin'}-${process.arch}`,process.platform==='win32'?'node.exe':'bin/node'),'portable Node fixture');
+ await ensureTools(a,{run:f.run,candidates:()=>[]});assert.equal(f.calls.length,4);
+ const b=path.join(f.base,'portable after');await fs.rename(a,b);
+ assert.equal((await toolSetStatus(b)).ready,true);
+ await ensureTools(b,{run:f.run,candidates:()=>[]});assert.equal(f.calls.length,4);
+ assert.equal((await toolSetStatus(b)).ready,true);assert.ok(readBindings(b).tools.claude.path.startsWith(b+path.sep));
 });

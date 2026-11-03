@@ -97,6 +97,7 @@ async function repairGroup(root,group,settings,onProgress){
   const run=(exe,args,options={})=>command(root,exe,args,{env,onOutput:onProgress,...options});
   if(group.name!=='codex'){
     await run(npm.command,[...npm.args,'ci','--include=dev','--include=optional',...(['kernel','backend/agent-runtime'].includes(group.name)?[]:['--ignore-scripts']),'--no-audit','--no-fund'],{cwd:path.join(root,group.name)});
+    if(group.name==='kernel'&&hasTooling(root)&&!(await toolSetStatus(root)).ready)await ensureTools(root,{onProgress:event=>onProgress(toolProgress(event,awaitLanguage))});
     return;
   }
   const stage=path.join(root,'.runtime','codex-install-'+randomUUID()),previous=path.join(root,'.runtime','codex-previous-'+randomUUID()),destination=path.join(root,'.runtime/codex');

@@ -43,3 +43,14 @@ test('a hung discovery command is stopped with a bounded timeout',async t=>{
  const root=await fixture(t);
  await assert.rejects(execute(process.execPath,['-e','setInterval(()=>{},1000)'],{cwd:root,timeout:150}),{code:'TOOL_TIMEOUT'});
 });
+
+test('portable Mac Node alias survives a complete project-folder rename',{skip:process.platform!=='darwin'},async t=>{
+ const base=await fixture(t),a=path.join(base,'before'),key=`node-v${process.versions.node}-darwin-${process.arch}`;
+ const target=path.join(a,'.runtime/tool-store/runtimes',key);await fs.mkdir(path.join(target,'bin'),{recursive:true});await fs.mkdir(path.join(target,'lib/node_modules/npm/bin'),{recursive:true});
+ await fs.writeFile(path.join(target,'lib/node_modules/npm/bin/npm-cli.js'),'// fixture');
+ await fs.writeFile(path.join(target,'bin/node'),`#!/bin/sh\nif [ "$1" = --version ]; then echo v${process.versions.node}; else echo ${process.arch}; fi\n`,{mode:0o755});
+ await exec('/bin/bash',['-c','source "$HELPER"; SEED_PROJECT_DIR="$APP"; SEED_NODE_VERSION="$VERSION"; SEED_MAC_ARCH="$ARCH"; sapling_node_location; sapling_link_node'],{env:{...process.env,HELPER:path.join(source,'kernel/tooling/node-bootstrap.sh'),APP:a,VERSION:process.versions.node,ARCH:process.arch,SAPLING_RUNTIME_MODE:'portable'}});
+ const b=path.join(base,'after');await fs.rename(a,b);const alias=path.join(b,'.runtime',key);
+ assert.equal(path.isAbsolute(await fs.readlink(alias)),false);assert.ok((await fs.realpath(alias)).startsWith(b+path.sep));
+ assert.equal((await exec(path.join(alias,'bin/node'),['--version'])).stdout.trim(),'v'+process.versions.node);
+});

@@ -103,7 +103,7 @@ export async function bindAlias(root,name,target,{directory=false}={}){
   try{
     const old=await fs.lstat(link).catch(()=>null);
     if(old){if(!old.isSymbolicLink())return {status:'path-only'};await fs.unlink(link);}
-    await fs.symlink(parent,link,process.platform==='win32'?'junction':'dir');
+    await fs.symlink(process.platform!=='win32'&&parent.startsWith(root+path.sep)?path.relative(path.dirname(link),parent):parent,link,process.platform==='win32'?'junction':'dir');
     return {status:'linked',path:directory?link:path.join(link,path.basename(target))};
   }catch(error){if(['EPERM','EACCES','ENOSYS','EINVAL'].includes(error.code))return {status:'path-only'};throw error;}
 }

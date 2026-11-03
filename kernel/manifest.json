@@ -614,8 +614,8 @@
     },
     {
       "path": "kernel/launcher/dependencies.mjs",
-      "sha256": "e5d8e21dcc373b27fa69bcf984d409d53a30207372215f5df9b9274f364aaa1b",
-      "bytes": 12376,
+      "sha256": "555d4004db59f53d544d37b6909d61833653d8f7a5d48056b19fd12fa821fb56",
+      "bytes": 12550,
       "executable": false
     },
     {
@@ -974,8 +974,8 @@
     },
     {
       "path": "kernel/scripts/launcher/cli.mjs",
-      "sha256": "3c35c6039b5ee16b53a71237e61dd64b072125e900fe80503a534b0b1896af28",
-      "bytes": 26821,
+      "sha256": "b0fcccdde2637e1e98aba2c9128797fdf78b742248c33fee0686e0bc75b836c0",
+      "bytes": 27219,
       "executable": false
     },
     {
@@ -1484,26 +1484,26 @@
     },
     {
       "path": "kernel/tooling/bindings.mjs",
-      "sha256": "4bc9896e0608a32e24f52303605271a527356589ab7962f8f0f92e291ff0222c",
-      "bytes": 2112,
+      "sha256": "674862c1bd87015bbcb18a39dab496f54b7f04e83b7f5fa841691e21fe722914",
+      "bytes": 2880,
       "executable": false
     },
     {
       "path": "kernel/tooling/CONTRACT.md",
-      "sha256": "28dd1d2a3c31997c0aa5e737320368992346ef1606a9e16e690b5d92e696d157",
-      "bytes": 3256,
+      "sha256": "c1120288fd2fbcc824b126879c0b9bc94f45ac90bdc78817620618ba614d431e",
+      "bytes": 3644,
       "executable": false
     },
     {
       "path": "kernel/tooling/node-bootstrap.ps1",
-      "sha256": "4711bba69f8f8edcdaa2222c36c950d557cc0f3a09aa16d6ff5e08cfb1e063a3",
-      "bytes": 3086,
+      "sha256": "90caa0956471e62a9aaf42898ac5829ad5284f79c3ff04f147df8120ab6a995b",
+      "bytes": 3214,
       "executable": false
     },
     {
       "path": "kernel/tooling/node-bootstrap.sh",
-      "sha256": "c88715f2f346827930841d3d52d45e17c9584b504f8184db5e6216255e1253e0",
-      "bytes": 4274,
+      "sha256": "946b71d1900e26e05751bc0bc064a47dc36f5a0fe450eb4535770e042041712c",
+      "bytes": 4485,
       "executable": false
     },
     {
@@ -1532,26 +1532,26 @@
     },
     {
       "path": "kernel/tooling/store.mjs",
-      "sha256": "cbd339c3fe959c3f9efe6fd3d0df1f5f69385628b651407d79256a8e77e7347e",
-      "bytes": 3652,
+      "sha256": "af59e10dc258792558db731b390e728a71fa7fd9fe2ae74a8ad358ec0c12d1de",
+      "bytes": 3767,
       "executable": false
     },
     {
       "path": "kernel/tooling/test/bootstrap.test.mjs",
-      "sha256": "ec0948e936f0c394b3512c2c33ad44904cc5818b4d425dc430efa87f8b51897f",
-      "bytes": 3592,
+      "sha256": "85c7125751cf8682d05fc55d1f6d501b05df9c1de480f7a9e2c34444bf88df5e",
+      "bytes": 4966,
       "executable": false
     },
     {
       "path": "kernel/tooling/test/tools.test.mjs",
-      "sha256": "4ba88fa580b4fb8bb8553d7c01766f4fcead92d911032e6bf23c4b68b0ce096f",
-      "bytes": 7763,
+      "sha256": "6a396398eb53f6257b1d4c16e96571cdfb007fdcb8846245363046e30ad4d047",
+      "bytes": 8616,
       "executable": false
     },
     {
       "path": "kernel/tooling/tools.mjs",
-      "sha256": "9f3c5b61ad219c1e0091757ba81ffae9ec4515727b1f3bc7982d24090280e476",
-      "bytes": 14200,
+      "sha256": "dfef3afcdc2d40dd61773a9e1d97de5c562d89feb6bc75052ca8244bedacbab8",
+      "bytes": 14302,
       "executable": false
     },
     {

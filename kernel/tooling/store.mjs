@@ -13,9 +13,10 @@ export async function atomicJSON(file,value) {
 export async function sharedEntry(home,key,validate) {
   const saved=await read(path.join(home,'index',key+'.json'));
   if(typeof saved?.directory!=='string')return null;
-  const relative=path.relative(path.join(home,'runtimes'),saved.directory);
+  const directory=path.isAbsolute(saved.directory)?saved.directory:path.resolve(home,saved.directory);
+  const relative=path.relative(path.join(home,'runtimes'),directory);
   if(!relative||relative==='..'||relative.startsWith('..'+path.sep)||path.isAbsolute(relative))return null;
-  return await validate(saved.directory).catch(error=>{if(error.code==='TOOL_INTERRUPTED'||error.name==='AbortError')throw error;return false;})?saved.directory:null;
+  return await validate(directory).catch(error=>{if(error.code==='TOOL_INTERRUPTED'||error.name==='AbortError')throw error;return false;})?directory:null;
 }
 // All callers use the same component/version lock. Publish only a fully checked
 // new directory; never overwrite an executable that another project is running.
@@ -45,7 +46,7 @@ export async function ensureShared(home,key,{validate,create,waitMs=600000,signa
     if(!await validate(stage))throw failure('SHARED_RUNTIME_INVALID',`The installed ${key} is incomplete. Retry installation.`);
     const directory=path.join(home,'runtimes',key,id);await fs.mkdir(path.dirname(directory),{recursive:true});
     await fs.rename(stage,directory);
-    await atomicJSON(path.join(home,'index',key+'.json'),{schemaVersion:1,directory,createdAt:new Date().toISOString()});return directory;
+    await atomicJSON(path.join(home,'index',key+'.json'),{schemaVersion:1,directory:path.relative(home,directory),createdAt:new Date().toISOString()});return directory;
   }finally{
     await fs.rm(stage,{recursive:true,force:true});
     if((await read(path.join(lock,'owner.json')))?.id===id)await fs.rm(lock,{recursive:true,force:true});

@@ -33,20 +33,24 @@ React/Vite group. Legacy kernel/Agent dependency paths remain fallbacks.
 
 .runtime/tool-bindings.json schemaVersion1 contains root, mode, home, signature,
 tools{name:{path,version,source,fingerprint,alias}} and sdk{path,signature}, with
-no credentials. Copy/move invalidates saved bindings; the next launch prepares
-against the actual root. Fingerprints detect changed or removed programs.
+no credentials. Copy/move rebases contained tool paths to the actual root;
+missing or changed external references are prepared at the next launch. Fingerprints detect changed or removed programs.
 .runtime/tools/ contains directory symlinks/junctions; if unavailable callers
 use real paths. Never symlink project state directories.
 
 Each shared component has a version/device lock. Stage, validate, rename to a
 new generation and atomically publish an index. Concurrent projects wait and
-reuse; failures retain older generations. A separate project tool-setup.lock
+reuse; failures retain older generations. Index directories and contained Unix
+aliases are relative, so portable projects can move. Windows portable Node uses
+a copy rather than an absolute junction. A separate project tool-setup.lock
 serializes alias/receipt updates. Interrupted locks are reported for inspection.
 Install children receive project account/state paths with inherited credential
 variables removed; cancellation targets only their owned process trees.
 
 App launch, installer, dependency repair and full app/backend restart use this
-resolver. Go is prepared only for native compilation. There is no automatic
+resolver. Recheck after kernel dependency replacement: npm ci may remove a CLI
+that was discovered in the old kernel dependency tree; repair its binding before
+continuing configuration or startup. Go is prepared only for native compilation. There is no automatic
 shared-library garbage collection: deleting a project does not remove tools.
 
 ## Validation

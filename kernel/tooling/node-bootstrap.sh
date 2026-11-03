@@ -61,7 +61,9 @@ sapling_link_node() {
   if [ "$SAPLING_NODE_SOURCE" != "$SAPLING_NODE_ALIAS" ]; then
     if [ -L "$SAPLING_NODE_ALIAS" ]; then /bin/rm "$SAPLING_NODE_ALIAS";
     elif [ -e "$SAPLING_NODE_ALIAS" ]; then /bin/mv "$SAPLING_NODE_ALIAS" "$SAPLING_NODE_ALIAS-previous-$(date +%s)-$$"; fi
-    if ! /bin/ln -s "$SAPLING_NODE_SOURCE" "$SAPLING_NODE_ALIAS"; then
+    SAPLING_NODE_LINK_TARGET="$SAPLING_NODE_SOURCE"
+    case "$SAPLING_NODE_SOURCE" in "$SEED_PROJECT_DIR/.runtime/"*) SAPLING_NODE_LINK_TARGET="${SAPLING_NODE_SOURCE#"$SEED_PROJECT_DIR/.runtime/"}";; esac
+    if ! /bin/ln -s "$SAPLING_NODE_LINK_TARGET" "$SAPLING_NODE_ALIAS"; then
       mkdir -p "$SAPLING_NODE_ALIAS/bin" "$SAPLING_NODE_ALIAS/lib/node_modules"
       cp "$SAPLING_NODE_SOURCE/bin/node" "$SAPLING_NODE_ALIAS/bin/node"
       cp -R "$SAPLING_NODE_SOURCE/lib/node_modules/npm" "$SAPLING_NODE_ALIAS/lib/node_modules/npm"

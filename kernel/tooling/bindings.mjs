@@ -3,8 +3,28 @@ import os from 'node:os';
 import path from 'node:path';
 
 export function readBindings(root) {
-  try { const value=JSON.parse(fs.readFileSync(path.join(root,'.runtime/tool-bindings.json'),'utf8'));return value.schemaVersion===1&&(!value.root||path.resolve(value.root)===path.resolve(root))?value:null; } catch { return null; }
+  try {
+    const value=JSON.parse(fs.readFileSync(path.join(root,'.runtime/tool-bindings.json'),'utf8'));
+    if(value.schemaVersion!==1)return null;
+    const base=value.root,current=path.resolve(root);
+    if(base&&path.resolve(base)!==current){
+      if(!path.isAbsolute(base))return null;
+      const rebase=file=>{
+        if(typeof file!=='string'||!path.isAbsolute(file))return file;
+        const relative=path.relative(base,file);
+        return !relative||relative!=='..'&&!relative.startsWith('..'+path.sep)&&!path.isAbsolute(relative)?path.join(current,relative):file;
+      };
+      value.home=rebase(value.home);if(value.sdk)value.sdk.path=rebase(value.sdk.path);
+      for(const item of Object.values(value.tools||{})){
+        item.path=rebase(item.path);if(item.fingerprint)item.fingerprint.real=rebase(item.fingerprint.real);
+        if(item.alias?.path)item.alias.path=rebase(item.alias.path);
+      }
+      value.root=current;
+    }
+    return value;
+  } catch { return null; }
 }
+
 export function runtimeMode(root,env=process.env) {
   let marker;try{marker=fs.readFileSync(path.join(root,'.runtime/runtime-mode'),'utf8').trim();}catch{}
   const mode=env.SAPLING_RUNTIME_MODE||readBindings(root)?.mode||marker||'shared';

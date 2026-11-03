@@ -148,6 +148,11 @@ async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
       const installArgs = ['ci', '--include=optional', ...(['kernel', 'backend/agent-runtime'].includes(service) ? [] : ['--ignore-scripts']), '--no-audit', '--no-fund'];
       await required(npm.command, [...npm.args, ...installArgs], { cwd: path.join(root, service) });
     }
+    // A CLI discovered in an old kernel dependency tree can be removed by npm ci.
+    if(hasTooling(root)&&!(await toolSetStatus(root)).ready){
+      await ensureTools(root,{onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
+      cli=codexBinary(root);opencode=openCodeBinary(root);env.SEED_CODEX_BIN=windows?cli:path.join(root,'kernel/scripts/macos/codex.sh');
+    }
     await required(opencode, ['--version'], { capture: true });
     await required(claudeBinary(root), ['--version'], { capture: true });
     await localSetup();

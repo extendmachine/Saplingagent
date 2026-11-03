@@ -33,10 +33,13 @@ function Set-SaplingNodeAlias([string]$Source, [string]$Alias, [string]$Mode) {
             if ($old.Attributes -band [IO.FileAttributes]::ReparsePoint) { [IO.Directory]::Delete($Alias) }
             else { Move-Item -LiteralPath $Alias -Destination ($Alias + '-previous-' + [Guid]::NewGuid().ToString('N')) }
         }
-        try { New-Item -ItemType Junction -Path $Alias -Target $Source -ErrorAction Stop | Out-Null }
-        catch {
-            # Filesystems without junctions still work; copy only Node/npm, not
-            # the user's other globally installed packages.
+        $linked = $false
+        if ($Mode -ne 'portable') {
+            try { New-Item -ItemType Junction -Path $Alias -Target $Source -ErrorAction Stop | Out-Null; $linked = $true } catch {}
+        }
+        if (!$linked) {
+            # Portable Node must survive renaming the complete project. Junctions
+            # are absolute, so copy the small Node/npm runtime in this mode.
             New-Item -ItemType Directory -Path $Alias -Force | Out-Null
             Copy-Item -LiteralPath (Join-Path $Source 'node.exe') -Destination $Alias
             New-Item -ItemType Directory -Path (Join-Path $Alias 'node_modules') -Force | Out-Null
