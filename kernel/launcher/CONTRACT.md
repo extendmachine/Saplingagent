@@ -213,3 +213,8 @@ uses ordinary runtime startup when no native app exists. It never compiles as pa
 of AI configuration. Completion and startup failure are separately recorded;
 user conversations, source, identity and launcher remain intact. See
 `kernel/configuration/CONTRACT.md`.
+
+
+## Current shared tool runtime (2026-11-03)
+
+TASK-20261103-001 supersedes historical project-local-tool-only statements for third-party Node/npm, Codex/Claude/OpenCode programs, engine SDKs, Go and their download cache. Installation detects compatible local programs, otherwise uses a per-user versioned shared library. Native launch, repair and full app/backend restart resolve the same bindings. Project credentials/sessions/config/data/logs/build output remain local. Portable mode is available. See kernel/tooling/CONTRACT.md (from the project root), rule11 and docs/shared-runtime.html. Kernel remains0.9.9; release promotion and native Windows acceptance are separate.

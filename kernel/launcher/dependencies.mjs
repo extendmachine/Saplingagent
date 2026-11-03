@@ -12,6 +12,9 @@ import {codexBinary,openCodeBinary,claudeBinary,npmCommand} from '../contracts/l
 import {assertSetupAvailable} from '../contracts/kernel.mjs';
 import {assertMcpClientsStopped} from '../contracts/mcp-access.mjs';
 
+import {hasTooling,ensureTools,toolSetStatus} from '../tooling/tools.mjs';
+import {toolProgress} from '../tooling/progress.mjs';
+
 const alive=pid=>{if(!Number.isSafeInteger(pid)||pid<=0)return false;try{process.kill(pid,0);return true;}catch(e){return e.code!=='ESRCH';}};
 const digest=(...values)=>{const h=createHash('sha256');for(const value of values)h.update(value);return h.digest('hex');};
 const platformName=()=>process.platform==='win32'?'windows':'macos';
@@ -60,7 +63,7 @@ async function packages(root){
       if((await Promise.all(bins.map(file=>regularFile(path.join(packageDirectory,file))))).some(ok=>!ok)){present=false;break;}
     }
     for(const file of requiredEntries[relative]||[])if(!await exists(path.join(directory,file)))present=false;
-    if(relative==='kernel'&&(!await exists(openCodeBinary(root))||!await exists(claudeBinary(root))))present=false;
+    if(relative==='kernel'&&!hasTooling(root)&&(!await exists(openCodeBinary(root))||!await exists(claudeBinary(root))))present=false;
     groups.push({name:relative,signature:digest(manifestBytes,lockBytes,process.platform,process.arch),present,empty:names.length===0,lockBytes});
   }
   return groups;
@@ -82,11 +85,13 @@ export async function applicationDependencyStatus(root){
   }
   const codexPackage=await json(path.join(root,'.runtime/codex/node_modules/@openai/codex/package.json')).catch(()=>null);
   const codex={name:'codex',signature:digest(settings.codexVersion,process.platform,process.arch),ready:codexPackage?.version===settings.codexVersion&&await exists(codexBinary(root))};
-  groups.unshift(codex);
+  groups.unshift(hasTooling(root)?await toolSetStatus(root):codex);
   return {ready:groups.every(g=>g.ready),signature:digest(...groups.map(g=>g.name+g.signature)),groups,settings};
 }
 
 async function repairGroup(root,group,settings,onProgress){
+  const awaitLanguage=await readLanguage(root,process.env.SAPLING_LANG);
+  if(group.name==='tools'){await ensureTools(root,{onProgress:event=>onProgress(toolProgress(event,awaitLanguage))});return;}
   const localNode=nodeForRoot(root),npm=npmCommand(localNode),env=buildEnv(root);
   // Keep installer output available to the caller; never inherit account keys into npm lifecycle scripts.
   const run=(exe,args,options={})=>command(root,exe,args,{env,onOutput:onProgress,...options});
@@ -141,7 +146,7 @@ export async function ensureApplicationDependencies(root,{onProgress=()=>{},inst
         signal?.throwIfAborted();
         const checked=await applicationDependencyStatus(root),actual=checked.groups.find(g=>g.name===group.name);
         if(actual?.signature!==group.signature)throw issue('DEPENDENCY_SOURCE_CHANGED','Dependency declarations changed during installation. Save your edits, then open the app again.');
-        if(group.name==='codex'?!actual.ready:!actual.present)throw issue('DEPENDENCY_INSTALL_INCOMPLETE',`Installed files for ${group.name} are incomplete. Check the local launcher log and retry.`);
+        if(['codex','tools'].includes(group.name)?!actual.ready:!actual.present)throw issue('DEPENDENCY_INSTALL_INCOMPLETE',`Installed files for ${group.name} are incomplete. Check the local launcher log and retry.`);
         changed=true;
       }
       receipt.groups[group.name]=group.signature;

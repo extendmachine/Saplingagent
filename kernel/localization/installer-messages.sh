@@ -2,6 +2,8 @@
 # Pre-Node installer vocabulary. No external programs, writes or global state.
 sapling_message() {
   case "$1" in
+    shared_mode) if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' '共享环境模式应为 shared 或 portable。'; else printf '%s\n' 'Use shared or portable for SAPLING_RUNTIME_MODE.'; fi ;;
+    shared_location) if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' 'SAPLING_RUNTIME_HOME 必须是完整的绝对目录。'; else printf '%s\n' 'SAPLING_RUNTIME_HOME must be an absolute directory.'; fi ;;
     installer_001) if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' '用法：bash Saplingagent.sh [--lang en|zh] [install [--repair] | login [--device-auth] | configure [--no-open] | opencode | start [--no-open] | doctor | logout | kernel [status|check|update [--accept-risk]|restore ID]]'; else printf '%s\n' 'Usage: bash Saplingagent.sh [--lang en|zh] [install [--repair] | login [--device-auth] | configure [--no-open] | opencode | start [--no-open] | doctor | logout | kernel [status|check|update [--accept-risk]|restore ID]]'; fi ;;
     installer_002) if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' '不带参数运行即可选择语言并进入交互菜单。'; else printf '%s\n' 'Run without arguments to choose a language and open the interactive menu.'; fi ;;
     installer_003) if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' '当前系统不支持安装。请使用 macOS 终端或 Windows Git Bash；暂不支持 WSL / Linux。'; else printf '%s\n' 'Unsupported OS. Use macOS Terminal or Windows Git Bash; WSL/Linux installation is not supported.'; fi ;;
@@ -26,7 +28,7 @@ sapling_message() {
     installer_022) if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' "检测到设备：macOS ${SEED_OS_VERSION}，${SEED_MAC_ARCH}。自动选择对应项目运行环境。"; else printf '%s\n' "Detected device: macOS ${SEED_OS_VERSION}, ${SEED_MAC_ARCH}. Selecting matching project runtime."; fi ;;
     installer_023) if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' "kernel/config/macos.json 中的 Node 版本无效。"; else printf '%s\n' "Invalid Node version in kernel/config/macos.json."; fi ;;
     installer_024) if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' "项目内 Node 未安装或版本不符。请运行 bash Saplingagent.sh，先选择安装 / 更新。"; else printf '%s\n' "Project-local Node is not installed or has a different version. Open Saplingagent.sh and choose Install / update first."; fi ;;
-    installer_025) if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' "另一个 Node 安装正在进行。请稍后重试；确认其窗口已关闭后，按文档清理 .runtime/node-install.lock。"; else printf '%s\n' "Another Node installation is in progress. Retry later; if its window has closed, remove .runtime/node-install.lock as documented."; fi ;;
+    installer_025) if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' "另一个共享 Node 安装正在进行。请等待；若安装已中断，按下方锁位置检查后重试。"; else printf '%s\n' "Another shared Node installation is in progress. Wait; if interrupted, inspect the reported lock before retrying."; fi ;;
     installer_026) if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' '请先完成正在进行的内核／启动操作，再安装 Node。'; else printf '%s\n' 'Finish the active kernel/start operation before installing Node.'; fi ;;
     installer_027) if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' "正在从 Node.js 官方网站安装项目内 Node ${SEED_NODE_VERSION}（${SEED_MAC_ARCH}）…"; else printf '%s\n' "Installing project-local Node ${SEED_NODE_VERSION} (${SEED_MAC_ARCH}) from the official Node.js website…"; fi ;;
     installer_028) if [ "${SAPLING_LANG:-en}" = zh ]; then printf '%s\n' "官方校验清单中没有所需 Node 文件，本次未安装。"; else printf '%s\n' "The official checksum list does not contain the requested Node file; nothing was installed."; fi ;;

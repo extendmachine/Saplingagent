@@ -1,3 +1,4 @@
+import {readBindings} from '../../tooling/bindings.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -9,7 +10,7 @@ import { createAgentServer } from '../../../backend/agent-runtime/server.mjs';
 import { OpenCodeProvider } from '../providers/opencode.mjs';
 import { ConfigurationStore } from '../../services/ai-config/store.mjs';
 const project=fileURLToPath(new URL('../../../',import.meta.url));
-async function fixture(t){const directory=path.join(project,'.cache/configured-engine-tests');await fs.mkdir(directory,{recursive:true});const root=await fs.mkdtemp(path.join(directory,"中文 app's "));t.after(()=>fs.rm(root,{recursive:true,force:true}));return root;}
+async function fixture(t){const directory=path.join(project,'.cache/configured-engine-tests');await fs.mkdir(directory,{recursive:true});const root=await fs.mkdtemp(path.join(directory,"中文 app's "));t.after(()=>fs.rm(root,{recursive:true,force:true}));await fs.mkdir(path.join(root,'.runtime'),{recursive:true});await fs.writeFile(path.join(root,'.runtime/tool-bindings.json'),JSON.stringify({schemaVersion:1,root,tools:readBindings(project)?.tools||{},sdk:readBindings(project)?.sdk}));return root;}
 const profile={label:'Synthetic scheme',engine:'opencode',kind:'api',protocol:'chat',baseUrl:'http://127.0.0.1:1/v1',model:'synthetic-coder',apiKey:'synthetic-only-key'};
 class FakeOpenCode{constructor({root}={}){this.root=root;this.ready=false;}async start(){this.ready=true;return this.catalog();}async catalog(){const data=JSON.parse(await fs.readFile(path.join(this.root,'local-secrets/ai-config/connections.json'),'utf8'));return {id:'opencode',ready:true,authenticated:true,mcp:{ready:true,tools:[]},providers:data.profiles.filter(p=>p.engine==='opencode').map(p=>({id:`sapling-${p.id}`,models:[{id:p.model}]}))};}async close(){this.ready=false;}}
 class FakeCodex extends EventEmitter{constructor(options){super();this.options=options;this.closed=false;this.calls=[];FakeCodex.last=this;}send(){}async close(){this.closed=true;}async call(method,params){this.calls.push([method,params]);if(method==='account/read')return {account:null,requiresOpenaiAuth:false};if(method==='model/list')return {data:[{model:'bundled-default',supportedReasoningEfforts:[{reasoningEffort:'medium'}],defaultReasoningEffort:'medium'}]};if(method==='thread/start')return {thread:{id:'synthetic-thread'},sandbox:{type:'dangerFullAccess'},approvalPolicy:'never'};if(method==='skills/list')return {data:[]};if(method==='mcpServerStatus/list')return {data:[{name:'seedagent',tools:{synthetic:{description:'synthetic tool'}}}]};return {};}}

@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { claudeConnections, readConnections } from '../../contracts/ai-configuration.mjs';
-import { terminateOwned } from '../../contracts/local-process.mjs';
+import { claudeBinary,terminateOwned } from '../../contracts/local-process.mjs';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const authVariable = name => /^(ANTHROPIC_|CLAUDE_CODE_(OAUTH|SESSION_ACCESS_TOKEN|HOST_CREDS_FILE|HOST_AUTH|SDK_HAS_(HOST_AUTH|OAUTH)_REFRESH|PROVIDER_MANAGED_BY_HOST|(?:GATEWAY_TOKEN|API_KEY|WEBSOCKET_AUTH)_FILE_DESCRIPTOR|USE_)|CLAUDE_BRIDGE_OAUTH_TOKEN|AWS_|GOOGLE_(APPLICATION_CREDENTIALS|CLOUD_|API_KEY)|GCLOUD_)/i.test(name);
@@ -57,6 +57,7 @@ export class ClaudeProvider {
       return {};
     };
     return {
+      pathToClaudeCodeExecutable:claudeBinary(this.root),
       cwd: this.root, model: profile.model, env: claudeEnvironment(this.root, profile),
       permissionMode: 'bypassPermissions', allowDangerouslySkipPermissions: true, sandbox: { enabled: false },
       settingSources: ['project'], plugins: [{ type: 'local', path: path.join(this.root, '.agents') }],

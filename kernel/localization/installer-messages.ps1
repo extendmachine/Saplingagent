@@ -1,5 +1,7 @@
 ﻿# Pre-Node PowerShell vocabulary; keep technical IDs and filesystem paths unchanged.
 $SaplingInstallerMessages = @{
+ 'shared_mode' = @{ en = 'Use shared or portable for SAPLING_RUNTIME_MODE.'; zh = '共享环境模式应为 shared 或 portable。' }
+ 'shared_location' = @{ en = 'SAPLING_RUNTIME_HOME must be an absolute directory.'; zh = 'SAPLING_RUNTIME_HOME 必须是完整的绝对目录。' }
     'unsupported_arch' = @{ en = 'Unsupported device architecture: {0}. A 64-bit Windows x64 or ARM64 system is required.'; zh = '不支持设备架构：{0}。需要 64 位 Windows x64 或 ARM64 系统。' }
     'detected_device' = @{ en = 'Detected device: Windows {0}, {1}. Selecting matching project runtime.'; zh = '检测到设备：Windows {0}，{1}。自动选择对应项目运行环境。' }
     'windows_003' = @{ en = 'Project storage must use ordinary local directories.'; zh = '项目存储必须使用普通的本地目录。' }

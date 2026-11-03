@@ -14,7 +14,7 @@ async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   const parent = path.join(project, '.cache/macos-tests'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "\u6d4b\u8bd5 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['kernel/localization/public.mjs','kernel/localization/errors.mjs','kernel/localization/store.mjs','kernel/localization/launcher-messages.mjs','kernel/localization/installer-messages.sh','kernel/contracts/configuration-write.mjs','kernel/contracts/local-storage.mjs','kernel/contracts/mcp-access.mjs','kernel/contracts/kernel.mjs', 'kernel/compat/paths.mjs', 'kernel/contracts/ai-configuration.mjs', 'kernel/contracts/local-process.mjs', 'kernel/contracts/engine-dependencies.mjs', 'kernel/scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'kernel/scripts/launcher/recipient-records.mjs', 'kernel/scripts/setup.mjs', 'kernel/scripts/macos/cli.mjs', 'kernel/scripts/macos/bootstrap.sh', 'kernel/scripts/macos/codex.sh', 'Saplingagent.sh', 'kernel/scripts/Saplingagent.sh', 'kernel/config/macos.json', 'config/runtime.json']) {
+  for (const file of ['kernel/tooling/bindings.mjs','kernel/tooling/tools.mjs','kernel/tooling/store.mjs','kernel/tooling/progress.mjs','kernel/tooling/node-bootstrap.sh','kernel/localization/public.mjs','kernel/localization/errors.mjs','kernel/localization/store.mjs','kernel/localization/launcher-messages.mjs','kernel/localization/installer-messages.sh','kernel/contracts/configuration-write.mjs','kernel/contracts/local-storage.mjs','kernel/contracts/mcp-access.mjs','kernel/contracts/kernel.mjs', 'kernel/compat/paths.mjs', 'kernel/contracts/ai-configuration.mjs', 'kernel/contracts/local-process.mjs', 'kernel/contracts/engine-dependencies.mjs', 'kernel/scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'kernel/scripts/launcher/recipient-records.mjs', 'kernel/scripts/setup.mjs', 'kernel/scripts/macos/cli.mjs', 'kernel/scripts/macos/bootstrap.sh', 'kernel/scripts/macos/codex.sh', 'Saplingagent.sh', 'kernel/scripts/Saplingagent.sh', 'kernel/config/macos.json', 'config/runtime.json']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const settings = JSON.parse(await fs.readFile(path.join(root, 'kernel/config/macos.json'), 'utf8'));
@@ -146,7 +146,7 @@ test('Mac startup follows the announced port instead of a ready foreign app on t
 test('Chinese bootstrap reports missing Node without downloading anything', async t => {
   const root = await fixture(t);
   const result = await new Promise((resolve, reject) => {
-    const child = spawn('/bin/bash', [path.join(root, 'kernel/scripts/macos/bootstrap.sh'), 'doctor'], { cwd: '/', env: { ...process.env, SAPLING_LANG: 'zh' }, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn('/bin/bash', [path.join(root, 'kernel/scripts/macos/bootstrap.sh'), 'doctor'], { cwd: '/', env: { ...process.env,PATH:"/usr/bin:/bin",SAPLING_RUNTIME_HOME:path.join(root,"empty-shared-home"), SAPLING_LANG: 'zh' }, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = ''; child.stdout.on('data', chunk => output += chunk); child.stderr.on('data', chunk => output += chunk);
     child.once('error', reject); child.once('exit', code => resolve({ code, output }));
   });

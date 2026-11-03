@@ -1,6 +1,11 @@
 // Shared source for Node, generated Go data and macOS applet resources.
 export const launcherMessages = {
   "en": {
+    "Tool {name}: {source}, {version}; {path}": "Tool {name}: {source}, {version}; {path}",
+    "shared tool library": "shared tool library",
+    "local installation": "local installation",
+    "Downloading verified shared Go compiler…": "Downloading verified shared Go compiler…",
+    "Waiting for the shared Go compiler…": "Waiting for the shared Go compiler…",
     "Project launcher": "Project launcher",
     " — Starting project": " — Starting project",
     "Checking project dependencies…": "Checking project dependencies…",
@@ -134,6 +139,11 @@ export const launcherMessages = {
     "Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--ai-only] [--no-open] / opencode / kernel.": "Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--ai-only] [--no-open] / opencode / kernel."
   },
   "zh": {
+    "Tool {name}: {source}, {version}; {path}": "工具 {name}：{source}，{version}；{path}",
+    "shared tool library": "共享工具库",
+    "local installation": "本机安装",
+    "Downloading verified shared Go compiler…": "正在下载并校验共享 Go 编译器…",
+    "Waiting for the shared Go compiler…": "正在等待其他项目准备共享 Go 编译器…",
     "Project launcher": "项目启动器",
     " — Starting project": " — 正在启动项目",
     "Checking project dependencies…": "正在检查项目依赖…",

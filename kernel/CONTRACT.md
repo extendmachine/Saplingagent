@@ -146,3 +146,8 @@ their current behavior. Full Access and the kernel version remain unchanged.
 ## Project language and actionable errors (2026-10-23)
 
 The public `kernel/localization/` contract provides keyed English/Simplified Chinese messages, shared error summaries/actions and project language persistence. Setup, runtime controls, install/launcher surfaces and independent help use it; application UI keeps its own catalog under `front/`. Browser APIs store only `config/ui-language.json` under the existing configuration-write lease and runtime drain gate. Preferences belong to customers, stay outside kernel replacement/source packages and persist across ports. No language change reloads a model, rewrites conversations or changes tool permissions. See `localization/CONTRACT.md`.
+
+
+## Current shared tool runtime (2026-11-03)
+
+TASK-20261103-001 supersedes historical project-local-tool-only statements for third-party Node/npm, Codex/Claude/OpenCode programs, engine SDKs, Go and their download cache. Installation detects compatible local programs, otherwise uses a per-user versioned shared library. Native launch, repair and full app/backend restart resolve the same bindings. Project credentials/sessions/config/data/logs/build output remain local. Portable mode is available. See kernel/tooling/CONTRACT.md (from the project root), rule11 and docs/shared-runtime.html. Kernel remains0.9.9; release promotion and native Windows acceptance are separate.

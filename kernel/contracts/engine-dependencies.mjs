@@ -3,8 +3,9 @@ import { existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
+import {sdkModules} from '../tooling/bindings.mjs';
 export function engineModules(root) {
-  return path.join(root, existsSync(path.join(root, 'kernel/package.json')) ? 'kernel' : 'backend/agent-runtime', 'node_modules');
+  return sdkModules(root,path.join(root, existsSync(path.join(root, 'kernel/package.json')) ? 'kernel' : 'backend/agent-runtime', 'node_modules'));
 }
 export async function engineDependency(root, name) {
   if (!['@anthropic-ai/claude-agent-sdk','@opencode-ai/sdk'].includes(name)) throw new Error('Unknown engine dependency.');

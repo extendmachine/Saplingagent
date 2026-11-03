@@ -1,6 +1,9 @@
 import { launcherMessages } from '../localization/launcher-messages.mjs';
 import { formatMessage } from '../localization/public.mjs';
 import { readLanguage } from '../localization/store.mjs';
+import {ensureShared,atomicJSON} from '../tooling/store.mjs';
+import {runtimeHome,readBindings} from '../tooling/bindings.mjs';
+import {systemCandidates,bindAlias} from '../tooling/tools.mjs';
 import fs from "node:fs/promises";
 import {readFileSync,existsSync} from "node:fs";
 import path from "node:path";
@@ -198,35 +201,23 @@ export function toolchainForDevice(
 }
 export async function ensureGo(root, onProgress = () => {}) {
   root=await fs.realpath(root);await prepareBuildStorage(root);
-  const pin = await json(path.join(root, "kernel/launcher/toolchain.json"));
-  const file = toolchainForDevice(pin),
-    arch = file.arch;
-  const destination = path.join(
-      root,
-      ".runtime",
-      pin.version + "-" + file.os + "-" + arch,
-    ),
-    go = path.join(
-      destination,
-      "go/bin",
-      process.platform === "win32" ? "go.exe" : "go",
-    );
-  if (await exists(go)) {
-    if (
-      (await command(root, go, ["version"], { timeout: 15000 })).includes(
-        pin.version,
-      )
-    )
-      return go;
-    throw issue(
-      "TOOLCHAIN_INVALID",
-      "The project-local Go toolchain is damaged. Remove its version directory after stopping builds and retry.",
-    );
+  const pin=await json(path.join(root,'kernel/launcher/toolchain.json'));
+  const file=toolchainForDevice(pin),exe=process.platform==='win32'?'go.exe':'go';
+  const home=runtimeHome(root),saved=readBindings(root),language=await readLanguage(root);
+  const progress=key=>onProgress(formatMessage(launcherMessages,language,key));
+  const compatible=async go=>{try{const version=await command(root,go,['version'],{timeout:5000});return version.includes(pin.version+' ')&&version.includes(file.os+'/'+file.arch);}catch{return false;}};
+  const portable=process.env.SAPLING_RUNTIME_MODE==='portable'||saved?.mode==='portable';
+  let go;
+  for(const candidate of [saved?.tools?.go?.path,path.join(root,'.runtime',pin.version+'-'+file.os+'-'+file.arch,'go/bin',exe),...(portable?[]:systemCandidates('go'))].filter(Boolean)){
+    const real=await fs.realpath(candidate).catch(()=>null);
+    if(real&&(!portable||real.startsWith(root+path.sep))&&await compatible(real)){go=real;break;}
   }
-  const stage = path.join(root, ".runtime", "go-download-" + randomUUID());
-  await fs.mkdir(stage, { recursive: true });
-  try {
-    onProgress("Downloading verified project-local Go compiler…");
+  if(!go){
+    const directory=await ensureShared(home,`go-${pin.version}-${file.os}-${file.arch}`,{
+      signal:buildContext.getStore()?.signal,
+      validate:stage=>compatible(path.join(stage,'go/bin',exe)),
+      create:async stage=>{
+    progress("Downloading verified shared Go compiler…");
     const response = await fetch("https://go.dev/dl/" + file.filename, {
       signal: AbortSignal.any([
         AbortSignal.timeout(600000),
@@ -282,12 +273,17 @@ export async function ensureGo(root, onProgress = () => {}) {
       );
     else await command(root, "/usr/bin/tar", ["-xzf", archive, "-C", stage]);
     await fs.rm(archive);
-    await fs.rename(stage, destination);
-    return go;
-  } finally {
-    await fs.rm(stage, { recursive: true, force: true });
+
+      },onWait:()=>progress('Waiting for the shared Go compiler…')});
+    go=path.join(directory,'go/bin',exe);
   }
+  await bindAlias(root,'go',go);
+  const receipt=readBindings(root)||{schemaVersion:1,mode:portable?'portable':'shared',home,tools:{}};
+  receipt.tools||={};receipt.tools.go={path:go,version:pin.version,source:go.startsWith(home+path.sep)?'shared':'local'};
+  await atomicJSON(path.join(root,'.runtime/tool-bindings.json'),receipt);
+  return go;
 }
+
 export async function publishArtifact(
   root,
   stage,

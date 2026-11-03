@@ -51,7 +51,9 @@ if ! [[ "${SEED_NODE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   sapling_message installer_023 >&2
   exit 1
 fi
-SEED_NODE_DIR="$SEED_PROJECT_DIR/.runtime/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}"
+source "$SEED_PROJECT_DIR/kernel/tooling/node-bootstrap.sh"
+sapling_node_location
+SEED_NODE_DIR="$SAPLING_NODE_SOURCE"
 SEED_NODE_BIN="$SEED_NODE_DIR/bin/node"
 
 if [ ! -x "$SEED_NODE_BIN" ] || [ "$("$SEED_NODE_BIN" --version)" != "v${SEED_NODE_VERSION}" ] || [ "$("$SEED_NODE_BIN" -p 'process.arch')" != "$SEED_MAC_ARCH" ]; then
@@ -60,11 +62,15 @@ if [ ! -x "$SEED_NODE_BIN" ] || [ "$("$SEED_NODE_BIN" --version)" != "v${SEED_NO
     exit 1
   fi
   mkdir -p "$SEED_PROJECT_DIR/.runtime"
-  SEED_BOOTSTRAP_LOCK="$SEED_PROJECT_DIR/.runtime/node-install.lock"
-  if ! mkdir "$SEED_BOOTSTRAP_LOCK" 2>/dev/null; then
-    sapling_message installer_025 >&2
-    exit 1
-  fi
+  mkdir -p "$SAPLING_NODE_HOME/locks" "$SAPLING_NODE_HOME/staging"
+  SEED_BOOTSTRAP_LOCK="$SAPLING_NODE_HOME/locks/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}"
+  SEED_NODE_WAIT=0
+  while ! mkdir "$SEED_BOOTSTRAP_LOCK" 2>/dev/null; do
+    if [ "$SEED_NODE_WAIT" -ge 600 ]; then sapling_message installer_025 >&2; printf '%s\n' "$SEED_BOOTSTRAP_LOCK" >&2; exit 1; fi
+    if [ $((SEED_NODE_WAIT % 15)) -eq 0 ]; then sapling_message installer_025; fi
+    sleep 1; SEED_NODE_WAIT=$((SEED_NODE_WAIT + 1))
+  done
+  if ! sapling_node_valid "$SEED_NODE_DIR"; then
   if [ -e "$SEED_PROJECT_DIR/.runtime/kernel-operation.lock" ] || [ -e "$SEED_PROJECT_DIR/.runtime/launcher-compile.lock" ] || [ -e "$SEED_PROJECT_DIR/.runtime/project-finalization.json" ]; then
     rmdir "$SEED_BOOTSTRAP_LOCK"
     sapling_message installer_026 >&2
@@ -72,7 +78,7 @@ if [ ! -x "$SEED_NODE_BIN" ] || [ "$("$SEED_NODE_BIN" --version)" != "v${SEED_NO
   fi
   SEED_BOOTSTRAP_STAGE=""
   trap 'rm -rf "$SEED_BOOTSTRAP_STAGE"; rmdir "$SEED_BOOTSTRAP_LOCK"' EXIT
-  SEED_BOOTSTRAP_STAGE="$(/usr/bin/mktemp -d "$SEED_PROJECT_DIR/.runtime/node-install.XXXXXX")"
+  SEED_BOOTSTRAP_STAGE="$(/usr/bin/mktemp -d "$SAPLING_NODE_HOME/staging/node-install.XXXXXX")"
   SEED_NODE_ARCHIVE="node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}.tar.gz"
   SEED_NODE_URL="https://nodejs.org/dist/v${SEED_NODE_VERSION}"
   sapling_message installer_027
@@ -94,11 +100,16 @@ if [ ! -x "$SEED_NODE_BIN" ] || [ "$("$SEED_NODE_BIN" --version)" != "v${SEED_NO
   if [ -e "$SEED_NODE_DIR" ]; then
     mv "$SEED_NODE_DIR" "$SEED_PROJECT_DIR/.runtime/node-replaced-$(date +%s)-$$"
   fi
+  mkdir -p "$(dirname "$SEED_NODE_DIR")"
   mv "$SEED_BOOTSTRAP_STAGE/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}" "$SEED_NODE_DIR"
   trap - EXIT
   rm -rf "$SEED_BOOTSTRAP_STAGE"
   rmdir "$SEED_BOOTSTRAP_LOCK"
+  else
+    rmdir "$SEED_BOOTSTRAP_LOCK" 2>/dev/null || true
+  fi
 fi
+sapling_link_node
 
 if [ "$1" = "runtime-only" ]; then exit 0; fi
 

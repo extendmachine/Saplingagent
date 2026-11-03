@@ -1,3 +1,4 @@
+import {readBindings} from '../../tooling/bindings.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -9,7 +10,7 @@ import { ConfigurationStore } from '../../services/ai-config/store.mjs';
 import { claudeConnections, readConnections, defaultSelection } from '../../contracts/ai-configuration.mjs';
 const project=fileURLToPath(new URL('../../../',import.meta.url));
 const profile={label:'Synthetic Claude',engine:'claude',protocol:'anthropic',baseUrl:'http://127.0.0.1:1/v1',model:'synthetic-claude',apiKey:'synthetic-only-key'};
-async function fixture(t){const base=path.join(project,'.cache/claude-tests');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,"中文 app's "));t.after(()=>fs.rm(root,{recursive:true,force:true}));await new ConfigurationStore(root).save(profile);return root;}
+async function fixture(t){const base=path.join(project,'.cache/claude-tests');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,"中文 app's "));t.after(()=>fs.rm(root,{recursive:true,force:true}));await new ConfigurationStore(root).save(profile);await fs.mkdir(path.join(root,'.runtime'),{recursive:true});await fs.writeFile(path.join(root,'.runtime/tool-bindings.json'),JSON.stringify({schemaVersion:1,root,tools:readBindings(project)?.tools||{},sdk:readBindings(project)?.sdk}));return root;}
 function fakeQuery(events, capture=[]){return args=>{capture.push(args);return {async *[Symbol.asyncIterator](){for(const event of events)yield event;},async initializationResult(){return {};},async mcpServerStatus(){return [{name:'seedagent',status:'connected',tools:[{name:'synthetic_tool'}]}];},async supportedCommands(){return [{name:'saplingagent:seed-page-edit',description:'Synthetic'}];},close(){this.closed=true;}};};}
 const init={type:'system',subtype:'init',session_id:'synthetic-thread'};
 const start={type:'stream_event',event:{type:'message_start',message:{id:'message-1'}}};

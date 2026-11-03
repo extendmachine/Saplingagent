@@ -15,6 +15,10 @@ import {assertSetupAvailable} from '../../contracts/kernel.mjs';
 import {readMcpAccess,assertMcpClientsStopped} from '../../contracts/mcp-access.mjs';
 import { codexBinary, claudeBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
+import {hasTooling,ensureTools,toolSetStatus} from '../../tooling/tools.mjs';
+import {toolProgress} from '../../tooling/progress.mjs';
+import {readBindings} from '../../tooling/bindings.mjs';
+
 const t = (key, params) => {
   const text = formatMessage(launcherMessages,process.env.SAPLING_LANG,key,params);
   return process.platform === 'win32' ? text.replaceAll('.runtime/macos-install.lock', '.runtime/windows-install.lock') : text;
@@ -30,9 +34,9 @@ const windows = process.platform === 'win32';
 const platformName = windows ? 'windows' : 'macos';
 const launcher = 'Saplingagent.sh';
 const settings = JSON.parse(await fs.readFile(path.join(root, `kernel/config/${platformName}.json`), 'utf8'));
-const cli = codexBinary(root);
-const npm = npmCommand();
-const opencode = openCodeBinary(root);
+let cli = codexBinary(root);
+const npm = hasTooling(root)||windows?npmCommand():{command:'npm',args:[]};
+let opencode = openCodeBinary(root);
 const stampFile = path.join(root, `.runtime/${platformName}-install.json`);
 const services = [...(await fs.access(path.join(root,'kernel/package.json')).then(()=>['kernel'],()=>[])), 'front', 'backend/app-builder', 'backend/mcp-runtime', 'backend/agent-runtime'];
 const authArgs = ['-c', 'cli_auth_credentials_store="file"'];
@@ -78,7 +82,7 @@ async function installed() {
 }
 async function coreInstalled() {
   if (!await exists(path.join(root,'kernel/package.json'))) return installed();
-  return await exists(cli) && await exists(opencode) && await exists(claudeBinary(root)) && await exists(path.join(root,'kernel/node_modules/vite/bin/vite.js'));
+  return (!hasTooling(root)||(await toolSetStatus(root)).ready) && await exists(cli) && await exists(opencode) && await exists(claudeBinary(root)) && await exists(path.join(root,'kernel/node_modules/vite/bin/vite.js'));
 }
 async function localSetup() {
   await setup({ importExistingAuth: false, projectRoot: root });
@@ -114,6 +118,10 @@ async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
       console.log(t("Dependency check complete: installed versions match this local source. See the source result above. Configure AI or start; use install --repair for damaged dependencies."));
       return;
     }
+    if(hasTooling(root)){
+    await ensureTools(root,{onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
+    cli=codexBinary(root);opencode=openCodeBinary(root);env.SEED_CODEX_BIN=windows?cli:path.join(root,'kernel/scripts/macos/codex.sh');
+    }else{
     if(!appOnly){
     const packageFile = path.join(stage, 'package.json');
     await fs.mkdir(path.dirname(packageFile), { recursive: true });
@@ -130,6 +138,7 @@ async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
     try { await fs.rename(stage, destination); }
     catch (error) { if (hasPrevious) await fs.rename(previous, destination); throw error; }
     if (hasPrevious) await fs.rm(previous, { recursive: true, force: true });
+    }
     }
     // A failed staging download leaves a previously complete installation usable.
     // Once npm ci can replace business dependencies, the old marker is no longer valid.
@@ -274,6 +283,7 @@ async function start(noOpen) {
   }
 }
 async function doctor() {
+  for(const [name,item]of Object.entries(readBindings(root)?.tools||{}))console.log(t('Tool {name}: {source}, {version}; {path}',{name,source:t(item.source==='shared'?'shared tool library':'local installation'),version:item.version,path:item.path}));
   console.log(t("{p0} {p1}; Node {p2}; folder: {p3}",{p0:(windows ? 'Windows' : 'macOS'),p1:(process.arch),p2:(process.versions.node),p3:(root)}));
   const local = await installed();
   console.log(t("Project dependencies:{p0}",{p0:(local ?t("installed"):t("not installed or changed; run bash Saplingagent.sh install --repair"))}));
