@@ -98,3 +98,11 @@ Public sources need no login. Exact installed schema/types take precedence over 
 ## Codex account model picker (TASK-20261029-004)
 
 Checked2026-10-29: https://learn.chatgpt.com/docs/app-server (OpenAI, public; no login needed to read). Used for model/list pagination, thread model overrides, per-turn effort and model/rerouted thread/turn identity. Pinned0.146.1 generated schemas additionally confirm thread start/resume top-level model and no model in TurnStartResponse. All regression calls are synthetic; these sources do not certify real account model entitlement.
+
+
+## Background Git locking (checked2026-11-03)
+
+https://git-scm.com/docs/git-status and https://git-scm.com/docs/git are public
+official documentation. Background status can conflict through optional index
+refresh; GIT_OPTIONAL_LOCKS=0 suppresses optional locks, not required mutation locks.
+No account/network operation is added by local Git status or version labels.

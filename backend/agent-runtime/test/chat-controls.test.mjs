@@ -12,23 +12,23 @@ async function until(check) {
   for (let i = 0; i < 200; i++) { if (await check()) return; await new Promise(resolve => setTimeout(resolve, 5)); }
   throw new Error('Synthetic runtime condition not reached');
 }
-async function fixture(config = {}) {
+async function fixture(config = {}, faults = {}) {
   await fs.mkdir(cache, { recursive: true });
   const root = await fs.mkdtemp(path.join(cache, 'progress-')), sessions = new Map();
   let nextSession = 0, nextThread = 0, nextTurn = 0, rpc;
-  const patches = []; let failWrites = false;
+  const patches = [], rpcs = []; let failWrites = false;
   const prompts = [], threadSetups = [], starts = [], interrupts = [], replies = [], channels = [];
   let beforeAck, nextPatchGate, nextPreferencesGate, nextThreadGate, cancellableResume;
   const gates = [];
   function gate() { let release; const value = { entered: false, ready: new Promise(resolve => { release = resolve; }), release: () => release() }; gates.push(value); return value; }
   class FakeAppServer extends EventEmitter {
-    constructor() { super(); rpc = this; this.closed = false; }
+    constructor() { super(); rpc = this; this.closed = false; rpcs.push(this); }
     async call(method, p = {}) {
       if (method === 'initialize') return {};
       if (method === 'account/read') return { account: { type: 'chatgpt' } };
       if (method === 'model/list') return { data: [{ model: 'synthetic-model', isDefault: true, supportedReasoningEfforts: [{ reasoningEffort: 'medium' }], defaultReasoningEffort: 'medium' }] };
       if (method === 'skills/list') return { data: [] };
-      if (method === 'mcpServerStatus/list') return { data: [{ name: 'seedagent', tools: { fake: {} } }] };
+      if (method === 'mcpServerStatus/list') return { data: [{ name: 'seedagent', tools: faults.mcpUnavailable ? {} : { fake: {} } }] };
       if (['thread/start', 'thread/resume'].includes(method)) threadSetups.push(p);
       if (['thread/start', 'thread/resume'].includes(method) && !p.ephemeral && nextThreadGate) { const hold = nextThreadGate; nextThreadGate = undefined; hold.entered = true; await hold.ready; }
       if (method === 'thread/start') return { thread: { id: `thread-${++nextThread}` }, sandbox: { type: 'dangerFullAccess' }, approvalPolicy: 'never' };
@@ -41,7 +41,7 @@ async function fixture(config = {}) {
         return { turn: { id: turnId } };
       }
       if (method === 'turn/interrupt') {
-        interrupts.push(p); queueMicrotask(() => this.emit('notification', { method: 'turn/completed', params: { threadId: p.threadId, turn: { id: p.turnId, status: 'interrupted' } } })); return {};
+        interrupts.push(p); if (!faults.ignoreInterrupt) queueMicrotask(() => this.emit('notification', { method: 'turn/completed', params: { threadId: p.threadId, turn: { id: p.turnId, status: 'interrupted' } } })); return {};
       }
       throw new Error(`Unexpected synthetic RPC ${method}`);
     }
@@ -49,7 +49,7 @@ async function fixture(config = {}) {
     send() {}
     reply(id, result) { replies.push({ id, result }); }
     reject() {}
-    close() { this.closed = true; return Promise.resolve(); }
+    close() { if (!this.closed) { this.closed = true; this.emit('disconnect', new Error('Synthetic RPC closed')); } return Promise.resolve(); }
   }
   const workspace = http.createServer(async (req, res) => {
     const parts = []; for await (const part of req) parts.push(part);
@@ -61,7 +61,7 @@ async function fixture(config = {}) {
       const session = { id: `session-${++nextSession}`, messages: [], requests: [], running: false, title: 'Synthetic test' }; sessions.set(session.id, session); output = { session };
     } else if (sessions.has(req.url.slice('/sessions/'.length))) {
       const session = sessions.get(req.url.slice('/sessions/'.length));
-      if (req.method === 'PATCH') { patches.push(structuredClone(input)); if (failWrites) { res.writeHead(500); res.end(JSON.stringify({error:{code:'STORAGE_ERROR',message:'Synthetic storage failure'}})); return; } if (nextPatchGate) { const hold = nextPatchGate; nextPatchGate = undefined; hold.entered = true; await hold.ready; } Object.assign(session, input, {updatedAt: new Date().toISOString()}); }
+      if (req.method === 'PATCH') { patches.push(structuredClone(input)); if (faults.rejectMessages && Object.hasOwn(input, 'messages')) { res.writeHead(400); res.end(JSON.stringify({error:{code:faults.rejectMessages,message:'Synthetic rejected snapshot'}})); return; } if (faults.rejectMetadata && input.running === false && !Object.hasOwn(input, 'messages')) { res.writeHead(500); res.end(JSON.stringify({error:{code:'STORAGE_ERROR',message:'Metadata unavailable'}})); return; } if (failWrites) { res.writeHead(500); res.end(JSON.stringify({error:{code:'STORAGE_ERROR',message:'Synthetic storage failure'}})); return; } if (nextPatchGate) { const hold = nextPatchGate; nextPatchGate = undefined; hold.entered = true; await hold.ready; } Object.assign(session, input, {updatedAt: new Date().toISOString()}); if (faults.loseMetadataAck && !Object.hasOwn(input, 'messages')) { res.writeHead(500); res.end(JSON.stringify({error:{code:'STORAGE_ERROR',message:'Lost acknowledgement'}})); return; } }
       output = { session };
     } else { res.writeHead(404); res.end(JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Session does not exist' } })); return; }
     res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(output));
@@ -93,7 +93,7 @@ async function fixture(config = {}) {
     await until(() => events.some(e => e.type === 'snapshot')); return channel;
   }
   return {
-    server, base, prompts, patches, threadSetups, starts, interrupts, replies, sessions,
+    server, root, base, prompts, patches, threadSetups, starts, interrupts, replies, sessions, rpcs, faults,
     set failWrites(value) { failWrites = value; },
     get rpc() { return rpc; }, set beforeAck(value) { beforeAck = value; },
     delayNextSave() { return nextPatchGate = gate(); },
@@ -264,4 +264,81 @@ test('a delayed rename updates the replacement active turn instead of its comple
   await f.complete(newTurn); await until(() => second.ended);
   assert.equal(f.sessions.get(first.sessionId).title, 'Across turns');
   assert.equal(f.prompts.length, 2); assert.equal(f.interrupts.length, 0);
+});
+
+test('permanent snapshot rejection saves true terminal ledger and releases busy gates without repeating completed inference', async t => {
+  for (const rejectMessages of ['SESSION_TOO_LARGE', 'INVALID_INPUT']) {
+    const faults = {}, f = await fixture({}, faults); t.after(() => f.cleanup());
+    const ch = await f.chat('permanent'), turn = f.starts[0]; faults.rejectMessages = rejectMessages;
+    f.notify(turn, 'item/agentMessage/delta', { itemId: 'answer', delta: 'Unsaved synthetic answer' });
+    await f.complete(turn); await until(() => ch.ended);
+    assert.equal(f.sessions.get(ch.sessionId).running, false);
+    assert.equal(f.sessions.get(ch.sessionId).activeRequestId, null);
+    assert.equal(f.sessions.get(ch.sessionId).requests.at(-1).status, 'completed');
+    assert.ok(ch.events.some(e => e.type === 'error' && e.code === (rejectMessages === 'SESSION_TOO_LARGE' ? 'SESSION_TOO_LARGE' : 'SESSION_SAVE_REJECTED')));
+    assert.ok(ch.events.some(e => e.type === 'snapshot' && e.session.messages.some(m => m.text === 'Unsaved synthetic answer')));
+    const replay = await f.stream('/api/chat', { requestId: 'permanent', sessionId: ch.sessionId, text: 'Synthetic test' });
+    await until(() => replay.ended); assert.equal(f.prompts.length, 1);
+    assert.equal((await f.request('/internal/runtime/prepare', {})).status, 200);
+  }
+});
+
+test('lost metadata acknowledgement is reconciled; unknown final-state storage still retains the busy gate', async t => {
+  for (const fail of [false, true]) {
+    const faults = {}, f = await fixture({}, faults); t.after(() => f.cleanup());
+    const ch = await f.chat('metadata'), turn = f.starts[0];
+    Object.assign(faults, { rejectMessages: 'SESSION_TOO_LARGE', loseMetadataAck: !fail, rejectMetadata: fail });
+    f.notify(turn, 'turn/completed', { turnId: undefined, turn: { id: turn.turnId, status: 'completed' } });
+    await until(() => ch.ended);
+    assert.equal(ch.events.some(e => e.code === 'SESSION_SAVE_FAILED'), fail);
+    assert.equal((await f.request('/internal/runtime/prepare', {})).status, fail ? 409 : 200);
+  }
+});
+
+test('RPC replacement closes old transport, ignores stale events and preserves live Codex work', async t => {
+  const f = await fixture(); t.after(() => f.cleanup());
+  const first = f.rpc; await f.server.startAgent();
+  assert.equal(first.closed, true); assert.equal(f.rpcs.length, 2);
+  const ch = await f.chat('rpc-owner'), turn = f.starts[0], current = f.rpc;
+  await f.server.startAgent(); assert.equal(f.rpc, current); assert.equal(f.rpcs.length, 2);
+  first.emit('disconnect', new Error('Stale transport failed'));
+  first.emit('notification', { method: 'turn/completed', params: { threadId: turn.threadId, turn: { id: turn.turnId, status: 'failed' } } });
+  await new Promise(resolve => setTimeout(resolve, 30));
+  assert.equal((await f.session(ch.sessionId)).running, true);
+  assert.equal((await (await f.request('/api/status')).json()).ready, true);
+  await f.complete(turn); await until(() => ch.ended);
+});
+
+test('not-ready retries retain only one owned App Server', async t => {
+  const f = await fixture({}, { mcpUnavailable: true }); t.after(() => f.cleanup());
+  for (let index = 0; index < 3; index++) await f.server.startAgent();
+  assert.equal(f.rpcs.filter(rpc => !rpc.closed).length, 1);
+});
+
+test('unconfirmed Stop reserves its own turn without closing or failing another conversation', { timeout: 15000 }, async t => {
+  const f = await fixture({}, { ignoreInterrupt: true }); t.after(() => f.cleanup());
+  const a = await f.chat('stop-a'), b = await f.chat('stop-b'), [turnA, turnB] = f.starts;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await f.request(`/api/sessions/${a.sessionId}/cancel`, {});
+    assert.equal(response.status, 202); assert.equal((await response.json()).pending, true);
+    assert.equal((await f.session(a.sessionId)).running, true);
+    assert.equal((await f.session(b.sessionId)).running, true); assert.equal(f.rpc.closed, false);
+  }
+  assert.equal(f.interrupts.length, 2);
+  assert.ok(a.events.some(e => e.code === 'STOP_UNCONFIRMED'));
+  await f.complete(turnB); await until(() => b.ended); assert.equal(a.ended, false);
+  await f.complete(turnA, 'interrupted'); await until(() => a.ended);
+  assert.equal(f.sessions.get(a.sessionId).requests.at(-1).status, 'interrupted');
+});
+
+test('unavailable log directory cannot fail initialization or a successful Git operation', async t => {
+  const f = await fixture(); t.after(() => f.cleanup());
+  const logs = path.join(f.root, 'logs/agent-runtime'); await fs.rm(logs, { recursive: true }); await fs.writeFile(logs, 'blocked logs');
+  await f.server.startAgent(); assert.equal((await (await f.request('/api/status')).json()).ready, true);
+  const { execFileSync } = await import('node:child_process');
+  const git = (...args) => execFileSync('git', ['-C', f.root, ...args], { encoding: 'utf8' }).trim();
+  git('init', '-b', 'main'); git('config', 'user.name', 'Synthetic Test'); git('config', 'user.email', 'test@example.invalid');
+  await fs.writeFile(path.join(f.root, 'public.txt'), 'public fixture'); git('add', 'public.txt'); git('commit', '-m', 'fixture');
+  const response = await f.request('/api/git/label', { sha: git('rev-parse', 'HEAD'), name: 'Saved despite unavailable logs' });
+  assert.equal(response.status, 200); assert.equal((await response.json()).git.head.displayName, 'Saved despite unavailable logs');
 });

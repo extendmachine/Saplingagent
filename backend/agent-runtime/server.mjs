@@ -62,15 +62,17 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   const workspaceBase = `http://127.0.0.1:${process.env.SEED_WORKSPACE_PORT || config.workspacePort}`;
   const builderBase = `http://127.0.0.1:${process.env.SEED_BUILDER_PORT || config.builderPort}`;
   const workspaceAbort = new AbortController();
-  const logDir = path.join(root, 'logs/agent-runtime'); await fs.mkdir(logDir, { recursive: true });
+  const logDir = path.join(root, 'logs/agent-runtime'); await fs.mkdir(logDir, { recursive: true }).catch(() => {});
   let logDay = '';
   const log = async (event, fields = {}) => {
+    try {
     const day = new Date().toISOString().slice(0, 10);
     if (day !== logDay) {
       logDay = day;
       for (const entry of await fs.readdir(logDir)) if (/^agent-runtime-\d{4}-\d{2}-\d{2}\.log$/.test(entry) && (await fs.stat(path.join(logDir, entry))).mtimeMs < Date.now() - 30 * 86400000) await fs.unlink(path.join(logDir, entry));
     }
     await fs.appendFile(path.join(logDir, `agent-runtime-${day}.log`), JSON.stringify({ time: new Date().toISOString(), event, ...fields }) + '\n', { mode: 0o600 });
+    } catch { /* Operational logging must not change an already completed result. */ }
   };
   async function ws(route, method = 'GET', data) {
     const response = await fetch(workspaceBase + route, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: data === undefined ? undefined : JSON.stringify(data), signal: AbortSignal.any([AbortSignal.timeout(15000), workspaceAbort.signal]) });
@@ -128,7 +130,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         try {
           const value = await ws(`/sessions/${sessionId}`), saved = value.session;
           if ((saved.engineRevision || 0) === snapshot.expectedEngineRevision && !saved.running && saved.activeRequestId === null && saved.threadId === snapshot.threadId &&
-              isDeepStrictEqual(saved.requests, snapshot.requests) && isDeepStrictEqual(storedMessages(saved.messages), storedMessages(snapshot.messages)) &&
+              isDeepStrictEqual(saved.requests, snapshot.requests) && (!Object.hasOwn(snapshot, 'messages') || isDeepStrictEqual(storedMessages(saved.messages), storedMessages(snapshot.messages))) &&
               (!Object.hasOwn(snapshot, 'contextUsage') || isDeepStrictEqual(saved.contextUsage, snapshot.contextUsage)) &&
               (!Object.hasOwn(snapshot, 'modelUsage') || isDeepStrictEqual(saved.modelUsage, snapshot.modelUsage)) &&
               (!snapshot.handoffDeliveredRequestId || saved.handoff?.status === 'delivered' && saved.handoff.deliveredRequestId === snapshot.handoffDeliveredRequestId)) return value;
@@ -172,10 +174,23 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     }
     try { await save(run); }
     catch (persistError) {
-      result = 'failed'; error = new Error('Response has not been fully saved. Check local storage');
-      // Retain the actual model outcome for persistence retry. Downgrading it
-      // could contradict a committed handoff or rerun already completed tools.
-      dirtySessions.set(run.session.id, run.session);
+      result = 'failed';
+      const permanent = persistError.status === 400 && ['INVALID_INPUT', 'SESSION_TOO_LARGE'].includes(persistError.code);
+      const size = persistError.code === 'SESSION_TOO_LARGE' || persistError.code === 'INVALID_INPUT' && /Session messages exceed 4 MiB/.test(persistError.message);
+      error = new ApiError(permanent ? size ? 'SESSION_TOO_LARGE' : 'SESSION_SAVE_REJECTED' : 'SESSION_SAVE_FAILED',
+        permanent ? 'The response body was not saved. Copy it before leaving this page. Start a new conversation or review local session storage.' : 'Response has not been fully saved. Check local storage', 400);
+      if (permanent) {
+        try {
+          const saved = await persistSnapshot(run.session.id, { expectedEngineRevision: run.session.engineRevision || 0,
+            ...deliveredPatch(run.session, run.requestId), requests: structuredClone(run.session.requests),
+            running: false, activeRequestId: null, threadId: run.session.threadId });
+          run.session.updatedAt = saved.session.updatedAt; run.session.revision = saved.session.revision;
+          if (saved.session.handoff) run.session.handoff = saved.session.handoff;
+        } catch { dirtySessions.set(run.session.id, run.session); error = new ApiError('SESSION_SAVE_FAILED', 'The final request state could not be confirmed. Keep this page open and check local storage.', 503); }
+      } else {
+        // Unknown outcomes retain the real result for idempotent persistence retry.
+        dirtySessions.set(run.session.id, run.session);
+      }
     }
     broadcast(run.session.id, { type: 'snapshot', session: publicSession(run.session) });
     if (error) broadcast(run.session.id, { type: 'error', code: error.code || 'AGENT_ERROR', message: safeError(error) });
@@ -318,8 +333,13 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   async function startCodex() {
     if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
     if (startup) return startup;
+    if (rpc && !rpc.closed && [...active.values()].some(run => !run.finished && run.session && (run.session.engine || 'codex') === 'codex')) return;
     lastStart = Date.now();
+    const previous = rpc; rpc = null;
+    let client;
     startup = (async () => {
+      await previous?.close();
+      if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
       const connection = await codexConnection(root, connections);
       const args = ['-c', 'cli_auth_credentials_store="file"', '-c', 'web_search="live"', ...permissionConfigArgs()];
       for (const feature of ['browser_use', 'browser_use_external', 'computer_use', 'plugins', 'remote_plugin', 'apps', 'multi_agent', 'skill_mcp_dependency_install']) args.push('-c', `features.${feature}=false`);
@@ -328,22 +348,22 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       for (const [name, value] of Object.entries(sharedMcpEnv)) args.push('-c', `mcp_servers.seedagent.env.${name}=${JSON.stringify(value)}`);
       args.push(...connection.args);
       if(connection.profile?.kind === 'api')args.push('-c','web_search="disabled"');
-      rpc = new AppServerClass({ cwd: root, env: { ...process.env, ...connection.env, CODEX_HOME: path.join(root, 'local-secrets/codex'), SEED_ROOT: root, SEED_AGENT_MANAGED: '1', SEED_AGENT_PORT: String(process.env.SEED_AGENT_PORT || config.agentPort), SEEDAGENT_PROJECT_ROOT: root, SEEDAGENT_WORKSPACE_PORT: String(process.env.SEED_WORKSPACE_PORT || config.workspacePort), SEEDAGENT_BUILDER_PORT: String(process.env.SEED_BUILDER_PORT || config.builderPort) }, args });
-      rpc.on('notification', message => notification(message).catch(error => log('notification_error', { code: error.code || 'INTERNAL' }).catch(() => {})));
-      rpc.on('request', serverRequest);
-      rpc.on('disconnect', error => { status.ready = false; status.error = safeError(error); resumed.clear(); if (!closing) for (const run of active.values()) if (run.session && (run.session.engine || 'codex') === 'codex') finish(run, 'failed', error).catch(() => {}); });
-      await rpc.call('initialize', { clientInfo: { name: 'seedagent', title: 'Saplingagent', version: '0.1.0' }, capabilities: { experimentalApi: true } });
-      rpc.send({ method: 'initialized', params: {} });
-      const account = await rpc.call('account/read', { refreshToken: false }); status.authenticated = !!account.account || account.requiresOpenaiAuth === false;
+      rpc = client = new AppServerClass({ cwd: root, env: { ...process.env, ...connection.env, CODEX_HOME: path.join(root, 'local-secrets/codex'), SEED_ROOT: root, SEED_AGENT_MANAGED: '1', SEED_AGENT_PORT: String(process.env.SEED_AGENT_PORT || config.agentPort), SEEDAGENT_PROJECT_ROOT: root, SEEDAGENT_WORKSPACE_PORT: String(process.env.SEED_WORKSPACE_PORT || config.workspacePort), SEEDAGENT_BUILDER_PORT: String(process.env.SEED_BUILDER_PORT || config.builderPort) }, args });
+      client.on('notification', message => { if (rpc === client) notification(message).catch(error => log('notification_error', { code: error.code || 'INTERNAL' })); });
+      client.on('request', message => { if (rpc === client) Promise.resolve(serverRequest(message)).catch(() => log('server_request_error')); });
+      client.on('disconnect', error => { if (rpc !== client) return; status.ready = false; status.error = safeError(error); resumed.clear(); if (!closing) for (const run of active.values()) if (run.session && (run.session.engine || 'codex') === 'codex') finish(run, 'failed', error).catch(() => {}); });
+      await client.call('initialize', { clientInfo: { name: 'seedagent', title: 'Saplingagent', version: '0.1.0' }, capabilities: { experimentalApi: true } });
+      client.send({ method: 'initialized', params: {} });
+      const account = await client.call('account/read', { refreshToken: false }); status.authenticated = !!account.account || account.requiresOpenaiAuth === false;
       await refreshCodexModels();
-      const initialThread = await rpc.call('thread/start', { cwd: root, model: status.model, ...threadPermissions, developerInstructions: instructions, ephemeral: true });
+      const initialThread = await client.call('thread/start', { cwd: root, model: status.model, ...threadPermissions, developerInstructions: instructions, ephemeral: true });
       if (initialThread.sandbox?.type !== 'dangerFullAccess' || initialThread.approvalPolicy !== 'never') throw new Error('Codex did not enable the requested Full Access permissions. Check runtime configuration');
       await catalog();
       if (!status.authenticated) status.error = 'This project is not logged in. Run codex login using the project CODEX_HOME first.';
       else if (!status.mcp.ready) status.error = 'Saplingagent MCP tools are not ready';
       else delete status.error;
       await log('agent_ready', { model: status.model, authenticated: status.authenticated, tools: status.mcp.tools.length, sandbox: initialThread.sandbox.type, approvalPolicy: initialThread.approvalPolicy });
-    })().catch(error => { status.ready = false; status.error = safeError(error); if (rpc && !rpc.closed) rpc.close(); throw error; }).finally(() => { startup = null; });
+    })().catch(async error => { if (!client || rpc === client) { status.ready = false; status.error = safeError(error); if (client && !client.closed) await client.close(); } throw error; }).finally(() => { startup = null; });
     return startup;
   }
   async function refreshCodexModels() {
@@ -415,19 +435,30 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   async function abortRun(run, error) {
     // Do not release a session while an unacknowledged old turn can still use MCP.
     if (run.finished) return;
-    run.abortError = error;
+    if (error) run.abortError = error;
+    if (run.aborting) return run.aborting;
+    const aborting = (async () => {
     try {
       await interrupt(run);
-      await new Promise(resolve => {
+      if (!run.finished) await new Promise(resolve => {
         const started = Date.now();
         const timer = setInterval(() => { if (run.finished || Date.now() - started > 3000) { clearInterval(timer); resolve(); } }, 50);
       });
     } catch {}
     if (!run.finished) {
-      if ((run.session?.engine || 'codex') === 'codex') rpc?.close();
-      if (run.session?.engine === 'claude') await claude.interrupt(run);
-      await finish(run, 'failed', error);
+      if ((run.session?.engine || 'codex') === 'codex') {
+        // The old turn may still edit files. Keep its slot and MCP ownership;
+        // do not fail unrelated conversations by closing their shared transport.
+        run.interruptSent = false;
+        broadcast(run.session.id, { type: 'error', code: 'STOP_UNCONFIRMED', message: 'This turn has not confirmed stopping. It may still be running. Retry Stop; other conversations are unaffected.' });
+      } else {
+        if (run.session?.engine === 'claude') await claude.interrupt(run);
+        await finish(run, error ? 'failed' : 'interrupted', error);
+      }
     }
+    })();
+    run.aborting = aborting;
+    try { await aborting; } finally { if (run.aborting === aborting) run.aborting = null; }
   }
   async function executeCodex(run, text) {
     const finishStopped = () => finish(run, run.abortError ? 'failed' : 'interrupted', run.abortError);
@@ -685,7 +716,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         if (!run || run.finished) { const savedStatus = session.requests?.at(-1)?.status; emit({ type: 'done', status: ['completed', 'failed', 'interrupted'].includes(savedStatus) ? savedStatus : 'interrupted' }); res.end(); } return;
       }
       const cancelId = url.pathname.match(/^\/api\/sessions\/([a-zA-Z0-9_-]+)\/cancel$/)?.[1];
-      if (req.method === 'POST' && cancelId) { const run = active.get(cancelId); if (run) await interrupt(run); return send(res, 200, { ok: true }); }
+      if (req.method === 'POST' && cancelId) { const run = active.get(cancelId); if (run) await abortRun(run); return send(res, run && !run.finished ? 202 : 200, { ok: true, ...(run && !run.finished ? { pending: true } : {}) }); }
       const approvalId = url.pathname.match(/^\/api\/approvals\/([a-zA-Z0-9_-]+)$/)?.[1];
       if (req.method === 'POST' && approvalId) {
         const approval = approvals.get(approvalId); if (!approval) throw new ApiError('NOT_FOUND', 'Approval has ended', 404);
