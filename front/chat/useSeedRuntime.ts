@@ -199,7 +199,7 @@ export function useSeedRuntime() {
           session.current = event.sessionId;
           setActiveSessionId(event.sessionId);
           const id = event.sessionId;
-          setSessions(current => current.some(item => item.id === id) ? current : sortSessionSummaries([...current, { id, title: lastRequest.current?.text.slice(0, 60) || 'Untitled conversation', engine: lastRequest.current?.engine || 'codex' }]));
+          setSessions(current => current.some(item => item.id === id) ? current : sortSessionSummaries([...current, { id, title: lastRequest.current?.text.slice(0, 60) || '', engine: lastRequest.current?.engine || 'codex' }]));
           rememberSession(event.sessionId);
           if (lastRequest.current) lastRequest.current.sessionId = event.sessionId;
         }
@@ -242,6 +242,7 @@ export function useSeedRuntime() {
       case 'done': {
         flush();
         setRunning(false);
+        setError(current => current instanceof Error && 'code' in current && current.code === 'STOP_UNCONFIRMED' ? '' : current);
         setApprovals([]);
         setMessages(current => current.map(message => message.status === 'streaming' ? { ...message, status: String(event.status) } : message));
         setActivity(event.status === 'interrupted' ? message('runtime.stopped') : event.status === 'failed' ? message('runtime.failed') : '');
@@ -333,15 +334,20 @@ export function useSeedRuntime() {
           snapshot(saved);
           if (saved.running) {
             setRunning(true);
-            stream.current = bootstrap;
+            const recovery = new AbortController();
+            stream.current = recovery;
             setIsLoading(false);
-            await recover(bootstrap.signal, expectedEpoch);
+            await recover(AbortSignal.any([bootstrap.signal, recovery.signal]), expectedEpoch);
             if (!bootstrap.signal.aborted && epoch.current === expectedEpoch) id = session.current;
           }
         }
       } catch (failure) {
         if (fetchingSavedSession && detachMissingSession(failure, id, bootstrap.signal, expectedEpoch)) id = null;
-        else if (currentTarget(bootstrap.signal, expectedEpoch, id) && !isAborted(failure) && id) setError(message('runtime.restoreFailed', undefined, failure));
+        else if (currentTarget(bootstrap.signal, expectedEpoch, id) && !isAborted(failure) && id) {
+          setRunning(false);
+          setRetryable(Boolean(lastRequest.current));
+          setError(message('runtime.restoreFailed', undefined, failure));
+        }
       } finally {
         if (currentTarget(bootstrap.signal, expectedEpoch, id)) {
           setIsLoading(false);
@@ -401,20 +407,21 @@ export function useSeedRuntime() {
       const response = await checkedFetch('/api/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify(request), signal: controller.signal,
-      });
+      }, 120000);
       if (!currentTarget(controller.signal, expectedEpoch, id)) return;
       const responseId = response.headers.get('X-Session-Id');
       if (responseId) { id = responseId; session.current = id; request.sessionId = id; rememberSession(id); }
-      let ended = false;
+      let ended = false, unsavedOutput = false;
       await consumeEvents(response, event => {
         if (!currentTarget(controller.signal, expectedEpoch, id)) return;
         if (event.type === 'done') ended = true;
+        if (event.type === 'error' && ['SESSION_TOO_LARGE', 'SESSION_SAVE_REJECTED'].includes(String(event.code))) unsavedOutput = true;
         receive(event);
         id = session.current;
       });
       if (!currentTarget(controller.signal, expectedEpoch, id)) return;
       if (!ended) await recover(controller.signal, expectedEpoch);
-      if (id && !running.current && currentTarget(controller.signal, expectedEpoch, id)) {
+      if (id && !unsavedOutput && !running.current && currentTarget(controller.signal, expectedEpoch, id)) {
         const saved = await getSession(id, controller.signal);
         if (currentTarget(controller.signal, expectedEpoch, id)) snapshot(saved);
       }
@@ -521,7 +528,11 @@ export function useSeedRuntime() {
       }
     } catch (failure) {
       if (!currentTarget(controller.signal, expectedEpoch, id) || isAborted(failure)) return;
-      if (!detachMissingSession(failure, id, controller.signal, expectedEpoch)) setError(message('runtime.openFailed', undefined, failure));
+      if (!detachMissingSession(failure, id, controller.signal, expectedEpoch)) {
+        setRunning(false);
+        setRetryable(Boolean(lastRequest.current));
+        setError(message('runtime.openFailed', undefined, failure));
+      }
       void refreshSessions();
     } finally {
       if (currentTarget(controller.signal, expectedEpoch, session.current)) {

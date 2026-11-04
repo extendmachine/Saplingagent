@@ -65,10 +65,10 @@ export function rememberSession(id: string | null) {
   } catch { /* Session persistence on the server remains available. */ }
 }
 
-export async function checkedFetch(url: string, options?: RequestInit): Promise<Response> {
+export async function checkedFetch(url: string, options?: RequestInit, timeoutMs = 10000): Promise<Response> {
   let response: Response;
   const timeout = new AbortController();
-  const timer = setTimeout(() => timeout.abort(), 10000);
+  const timer = setTimeout(() => timeout.abort(), timeoutMs);
   const signal = options?.signal ? AbortSignal.any([options.signal, timeout.signal]) : timeout.signal;
   try { response = await fetch(url, { ...options, signal }); } catch (error) {
     if (timeout.signal.aborted && !options?.signal?.aborted) throw new Error('Local service response timed out. Retry or restart the service.');
