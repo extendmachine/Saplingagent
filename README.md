@@ -433,6 +433,8 @@ Choose English or 中文 in the installer, AI setup or chat language selector. T
 
 Open **Settings → Help** from the chat page to reach the independent bilingual quick guide. It covers installation, AI configuration, conversations, files, restart/stop, updates and common errors. Errors show a readable explanation and next action; expand Technical details for the original code/message. User messages, AI replies, filenames, model names and API identifiers are not translated. Changing interface language never sends a model request. Ask your AI to answer in your preferred language separately. See [the bilingual guide](docs/language-help.html).
 
+Operational failures and recovery: [Conversation and launcher guide](docs/reliability.html). Copy unsaved output before refreshing; an unconfirmed stop can still be executing.
+
 <a id="license"></a>
 
 ## License, commercial use and upstream attribution

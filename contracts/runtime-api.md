@@ -17,7 +17,7 @@ GET /api/sessions -> {sessions:[{id,title,updatedAt,engine,providerId,modelId}]}
 GET /api/sessions/:id -> {session:{id,title,engine,providerId,modelId,threadId,messages,updatedAt,running,activeRequestId,requests,pendingApprovals:[],progress?,contextUsage?}}。
 PATCH /api/sessions/:id {title} -> {session}. Title is trimmed, nonempty and at most 200 characters. Other input fields are not forwarded. Rename does not change the engine, resend a prompt or cancel an active response; the latest title is also broadcast in its session snapshot. The existing Host/Origin/token and runtime-drain checks apply.
 POST /api/chat {sessionId?,text,requestId?,engine?,providerId?,modelId?} -> SSE: session, snapshot, text_delta, status, tool, error, done. A new session defaults to Codex. OpenCode and Claude Agent require all three selection fields. Ordinary chat cannot change a saved selection. Use the explicit engine switch below; a stale selection or engineRevision returns409 without sending a model request.
-POST /api/sessions/:id/cancel -> {ok:true}; GET /api/events? sessionId=... -> snapshot+follow-up SSE. Running disconnection will not stop automatically. Session persistence, request deduping, real cancellation/error status maintenance. Stop cannot undo the side effects of documents or commands that have been generated.
+POST /api/sessions/:id/cancel -> 200 {ok:true} after confirmed completion, or 202 {ok:true,pending:true} while stop remains unconfirmed; GET /api/events? sessionId=... -> snapshot+follow-up SSE. Running disconnection will not stop automatically. Session persistence, request deduping, real cancellation/error status maintenance. Stop cannot undo the side effects of documents or commands that have been generated.
 
 TASK-20261010-006: optional `progress` exists only for an active turn. It contains startedAt/lastProgressAt (ISO timestamps), lastProgressKind (started/text/reasoning/plan/command-output/file-output/mcp-progress/item-started/item-completed), idle (boolean), and phase (working/tool-running/waiting-user). This is Agent memory metadata, not persisted in workspace; it exposes no output, reasoning or tool parameters and is omitted after completion. turnTimeoutMs defaults to 0, including when absent; turnIdleWarningMs defaults to 600000. Warn once per period without effective progress via status.label; retain running, send no error/done, and never automatically resend. Progress resumes the run normally; reconnection replays the current reminder. Silent tools may still be running. Full Access approvals remain automatic; no new free-form question interface is introduced. Heartbeats, polling, reconnection, saves and connection retries are not progress; stale thread/turn events cannot extend timers. An explicitly positive total deadline still interrupts. Both settings accept only integer milliseconds in 0..2147483647; 0 disables the respective timer.
 
@@ -125,3 +125,21 @@ root or credential is accepted/returned. A pending job survives browser disconne
 and prevents competing normal runtime mutations until short-lived bootstrap exit.
 No model request or app stop happens merely by opening configuration. The full
 contract is kernel/services/runtime-manager/CONTRACT.md.
+
+
+## Recovery and permanent save rejection (2026-11-03)
+
+List retrieval skips individually corrupt/unsafe/invalid session files unchanged;
+system IO errors remain visible. Workspace400 SESSION_TOO_LARGE identifies
+message-count/text/serialized-size limits, separately from INVALID_INPUT.
+Agent attempts terminal metadata-only persistence on permanent snapshot rejection.
+Confirmed request-ledger saving releases busy gates; uncertain saving retains
+dirty recovery. SSE SESSION_TOO_LARGE / SESSION_SAVE_REJECTED warns the response
+body is unsaved. The current page retains output for copying; refresh/restart may
+only recover the last stored messages. Completed request IDs are never rerun.
+
+STOP_UNCONFIRMED means a Codex turn may still execute. Its running slot and tool
+ownership remain active; further Stop retries interruption, never closes other
+conversations' shared transport. Later completion clears the warning. Chat headers
+have a120-second transport budget, ordinary requests10seconds, with no new whole-
+turn hard deadline. No automatic resend, source rollback or permissions change.
