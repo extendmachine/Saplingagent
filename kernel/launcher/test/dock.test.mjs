@@ -96,8 +96,11 @@ test('Quit terminates the owned startup child before runtime discovery exists',a
  const f=await fixture(t);
  const {ProjectLauncher}=await import('../manager.mjs');
  f.options.launcher=new ProjectLauncher(f.root);
- const localNode=path.join(f.root,path.relative(fileURLToPath(new URL('../../../',import.meta.url)),process.execPath));
- await fs.mkdir(path.dirname(localNode),{recursive:true});await fs.copyFile(process.execPath,localNode);
+ const relativeNode=path.relative(fileURLToPath(new URL('../../../',import.meta.url)),process.execPath);
+ if(relativeNode && relativeNode!=='..' && !relativeNode.startsWith('..'+path.sep) && !path.isAbsolute(relativeNode)){
+   const localNode=path.join(f.root,relativeNode);
+   await fs.mkdir(path.dirname(localNode),{recursive:true});await fs.copyFile(process.execPath,localNode);
+ }
  await f.write('scripts/dev.mjs',`import fs from 'node:fs';process.on('SIGTERM',()=>{fs.writeFileSync('startup-cleaned','yes');process.exit(0);});fs.writeFileSync('startup-pid',String(process.pid));setTimeout(()=>fs.writeFileSync('late-start','bad'),2500);setInterval(()=>{},500);`);
  const work=f.dock().start(f.input);
  const marker=path.join(f.root,'startup-pid');while(!await fs.access(marker).then(()=>true,()=>false))await delay(10);

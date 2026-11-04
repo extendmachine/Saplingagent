@@ -15,7 +15,7 @@ export const errorMessages = {
     credentials: ['The selected credential file could not be imported.', 'Choose a complete supported JSON file, check its size and read permission, or use the official sign-in option.'],
     credentialExists: ['Credentials are already saved for this scheme.', 'Use the saved account, or explicitly select Replace existing credentials before importing again.'],
     missingAuth: ['No supported local login was found.', 'Use official sign-in, upload your own supported credential file, or configure an API scheme.'],
-    input: ['INVALID_RUNTIME_HOME','INVALID_RUNTIME_MODE','Some settings are missing or invalid.', 'Check the highlighted fields, provider URL, model and credentials, then save again.'],
+    input: ['Some settings are missing or invalid.', 'Check the highlighted fields, provider URL, model and credentials, then save again.'],
     setup: ['Project configuration has not finished yet.', 'Save the project and AI settings, complete Save & build app, and wait for restart before opening the app.'],
     dependency: ['A required local component could not start or be prepared.', 'Run Install / repair from Saplingagent.sh. Check your network and available disk space, then retry.'],
     permission: ['The operation was denied by the operating system or local access checks.', 'Open the app from its launcher and use its current local address. Check the project folder’s access permissions.'],
@@ -24,6 +24,9 @@ export const errorMessages = {
     session: ['This saved conversation is no longer available.', 'Keep your draft and select an existing conversation or start a new one. Nothing will be sent automatically.'],
     stopped: ['The project has not confirmed that all its services stopped.', 'Wait briefly, then choose Stop app again. If it still fails, inspect logs/project-launcher and Project status.'],
     attachment: ['The file could not be attached.', 'Check its size and type, then select the file again. Wait for uploads to finish before sending.'],
+    sessionTooLarge: ['The response exceeded conversation storage limits and was not saved.', 'Copy any unsaved output before leaving this page, then start a new conversation. Completed requests will not run again when retried.'],
+    saveRejected: ['The response body could not be stored because its data was rejected.', 'Copy unsaved output before leaving this page and inspect local session data. The actual request result is retained when final-state saving succeeds.'],
+    stopUnconfirmed: ['This conversation has not confirmed stopping and may still be running.', 'Wait or choose Stop again. Other conversations remain available; this one stays reserved until its engine confirms completion.'],
     storage: ['The project could not save or read a local file.', 'Check available disk space and folder access. Keep this window open and retry saving before closing.']
   },
   zh: {
@@ -41,7 +44,7 @@ export const errorMessages = {
     credentials: ['无法导入所选凭据文件。', '请选择完整且受支持的 JSON 文件，检查大小和读取权限，或使用官方登录。'],
     credentialExists: ['当前方案已保存凭据。', '使用已保存账号；如需重新导入，请先明确勾选“替换已有凭据”。'],
     missingAuth: ['未找到受支持的本机登录。', '请使用官方登录、上传自己的受支持凭据文件，或配置 API 方案。'],
-    input: ['INVALID_RUNTIME_HOME','INVALID_RUNTIME_MODE','部分设置缺失或无效。', '检查提示的字段、服务商网址、模型及凭据，然后重新保存。'],
+    input: ['部分设置缺失或无效。', '检查提示的字段、服务商网址、模型及凭据，然后重新保存。'],
     setup: ['项目配置尚未完成。', '先保存项目和 AI 设置，再完成“保存并构建应用”；等待重启后打开应用。'],
     dependency: ['所需的本地组件无法启动或准备失败。', '在 Saplingagent.sh 中运行“安装／修复”，检查网络和磁盘空间后重试。'],
     permission: ['操作被系统权限或本地访问检查拒绝。', '请从启动器打开应用并使用当前本机网址，同时检查项目文件夹的访问权限。'],
@@ -50,6 +53,9 @@ export const errorMessages = {
     session: ['这个已保存的对话已不可用。', '保留草稿，选择已有对话或新建对话。系统不会自动发送内容。'],
     stopped: ['项目尚未确认全部服务已停止。', '稍候再点击“停止应用”；仍然失败时，请检查 logs/project-launcher 和“项目状态”。'],
     attachment: ['文件未能添加为附件。', '检查文件大小和类型，重新选择文件，并等待上传完成后再发送。'],
+    sessionTooLarge: ['回复超过会话存储上限，正文未保存。', '离开页面前复制未保存的内容，然后新建对话。已完成的请求在重试时不会重新执行。'],
+    saveRejected: ['回复数据被存储服务拒绝，正文未保存。', '离开页面前复制未保存内容，并检查本地会话数据；最终状态保存成功时，真实请求结果会保留。'],
+    stopUnconfirmed: ['此对话尚未确认停止，可能仍在执行。', '请等待或再次点击停止。其他对话可继续使用；此对话会保留占用，直到引擎确认结束。'],
     storage: ['项目无法保存或读取本地文件。', '检查磁盘空间和文件夹权限；关闭窗口前，请保留当前内容并重试保存。']
   }
 };
@@ -64,6 +70,8 @@ const groups = {
   dependency: ['TOOL_UNAVAILABLE','TOOL_INSTALL_FAILED','TOOL_INTERRUPTED','SHARED_RUNTIME_INTERRUPTED','SHARED_RUNTIME_BUSY','SHARED_RUNTIME_INVALID','TOOL_NODE_REQUIRED','TOOL_TIMEOUT','UI_NOT_BUILT','UI_BUILD_FAILED','UI_BUILD_INTERRUPTED','DEPENDENCIES_MISSING','SPAWN_FAILED','ENOENT'],
   permission: ['INVALID_HOST','INVALID_ORIGIN','UNAUTHORIZED','FORBIDDEN','EACCES','EPERM','PROJECT_STORAGE_LOCATION'],
   conflict: ['KERNEL_CONFLICT'], kernel: ['KERNEL_INCOMPATIBLE','INVALID_KERNEL','KERNEL_INTEGRITY'],
+  input: ['INVALID_RUNTIME_HOME','INVALID_RUNTIME_MODE'],
+  sessionTooLarge: ['SESSION_TOO_LARGE'], saveRejected: ['SESSION_SAVE_REJECTED'], stopUnconfirmed: ['STOP_UNCONFIRMED'],
   session: ['SESSION_NOT_FOUND'], stopped: ['SERVICE_STOP_FAILED','STOP_UNAVAILABLE'],
   storage: ['ENOSPC','EROFS','SESSION_SAVE_FAILED','WORKSPACE_UNAVAILABLE','LANGUAGE_SAVE_FAILED']
 };

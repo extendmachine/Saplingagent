@@ -218,3 +218,20 @@ user conversations, source, identity and launcher remain intact. See
 ## Current shared tool runtime (2026-11-03)
 
 TASK-20261103-001 supersedes historical project-local-tool-only statements for third-party Node/npm, Codex/Claude/OpenCode programs, engine SDKs, Go and their download cache. Installation detects compatible local programs, otherwise uses a per-user versioned shared library. Native launch, repair and full app/backend restart resolve the same bindings. Project credentials/sessions/config/data/logs/build output remain local. Portable mode is available. See kernel/tooling/CONTRACT.md (from the project root), rule11 and docs/shared-runtime.html. Kernel remains0.9.9; release promotion and native Windows acceptance are separate.
+
+
+## Failure cleanup (2026-11-03)
+
+Management startup cancellation terminates only the child created by that startup;
+failed initialization may retain the recovery gateway intentionally. Transient
+native compilation stages are removed on failure as well as success, while
+explicitly retained failed-publication output remains available for recovery.
+Never remove active/shared tool generations automatically. Helper cleanup verifies
+the direct sibling, ownership metadata, directory identity and helper exit before
+deleting it; an unknown/live helper is retained with its cancellation flag.
+Signal shutdown retries a failed owned-service stop once and exits nonzero if it
+still fails, reporting the failure without an unhandled Promise rejection.
+
+Maintenance handoff includes the complete builtin shared-tool resolver import
+closure used by the copied worker's process contract, so it remains independent
+of the kernel source being replaced. Worker tests execute the detached copy.

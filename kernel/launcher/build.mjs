@@ -261,7 +261,7 @@ export async function ensureGo(root, onProgress = () => {}) {
           "-NoProfile",
           "-NonInteractive",
           "-Command",
-          "Expand-Archive -LiteralPath $env.SAPLING_ARCHIVE -DestinationPath $env.SAPLING_STAGE",
+          "Expand-Archive -LiteralPath $env:SAPLING_ARCHIVE -DestinationPath $env:SAPLING_STAGE",
         ],
         {
           env: {
@@ -408,6 +408,8 @@ async function compileLauncherUnlocked(
   const go = await ensureGo(root, onProgress);
   const base = path.join(root, ".runtime/launcher-build", randomUUID());
   await fs.mkdir(base, { recursive: true });
+  let failure;
+  try {
   for (const f of sources)
     await fs.copyFile(path.join(sourceDir, f), path.join(base, f));
   await fs.writeFile(path.join(base,"localization_generated.go"),"package main\nfunc init() { launcherMessagesJSON = "+JSON.stringify(JSON.stringify(launcherMessages))+" }\n");
@@ -532,8 +534,15 @@ async function compileLauncherUnlocked(
     compiledAt: new Date().toISOString(),
   };
   await writeJSON(path.join(root, ".runtime/launcher.json"), receipt);
-  await fs.rm(base, { recursive: true, force: true });
   return receipt;
+  } catch (error) { failure = error; throw error; }
+  finally {
+    // Failed publication deliberately retains its staged artifact for recovery.
+    if (failure?.code !== 'LAUNCHER_REPLACE_FAILED') {
+      try { await fs.rm(base, { recursive: true, force: true }); }
+      catch (error) { if (!failure) throw error; }
+    }
+  }
 }
 
 async function removeCreatedLease(file,identity) {

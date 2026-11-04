@@ -2,6 +2,9 @@
 # Runs from a private project sibling; never executes project-local Node until after move.
 set -eu
 job_dir=$1
+cleanup() { cd "$(dirname "$job_dir")"; /usr/bin/osascript -l JavaScript "$job_dir/offline-move.js" "$job_dir" cleanup >/dev/null 2>&1 || true; }
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
 cd "$job_dir"
 field() { /usr/bin/osascript -l JavaScript "$job_dir/offline-move.js" "$job_dir" field "$1"; }
 source_root=$(field previousRoot)
@@ -12,8 +15,6 @@ job_id=$(field id)
 no_open=$(field noOpen)
 case "$parent_pid" in ''|*[!0-9]*) exit 1;; esac
 : > "$job_dir/waiting"
-cleanup() { cd "$(dirname "$job_dir")"; /usr/bin/osascript -l JavaScript "$job_dir/offline-move.js" "$job_dir" cleanup >/dev/null 2>&1 || true; }
-trap cleanup EXIT HUP INT TERM
 count=0
 while kill -0 "$parent_pid" 2>/dev/null; do
   [ ! -f "$job_dir/cancel" ] || exit 1

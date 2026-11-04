@@ -114,7 +114,7 @@ export async function openExternal(target) {
           "-NoProfile",
           "-NonInteractive",
           "-Command",
-          "Start-Process -FilePath $env.SAPLING_OPEN_TARGET",
+          "Start-Process -FilePath $env:SAPLING_OPEN_TARGET",
         ]
       : [target];
   await new Promise((resolve, reject) => {
@@ -522,6 +522,7 @@ export class ProjectLauncher {
       if (!ignoreCancellation) this.abortController?.signal.throwIfAborted();
       if (state.phase !== 'stopped') await onRuntime?.(state);
       let child;
+      try {
       if (state.phase === "stopped") {
         if (requireLauncher && !(await exists(path.join(this.root, ".runtime/launcher.json"))))
           throw issue(
@@ -599,11 +600,15 @@ export class ProjectLauncher {
           );
       }
       return state;
+      } catch (error) {
+        if (child && !ignoreCancellation && this.abortController?.signal.aborted)
+          await this.cancelOwnedStartup(child);
+        throw error;
+      }
   }
-  async cancelOwnedStartup() {
+  async cancelOwnedStartup(child = this.appChild) {
     // The ChildProcess handle was created by this controller. Never signal a
     // PID obtained from a stale runtime discovery record.
-    const child=this.appChild;
     if(child && child.exitCode===null && child.signalCode===null)
       await terminateOwned(child,{graceMs:15000,killMs:2000});
   }

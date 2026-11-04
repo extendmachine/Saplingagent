@@ -239,7 +239,11 @@ for (const setup of ['thread/start', 'thread/resume', 'preferences']) for (const
     const ch = await f.stream('/api/chat', { requestId: `pending-${setup.replace('/', '-')}-${action}`, sessionId, text: 'Synthetic test' }); await until(() => hold.entered);
     assert.equal(f.clock.pending, 2); const oldRpc = f.rpc;
     if (action === 'disconnect') { oldRpc.closed = true; oldRpc.emit('disconnect', new Error('Synthetic disconnect during setup')); }
-    else assert.equal((await f.request(`/api/sessions/${ch.sessionId}/cancel`, {})).status, 200);
+    else {
+      const response = await f.request(`/api/sessions/${ch.sessionId}/cancel`, {});
+      assert.equal(response.status, 202); assert.equal((await response.json()).pending, true);
+      assert.equal((await f.session(ch.sessionId)).running, true);
+    }
     assert.equal(f.clock.pending, 0); hold.release(); await until(() => ch.events.some(e => e.type === 'done'));
     const saved = await f.session(ch.sessionId); assert.equal(saved.running, false); assert.equal(saved.requests.at(-1).status, action === 'cancel' ? 'interrupted' : 'failed');
     assert.equal(f.starts.length, 0); assert.equal(f.interrupts.length, 0); assert.equal(f.clock.pending, 0); assert.equal(f.rpc, oldRpc);

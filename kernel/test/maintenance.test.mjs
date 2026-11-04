@@ -14,7 +14,8 @@ const hash=x=>createHash('sha256').update(x).digest('hex');
 async function write(root,file,value){await fs.mkdir(path.dirname(path.join(root,file)),{recursive:true});await fs.writeFile(path.join(root,file),value);}
 async function fixture(t,{failure=false}={}){
  const parent=path.join(project,'.cache/maintenance-tests');await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,'app-'));
- for(const directory of ['kernel','kernel/contracts','kernel/compat','kernel/localization','contracts'])for(const name of await fs.readdir(path.join(project,directory)))if(name.endsWith('.mjs'))await write(root,`${directory}/${name}`,await fs.readFile(path.join(project,directory,name)));
+ await fs.cp(path.join(project,'kernel'),path.join(root,'kernel'),{recursive:true,filter:file=>!file.split(path.sep).some(part=>['node_modules','.cache','test'].includes(part))});
+ for(const name of await fs.readdir(path.join(project,'contracts')))if(name.endsWith('.mjs'))await write(root,`contracts/${name}`,await fs.readFile(path.join(project,'contracts',name)));
  const helper="import fs from 'node:fs/promises';import path from 'node:path';await fs.writeFile(path.join(process.argv[2],'core-repaired'),'yes');";
  await write(root,'kernel/install-dependencies.mjs',helper);
  const dev=`import http from 'node:http';import fs from 'node:fs/promises';import {randomUUID} from 'node:crypto';const instanceId=randomUUID();const s=http.createServer((req,res)=>{res.setHeader('content-type','application/json');res.end(JSON.stringify({instanceId,phase:'${failure?'failed':'ready'}',busy:false}))});await new Promise(r=>s.listen(0,'127.0.0.1',r));await fs.writeFile('.runtime/runtime-address.json',JSON.stringify({pid:process.pid,instanceId,url:'http://127.0.0.1:'+s.address().port+'/'}));process.on('SIGTERM',()=>s.close(()=>process.exit(0)));`;

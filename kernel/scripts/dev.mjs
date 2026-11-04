@@ -1,3 +1,4 @@
+import { stopRuntime } from "./runtime-stop.mjs";
 import { prepareManagedEnvironment } from "../contracts/local-storage.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -72,28 +73,27 @@ async function launch() {
 		});
 		let control, gateway, stopping = false;
 		const addressFile = path.join(root, ".runtime/runtime-address.json");
-		async function stop(code = 0) {
-			if (stopping) return;
-			stopping = true;
-			await release();
-			gateway?.closeUpgrades();
-			gateway?.closeAllConnections();
-			control?.closeAllConnections();
-			await Promise.all([
-				gateway && new Promise((resolve) => gateway.close(resolve)),
-				control && new Promise((resolve) => control.close(resolve)),
-				manager.close()
-			]);
-			try {
-				if (JSON.parse(await fs.readFile(addressFile, "utf8")).instanceId === manager.instanceId) await fs.unlink(addressFile);
-			} catch {}
-			process.exit(code);
-		}
+      async function stop(code = 0) {
+        if (stopping) return;
+        stopping = true;
+        const result = await stopRuntime({
+          release,
+          closeConnections: () => { gateway?.closeUpgrades(); gateway?.closeAllConnections(); control?.closeAllConnections(); },
+          closeServers: () => Promise.all([gateway && new Promise(resolve => gateway.close(resolve)), control && new Promise(resolve => control.close(resolve))]),
+          stopChildren: () => manager.close(),
+          cleanup: async () => {
+            try { if (JSON.parse(await fs.readFile(addressFile, "utf8")).instanceId === manager.instanceId) await fs.unlink(addressFile); }
+            catch (error) { if (error.code !== 'ENOENT') throw error; }
+          },
+          report: (phase, error) => console.error(`Runtime shutdown ${phase}: ${error.code || 'SERVICE_STOP_FAILED'}. Check project logs.`),
+        });
+        process.exit(result || code);
+      }
 		for (const signal of [
 			"SIGINT",
 			"SIGTERM",
 			"SIGHUP"
-		]) process.once(signal, () => void stop());
+		]) process.once(signal, () => { void stop().catch(() => { console.error("Runtime shutdown failed. Check project logs."); process.exit(1); }); });
     for(const signal of earlySignals)process.off(signal,earlyStop);
     if(startupInterrupted){await stop();return;}
 		try {
