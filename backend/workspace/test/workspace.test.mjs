@@ -96,3 +96,36 @@ test('Claude native thread and model binding survive reload and cannot be switch
  await store.patchSession(selected.id,{threadId:'claude-thread'});const restored=await (await createStore(root)).getSession(selected.id);assert.equal(restored.engine,'claude');assert.equal(restored.threadId,'claude-thread');
  await assert.rejects(store.patchSession(selected.id,{engine:'opencode'}));await assert.rejects(store.patchSession(selected.id,{providerId:'other'}));await assert.rejects(store.createSession({engine:'claude'}));
 });
+
+test('one bad session never hides valid history or rewrites offending bytes', async t => {
+  const root = await fixture(t), store = await createStore(root), good = await store.createSession({ title: 'Retained' });
+  const directory = path.join(root, 'data/workspace/sessions');
+  const broken = new Map([['broken.json', '{invalid'], ['bad name.json', '{}'], ['schema.json', '[]'], ['wrong-engine.json', JSON.stringify({ ...good, id: 'wrong-engine', engine: 'invalid' })]]);
+  for (const [name, content] of broken) await fs.writeFile(path.join(directory, name), content);
+  await fs.mkdir(path.join(directory, 'folder.json'));
+  const outside = path.join(root, 'do-not-change'); await fs.writeFile(outside, 'unchanged');
+  if (process.platform !== 'win32') await fs.symlink(outside, path.join(directory, 'symlink.json'));
+  assert.deepEqual((await store.listSessions()).map(value => value.id), [good.id]);
+  for (const [name, content] of broken) assert.equal(await fs.readFile(path.join(directory, name), 'utf8'), content);
+  assert.equal(await fs.readFile(outside, 'utf8'), 'unchanged');
+  await assert.rejects(store.getSession('broken'), { code: 'CORRUPT_STORAGE' });
+  const next = await store.createSession(); assert.equal((await store.listSessions()).length, 2); assert.ok(next.id);
+});
+
+test('session listing still propagates directory IO errors', { skip: process.platform === 'win32' || process.getuid?.() === 0 }, async t => {
+  const root = await fixture(t), store = await createStore(root), directory = path.join(root, 'data/workspace/sessions');
+  await store.createSession(); await fs.chmod(directory, 0);
+  try { await assert.rejects(store.listSessions(), error => error.code === 'EACCES' || error.code === 'EPERM'); }
+  finally { await fs.chmod(directory, 0o700); }
+});
+
+test('size rejection is distinct from malformed data and leaves metadata writes available', async t => {
+  const store = await createStore(await fixture(t)), original = await store.createSession();
+  for (const messages of [Array.from({ length: 10001 }, (_, index) => ({ id: `m${index}`, role: 'user', text: '' })), [{ id: 'large', role: 'assistant', text: 'x'.repeat(500001) }], Array.from({ length: 9 }, (_, index) => ({ id: `m${index}`, role: 'assistant', text: 'x'.repeat(490000) }))]) {
+    await assert.rejects(store.patchSession(original.id, { messages }), { code: 'SESSION_TOO_LARGE', status: 400 });
+    assert.equal((await store.getSession(original.id)).revision, original.revision);
+  }
+  await assert.rejects(store.patchSession(original.id, { messages: [{ id: 'bad', role: 'assistant', text: null }] }), { code: 'INVALID_INPUT' });
+  const saved = await store.patchSession(original.id, { running: false, activeRequestId: null });
+  assert.deepEqual(saved.messages, []);
+});

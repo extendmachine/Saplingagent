@@ -157,13 +157,16 @@ async function atomicJson(root, relative, data) {
   } finally { await handle?.close(); await fs.rm(temporary, { force: true }); }
 }
 function messages(value) {
-  if (!Array.isArray(value) || value.length > 10000) fail('messages must be an array of at most 10000 items');
+  if (!Array.isArray(value)) fail('messages must be an array');
+  const tooLarge = () => { throw new WorkspaceError('SESSION_TOO_LARGE', 'Session messages exceed the supported storage size'); };
+  if (value.length > 10000) tooLarge();
   const ids = new Set();
   const result = value.map((item) => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) fail('Invalid message');
     const id = validId(item.id);
     if (ids.has(id)) fail('Duplicate message id'); ids.add(id);
     if (!['user', 'assistant', 'system', 'tool'].includes(item.role)) fail('Invalid message role');
+    if (typeof item.text === 'string' && item.text.length > 500000) tooLarge();
     const output = { id, role: item.role, text: text(item.text, 'message.text', 500000, true) };
     if (item.status !== undefined) output.status = text(item.status, 'message.status', 40);
     if (item.requestId !== undefined) output.requestId = text(item.requestId, 'message.requestId', 160);
@@ -173,7 +176,7 @@ function messages(value) {
     }
     return output;
   });
-  if (Buffer.byteLength(JSON.stringify(result)) > 4 * 1024 * 1024) fail('Session messages exceed 4 MiB');
+  if (Buffer.byteLength(JSON.stringify(result)) > 4 * 1024 * 1024) tooLarge();
   return result;
 }
 export async function createStore(applicationRoot) {
@@ -199,9 +202,13 @@ export async function createStore(applicationRoot) {
       const sessions = [];
       for (const entry of entries) {
         if (!entry.name.endsWith('.json')) continue;
-        if (entry.isSymbolicLink() || !entry.isFile()) throw new WorkspaceError('UNSAFE_STORAGE', 'Session storage contains an unsupported file', 409);
-        const session = await get(entry.name.slice(0, -5));
-        sessions.push({ id: session.id, title: session.title, updatedAt: session.updatedAt, engine: session.engine, providerId: session.providerId, modelId: session.modelId, engineRevision: session.engineRevision });
+        if (entry.isSymbolicLink() || !entry.isFile()) continue;
+        try {
+          const session = await get(entry.name.slice(0, -5));
+          sessions.push({ id: session.id, title: session.title, updatedAt: session.updatedAt, engine: session.engine, providerId: session.providerId, modelId: session.modelId, engineRevision: session.engineRevision });
+        } catch (error) {
+          if (!(error instanceof WorkspaceError) || !['INVALID_INPUT', 'CORRUPT_STORAGE', 'UNSAFE_STORAGE', 'NOT_FOUND'].includes(error.code)) throw error;
+        }
       }
       return sessions.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     },

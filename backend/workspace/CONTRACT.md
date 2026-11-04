@@ -145,3 +145,14 @@ advance. Malformed stored modelUsage returns500 CORRUPT_STORAGE and leaves bytes
 intact for recovery. The standard expectedEngineRevision guard rejects old-model
 snapshots after a model change. Storage is additive, local and atomic; no schema
 rewrite, account request, dependency or new endpoint is required.
+
+
+## Storage resilience (2026-11-03)
+
+Session listing skips non-file/symlink entries, invalid identifiers and individually
+corrupt/invalid session records without changing their bytes. Missing entries
+removed concurrently are skipped; directory failures and system IO errors still
+propagate. Direct reads/writes continue reporting the original storage errors.
+Messages exceeding10000 items,500000 characters per message or4MiB serialized
+return400 SESSION_TOO_LARGE before any write. Other validation errors remain
+INVALID_INPUT; metadata-only PATCH retains existing messages.
