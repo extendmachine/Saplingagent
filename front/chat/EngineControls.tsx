@@ -41,9 +41,10 @@ export function EngineControls({ agent, composer, changingSession }: { agent: Ag
     setDraft(value);
   }
   function chooseEngine(value: EngineSelection['engine']) {
-    if(!editable())return;
-    if(!agent.engines.find(item=>item.id===value)?.ready)void agent.refreshEngines(undefined,false,value);
-    const first = agent.engines.find(item => item.id === value)?.providers?.[0];
+    if (!editable()) return;
+    const target = agent.engines.find(item => item.id === value);
+    if (target?.needsPreparation) void agent.refreshEngines(undefined, false, value);
+    const first = target?.providers?.[0];
     choose(value === 'codex' ? { engine: value, providerId: null, modelId: null } : { engine: value, providerId: first?.id ?? null, modelId: first?.defaultModelId || first?.models[0]?.id || null });
   }
   function chooseProvider(id: string) {
@@ -58,7 +59,8 @@ export function EngineControls({ agent, composer, changingSession }: { agent: Ag
   }
   function refreshModels() {
     if (agent.enginesLoading || !editable()) return;
-    void agent.refreshEngines(undefined,true,engine?.needsPreparation?'codex':undefined);
+    if (engine?.needsPreparation) void agent.refreshEngines(undefined, false, 'codex');
+    else void agent.refreshEngines(undefined, true);
   }
   return <div className="conversation-engine-controls">
     <div className="engine-picker" title={accountModels ? t('engine.catalogLimit') : undefined}>
