@@ -648,6 +648,59 @@ test('rejected response storage leaves visible output available to copy instead 
   assert.equal(h.current.errorIssue.code, 'SESSION_TOO_LARGE');
 });
 
+for (const code of ['SESSION_TOO_LARGE', 'SESSION_SAVE_REJECTED']) {
+  test(`a storage rejection on the reconnected stream retains the live answer (${code})`, async t => {
+    const user = message('fixture-request-1', 'Question');
+    const older = session('large', [user]);
+    const full = session('large', [user, message('answer', 'Only live copy', 'assistant')]);
+    const stream = events => new Response(events.map(event => 'data: ' + JSON.stringify(event) + '\n\n').join(''));
+    let reads = 0;
+    const h = await harness({ route: request => {
+      if (request.url === '/api/chat') return stream([{ type: 'session', sessionId: 'large' }]);
+      if (request.url === '/api/sessions/large') return json({ session: { ...older, running: ++reads === 1 } });
+      if (request.url === '/api/events?sessionId=large') return stream([
+        { type: 'snapshot', session: full }, { type: 'error', code, message: 'Copy this answer.' }, { type: 'done', status: 'failed' },
+      ]);
+    } });
+    t.after(() => h.close());
+    await h.send('Question');
+    assert.equal(reads, 1);
+    assert.equal(h.current.messages.at(-1).text, 'Only live copy');
+    assert.equal(h.current.errorIssue.code, code);
+    assert.equal(h.current.isRunning, false);
+    h.runtime({ busy: false, phase: 'ready', instanceId: 'fixture', generation: 2 });
+    await h.settle();
+    assert.equal(reads, 2);
+    assert.equal(h.current.messages.at(-1).text, 'Only live copy');
+    assert.equal(h.current.startNew(), true);
+    await h.settle();
+    assert.equal(h.current.messages.length, 0);
+  });
+}
+
+test('reopening a first-token failure restores manual retry using its original request identity', async t => {
+  const user = { ...message('first', 'Question'), attachments: [{ id: 'file-1', kind: 'file', name: 'notes.txt' }] };
+  let stored = { ...session('conversation', [user]), engine: 'codex', engineRevision: 1,
+    requests: [{ id: 'first', status: 'failed', engineRevision: 1 }] };
+  const h = await harness({ savedId: 'conversation', route: request => {
+    if (request.url === '/api/sessions/conversation') return json({ session: stored });
+    if (request.url === '/api/chat') {
+      stored = { ...stored, messages: [user, message('answer', 'Success', 'assistant')], requests: [{ id: 'first', status: 'completed', engineRevision: 1 }] };
+      return sse('conversation', stored.messages);
+    }
+  } });
+  t.after(() => h.close());
+  assert.ok(h.current.error);
+  assert.equal(h.current.retryable, true);
+  assert.equal(h.requests.filter(r => r.url === '/api/chat').length, 0);
+  await h.current.retry();
+  const sent = h.requests.filter(r => r.url === '/api/chat');
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0].input, { sessionId: 'conversation', text: 'Question', requestId: 'first', engineRevision: 1, engine: 'codex', providerId: null, modelId: null, attachmentIds: ['file-1'] });
+  assert.equal(h.current.messages.filter(item => item.role === 'user').length, 1);
+  assert.equal(h.current.retryable, false);
+});
+
 test('native completion clears an earlier unconfirmed-stop warning', async t => {
   const h = await harness({ route: request => {
     if (request.url === '/api/chat') return new Response([

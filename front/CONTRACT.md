@@ -191,3 +191,7 @@ Chat response headers have a120-second transport budget; other HTTP requests kee
 10seconds. This is not a whole-turn inference deadline and does not cancel server
 work; request IDs and snapshot recovery remain required. Empty fallback titles
 are rendered using the current interface language.
+
+When the active conversation's last request failed before the engine produced an assistant message, reopening it restores the failed state from the request ledger. Retry requires a user action and uses the original request ID, attachment IDs and engine binding. For older snapshots without a recorded outcome, a failed assistant message still identifies a failed turn.
+
+A permanent response-storage error on the chat stream or its recovery subscription leaves the received answer visible for copying in the current view. A background session read for the same request cannot replace that answer with an older saved body.

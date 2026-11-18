@@ -52,6 +52,7 @@ export function useSeedRuntime() {
   const titleWrites = useRef(new Map<string, Promise<Session>>());
   const titleVersions = useRef(new Map<string, number>());
   const epoch = useRef(0);
+  const unsavedOutput = useRef<{ epoch: number; requestId: string | undefined } | null>(null);
   const pending = useRef(new Map<string, string>());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -104,6 +105,7 @@ export function useSeedRuntime() {
     flush();
     const revision = Number.isSafeInteger(saved.engineRevision) && (saved.engineRevision ?? -1) >= 0 ? saved.engineRevision! : 0;
     if (session.current === saved.id && bindingRevision.current !== revision) {
+      unsavedOutput.current = null;
       lastRequest.current = null; setTools([]); setApprovalBusy(false); setRetryable(false); setError('');
     }
     const boundary = saved.handoff ? saved.messages.findIndex(message => message.id === saved.handoff?.throughMessageId) : -1;
@@ -123,7 +125,12 @@ export function useSeedRuntime() {
     setSessions(current => sortSessionSummaries(current.some(item => item.id === saved.id)
       ? current.map(item => item.id === saved.id ? { ...item, title: saved.title ?? item.title, updatedAt: saved.updatedAt ?? item.updatedAt, engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null } : item)
       : [...current, { id: saved.id, title: saved.title, updatedAt: saved.updatedAt, engine: saved.engine || 'codex', providerId: saved.providerId, modelId: saved.modelId }]));
-    setMessages(cleanMessages(saved.messages));
+    const preserved = unsavedOutput.current;
+    const latestRequestId = saved.requests?.at(-1)?.id ?? requestId;
+    if (!preserved || preserved.epoch !== epoch.current || (latestRequestId && preserved.requestId && latestRequestId !== preserved.requestId)) {
+      unsavedOutput.current = null;
+      setMessages(cleanMessages(saved.messages));
+    }
     setApprovals(Array.isArray(saved.pendingApprovals) ? saved.pendingApprovals : []);
     setContextUsage(saved.contextUsage && Number.isSafeInteger(saved.contextUsage.usedTokens) && saved.contextUsage.usedTokens >= 0 && Number.isSafeInteger(saved.contextUsage.contextWindow) && saved.contextUsage.contextWindow > 0 ? saved.contextUsage : null);
     setModelUsage(saved.modelUsage && typeof saved.modelUsage.requestedModel === 'string' && typeof saved.modelUsage.requestId === 'string' && typeof saved.modelUsage.updatedAt === 'string' && ['thread/start', 'thread/resume', 'model/rerouted', 'unreported'].includes(saved.modelUsage.source) ? saved.modelUsage : null);
@@ -142,7 +149,8 @@ export function useSeedRuntime() {
       const user = [...saved.messages].reverse().find(message => message.role === 'user');
       if (user) lastRequest.current = { sessionId: saved.id, text: user.text, requestId: user.requestId || user.id, engineRevision: bindingRevision.current, engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null, ...(user.attachments?.length ? { attachmentIds: user.attachments.map(value => value.id) } : {}) };
     }
-    if (retryBelongsToBinding && !saved.running && saved.messages.at(-1)?.status === 'failed') {
+    const failed = (recordedRequest?.status ?? saved.messages.at(-1)?.status) === 'failed';
+    if (retryBelongsToBinding && !saved.running && failed) {
       setError(current => current || message('runtime.previousFailed'));
       setRetryable(Boolean(lastRequest.current));
     }
@@ -255,6 +263,9 @@ export function useSeedRuntime() {
         break;
       }
       case 'error': {
+        if (event.code === 'SESSION_TOO_LARGE' || event.code === 'SESSION_SAVE_REJECTED') {
+          unsavedOutput.current = { epoch: epoch.current, requestId: lastRequest.current?.requestId };
+        }
         flush();
         setError(Object.assign(new Error(typeof event.message === 'string' ? event.message : 'Agent execution failed.'), { code: typeof event.code === 'string' ? event.code : undefined }));
         break;
@@ -296,10 +307,6 @@ export function useSeedRuntime() {
     if (!saved.running) {
       setRunning(false);
       setActivity('');
-      if (saved.messages.at(-1)?.status === 'failed') {
-        setError(current => current || message('runtime.agentFailed'));
-        setRetryable(Boolean(lastRequest.current));
-      }
       return;
     }
     setRunning(true);
@@ -431,17 +438,16 @@ export function useSeedRuntime() {
       if (!currentTarget(controller.signal, expectedEpoch, id)) return;
       const responseId = response.headers.get('X-Session-Id');
       if (responseId) { id = responseId; session.current = id; request.sessionId = id; rememberSession(id); }
-      let ended = false, unsavedOutput = false;
+      let ended = false;
       await consumeEvents(response, event => {
         if (!currentTarget(controller.signal, expectedEpoch, id)) return;
         if (event.type === 'done') ended = true;
-        if (event.type === 'error' && ['SESSION_TOO_LARGE', 'SESSION_SAVE_REJECTED'].includes(String(event.code))) unsavedOutput = true;
         receive(event);
         id = session.current;
       });
       if (!currentTarget(controller.signal, expectedEpoch, id)) return;
       if (!ended) await recover(controller.signal, expectedEpoch);
-      if (id && !unsavedOutput && !running.current && currentTarget(controller.signal, expectedEpoch, id)) {
+      if (id && unsavedOutput.current?.epoch !== expectedEpoch && !running.current && currentTarget(controller.signal, expectedEpoch, id)) {
         const saved = await getSession(id, controller.signal);
         if (currentTarget(controller.signal, expectedEpoch, id)) snapshot(saved);
       }
