@@ -3,13 +3,31 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fork } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { KernelError, acquireKernelLock, isKernelPath } from './contracts/kernel.mjs';
+import { KernelError, acquireKernelLock } from './contracts/kernel.mjs';
 import { jsonWrite, safeFile } from './storage.mjs';
 import { assertMcpClientsStopped } from './contracts/mcp-access.mjs';
 export async function startMaintenance(root, action, id) {
   const jobId = randomUUID(), prefix = `.runtime/kernel/jobs/${jobId}`;
   const release = await acquireKernelLock(root, 'maintenance-handoff');
-  let child;
+  let child, exited, cancellation, committed = false;
+  async function cancelWaitingWorker() {
+    if (child) {
+      // Only this fork handle can be stopped. Before begin the worker has no children.
+      if (child.pid && child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+      await exited;
+    }
+    const lease = path.join(root, '.runtime/kernel/active-job.json');
+    try {
+      const current = JSON.parse(await fs.readFile(lease, 'utf8'));
+      if (current.jobId === jobId && (current.pid === process.pid || current.pid === child?.pid)) {
+        await fs.unlink(lease);
+      }
+    } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
+  function abort() {
+    if (!committed) cancellation ??= cancelWaitingWorker();
+    return cancellation;
+  }
   try {
     await assertMcpClientsStopped(root);
     const sources = [
@@ -44,22 +62,39 @@ export async function startMaintenance(root, action, id) {
     await jsonWrite(root, '.runtime/kernel/active-job.json', {jobId,pid:process.pid,phase:'handoff',createdAt:new Date().toISOString()});
     const logDirectory = path.join(root,'logs/kernel-manager'); await fs.mkdir(logDirectory,{recursive:true});
     const log = await fs.open(path.join(logDirectory,`kernel-manager-${new Date().toISOString().slice(0,10)}.log`),'a',0o600);
+    let ready;
     try {
       child = fork(path.join(root,prefix,'runner/kernel/worker.mjs'),[root,jobId,action,id],{
         cwd:root,execPath:process.execPath,detached:true,windowsHide:true,
         env:{...process.env,SAPLING_MAINTENANCE_JOB:jobId},stdio:['ignore',log.fd,log.fd,'ipc']
       });
+      exited=new Promise(resolve=>child.once('close',resolve));
+      ready = await new Promise((resolve,reject)=>{
+        const timer=setTimeout(()=>reject(new KernelError('KERNEL_WORKER_FAILED','Maintenance process did not become ready.',500)),15000);
+        child.once('error',()=>{clearTimeout(timer);reject(new KernelError('KERNEL_WORKER_FAILED','Maintenance process could not start.',500));});
+        child.once('exit',()=>{clearTimeout(timer);reject(new KernelError('KERNEL_WORKER_FAILED','Maintenance process exited before handoff.',500));});
+        child.once('message',message=>{clearTimeout(timer);if(message?.jobId!==jobId||!/^http:\/\/127\.0\.0\.1:\d+\/$/.test(message.url||''))reject(new KernelError('KERNEL_WORKER_FAILED','Invalid maintenance discovery.',500));else resolve(message);});
+      });
     } finally { await log.close(); }
-    const ready = await new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>reject(new KernelError('KERNEL_WORKER_FAILED','Maintenance process did not become ready.',500)),15000);
-      child.once('error',()=>{clearTimeout(timer);reject(new KernelError('KERNEL_WORKER_FAILED','Maintenance process could not start.',500));});
-      child.once('exit',()=>{clearTimeout(timer);reject(new KernelError('KERNEL_WORKER_FAILED','Maintenance process exited before handoff.',500));});
-      child.once('message',message=>{clearTimeout(timer);if(message?.jobId!==jobId||!/^http:\/\/127\.0\.0\.1:\d+\/$/.test(message.url||''))reject(new KernelError('KERNEL_WORKER_FAILED','Invalid maintenance discovery.',500));else resolve(message);});
-    });
-    return {jobId,url:ready.url,commit(){child.send({begin:true});child.disconnect();child.unref();},abort(){child.kill();}};
+    return {
+      jobId, url:ready.url, abort,
+      async commit() {
+        if (committed) return;
+        if (cancellation) throw new KernelError('KERNEL_WORKER_FAILED','Maintenance was cancelled before handoff.',500);
+        await new Promise((resolve,reject)=>child.send({begin:true},error=>error?reject(error):resolve()));
+        committed=true;
+        if (child.connected) child.disconnect();
+        child.unref();
+      }
+    };
   } catch(error) {
-    child?.kill();
-    try { const value=JSON.parse(await fs.readFile(path.join(root,'.runtime/kernel/active-job.json'),'utf8')); if(value.jobId===jobId)await fs.unlink(path.join(root,'.runtime/kernel/active-job.json')); }catch{}
+    await abort();
     throw error;
-  } finally {await release();}
+  } finally {
+    try { await release(); }
+    catch (error) {
+      await abort();
+      throw error;
+    }
+  }
 }

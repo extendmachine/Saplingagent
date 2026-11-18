@@ -23,6 +23,8 @@ Product distribution versions are declared separately in config/release.json and
 
 Fresh0.9.2 installer installs kernel/package-lock.json into kernel/node_modules, independently from application dependency declarations. AI setup builds with kernel's Vite/React. No global install or customer Git change. Direct control URL /__saplingagent/kernel works while app Vite is down. Upgrade stages before shutdown, then a copied temporary worker survives runtime exit, repairs only kernel dependencies with project Node/npm and starts scripts/dev.mjs. Check actual runtime readiness and new selected URL. Source apply does not imply account/model readiness. Worker failures remain visible with manual restore/retry; no automatic rollback. A crashed worker lease must be inspected before manual cleanup.
 
+If the connection closes before the 202 handoff finishes, reopen the running app and retry. If the standalone recovery helper cannot write its operation lock, free disk space or correct access permissions and retry. The helper cleans up its own incomplete lock and preserves a lock belonging to another operation.
+
 Schema2/0.9.1 cannot auto-transition: use a new complete0.9.2 folder and deliberate customer app/data/config migration; preserve the old folder. Do not regenerate its baseline. Native Windows process survival, install/login/restart still requires hardware acceptance; macOS tests are not Windows acceptance.
 
 ## Customer-local launcher / product0.9.3

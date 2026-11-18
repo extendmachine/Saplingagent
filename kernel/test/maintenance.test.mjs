@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { EventEmitter } from 'node:events';
+import { kernelRequest } from '../http.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn, execFile } from 'node:child_process';
@@ -93,4 +96,58 @@ const root=process.cwd(),instanceId=randomUUID();const manager=new RuntimeManage
  assert.equal(response.status,202,JSON.stringify(await response.clone().json()));worker=await response.json();workerPid=JSON.parse(await fs.readFile(path.join(f.root,'.runtime/kernel/active-job.json'),'utf8')).pid;
  assert.equal(await exit,0);const state=await poll(worker.url,'ready');assert.equal(state.sourceResult,'applied');assert.notEqual(state.url,url);
  assert.deepEqual(await fs.readFile(path.join(f.root,'.git/config')),f.gitBefore);
+});
+
+for (const stage of ['draining', 'copying the worker', 'writing the 202']) {
+  test('disconnect while ' + stage + ' releases the drain and allows a new maintenance job', async t => {
+    const {root, plan} = await fixture(t);
+    t.after(() => fs.rm(root, {recursive:true, force:true}));
+    const lease = path.join(root, '.runtime/kernel/active-job.json');
+    const res = new EventEmitter();
+    const disconnect = () => { res.destroyed = true; res.emit('close'); };
+    const req = {method:'POST', async *[Symbol.asyncIterator]() {
+      yield Buffer.from(JSON.stringify({planId:plan.id, acceptRisk:true}));
+    }};
+    const manager = {root, async prepareMaintenance() {
+      manager.maintenance = true;
+      if (stage === 'draining') disconnect();
+      return () => { manager.maintenance = false; };
+    }};
+    if (stage === 'copying the worker') {
+      const copy = fs.copyFile;
+      t.mock.method(fs, 'copyFile', async (...args) => {
+        if (!res.destroyed) disconnect();
+        return copy(...args);
+      });
+    }
+    let stopped = false, sent = false, workerPid;
+    const handled = await kernelRequest(req,res,{manager,onMaintenance(){stopped = true;}},
+      '/api/runtime/kernel/apply', (_res, status) => {
+        assert.equal(stage, 'writing the 202'); assert.equal(status, 202);
+        sent = true;
+        workerPid = JSON.parse(readFileSync(lease,'utf8')).pid;
+        disconnect();
+      });
+    assert.equal(handled, true); assert.equal(res.destroyed, true);
+    assert.equal(stopped, false); assert.equal(manager.maintenance, false);
+    assert.equal(sent, stage === 'writing the 202');
+    if (workerPid) assert.throws(() => process.kill(workerPid,0), {code:'ESRCH'});
+    await assert.rejects(fs.access(lease), {code:'ENOENT'});
+    assert.equal(await fs.readFile(path.join(root,'kernel/control-page.mjs'),'utf8'), "export const kernelControlPage = 'old control';");
+    const retry = await startMaintenance(root,'apply',plan.id);
+    await retry.abort();
+  });
+}
+
+test('cancel waits for the owned worker and preserves a replacement job lease', async t => {
+  const {root,plan} = await fixture(t);
+  t.after(() => fs.rm(root,{recursive:true,force:true}));
+  const worker = await startMaintenance(root,'apply',plan.id);
+  const lease = path.join(root,'.runtime/kernel/active-job.json');
+  const {pid} = JSON.parse(await fs.readFile(lease,'utf8'));
+  const next = {jobId:randomUUID(),pid:process.pid};
+  await fs.writeFile(lease,JSON.stringify(next));
+  await Promise.all([worker.abort(),worker.abort()]);
+  assert.throws(() => process.kill(pid,0), {code:'ESRCH'});
+  assert.deepEqual(JSON.parse(await fs.readFile(lease,'utf8')),next);
 });
