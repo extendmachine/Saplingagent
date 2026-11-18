@@ -16,13 +16,41 @@ const alive=pid=>{try{process.kill(pid,0);return true;}catch{return false;}};
 async function waitFor(read,description){for(let i=0;i<600;i++){const result=await read().catch(()=>null);if(result)return result;await delay(50);}throw Error('Timed out: '+description);}
 async function appAction(pid,action){return exec('/usr/bin/osascript',['-l','JavaScript','-e',`ObjC.import('AppKit');var a=$.NSRunningApplication.runningApplicationWithProcessIdentifier(${pid});${action}`]);}
 
+// A LaunchServices app can exit while its helper is blocked before the first
+// Node receipt. A shell wrapper may outlive the app. Match the unique fixture
+// executable and app owner arguments again before each signal.
+async function clearFixtureOrphans(root,ownerPID){
+ const executable=path.join(root,'Dock Example.app/Contents/MacOS/launcher');
+ const helpers=async()=>{
+  const {stdout}=await exec('/bin/ps',['-axo','pid=,command='],{env:{...process.env,LC_ALL:'en_US.UTF-8'},maxBuffer:16*1024*1024});
+  const pids=[];
+  for(const line of stdout.split('\n')){
+   const processRow=line.match(/^\s*(\d+)\s+(.+)$/);
+   if(!processRow||!processRow[2].startsWith(executable+' '))continue;
+   const args=processRow[2].slice(executable.length+1);
+   const identity=args.match(/^--dock-(?:start|open|status|stop) --dock-pid (\d+) --dock-nonce [a-f0-9-]{36}$/i);
+   if(identity&&(!ownerPID||Number(identity[1])===ownerPID))pids.push(Number(processRow[1]));
+  }
+  return pids;
+ };
+ const stop=(pid,signal)=>{try{process.kill(pid,signal);}catch(error){if(error.code!=='ESRCH')throw error;}};
+ const owned=await helpers();
+ if(!owned.length)return;
+ for(const pid of owned)stop(pid,'SIGTERM');
+ await delay(250);
+ for(const pid of await helpers())if(owned.includes(pid))stop(pid,'SIGKILL');
+ await waitFor(async()=>!(await helpers()).some(pid=>owned.includes(pid)),'fixture helper exit');
+}
+
 test('compiled macOS app stays in the Dock, reopens, quits its helper, and keeps the same cluster contract',{skip:!available,timeout:180000},async t=>{
  const base=path.join(source,'.cache/dock-native-tests');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,"项目 user's "));
  let appPID,bundleId; t.after(async()=>{
   // LaunchServices can start the app before its bridge writes the first receipt.
   // Even an assertion/timeout in that interval must clean up this exact fixture.
   if((!appPID||!alive(appPID))&&bundleId){const value=await exec('/usr/bin/osascript',['-l','JavaScript','-e',`ObjC.import('AppKit');var apps=$.NSRunningApplication.runningApplicationsWithBundleIdentifier(${JSON.stringify(bundleId)});apps.count?String(apps.objectAtIndex(0).processIdentifier):'';`]).catch(()=>null);appPID=Number(value?.stdout.trim())||null;}
-  if(appPID&&alive(appPID)){try{process.kill(appPID,'SIGKILL');}catch{}await waitFor(async()=>!alive(appPID),'fixture app exit');}await fs.rm(root,{recursive:true,force:true});
+  if(appPID&&alive(appPID)){try{process.kill(appPID,'SIGKILL');}catch{}await waitFor(async()=>!alive(appPID),'fixture app exit');}
+  await clearFixtureOrphans(root,appPID);
+  await fs.rm(root,{recursive:true,force:true});
  });
  for(const relative of ['kernel/launcher/native',goRelative])await fs.cp(path.join(source,relative),path.join(root,relative),{recursive:true,mode:constants.COPYFILE_FICLONE});
  for(const name of ['toolchain.json','build.mjs','windows-icon.ps1'])await fs.copyFile(path.join(source,'kernel/launcher',name),path.join(root,'kernel/launcher',name));
