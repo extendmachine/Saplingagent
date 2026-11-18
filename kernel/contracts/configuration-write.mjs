@@ -141,7 +141,13 @@ export async function acquireConfigurationWrite(root) {
     let occupied = await inspect(file);
     if (!occupied) {
       try { await fs.rename(stage, file); }
-      catch (error) { occupied = await inspect(file); if (!occupied) throw error; }
+      catch (error) {
+        const collision = ['EEXIST','ENOTEMPTY','ENOTDIR','EISDIR'].includes(error.code);
+        // Windows may also report an access error for a populated destination.
+        if (!collision && !['EACCES','EPERM','EBUSY'].includes(error.code)) throw error;
+        occupied = await inspect(file);
+        if (!occupied) throw collision ? busy() : error;
+      }
     }
     if (occupied) await replaceExitedWriter(file, stageMarker);
   } finally { await discardCandidate(stage).catch(() => {}); }

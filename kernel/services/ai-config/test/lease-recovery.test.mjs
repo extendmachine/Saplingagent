@@ -67,6 +67,34 @@ test('an unknown lock directory or foreign recovery file is preserved',async t=>
   assert.equal(await fs.readFile(claim,'utf8'),'unknown');
 });
 
+test('a real publication collision stays retryable after the winning writer releases',async t=>{
+  const {root,file}=await fixture(t),rename=fs.rename;
+  let inject=true, collision;
+  t.mock.method(fs,'rename',async(from,to)=>{
+    if (!inject || to!==file) return rename(from,to);
+    inject=false;
+    const release=await acquireConfigurationWrite(root);
+    try {return await rename(from,to);}
+    catch (error) {collision=error;throw error;}
+    finally {await release();}
+  });
+  await assert.rejects(acquireConfigurationWrite(root),error=>{
+    assert.ok(collision);
+    // Some Windows filesystems return a permission error for rename, which
+    // alone cannot establish a collision after the destination disappears.
+    if (process.platform==='win32' && ['EPERM','EACCES','EBUSY'].includes(collision.code)) return error===collision;
+    return busy(error) && error.status===409;
+  });
+  await (await acquireConfigurationWrite(root))();
+});
+
+test('a real storage error during publication is preserved',async t=>{
+  const {root,file}=await fixture(t),rename=fs.rename;
+  const failure=Object.assign(Error('synthetic storage fault'),{code:'EIO'});
+  t.mock.method(fs,'rename',(from,to)=>{if(to===file) throw failure;return rename(from,to);});
+  await assert.rejects(acquireConfigurationWrite(root),error=>error===failure);
+});
+
 test('concurrent recovery processes elect one writer and exclude an active owner', {timeout:20000},async t=>{
   const {root,file}=await fixture(t);
   await seedLegacy(file);
