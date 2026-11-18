@@ -3,12 +3,18 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {ensureTools,toolSetStatus,bindAlias} from '../tools.mjs';
+import {ensureTools,toolSetStatus,bindAlias,npmFor} from '../tools.mjs';
 import {readBindings,runtimeHome} from '../bindings.mjs';
 import {ensureShared,atomicJSON,sharedEntry} from '../store.mjs';
 
 const source=fileURLToPath(new URL('../../../',import.meta.url));
 async function write(file,value){await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,typeof value==='string'?value:JSON.stringify(value));}
+async function localNode(root){
+  const directory=path.join(root,`.runtime/node-v${process.versions.node}-${process.platform==='win32'?'win':'darwin'}-${process.arch}`);
+  const node=path.join(directory,process.platform==='win32'?'node.exe':'bin/node');
+  await write(node,'portable Node fixture');await write(npmFor(node).args[0],'npm fixture');
+  return directory;
+}
 async function fixture(t){
   await fs.mkdir(path.join(source,'.cache/shared-runtime-tests'),{recursive:true});
   const base=await fs.mkdtemp(path.join(source,'.cache/shared-runtime-tests/case-'));
@@ -27,7 +33,7 @@ async function fixture(t){
       for(const [name,version]of Object.entries(m.dependencies)){
         const dir=path.join(cwd,'node_modules',name);await write(path.join(dir,'package.json'),{version,main:'index.mjs'});await write(path.join(dir,'index.mjs'),'export default true;');
         if(name.startsWith('@anthropic-ai/claude-agent-sdk-'))await write(path.join(dir,process.platform==='win32'?'claude.exe':'claude'),'2.1.296 (Claude Code)');
-        if(name==='opencode-ai')await write(path.join(dir,'bin',process.platform==='win32'?'opencode.exe':'opencode'),'1.19.0');
+        if(name==='opencode-ai')await write(path.join(dir,'bin/opencode.exe'),'1.19.0');
         if(name==='@openai/codex'){
           const binary=process.platform==='win32'?path.join(cwd,`node_modules/@openai/codex-win32-${process.arch}/vendor/${process.arch==='arm64'?'aarch64':'x86_64'}-pc-windows-msvc/bin/codex.exe`):path.join(cwd,'node_modules/.bin/codex');
           await write(binary,'codex-cli 0.146.1');
@@ -88,7 +94,7 @@ test('shared install failure never replaces the previously published version',as
 test('portable mode keeps shared-store machinery inside the project',async t=>{
   const f=await fixture(t),a=await f.app('portable');
   await write(path.join(a,'.runtime/runtime-mode'),'portable\n');
-  const node=path.join(a,`.runtime/node-v${process.versions.node}-${process.platform==='win32'?'win':'darwin'}-${process.arch}`,process.platform==='win32'?'node.exe':'bin/node');await write(node,'portable Node fixture');
+  await localNode(a);
   assert.equal(runtimeHome(a),path.join(a,'.runtime/tool-store'));
   await ensureTools(a,{run:f.run,candidates:()=>{throw Error('portable must not probe external CLI');}});
   assert.equal(readBindings(a).mode,'portable');assert.ok(readBindings(a).sdk.path.startsWith(a+path.sep));
@@ -107,12 +113,64 @@ test('a shared-store index cannot escape the runtime directory',async t=>{
 test('portable folder rename rebinds programs and SDK without reinstalling them',async t=>{
  const f=await fixture(t),a=await f.app('portable before');
  await write(path.join(a,'.runtime/runtime-mode'),'portable\n');
- await write(path.join(a,`.runtime/node-v${process.versions.node}-${process.platform==='win32'?'win':'darwin'}-${process.arch}`,process.platform==='win32'?'node.exe':'bin/node'),'portable Node fixture');
+ await localNode(a);
  await ensureTools(a,{run:f.run,candidates:()=>[]});assert.equal(f.calls.length,4);
  const b=path.join(f.base,'portable after');await fs.rename(a,b);
  assert.equal((await toolSetStatus(b)).ready,true);
  await ensureTools(b,{run:f.run,candidates:()=>[]});assert.equal(f.calls.length,4);
  assert.equal((await toolSetStatus(b)).ready,true);assert.ok(readBindings(b).tools.claude.path.startsWith(b+path.sep));
+});
+
+test('bootstrap mode marker supersedes existing receipts and returning to shared reuses the previous library',async t=>{
+  const f=await fixture(t),root=await f.app('mode switch'),marker=path.join(root,'.runtime/runtime-mode');
+  const receiptFile=path.join(root,'.runtime/tool-bindings.json');
+  await ensureTools(root,f.options);
+  const shared=readBindings(root),go=path.join(f.home,'bin/go');
+  await write(go,'Go fixture');shared.tools.go={path:go};await write(receiptFile,shared);
+  await bindAlias(root,'go',go);
+  await write(marker,'portable\n');
+  assert.equal((await toolSetStatus(root)).ready,false);
+  assert.equal(runtimeHome(root),path.join(root,'.runtime/tool-store'));
+  const nodeDirectory=await localNode(root);
+  const options={run:f.run,candidates:()=>[]};
+  assert.equal((await ensureTools(root,options)).ready,true);
+  const portable=readBindings(root);
+  assert.equal(portable.mode,'portable');assert.equal(portable.tools.go,undefined);
+  assert.equal(await fs.lstat(path.join(root,'.runtime/tools/go')).then(()=>true,()=>false),false);
+  for(const tool of Object.values(portable.tools))assert.ok((await fs.realpath(tool.path)).startsWith(root+path.sep));
+  assert.ok((await fs.realpath(portable.sdk.path)).startsWith(root+path.sep));
+  const count=f.calls.length;
+  await write(marker,'shared\n');
+  assert.equal((await toolSetStatus(root)).ready,false);assert.equal(runtimeHome(root),f.home);
+  await fs.rm(nodeDirectory,{recursive:true}); // Shared bootstrap can now use Node on PATH.
+  assert.equal((await ensureTools(root,options)).ready,true);
+  assert.equal(f.calls.length,count);
+  assert.equal(readBindings(root).sdk.path,shared.sdk.path);
+  assert.equal(readBindings(root).tools.codex.path,shared.tools.codex.path);
+});
+
+test('portable readiness detects external SDK contents or aliases left pointing at the original project',async t=>{
+  const f=await fixture(t),root=await f.app('original portable'),copy=path.join(f.base,'copy');
+  await write(path.join(root,'.runtime/runtime-mode'),'portable\n');
+  await localNode(root);
+  await ensureTools(root,{run:f.run,candidates:()=>[]});
+  await fs.cp(root,copy,{recursive:true,verbatimSymlinks:true,preserveTimestamps:true});
+  const options={run:f.run,candidates:()=>[]};
+  await ensureTools(copy,options); // Copies can legitimately have different mtimes.
+  const receipt=readBindings(copy),old=readBindings(root);
+  const cli=receipt.tools.codex;
+  if(cli.alias.status==='linked'){
+    const alias=path.dirname(cli.alias.path);
+    await fs.unlink(alias);await fs.symlink(path.dirname(old.tools.codex.path),alias,process.platform==='win32'?'junction':'dir');
+    assert.equal((await toolSetStatus(copy)).ready,false);
+    assert.equal((await ensureTools(copy,options)).ready,true);
+  }
+  const pkg=path.join(receipt.sdk.path,'@anthropic-ai/claude-agent-sdk');
+  const outside=path.join(old.sdk.path,'@anthropic-ai/claude-agent-sdk');
+  await fs.rm(pkg,{recursive:true});await fs.symlink(outside,pkg,process.platform==='win32'?'junction':'dir');
+  assert.equal((await toolSetStatus(copy)).ready,false);
+  assert.equal((await ensureTools(copy,options)).ready,true);
+  assert.equal((await toolSetStatus(root)).ready,true);
 });
 
 test('external-only setup prepares just Node; switching providers prepares only the requested CLI and SDK',async t=>{

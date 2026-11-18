@@ -5,7 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {spawn} from 'node:child_process';
-import {codexBinary,openCodeBinary,claudeBinary} from '../../contracts/local-process.mjs';
+import {prepareFixtureBindings} from '../../tooling/test/fixture-bindings.mjs';
 
 const source=fileURLToPath(new URL('../../../',import.meta.url));
 const platforms=['darwin','win32'];
@@ -22,7 +22,8 @@ async function fixture(t,externalOnly,{subscription=false}={}){
   await write(root,`.runtime/${platformName}-install.json`,JSON.stringify({signature:hash.digest('hex'),arch:process.arch}));
   // Installation sentinels are never executed. Any accidental login/tool launch
   // fails, so the test cannot fall through to a real model or machine account.
-  for(const file of [codexBinary(root),openCodeBinary(root),claudeBinary(root),path.join(root,'front/node_modules/vite/bin/vite.js'),path.join(root,'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json')]){
+  await prepareFixtureBindings(root,process.execPath,externalOnly?[]:[subscription?'claude':'opencode']);
+  for(const file of [path.join(root,'front/node_modules/vite/bin/vite.js'),path.join(root,'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json')]){
     await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,'synthetic installation sentinel');
   }
   await write(root,'config/runtime.json',JSON.stringify({frontPort:5173,agentPort:4310}));

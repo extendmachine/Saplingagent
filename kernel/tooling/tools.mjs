@@ -1,11 +1,11 @@
 import fs from 'node:fs/promises';
+import {setTimeout as delay} from 'node:timers/promises';
 import {existsSync} from 'node:fs';
 import os from 'node:os';
-import {setTimeout as delay} from 'node:timers/promises';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {createHash,randomUUID} from 'node:crypto';
-import {runtimeHome,runtimeMode,readBindings,nodeDirectory} from './bindings.mjs';
+import {runtimeHome,runtimeMode,readBindings,nodeDirectory,toolLocationAllowed,containsPath,realLocation} from './bindings.mjs';
 import {ensureShared,atomicJSON} from './store.mjs';
 
 const json=file=>fs.readFile(file,'utf8').then(JSON.parse).catch(()=>null);
@@ -58,14 +58,34 @@ function scope(engines) {
 export async function toolSetStatus(root,engines=allEngines){
   engines=scope(engines);
   const wanted=await toolRequirements(root),receipt=readBindings(root),signature=hash(JSON.stringify(wanted)+await sdkSignature(root)+process.platform+process.arch);
-  let ready=receipt?.signature===signature;
+  const mode=runtimeMode(root),home=runtimeHome(root);
+  let ready=receipt?.signature===signature&&receipt.mode===mode&&receipt.home===home;
   for(const name of ['node',...engines]){
-    const item=receipt?.tools?.[name];ready=ready&&item?.version===wanted[name]&&unchanged(item.fingerprint,await fingerprint(item.path));
+    const item=receipt?.tools?.[name];
+    ready=ready&&item?.version===wanted[name]&&toolLocationAllowed(root,item.path,mode)
+      &&unchanged(item.fingerprint,await fingerprint(item.path));
+    if(ready)ready=aliasMatches(item);
   }
-  for(const engine of engines.filter(name=>sdkPackages[name]))ready=ready&&await validSdk(root,receipt?.sdks?.[engine]?.path||receipt?.sdk?.path,[engine]);
+  if(ready){
+    const directory=nodeDirectory(root,await settingsFor(root));
+    const localNode=path.join(directory,process.platform==='win32'?'node.exe':'bin/node');
+    // Older shared receipts may have been created with the supported Node on PATH.
+    const hasDirectory=await fs.lstat(directory).then(()=>true,()=>false);
+    const node=mode==='portable'||hasDirectory?localNode:process.execPath;
+    ready=realLocation(node)===realLocation(receipt.tools.node.path)&&toolLocationAllowed(root,npmFor(receipt.tools.node.path).args[0],mode);
+  }
+  if(ready&&receipt.tools.go)ready=toolLocationAllowed(root,receipt.tools.go.path,mode)&&aliasMatches(receipt.tools.go);
+  for(const engine of engines.filter(name=>sdkPackages[name]))ready=ready&&await sdkBindingReady(root,receipt.sdks?.[engine]||receipt.sdk,home,mode,engine);
   return {name:'tools',signature,ready:!!ready,present:!!ready};
 }
-async function validSdk(root,directory,engines){
+function aliasMatches(binding){
+  return binding.alias?.status!=='linked'||realLocation(binding.alias.path)===realLocation(binding.path);
+}
+async function sdkBindingReady(root,binding,home,mode,engine){
+  return !!binding&&toolLocationAllowed(root,binding.path,mode)&&containsPath(realLocation(home),realLocation(binding.path))
+    &&aliasMatches(binding)&&await validSdk(root,binding.path,[engine],mode);
+}
+async function validSdk(root,directory,engines,mode){
   if(!directory)return false;
   const spec=await json(path.join(root,'kernel/tooling/sdk/package.json'));
   for(const engine of engines){
@@ -74,6 +94,8 @@ async function validSdk(root,directory,engines){
     if(pkg?.version!==version)return false;
     const entry=pkg.main||pkg.exports?.['.']?.import||pkg.exports?.['.']?.default||pkg.exports?.['.'];
     if(typeof entry!=='string'||!existsSync(path.join(directory,name,entry)))return false;
+    if(mode==='portable'&&(!toolLocationAllowed(root,path.join(directory,name,'package.json'),mode)
+        ||!toolLocationAllowed(root,path.join(directory,name,entry),mode)))return false;
   }
   return true;
 }
@@ -104,7 +126,8 @@ function installedBinary(directory,name,versions,platform=process.platform,arch=
   const modules=path.join(directory,'node_modules');
   if(name==='codex')return platform==='win32'?path.join(modules,`@openai/codex-win32-${arch}/vendor/${arch==='arm64'?'aarch64':'x86_64'}-pc-windows-msvc/bin/codex.exe`):path.join(modules,'.bin/codex');
   if(name==='claude')return path.join(modules,`@anthropic-ai/claude-agent-sdk-${platform}-${arch}`,platform==='win32'?'claude.exe':'claude');
-  return path.join(modules,'opencode-ai/bin',platform==='win32'?'opencode.exe':'opencode');
+  // The pinned npm package uses this filename on macOS as well as Windows.
+  return path.join(modules,'opencode-ai/bin/opencode.exe');
 }
 export async function bindAlias(root,name,target,{directory=false}={}){
   const link=path.join(root,'.runtime/tools',name),parent=directory?target:path.dirname(target);
@@ -112,6 +135,8 @@ export async function bindAlias(root,name,target,{directory=false}={}){
   try{
     const old=await fs.lstat(link).catch(()=>null);
     if(old){if(!old.isSymbolicLink())return {status:'path-only'};await fs.unlink(link);}
+    // Windows directory junctions target absolute paths and become stale after copying a portable project.
+    if(process.platform==='win32'&&runtimeMode(root)==='portable')return {status:'path-only'};
     await fs.symlink(process.platform!=='win32'&&parent.startsWith(root+path.sep)?path.relative(path.dirname(link),parent):parent,link,process.platform==='win32'?'junction':'dir');
     return {status:'linked',path:directory?link:path.join(link,path.basename(target))};
   }catch(error){if(['EPERM','EACCES','ENOSYS','EINVAL'].includes(error.code))return {status:'path-only'};throw error;}
@@ -119,29 +144,41 @@ export async function bindAlias(root,name,target,{directory=false}={}){
 async function prepareTools(root,{onProgress=()=>{},run=execute,candidates=systemCandidates,home:overrideHome,signal,engines=allEngines}={}){
   engines=scope(engines);
   signal?.throwIfAborted();const originalRun=run;run=(exe,args,options)=>originalRun(exe,args,{...options,signal});
-  root=await fs.realpath(root);const wanted=await toolRequirements(root),home=overrideHome||runtimeHome(root);
-  const mode=runtimeMode(root);
+  root=await fs.realpath(root);const wanted=await toolRequirements(root),mode=runtimeMode(root);
+  const home=mode==='portable'?runtimeHome(root):overrideHome||runtimeHome(root);
+  if(mode==='portable')await fs.mkdir(home,{recursive:true});
+  if(mode==='portable'&&!containsPath(root,realLocation(home)))throw Object.assign(new Error('The portable tool store must resolve inside this project.'),{code:'INVALID_RUNTIME_HOME'});
   const env=toolEnvironment(root,home);await fs.mkdir(env.TMPDIR,{recursive:true});
-  const saved=readBindings(root),reuse=saved?.mode===mode&&saved?.home===home;
-  const tools=reuse?{...saved.tools}:{},sdks=reuse?{...saved.sdks}:{};
-  let sdk=reuse?saved.sdk:undefined;
+  const saved=readBindings(root),canReuse=saved?.mode===mode&&saved.home===home;
+  const tools=canReuse?{...saved.tools}:{},sdks=canReuse?{...saved.sdks}:{};
+  let sdk=canReuse?saved.sdk:undefined;
+  const removeAliases=canReuse?[]:[...allEngines,'sdk','sdk-claude','sdk-opencode','go'];
+  if(tools.go){
+    if(toolLocationAllowed(root,tools.go.path,mode)){
+      if(!aliasMatches(tools.go))tools.go.alias=await bindAlias(root,'go',tools.go.path);
+    }else{delete tools.go;removeAliases.push('go');}
+  }
+  for(const name of removeAliases){
+    const link=path.join(root,'.runtime/tools',name);
+    if(await fs.lstat(link).then(entry=>entry.isSymbolicLink(),()=>false))await fs.unlink(link);
+  }
   // The Node bootstrap establishes the canonical alias before this module runs.
   const settings=await settingsFor(root),localNode=path.join(nodeDirectory(root,settings),...(process.platform==='win32'?['node.exe']:['bin/node']));
   const node=existsSync(localNode)?await fs.realpath(localNode):process.execPath;
   if(process.versions.node!==wanted.node)throw Object.assign(new Error('Run Saplingagent.sh to select the supported Node runtime.'),{code:'TOOL_NODE_REQUIRED'});
-  if(mode==='portable'&&!node.startsWith(root+path.sep))throw Object.assign(new Error('Run Saplingagent.sh with portable mode to prepare a local Node runtime.'),{code:'TOOL_NODE_REQUIRED'});
+  if(!toolLocationAllowed(root,node,mode)||!toolLocationAllowed(root,npmFor(node).args[0],mode))throw Object.assign(new Error('Run Saplingagent.sh install to prepare Node for the selected runtime mode.'),{code:'TOOL_NODE_REQUIRED'});
   const npm=npmFor(node);env.PATH=path.dirname(node)+path.delimiter+(env.PATH||'');
   tools.node={path:node,version:wanted.node,source:node.includes(home+path.sep)?'shared':'local',fingerprint:await fingerprint(node)};
   for(const name of engines){
     onProgress({event:'checking',name});let file,source;
-    for(const candidate of [...(saved?.tools?.[name]?.path?[saved.tools[name].path]:[]),...(mode==='portable'?[]:candidates(name)),
+    for(const candidate of [...(canReuse&&saved?.tools?.[name]?.path?[saved.tools[name].path]:[]),...(mode==='portable'?[]:candidates(name)),
       ...(name==='codex'?[path.join(root,'.runtime/codex/node_modules/.bin/codex')]:[])]){
-      if(mode==='portable'&&!((await fingerprint(candidate))?.real||'').startsWith(root+path.sep))continue;
+      if(!toolLocationAllowed(root,candidate,mode))continue;
       if(await compatible(candidate,name,wanted[name],run,env,root)){file=await fs.realpath(candidate);source=candidate.includes(home+path.sep)?'shared':'local';break;}
     }
     if(!file){
       const key=`${name}-${wanted[name]}-${process.platform}-${process.arch}`;
-      const validate=async dir=>compatible(installedBinary(dir,name,wanted),name,wanted[name],run,env,root);
+      const validate=async dir=>toolLocationAllowed(root,installedBinary(dir,name,wanted),mode)&&compatible(installedBinary(dir,name,wanted),name,wanted[name],run,env,root);
       const directory=await ensureShared(home,key,{validate,signal,onWait:()=>onProgress({event:'waiting',name}),create:async dir=>{
         onProgress({event:'installing',name});
         const dependency=name==='codex'?{'@openai/codex':wanted.codex}:name==='claude'?{[`@anthropic-ai/claude-agent-sdk-${process.platform}-${process.arch}`]:wanted.claudePackage}:{'opencode-ai':wanted.opencode};
@@ -154,10 +191,10 @@ async function prepareTools(root,{onProgress=()=>{},run=execute,candidates=syste
   }
   const signature=await sdkSignature(root);
   const needed=engines.filter(name=>sdkPackages[name]);
-  if(needed.length && !(await Promise.all(needed.map(name=>validSdk(root,sdks[name]?.path||sdk?.path,[name])))).every(Boolean)){
+  if(needed.length && !(await Promise.all(needed.map(name=>sdkBindingReady(root,sdks[name]||sdk,home,mode,name)))).every(Boolean)){
     const group=needed.length===2?'sdk':'sdk-'+needed[0];
     const directory=await ensureShared(home,`${group}-${signature.slice(0,24)}-${process.platform}-${process.arch}`,{
-      signal,validate:dir=>validSdk(root,path.join(dir,'node_modules'),needed),
+      signal,validate:dir=>toolLocationAllowed(root,path.join(dir,'node_modules'),mode)&&validSdk(root,path.join(dir,'node_modules'),needed,mode),
       create:async dir=>{
         onProgress({event:'installing',name:'SDK'});
         for(const name of ['package.json','package-lock.json'])await fs.copyFile(path.join(root,'kernel/tooling/sdk',name),path.join(dir,name));
@@ -173,14 +210,34 @@ async function prepareTools(root,{onProgress=()=>{},run=execute,candidates=syste
     const binding={path:path.join(directory,'node_modules'),signature};
     if(needed.length===2)sdk=binding;
     for(const engine of needed)sdks[engine]=binding;
-    await bindAlias(root,group,binding.path,{directory:true});
+    binding.alias=await bindAlias(root,group,binding.path,{directory:true});
   }
   const statusSignature=hash(JSON.stringify(wanted)+signature+process.platform+process.arch);
-  await atomicJSON(path.join(root,'.runtime/tool-bindings.json'),{schemaVersion:1,root,mode,home,homeKind:(overrideHome||process.env.SAPLING_RUNTIME_HOME)?'custom':(saved?.homeKind||'default'),signature:statusSignature,tools,sdk,sdks});
+  const sharedHome=mode==='portable'&&saved?.mode==='shared'&&saved.homeKind!=='default'?saved.home:saved?.sharedHome;
+  const homeKind=mode==='shared'&&(overrideHome||process.env.SAPLING_RUNTIME_HOME||sharedHome||canReuse&&saved.homeKind==='custom')?'custom':'default';
+  await atomicJSON(path.join(root,'.runtime/tool-bindings.json'),{schemaVersion:1,root,mode,home,homeKind,
+    ...(mode==='portable'&&sharedHome?{sharedHome}:{}),signature:statusSignature,tools,sdk,sdks});
   return toolSetStatus(root,engines);
 }
 
 // Serialize the aliases/receipt of one project as well as the cross-project pool.
+export async function withToolSetupLock(root,signal,work){
+  root=await fs.realpath(root);
+  const lock=path.join(root,'.runtime/tool-setup.lock'),id=randomUUID();await fs.mkdir(path.dirname(lock),{recursive:true});
+  const deadline=Date.now()+600000;
+  for(;;){
+    signal?.throwIfAborted();
+    try{await fs.mkdir(lock);break;}catch(error){if(error.code!=='EEXIST')throw error;}
+    const owner=await json(path.join(lock,'owner.json'));
+    if(owner?.pid){let dead=false;try{process.kill(owner.pid,0);}catch(error){dead=error.code==='ESRCH';}if(dead)throw Object.assign(new Error('An interrupted project tool setup must be inspected before retrying.'),{code:'SHARED_RUNTIME_INTERRUPTED'});}
+    if(Date.now()>=deadline)throw Object.assign(new Error('Another tool setup is active. Wait and retry.'),{code:'SHARED_RUNTIME_BUSY'});
+    await delay(100,undefined,{signal});
+  }
+  const identity=await fs.stat(lock);
+  try{await atomicJSON(path.join(lock,'owner.json'),{id,pid:process.pid});}catch(error){const current=await fs.stat(lock).catch(()=>null);if(current?.ino===identity.ino&&current?.dev===identity.dev)await fs.rm(lock,{recursive:true,force:true});throw error;}
+  try{return await work(root);}finally{if((await json(path.join(lock,'owner.json')))?.id===id)await fs.rm(lock,{recursive:true,force:true});}
+}
+
 export async function ensureTools(root,options={}){
   if(options.signal)return prepareWithLock(root,options);
   const controller=new AbortController();
@@ -191,18 +248,5 @@ export async function ensureTools(root,options={}){
 }
 
 async function prepareWithLock(root,options){
-  root=await fs.realpath(root);
-  const lock=path.join(root,'.runtime/tool-setup.lock'),id=randomUUID();await fs.mkdir(path.dirname(lock),{recursive:true});
-  const deadline=Date.now()+600000;
-  for(;;){
-    options.signal?.throwIfAborted();
-    try{await fs.mkdir(lock);break;}catch(error){if(error.code!=='EEXIST')throw error;}
-    const owner=await json(path.join(lock,'owner.json'));
-    if(owner?.pid){let dead=false;try{process.kill(owner.pid,0);}catch(error){dead=error.code==='ESRCH';}if(dead)throw Object.assign(new Error('An interrupted project tool setup must be inspected before retrying.'),{code:'SHARED_RUNTIME_INTERRUPTED'});}
-    if(Date.now()>=deadline)throw Object.assign(new Error('Another tool setup is active. Wait and retry.'),{code:'SHARED_RUNTIME_BUSY'});
-    await delay(100,undefined,{signal:options.signal});
-  }
-  const identity=await fs.stat(lock);
-  try{await atomicJSON(path.join(lock,'owner.json'),{id,pid:process.pid});}catch(error){const current=await fs.stat(lock).catch(()=>null);if(current?.ino===identity.ino&&current?.dev===identity.dev)await fs.rm(lock,{recursive:true,force:true});throw error;}
-  try{return await prepareTools(root,options);}finally{if((await json(path.join(lock,'owner.json')))?.id===id)await fs.rm(lock,{recursive:true,force:true});}
+  return withToolSetupLock(root,options.signal,project=>prepareTools(project,options));
 }

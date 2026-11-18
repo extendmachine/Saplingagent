@@ -2,8 +2,8 @@ import { launcherMessages } from '../localization/launcher-messages.mjs';
 import { formatMessage } from '../localization/public.mjs';
 import { readLanguage } from '../localization/store.mjs';
 import {ensureShared,atomicJSON} from '../tooling/store.mjs';
-import {runtimeHome,readBindings} from '../tooling/bindings.mjs';
-import {systemCandidates,bindAlias} from '../tooling/tools.mjs';
+import {runtimeHome,runtimeMode,readBindings,toolLocationAllowed} from '../tooling/bindings.mjs';
+import {systemCandidates,bindAlias,withToolSetupLock} from '../tooling/tools.mjs';
 import fs from "node:fs/promises";
 import {readFileSync,existsSync} from "node:fs";
 import path from "node:path";
@@ -200,22 +200,27 @@ export function toolchainForDevice(
   return file;
 }
 export async function ensureGo(root, onProgress = () => {}) {
-  root=await fs.realpath(root);await prepareBuildStorage(root);
+  return withToolSetupLock(root,buildContext.getStore()?.signal,project=>prepareGo(project,onProgress));
+}
+async function prepareGo(root,onProgress) {
+  await prepareBuildStorage(root);
   const pin=await json(path.join(root,'kernel/launcher/toolchain.json'));
   const file=toolchainForDevice(pin),exe=process.platform==='win32'?'go.exe':'go';
   const home=runtimeHome(root),saved=readBindings(root),language=await readLanguage(root);
   const progress=key=>onProgress(formatMessage(launcherMessages,language,key));
   const compatible=async go=>{try{const version=await command(root,go,['version'],{timeout:5000});return version.includes(pin.version+' ')&&version.includes(file.os+'/'+file.arch);}catch{return false;}};
-  const portable=process.env.SAPLING_RUNTIME_MODE==='portable'||saved?.mode==='portable';
+  const mode=runtimeMode(root),portable=mode==='portable',same=saved?.mode===mode&&saved.home===home;
+  if(portable)await fs.mkdir(home,{recursive:true});
+  if(portable&&!toolLocationAllowed(root,home,mode))throw issue('INVALID_RUNTIME_HOME','The portable tool store must resolve inside this project.');
   let go;
-  for(const candidate of [saved?.tools?.go?.path,path.join(root,'.runtime',pin.version+'-'+file.os+'-'+file.arch,'go/bin',exe),...(portable?[]:systemCandidates('go'))].filter(Boolean)){
+  for(const candidate of [same&&saved.tools?.go?.path,path.join(root,'.runtime',pin.version+'-'+file.os+'-'+file.arch,'go/bin',exe),...(portable?[]:systemCandidates('go'))].filter(Boolean)){
     const real=await fs.realpath(candidate).catch(()=>null);
-    if(real&&(!portable||real.startsWith(root+path.sep))&&await compatible(real)){go=real;break;}
+    if(real&&toolLocationAllowed(root,real,mode)&&await compatible(real)){go=real;break;}
   }
   if(!go){
     const directory=await ensureShared(home,`go-${pin.version}-${file.os}-${file.arch}`,{
       signal:buildContext.getStore()?.signal,
-      validate:stage=>compatible(path.join(stage,'go/bin',exe)),
+      validate:stage=>toolLocationAllowed(root,path.join(stage,'go/bin',exe),mode)&&compatible(path.join(stage,'go/bin',exe)),
       create:async stage=>{
     progress("Downloading verified shared Go compiler…");
     const response = await fetch("https://go.dev/dl/" + file.filename, {
@@ -277,9 +282,11 @@ export async function ensureGo(root, onProgress = () => {}) {
       },onWait:()=>progress('Waiting for the shared Go compiler…')});
     go=path.join(directory,'go/bin',exe);
   }
-  await bindAlias(root,'go',go);
-  const receipt=readBindings(root)||{schemaVersion:1,mode:portable?'portable':'shared',home,tools:{}};
-  receipt.tools||={};receipt.tools.go={path:go,version:pin.version,source:go.startsWith(home+path.sep)?'shared':'local'};
+  const alias=await bindAlias(root,'go',go);
+  const receipt=same?saved:{schemaVersion:1,root,mode,home,tools:{}};
+  if(!same&&portable&&saved?.mode==='shared'&&saved.homeKind!=='default')receipt.sharedHome=saved.home;
+  if(!same&&!portable)receipt.homeKind=process.env.SAPLING_RUNTIME_HOME||saved?.sharedHome?'custom':'default';
+  receipt.tools||={};receipt.tools.go={path:go,version:pin.version,source:go.startsWith(home+path.sep)?'shared':'local',alias};
   await atomicJSON(path.join(root,'.runtime/tool-bindings.json'),receipt);
   return go;
 }

@@ -10,6 +10,7 @@ import {randomUUID} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 import {compileLauncher} from '../build.mjs';
 import {saveProject} from '../manager.mjs';
+import {prepareFixtureBindings} from '../../tooling/test/fixture-bindings.mjs';
 import {closeDockForMaintenance} from '../dock.mjs';
 const exec=promisify(execFile),source=fileURLToPath(new URL('../../../',import.meta.url));
 const goRelative='.runtime/go1.27.2-darwin-arm64';
@@ -36,7 +37,9 @@ test('actual Dock Quit stops its runtime only, and maintenance releases the app 
  await fs.rm(path.join(root,'kernel/package.json'));
  const settings=await read(path.join(root,'kernel/config/macos.json'));
  const localNode=path.join(root,`.runtime/node-v${settings.nodeVersion}-darwin-${process.arch}/bin/node`);await fs.mkdir(path.dirname(localNode),{recursive:true});await fs.copyFile(process.execPath,localNode);
- for(const [relative,value]of [['.runtime/codex/node_modules/@openai/codex/package.json',JSON.stringify({version:settings.codexVersion})],['.runtime/codex/node_modules/.bin/codex','fixture-only'],['local-secrets/runtime/service-token','fixture-token']]){const file=path.join(root,relative);await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,value);}
+ await prepareFixtureBindings(root,localNode);
+ const tokenDir=path.join(root,'local-secrets/runtime');await fs.mkdir(tokenDir,{recursive:true});
+ await fs.writeFile(path.join(tokenDir,'service-token'),'fixture-token');
  const dev=`import fs from 'node:fs/promises';import path from 'node:path';import http from 'node:http';import {randomUUID} from 'node:crypto';
  const root=process.cwd(),instanceId=randomUUID();await fs.mkdir(path.join(root,'.runtime'),{recursive:true});let state;
  const server=http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');if(req.url==='/api/runtime/status'){res.end(JSON.stringify(state));return;}if(req.url==='/api/runtime/stop'&&req.headers.authorization==='Bearer fixture-token'){res.once('finish',()=>{server.close();server.closeAllConnections();});res.end(JSON.stringify({stopped:true}));return;}res.statusCode=404;res.end('{}');});

@@ -54,3 +54,41 @@ test('portable Mac Node alias survives a complete project-folder rename',{skip:p
  assert.equal(path.isAbsolute(await fs.readlink(alias)),false);assert.ok((await fs.realpath(alias)).startsWith(b+path.sep));
  assert.equal((await exec(path.join(alias,'bin/node'),['--version'])).stdout.trim(),'v'+process.versions.node);
 });
+
+test('macOS Node switches shared to portable and back without binding a copied external file', {skip:process.platform!=='darwin'},async t=>{
+ const base=await fixture(t),root=path.join(base,'project'),home=path.join(base,'shared'),key=`node-v${process.versions.node}-darwin-${process.arch}`;
+ const alias=path.join(root,'.runtime',key),portable=path.join(root,'.runtime/tool-store/runtimes',key),shared=path.join(home,'runtimes',key);
+ for(const folder of [portable,shared]){
+  await fs.mkdir(path.join(folder,'bin'),{recursive:true});await fs.mkdir(path.join(folder,'lib/node_modules/npm/bin'),{recursive:true});
+  await fs.writeFile(path.join(folder,'lib/node_modules/npm/bin/npm-cli.js'),'');
+  await fs.writeFile(path.join(folder,'bin/node'),`#!/bin/sh\nif [ "$1" = --version ]; then echo v${process.versions.node}; else echo ${process.arch}; fi\n`,{mode:0o755});
+ }
+ async function bind(mode,explicitHome=home){
+  await exec('/bin/bash',['-c','source "$HELPER"; SEED_PROJECT_DIR="$APP"; SEED_NODE_VERSION="$VERSION"; SEED_MAC_ARCH="$ARCH"; sapling_node_location && sapling_link_node'],{env:{...process.env,HELPER:path.join(source,'kernel/tooling/node-bootstrap.sh'),APP:root,VERSION:process.versions.node,ARCH:process.arch,PATH:'/usr/bin:/bin',SAPLING_RUNTIME_MODE:mode,SAPLING_RUNTIME_HOME:explicitHome}});
+ }
+ await bind('shared');assert.equal(await fs.realpath(alias),shared);
+ await bind('portable');assert.equal(await fs.realpath(alias),portable);assert.equal(path.isAbsolute(await fs.readlink(alias)),false);
+ await fs.writeFile(path.join(root,'.runtime/tool-bindings.json'),JSON.stringify({schemaVersion:1,root,mode:'portable',home:path.join(root,'.runtime/tool-store'),sharedHome:home}));
+ await bind('shared','');assert.equal(await fs.realpath(alias),shared);
+ assert.equal((await fs.readFile(path.join(root,'.runtime/runtime-mode'),'utf8')).trim(),'shared');
+});
+
+test('Go follows the bootstrap marker across both mode switches even before CLI preparation', {skip:process.platform!=='darwin'},async t=>{
+ const base=await fixture(t),root=path.join(base,'project'),home=path.join(base,'shared'),portable=path.join(root,'.runtime/tool-store');
+ const pin=JSON.parse(await fs.readFile(path.join(source,'kernel/launcher/toolchain.json'))),arch=process.arch==='x64'?'amd64':process.arch;
+ const key=`go-${pin.version}-darwin-${arch}`;
+ async function compiler(store){
+  const dir=await ensureShared(store,key,{validate:async dir=>fs.access(path.join(dir,'go/bin/go')).then(()=>true,()=>false),create:async dir=>{
+   await fs.mkdir(path.join(dir,'go/bin'),{recursive:true});
+   await fs.writeFile(path.join(dir,'go/bin/go'),`#!/bin/sh\necho 'go version ${pin.version} darwin/${arch}'\n`,{mode:0o755});
+  }});
+  return path.join(dir,'go/bin/go');
+ }
+ const localGo=await compiler(portable),sharedGo=await compiler(home);
+ await fs.mkdir(path.join(root,'kernel/launcher'),{recursive:true});
+ await fs.copyFile(path.join(source,'kernel/launcher/toolchain.json'),path.join(root,'kernel/launcher/toolchain.json'));
+ const marker=path.join(root,'.runtime/runtime-mode');
+ await fs.writeFile(path.join(root,'.runtime/tool-bindings.json'),JSON.stringify({schemaVersion:1,root,mode:'shared',home,tools:{go:{path:sharedGo,version:pin.version}}}));
+ await fs.writeFile(marker,'portable\n');assert.equal(await ensureGo(root),localGo);
+ await fs.writeFile(marker,'shared\n');assert.equal(await ensureGo(root),sharedGo);
+});

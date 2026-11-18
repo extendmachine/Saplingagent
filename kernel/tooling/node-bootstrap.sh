@@ -17,21 +17,64 @@ sapling_node_probe() {
   if wait "$SAPLING_NODE_PROBE_PID"; then cat "$SAPLING_NODE_PROBE"; rm -f "$SAPLING_NODE_PROBE"; return 0; fi
   rm -f "$SAPLING_NODE_PROBE"; return 1
 }
+# macOS ships readlink and Bash even on releases without a realpath utility.
+sapling_real_file() {
+  local file="$1" directory target hops=0
+  while [ -L "$file" ]; do
+    [ "$hops" -lt 40 ] || return 1
+    target="$(/usr/bin/readlink "$file")" || return 1
+    case "$target" in /*) file="$target";; *) file="$(dirname "$file")/$target";; esac
+    hops=$((hops+1))
+  done
+  [ -f "$file" ] || return 1
+  directory="$(cd "$(dirname "$file")" && pwd -P)" || return 1
+  printf '%s/%s\n' "$directory" "$(basename "$file")"
+}
+sapling_node_in_mode() {
+  local node_real npm_real
+  node_real="$(sapling_real_file "$1/bin/node" 2>/dev/null)" || return 1
+  npm_real="$(sapling_real_file "$1/lib/node_modules/npm/bin/npm-cli.js" 2>/dev/null)" || return 1
+  if [ "$SAPLING_NODE_MODE" = portable ]; then
+    case "$node_real" in "$SAPLING_PROJECT_REAL"/*) ;; *) return 1;; esac
+    case "$npm_real" in "$SAPLING_PROJECT_REAL"/*) ;; *) return 1;; esac
+  else
+    case "$node_real" in "$SAPLING_PROJECT_REAL"/.runtime/tool-store/*) return 1;; esac
+  fi
+}
 sapling_node_valid() {
+  sapling_node_in_mode "$1" &&
   [ -x "$1/bin/node" ] && [ -f "$1/lib/node_modules/npm/bin/npm-cli.js" ] &&
   [ "$(sapling_node_probe "$1/bin/node" --version)" = "v$SEED_NODE_VERSION" ] &&
   [ "$(sapling_node_probe "$1/bin/node" -p 'process.arch')" = "$SEED_MAC_ARCH" ]
 }
 sapling_node_location() {
   SAPLING_NODE_ALIAS="$SEED_PROJECT_DIR/.runtime/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}"
-  SAPLING_NODE_MODE="${SAPLING_RUNTIME_MODE:-shared}"
-  if [ -z "${SAPLING_RUNTIME_MODE:-}" ] && [ -f "$SEED_PROJECT_DIR/.runtime/runtime-mode" ]; then SAPLING_NODE_MODE="$(cat "$SEED_PROJECT_DIR/.runtime/runtime-mode")"; fi
+  SAPLING_PROJECT_REAL="$(cd "$SEED_PROJECT_DIR" && pwd -P)"
+  local receipt="$SEED_PROJECT_DIR/.runtime/tool-bindings.json" saved_mode="" shared_home=""
+  SAPLING_PREVIOUS_MODE=""
+  if [ -f "$receipt" ]; then
+    saved_mode="$(/usr/bin/plutil -extract mode raw -o - "$receipt" 2>/dev/null || true)"
+  fi
+  if [ -f "$SEED_PROJECT_DIR/.runtime/runtime-mode" ]; then
+    SAPLING_PREVIOUS_MODE="$(cat "$SEED_PROJECT_DIR/.runtime/runtime-mode")"
+  else
+    SAPLING_PREVIOUS_MODE="$saved_mode"
+  fi
+  SAPLING_NODE_MODE="${SAPLING_RUNTIME_MODE:-${SAPLING_PREVIOUS_MODE:-shared}}"
   case "$SAPLING_NODE_MODE" in shared|portable) ;; *) sapling_message shared_mode >&2; return 1;; esac
-  SAPLING_NODE_HOME="${SAPLING_RUNTIME_HOME:-$HOME/Library/Application Support/Saplingagent}"
+  if [ -z "${SAPLING_RUNTIME_HOME:-}" ] && [ "$SAPLING_NODE_MODE" = shared ] && [ -n "$saved_mode" ]; then
+    if [ "$saved_mode" = shared ] && [ "$(/usr/bin/plutil -extract homeKind raw -o - "$receipt" 2>/dev/null || true)" != default ]; then
+      shared_home="$(/usr/bin/plutil -extract home raw -o - "$receipt" 2>/dev/null || true)"
+    else
+      shared_home="$(/usr/bin/plutil -extract sharedHome raw -o - "$receipt" 2>/dev/null || true)"
+    fi
+    case "$shared_home" in /*) ;; *) shared_home="";; esac
+  fi
+  SAPLING_NODE_HOME="${SAPLING_RUNTIME_HOME:-${shared_home:-$HOME/Library/Application Support/Saplingagent}}"
   if [ "$SAPLING_NODE_MODE" = portable ]; then SAPLING_NODE_HOME="$SEED_PROJECT_DIR/.runtime/tool-store"; fi
   case "$SAPLING_NODE_HOME" in /*) ;; *) sapling_message shared_location >&2; return 1;; esac
   SAPLING_NODE_SOURCE="$SAPLING_NODE_ALIAS"
-  if { [ "$SAPLING_NODE_MODE" != portable ] || [ ! -L "$SAPLING_NODE_ALIAS" ]; } && sapling_node_valid "$SAPLING_NODE_SOURCE"; then return; fi
+  if { [ "$SAPLING_NODE_MODE" != shared ] || [ "$SAPLING_PREVIOUS_MODE" != portable ]; } && sapling_node_valid "$SAPLING_NODE_SOURCE"; then return; fi
   if [ "$SAPLING_NODE_MODE" != portable ]; then
     SAPLING_SYSTEM_NODE="$(command -v node || true)"
     if [ -n "$SAPLING_SYSTEM_NODE" ]; then
@@ -44,7 +87,7 @@ sapling_node_location() {
       done
       if [ -n "$SAPLING_SYSTEM_NODE" ]; then
         SAPLING_SYSTEM_NODE="$(dirname "$(dirname "$SAPLING_SYSTEM_NODE")")"
-        if sapling_node_valid "$SAPLING_SYSTEM_NODE"; then SAPLING_NODE_SOURCE="$SAPLING_SYSTEM_NODE"; return; fi
+        if [ "$SAPLING_SYSTEM_NODE" != "$SAPLING_NODE_ALIAS" ] && sapling_node_valid "$SAPLING_SYSTEM_NODE"; then SAPLING_NODE_SOURCE="$SAPLING_SYSTEM_NODE"; return; fi
       fi
     fi
   fi

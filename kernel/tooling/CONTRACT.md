@@ -72,3 +72,13 @@ its directory lock behind. Existing generations remain usable.
 ## On-demand provider tools and installation modes
 
 Initial setup prepares Node and the configuration UI. Runtime preparation uses the active provider; external-only MCP prepares no built-in provider. Codex needs its CLI. Claude and OpenCode each use their own CLI and pinned JavaScript SDK. A user can explicitly select another engine or start Codex sign-in to prepare its tools. Checking the catalog does not download an unselected engine. Dependency repair and project shutdown carry cancellation through shared-tool waits and subprocesses. Switching installation mode refreshes the project bindings and removes stale external aliases in portable mode. Go is prepared for native compilation.
+
+A mode switch takes effect for the whole project. An explicit environment
+selection takes precedence over the Node bootstrap's saved mode marker, then
+the previous binding receipt. Readiness checks that the selected tools and SDK
+resolve to the current installation. Portable mode also checks their actual
+locations inside this project after a move or copy. Windows portable tools use
+rebased executable paths because Windows junction targets are absolute. Shared mode reacquires
+programs from PATH or the selected library after a switch. Go is optional until
+compilation and a binding from another mode may be discarded without downloading
+a compiler. A mode change preserves installed tool generations and project data.

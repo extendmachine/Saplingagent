@@ -7,7 +7,7 @@ import {openConfiguration} from '../bootstrap.mjs';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {readSession,storedSession} from '../session.mjs';
-import {codexBinary,claudeBinary,openCodeBinary} from '../../contracts/local-process.mjs';
+import {prepareFixtureBindings} from '../../tooling/test/fixture-bindings.mjs';
 const repo=fileURLToPath(new URL('../../../',import.meta.url));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const json=async file=>JSON.parse(await fs.readFile(file,'utf8'));
@@ -196,13 +196,7 @@ test('an active setup capsule cannot be silently reused or replaced for AI-only 
 
 test('AI-only CLI opens a real capsule without rewriting credential metadata or initializing identity',{skip:process.platform!=='darwin',timeout:45000},async t=>{
  const f=await fixture(t);
- for(const binary of [codexBinary(f.root),claudeBinary(f.root),openCodeBinary(f.root)]){await fs.mkdir(path.dirname(binary),{recursive:true});await fs.writeFile(binary,'');}
- const {readBindings}=await import('../../tooling/bindings.mjs');const {toolSetStatus}=await import('../../tooling/tools.mjs');
- const inherited=readBindings(repo),tools={};
- for(const [name,binary]of Object.entries({node:f.localNode,codex:codexBinary(f.root),claude:claudeBinary(f.root),opencode:openCodeBinary(f.root)})){
-  const stat=await fs.stat(binary);tools[name]={...inherited.tools[name],path:binary,fingerprint:{real:await fs.realpath(binary),bytes:stat.size,modified:stat.mtimeMs}};
- }
- await fs.writeFile(path.join(f.root,'.runtime/tool-bindings.json'),JSON.stringify({...inherited,root:f.root,tools,signature:(await toolSetStatus(f.root)).signature}));
+ await prepareFixtureBindings(f.root,f.localNode);
  const ledger=path.join(f.root,'local-secrets/notes/project-secrets.json');await fs.mkdir(path.dirname(ledger),{recursive:true});
  const original=JSON.stringify({schema_version:1,project:{name:'Preserved',root:'customer-owned-reference',last_updated:'2000-01-01'},credentials:[]})+'\n';await fs.writeFile(ledger,original);
  const child=spawn(f.localNode,[path.join(f.root,'kernel/scripts/launcher/cli.mjs'),'configure','--ai-only','--no-open'],{cwd:f.root,env:{...process.env,SEED_ROOT:f.root,SAPLING_NO_OPEN:'1',SAPLING_LANG_EXPLICIT:'0'},stdio:['ignore','pipe','pipe']});f.track(child);let errors='';child.stderr.on('data',b=>errors+=b);

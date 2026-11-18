@@ -57,12 +57,13 @@ function Ensure-Node([bool]$Install) {
     $folderName = "node-v$($settings.nodeVersion)-win-$architecture"
     $alias = Join-Path $runtime $folderName
     $tool = Get-SaplingToolHome
-    $aliasItem = Get-Item -LiteralPath $alias -Force -ErrorAction SilentlyContinue
-    if (($tool.Mode -ne 'portable' -or !($aliasItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) -and (Test-SaplingNode $alias $settings.nodeVersion $architecture)) { return (Join-Path $alias 'node.exe') }
+    if (($tool.Mode -ne 'shared' -or $tool.PreviousMode -ne 'portable') -and (Test-SaplingNode $alias $settings.nodeVersion $architecture)) {
+        return (Set-SaplingNodeAlias $alias $alias $tool.Mode)
+    }
     if ($tool.Mode -ne 'portable') {
         foreach ($candidate in @(Get-Command node.exe -All -ErrorAction SilentlyContinue)) {
             $directory = Split-Path -Parent $candidate.Source
-            if (Test-SaplingNode $directory $settings.nodeVersion $architecture) { return (Set-SaplingNodeAlias $directory $alias $tool.Mode) }
+            if (($directory -ne $alias) -and (Test-SaplingNode $directory $settings.nodeVersion $architecture)) { return (Set-SaplingNodeAlias $directory $alias $tool.Mode) }
         }
     }
     $target = Join-Path $tool.HomePath ('runtimes/' + $folderName)
