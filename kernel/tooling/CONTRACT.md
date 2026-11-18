@@ -32,7 +32,8 @@ React/Vite group. Legacy kernel/Agent dependency paths remain fallbacks.
 ## Stored interface and concurrency
 
 .runtime/tool-bindings.json schemaVersion1 contains root, mode, home, signature,
-tools{name:{path,version,source,fingerprint,alias}} and sdk{path,signature}, with
+tools{name:{path,version,source,fingerprint,alias}}, optional combined sdk{path,signature},
+and per-provider sdks{engine:{path,signature}}, with
 no credentials. Copy/move rebases contained tool paths to the actual root;
 missing or changed external references are prepared at the next launch. Fingerprints detect changed or removed programs.
 .runtime/tools/ contains directory symlinks/junctions; if unavailable callers
@@ -66,3 +67,8 @@ and architecture. Concurrent installers recheck the library after acquisition.
 A persistent lock file can be reused after a crash or reboot. The downloader
 publishes a unique complete generation, including when an older installer left
 its directory lock behind. Existing generations remain usable.
+
+
+## On-demand provider tools and installation modes
+
+Initial setup prepares Node and the configuration UI. Runtime preparation uses the active provider; external-only MCP prepares no built-in provider. Codex needs its CLI. Claude and OpenCode each use their own CLI and pinned JavaScript SDK. A user can explicitly select another engine or start Codex sign-in to prepare its tools. Checking the catalog does not download an unselected engine. Dependency repair and project shutdown carry cancellation through shared-tool waits and subprocesses. Switching installation mode refreshes the project bindings and removes stale external aliases in portable mode. Go is prepared for native compilation.

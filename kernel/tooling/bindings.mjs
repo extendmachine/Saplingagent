@@ -15,6 +15,7 @@ export function readBindings(root) {
         return !relative||relative!=='..'&&!relative.startsWith('..'+path.sep)&&!path.isAbsolute(relative)?path.join(current,relative):file;
       };
       value.home=rebase(value.home);if(value.sdk)value.sdk.path=rebase(value.sdk.path);
+      for(const binding of Object.values(value.sdks||{}))binding.path=rebase(binding.path);
       for(const item of Object.values(value.tools||{})){
         item.path=rebase(item.path);if(item.fingerprint)item.fingerprint.real=rebase(item.fingerprint.real);
         if(item.alias?.path)item.alias.path=rebase(item.alias.path);
@@ -44,8 +45,8 @@ export function boundTool(root,name,fallback) {
   const item=readBindings(root)?.tools?.[name];
   return item&&path.isAbsolute(item.path||'')&&fs.existsSync(item.path)?item.path:fallback;
 }
-export function sdkModules(root,fallback) {
-  const directory=readBindings(root)?.sdk?.path;
+export function sdkModules(root,fallback,engine) {
+  const value=readBindings(root),directory=value?.sdks?.[engine]?.path||value?.sdk?.path;
   return path.isAbsolute(directory||'')&&fs.existsSync(directory)?directory:fallback;
 }
 export function nodeDirectory(root,settings,platform=process.platform,arch=process.arch) {

@@ -16,6 +16,7 @@ import {readMcpAccess,assertMcpClientsStopped} from '../../contracts/mcp-access.
 import { codexBinary, claudeBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
 
 import {hasTooling,ensureTools,toolSetStatus} from '../../tooling/tools.mjs';
+import {runtimeEngines,prepareProviderTools} from '../../tooling/providers.mjs';
 import {toolProgress} from '../../tooling/progress.mjs';
 import {readBindings} from '../../tooling/bindings.mjs';
 
@@ -71,18 +72,18 @@ async function signature() {
   for (const service of services.filter(s=>s!=='kernel')) hash.update(await fs.readFile(path.join(root, service, 'package-lock.json')));
   return hash.digest('hex');
 }
-async function installed() {
+async function installed(engines) {
   try {
     const stamp = JSON.parse(await fs.readFile(stampFile, 'utf8'));
-    return stamp.signature === await signature() && stamp.arch === process.arch && await exists(cli)
+    return stamp.signature === await signature() && stamp.arch === process.arch
       && await exists(path.join(root, 'front/node_modules/vite/bin/vite.js'))
       && await exists(path.join(root, 'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json'))
-      && await exists(opencode) && await exists(claudeBinary(root));
+      && (hasTooling(root)?(await toolSetStatus(root,engines??await runtimeEngines(root))).ready:await exists(cli)&&await exists(opencode)&&await exists(claudeBinary(root)));
   } catch { return false; }
 }
 async function coreInstalled() {
   if (!await exists(path.join(root,'kernel/package.json'))) return installed();
-  return (!hasTooling(root)||(await toolSetStatus(root)).ready) && await exists(cli) && await exists(opencode) && await exists(claudeBinary(root)) && await exists(path.join(root,'kernel/node_modules/vite/bin/vite.js'));
+  return await exists(path.join(root,'kernel/node_modules/vite/bin/vite.js')) && (hasTooling(root)?(await toolSetStatus(root,[])).ready:await exists(cli)&&await exists(opencode)&&await exists(claudeBinary(root)));
 }
 async function localSetup() {
   await setup({ importExistingAuth: false, projectRoot: root });
@@ -118,8 +119,9 @@ async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
       console.log(t("Dependency check complete: installed versions match this local source. See the source result above. Configure AI or start; use install --repair for damaged dependencies."));
       return;
     }
+    const engines=coreOnly?[]:await runtimeEngines(root);
     if(hasTooling(root)){
-    await ensureTools(root,{onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
+    await ensureTools(root,{engines,onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
     cli=codexBinary(root);opencode=openCodeBinary(root);env.SEED_CODEX_BIN=windows?cli:path.join(root,'kernel/scripts/macos/codex.sh');
     }else{
     if(!appOnly){
@@ -149,19 +151,25 @@ async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
       await required(npm.command, [...npm.args, ...installArgs], { cwd: path.join(root, service) });
     }
     // A CLI discovered in an old kernel dependency tree can be removed by npm ci.
-    if(hasTooling(root)&&!(await toolSetStatus(root)).ready){
-      await ensureTools(root,{onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
+    if(hasTooling(root)&&!(await toolSetStatus(root,engines)).ready){
+      await ensureTools(root,{engines,onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
       cli=codexBinary(root);opencode=openCodeBinary(root);env.SEED_CODEX_BIN=windows?cli:path.join(root,'kernel/scripts/macos/codex.sh');
     }
-    await required(opencode, ['--version'], { capture: true });
-    await required(claudeBinary(root), ['--version'], { capture: true });
+    if(!hasTooling(root)){
+      await required(opencode, ['--version'], { capture: true });
+      await required(claudeBinary(root), ['--version'], { capture: true });
+    }
     await localSetup();
     if(!coreOnly)await fs.writeFile(stampFile, JSON.stringify({ schemaVersion: 1, nodeVersion: process.versions.node, codexVersion: settings.codexVersion, arch: process.arch, signature: await signature(), installedAt: new Date().toISOString() }, null, 2) + '\n');
     console.log(coreOnly?t("Local kernel installed. Continuing to browser setup."):appOnly?t("Application dependencies are ready. Continuing the build."):t("Installation complete. Choose Configure AI to connect your account or API provider, then Start app."));
   } finally { await fs.rm(stage, { recursive: true, force: true }); if(ownsLock)await fs.rm(lock, { recursive: true, force: true }); }
 }
 async function login(deviceAuth) {
-  if (!await installed()) throw new Error(t("Install project dependencies first: bash Saplingagent.sh install --repair"));
+  if(hasTooling(root)){
+    if(!await coreInstalled())throw new Error(t("Install the local kernel first: bash Saplingagent.sh install"));
+    await prepareProviderTools(root,['codex'],{onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
+    cli=codexBinary(root);
+  }else if (!await installed()) throw new Error(t("Install project dependencies first: bash Saplingagent.sh install --repair"));
   await localSetup();
   if (await loggedIn()) { console.log(t("Project login credentials are saved. Choose Start app in Saplingagent.sh; if requests fail authentication, log out of this project as documented and log in again.")); return; }
   console.log(t("Official Codex will open your browser. Log in with your own ChatGPT/Codex account."));
@@ -177,7 +185,11 @@ async function logout() {
   console.log(t("Logged out of the Codex account for this project; application files and sessions are retained. Choose Configure AI in Saplingagent.sh to sign in again."));
 }
 async function configureOpenCode() {
-  if (!await installed()) throw new Error(t("Install project dependencies first: bash Saplingagent.sh install --repair"));
+  if(hasTooling(root)){
+    if(!await coreInstalled())throw new Error(t("Install the local kernel first: bash Saplingagent.sh install"));
+    await prepareProviderTools(root,['opencode'],{onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
+    opencode=openCodeBinary(root);
+  }else if (!await installed()) throw new Error(t("Install project dependencies first: bash Saplingagent.sh install --repair"));
   const data = path.join(root, 'local-secrets/opencode/data');
   const config = path.join(root, 'local-secrets/opencode/config');
   await Promise.all([fs.mkdir(data, { recursive: true, mode: 0o700 }), fs.mkdir(config, { recursive: true, mode: 0o700 })]);
@@ -225,9 +237,14 @@ async function configuredAccess() {
     else await openCodeConnections(root,connections);
     return true;
   }
-  return loggedIn();
+  return await exists(cli)&&loggedIn();
 }
 async function start(noOpen) {
+  if(hasTooling(root)&&await installed([])){
+    await prepareProviderTools(root,await runtimeEngines(root),{onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
+    cli=codexBinary(root);opencode=openCodeBinary(root);
+    env.SEED_CODEX_BIN=windows?cli:path.join(root,'kernel/scripts/macos/codex.sh');
+  }
   if (!await installed()) throw new Error(t("Installation is incomplete or dependency lockfiles have changed. Run: bash Saplingagent.sh install --repair"));
   await localSetup();
   if (!await configuredAccess()) throw new Error(t("Choose Configure AI in Saplingagent.sh and save an account/API/subscription scheme or enable external-only MCP access."));
@@ -298,9 +315,9 @@ async function doctor() {
     const versionLabel = version.output.trim().match(/^codex-cli (\d+\.\d+\.\d+(?:[-.a-z0-9]+)?)$/i)?.[1];
     if (version.code !== 0 || !versionLabel) throw new Error(t("Codex executable check failed. Reinstall; login status was not checked."));
     console.log(`Codex：${versionLabel}`);
-    authenticated = await configuredAccess();
-    console.log(t("Project AI access:{p0}",{p0:(authenticated ?t("configured (does not verify current network or quota)"):t("not configured; choose Configure AI in Saplingagent.sh"))}));
   }
+  authenticated = await configuredAccess();
+  console.log(t("Project AI access:{p0}",{p0:(authenticated ?t("configured (does not verify current network or quota)"):t("not configured; choose Configure AI in Saplingagent.sh"))}));
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   let online = false;
   try {

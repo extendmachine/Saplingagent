@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import {existsSync} from 'node:fs';
 import os from 'node:os';
+import {setTimeout as delay} from 'node:timers/promises';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {createHash,randomUUID} from 'node:crypto';
@@ -48,19 +49,27 @@ export async function toolRequirements(root){
     claudePackage:sdk.dependencies['@anthropic-ai/claude-agent-sdk'],opencode:JSON.parse(await fs.readFile(path.join(root,'kernel/tooling/versions.json'))).opencode};
 }
 export async function sdkSignature(root){return hash(await fs.readFile(path.join(root,'kernel/tooling/sdk/package-lock.json')));}
-export async function toolSetStatus(root){
+const allEngines = ['codex','claude','opencode'];
+const sdkPackages = {claude:'@anthropic-ai/claude-agent-sdk',opencode:'@opencode-ai/sdk'};
+function scope(engines) {
+  if (!Array.isArray(engines) || engines.some(name=>!allEngines.includes(name))) throw new Error('Unknown provider tool selection.');
+  return allEngines.filter(name=>engines.includes(name));
+}
+export async function toolSetStatus(root,engines=allEngines){
+  engines=scope(engines);
   const wanted=await toolRequirements(root),receipt=readBindings(root),signature=hash(JSON.stringify(wanted)+await sdkSignature(root)+process.platform+process.arch);
   let ready=receipt?.signature===signature;
-  for(const name of ['node','codex','claude','opencode']){
+  for(const name of ['node',...engines]){
     const item=receipt?.tools?.[name];ready=ready&&item?.version===wanted[name]&&unchanged(item.fingerprint,await fingerprint(item.path));
   }
-  ready=ready&&await validSdk(root,receipt?.sdk?.path);
+  for(const engine of engines.filter(name=>sdkPackages[name]))ready=ready&&await validSdk(root,receipt?.sdks?.[engine]?.path||receipt?.sdk?.path,[engine]);
   return {name:'tools',signature,ready:!!ready,present:!!ready};
 }
-async function validSdk(root,directory){
+async function validSdk(root,directory,engines){
   if(!directory)return false;
   const spec=await json(path.join(root,'kernel/tooling/sdk/package.json'));
-  for(const [name,version]of Object.entries(spec?.dependencies||{})){
+  for(const engine of engines){
+    const name=sdkPackages[engine],version=spec?.dependencies?.[name];
     const pkg=await json(path.join(directory,name,'package.json'));
     if(pkg?.version!==version)return false;
     const entry=pkg.main||pkg.exports?.['.']?.import||pkg.exports?.['.']?.default||pkg.exports?.['.'];
@@ -107,12 +116,15 @@ export async function bindAlias(root,name,target,{directory=false}={}){
     return {status:'linked',path:directory?link:path.join(link,path.basename(target))};
   }catch(error){if(['EPERM','EACCES','ENOSYS','EINVAL'].includes(error.code))return {status:'path-only'};throw error;}
 }
-async function prepareTools(root,{onProgress=()=>{},run=execute,candidates=systemCandidates,home:overrideHome,signal}={}){
+async function prepareTools(root,{onProgress=()=>{},run=execute,candidates=systemCandidates,home:overrideHome,signal,engines=allEngines}={}){
+  engines=scope(engines);
   signal?.throwIfAborted();const originalRun=run;run=(exe,args,options)=>originalRun(exe,args,{...options,signal});
   root=await fs.realpath(root);const wanted=await toolRequirements(root),home=overrideHome||runtimeHome(root);
   const mode=runtimeMode(root);
   const env=toolEnvironment(root,home);await fs.mkdir(env.TMPDIR,{recursive:true});
-  const saved=readBindings(root),tools=saved?.tools?.go?{go:saved.tools.go}:{};
+  const saved=readBindings(root),reuse=saved?.mode===mode&&saved?.home===home;
+  const tools=reuse?{...saved.tools}:{},sdks=reuse?{...saved.sdks}:{};
+  let sdk=reuse?saved.sdk:undefined;
   // The Node bootstrap establishes the canonical alias before this module runs.
   const settings=await settingsFor(root),localNode=path.join(nodeDirectory(root,settings),...(process.platform==='win32'?['node.exe']:['bin/node']));
   const node=existsSync(localNode)?await fs.realpath(localNode):process.execPath;
@@ -120,7 +132,7 @@ async function prepareTools(root,{onProgress=()=>{},run=execute,candidates=syste
   if(mode==='portable'&&!node.startsWith(root+path.sep))throw Object.assign(new Error('Run Saplingagent.sh with portable mode to prepare a local Node runtime.'),{code:'TOOL_NODE_REQUIRED'});
   const npm=npmFor(node);env.PATH=path.dirname(node)+path.delimiter+(env.PATH||'');
   tools.node={path:node,version:wanted.node,source:node.includes(home+path.sep)?'shared':'local',fingerprint:await fingerprint(node)};
-  for(const name of ['codex','claude','opencode']){
+  for(const name of engines){
     onProgress({event:'checking',name});let file,source;
     for(const candidate of [...(saved?.tools?.[name]?.path?[saved.tools[name].path]:[]),...(mode==='portable'?[]:candidates(name)),
       ...(name==='codex'?[path.join(root,'.runtime/codex/node_modules/.bin/codex')]:[])]){
@@ -141,22 +153,44 @@ async function prepareTools(root,{onProgress=()=>{},run=execute,candidates=syste
     onProgress({event:'ready',name,source});
   }
   const signature=await sdkSignature(root);
-  const directory=await ensureShared(home,`sdk-${signature.slice(0,24)}-${process.platform}-${process.arch}`,{
-    signal,validate:dir=>validSdk(root,path.join(dir,'node_modules')),
-    create:async dir=>{
-      onProgress({event:'installing',name:'SDK'});
-      for(const name of ['package.json','package-lock.json'])await fs.copyFile(path.join(root,'kernel/tooling/sdk',name),path.join(dir,name));
-      // Omit native CLI optional packages only in this SDK group, never in Vite's group.
-      await run(npm.command,[...npm.args,'ci','--omit=optional','--ignore-scripts','--no-audit','--no-fund'],{cwd:dir,env});
-    },onWait:()=>onProgress({event:'waiting',name:'SDK'})});
-  const sdk=path.join(directory,'node_modules');await bindAlias(root,'sdk',sdk,{directory:true});
+  const needed=engines.filter(name=>sdkPackages[name]);
+  if(needed.length && !(await Promise.all(needed.map(name=>validSdk(root,sdks[name]?.path||sdk?.path,[name])))).every(Boolean)){
+    const group=needed.length===2?'sdk':'sdk-'+needed[0];
+    const directory=await ensureShared(home,`${group}-${signature.slice(0,24)}-${process.platform}-${process.arch}`,{
+      signal,validate:dir=>validSdk(root,path.join(dir,'node_modules'),needed),
+      create:async dir=>{
+        onProgress({event:'installing',name:'SDK'});
+        for(const name of ['package.json','package-lock.json'])await fs.copyFile(path.join(root,'kernel/tooling/sdk',name),path.join(dir,name));
+        if(needed.length===1){
+          const file=path.join(dir,'package.json'),spec=await json(file),name=sdkPackages[needed[0]];
+          spec.dependencies={[name]:spec.dependencies[name]};
+          await atomicJSON(file,spec);
+          // Resolve only the selected dependency's locked subtree, without a network request.
+          await run(npm.command,[...npm.args,'install','--package-lock-only','--offline','--ignore-scripts','--no-audit','--no-fund'],{cwd:dir,env});
+        }
+        await run(npm.command,[...npm.args,'ci','--omit=optional','--ignore-scripts','--no-audit','--no-fund'],{cwd:dir,env});
+      },onWait:()=>onProgress({event:'waiting',name:'SDK'})});
+    const binding={path:path.join(directory,'node_modules'),signature};
+    if(needed.length===2)sdk=binding;
+    for(const engine of needed)sdks[engine]=binding;
+    await bindAlias(root,group,binding.path,{directory:true});
+  }
   const statusSignature=hash(JSON.stringify(wanted)+signature+process.platform+process.arch);
-  await atomicJSON(path.join(root,'.runtime/tool-bindings.json'),{schemaVersion:1,root,mode,home,homeKind:(overrideHome||process.env.SAPLING_RUNTIME_HOME)?'custom':(saved?.homeKind||'default'),signature:statusSignature,tools,sdk:{path:sdk,signature}});
-  return toolSetStatus(root);
+  await atomicJSON(path.join(root,'.runtime/tool-bindings.json'),{schemaVersion:1,root,mode,home,homeKind:(overrideHome||process.env.SAPLING_RUNTIME_HOME)?'custom':(saved?.homeKind||'default'),signature:statusSignature,tools,sdk,sdks});
+  return toolSetStatus(root,engines);
 }
 
 // Serialize the aliases/receipt of one project as well as the cross-project pool.
 export async function ensureTools(root,options={}){
+  if(options.signal)return prepareWithLock(root,options);
+  const controller=new AbortController();
+  const stop=()=>controller.abort();
+  for(const name of ['SIGINT','SIGTERM','SIGHUP'])process.on(name,stop);
+  try{return await prepareWithLock(root,{...options,signal:controller.signal});}
+  finally{for(const name of ['SIGINT','SIGTERM','SIGHUP'])process.off(name,stop);}
+}
+
+async function prepareWithLock(root,options){
   root=await fs.realpath(root);
   const lock=path.join(root,'.runtime/tool-setup.lock'),id=randomUUID();await fs.mkdir(path.dirname(lock),{recursive:true});
   const deadline=Date.now()+600000;
@@ -166,7 +200,7 @@ export async function ensureTools(root,options={}){
     const owner=await json(path.join(lock,'owner.json'));
     if(owner?.pid){let dead=false;try{process.kill(owner.pid,0);}catch(error){dead=error.code==='ESRCH';}if(dead)throw Object.assign(new Error('An interrupted project tool setup must be inspected before retrying.'),{code:'SHARED_RUNTIME_INTERRUPTED'});}
     if(Date.now()>=deadline)throw Object.assign(new Error('Another tool setup is active. Wait and retry.'),{code:'SHARED_RUNTIME_BUSY'});
-    await new Promise(resolve=>setTimeout(resolve,100));
+    await delay(100,undefined,{signal:options.signal});
   }
   const identity=await fs.stat(lock);
   try{await atomicJSON(path.join(lock,'owner.json'),{id,pid:process.pid});}catch(error){const current=await fs.stat(lock).catch(()=>null);if(current?.ino===identity.ino&&current?.dev===identity.dev)await fs.rm(lock,{recursive:true,force:true});throw error;}

@@ -205,3 +205,6 @@ AI profiles, activation, credential imports, Codex login and MCP writes reserve 
 `POST /api/config/close {}` refuses in-flight AI writes/imports, closes only owned authentication (including pending asynchronous completion), awaits `project.prepareAIFinish()`, then the existing external handback. Success remains `{closed:true,handoff:true}` for an external capsule. It does not require an identity/settingsSaved/exportReady/build or an active AI profile. `prepareAIFinish` is idempotent; failed preparation/handback stays retryable and is never reported as a successful restart. Direct service shutdown blocks new requests, drains active AI requests, then closes auth and performs the same finish barrier before handback. Capsule cleanup and conditional application resumption belong to the configuration lifecycle contract, not the HTTP response alone.
 
 AI-mode mutations never reset source, conversations, project identity/icon, compiled App, customer Git or Full Access. Stored profile changes are not proof of remote login entitlement, model access or successful inference.
+
+
+The configuration page opens with Node and kernel dependencies. Codex account sign-in prepares Codex on demand and cancellation interrupts its preparation. Saving or importing profiles does not require another provider's tools.

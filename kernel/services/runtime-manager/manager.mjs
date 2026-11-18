@@ -6,7 +6,7 @@ import { terminateOwned } from '../../contracts/local-process.mjs';
 import { randomUUID } from 'node:crypto';
 import { portKeys,selectRuntimePorts } from './ports.mjs';
 import { loadProjectServices, assignProjectPorts, serviceCommand, servicePortEnv } from './services.mjs';
-import {hasTooling,ensureTools,toolSetStatus} from '../../tooling/tools.mjs';
+import {prepareProviderTools,runtimeEngines} from '../../tooling/providers.mjs';
 import { readMcpAccess } from '../../contracts/mcp-access.mjs';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -187,7 +187,7 @@ export class RuntimeManager {
     this.startOperation(() => this.startServices(config, 'all', 'startup_port_retry'));
   }
   async startServices(config, scope, retryEvent = 'restart_port_retry') {
-    if(hasTooling(this.root)&&!(await toolSetStatus(this.root)).ready)await ensureTools(this.root,{signal:this.controlAbort.signal});
+    await prepareProviderTools(this.root,await runtimeEngines(this.root),{signal:this.controlAbort.signal});
     // Both startup and restart use the same allocation and bounded race recovery.
     // Call only after the backends have stopped; never probe our own listeners
     // as if they belonged to a competing project.

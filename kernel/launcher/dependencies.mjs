@@ -13,6 +13,7 @@ import {assertSetupAvailable} from '../contracts/kernel.mjs';
 import {assertMcpClientsStopped} from '../contracts/mcp-access.mjs';
 
 import {hasTooling,ensureTools,toolSetStatus} from '../tooling/tools.mjs';
+import {runtimeEngines} from '../tooling/providers.mjs';
 import {toolProgress} from '../tooling/progress.mjs';
 
 const alive=pid=>{if(!Number.isSafeInteger(pid)||pid<=0)return false;try{process.kill(pid,0);return true;}catch(e){return e.code!=='ESRCH';}};
@@ -85,19 +86,20 @@ export async function applicationDependencyStatus(root){
   }
   const codexPackage=await json(path.join(root,'.runtime/codex/node_modules/@openai/codex/package.json')).catch(()=>null);
   const codex={name:'codex',signature:digest(settings.codexVersion,process.platform,process.arch),ready:codexPackage?.version===settings.codexVersion&&await exists(codexBinary(root))};
-  groups.unshift(hasTooling(root)?await toolSetStatus(root):codex);
+  groups.unshift(hasTooling(root)?await toolSetStatus(root,await runtimeEngines(root)):codex);
   return {ready:groups.every(g=>g.ready),signature:digest(...groups.map(g=>g.name+g.signature)),groups,settings};
 }
 
-async function repairGroup(root,group,settings,onProgress){
+async function repairGroup(root,group,settings,onProgress,signal){
   const awaitLanguage=await readLanguage(root,process.env.SAPLING_LANG);
-  if(group.name==='tools'){await ensureTools(root,{onProgress:event=>onProgress(toolProgress(event,awaitLanguage))});return;}
+  const prepare=async()=>ensureTools(root,{engines:await runtimeEngines(root),signal,onProgress:event=>onProgress(toolProgress(event,awaitLanguage))});
+  if(group.name==='tools'){await prepare();return;}
   const localNode=nodeForRoot(root),npm=npmCommand(localNode),env=buildEnv(root);
   // Keep installer output available to the caller; never inherit account keys into npm lifecycle scripts.
-  const run=(exe,args,options={})=>command(root,exe,args,{env,onOutput:onProgress,...options});
+  const run=(exe,args,options={})=>command(root,exe,args,{env,onOutput:onProgress,signal,...options});
   if(group.name!=='codex'){
     await run(npm.command,[...npm.args,'ci','--include=dev','--include=optional',...(['kernel','backend/agent-runtime'].includes(group.name)?[]:['--ignore-scripts']),'--no-audit','--no-fund'],{cwd:path.join(root,group.name)});
-    if(group.name==='kernel'&&hasTooling(root)&&!(await toolSetStatus(root)).ready)await ensureTools(root,{onProgress:event=>onProgress(toolProgress(event,awaitLanguage))});
+    if(group.name==='kernel'&&hasTooling(root)&&!(await toolSetStatus(root,await runtimeEngines(root))).ready)await prepare();
     return;
   }
   const stage=path.join(root,'.runtime','codex-install-'+randomUUID()),previous=path.join(root,'.runtime','codex-previous-'+randomUUID()),destination=path.join(root,'.runtime/codex');
@@ -125,7 +127,7 @@ export async function ensureApplicationDependencies(root,{onProgress=()=>{},inst
     const owner=await json(path.join(lock,'owner.json'));
     if(owner?.pid&&!alive(owner.pid))throw issue('DEPENDENCY_INSTALL_INTERRUPTED','A previous dependency installer stopped. Inspect its local install lock before retrying.');
     if(Date.now()>=deadline)throw issue('DEPENDENCY_INSTALL_BUSY','Another dependency installer is running. Wait for it to finish, then open the app again.');
-    await delay(100);
+    await delay(100,undefined,{signal});
   }
   await writeJSON(path.join(lock,'owner.json'),{id,pid:process.pid,root});
   try{
@@ -143,7 +145,7 @@ export async function ensureApplicationDependencies(root,{onProgress=()=>{},inst
       if(!group.ready){
         onProgress(formatMessage(launcherMessages,await readLanguage(root,process.env.SAPLING_LANG),"Preparing dependencies: {name}…",{name:group.name}));
         await dailyLog(root,'dependency-install',{group:group.name});
-        await install(root,group,state.settings,onProgress);
+        await install(root,group,state.settings,onProgress,signal);
         signal?.throwIfAborted();
         const checked=await applicationDependencyStatus(root),actual=checked.groups.find(g=>g.name===group.name);
         if(actual?.signature!==group.signature)throw issue('DEPENDENCY_SOURCE_CHANGED','Dependency declarations changed during installation. Save your edits, then open the app again.');

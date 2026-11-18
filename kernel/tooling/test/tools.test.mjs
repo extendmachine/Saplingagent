@@ -114,3 +114,56 @@ test('portable folder rename rebinds programs and SDK without reinstalling them'
  await ensureTools(b,{run:f.run,candidates:()=>[]});assert.equal(f.calls.length,4);
  assert.equal((await toolSetStatus(b)).ready,true);assert.ok(readBindings(b).tools.claude.path.startsWith(b+path.sep));
 });
+
+test('external-only setup prepares just Node; switching providers prepares only the requested CLI and SDK',async t=>{
+  const f=await fixture(t),root=await f.app('selected engines');
+  await write(path.join(root,'config/mcp-access.json'),{schemaVersion:1,revision:1,enabled:true,externalOnly:true});
+  const {runtimeEngines}=await import('../providers.mjs');
+  assert.deepEqual(await runtimeEngines(root),[]);
+  assert.equal((await ensureTools(root,{...f.options,engines:[]})).ready,true);
+  assert.deepEqual(f.calls,[]);
+  assert.deepEqual(Object.keys(readBindings(root).tools),['node']);
+  await ensureTools(root,{...f.options,engines:['codex']});
+  const codex=readBindings(root).tools.codex.path;
+  assert.equal(f.calls.length,1);
+  assert.equal((await toolSetStatus(root,['claude'])).ready,false);
+  await ensureTools(root,{...f.options,engines:['opencode']});
+  const partial=readBindings(root);
+  assert.equal(partial.tools.codex.path,codex);
+  assert.equal(partial.tools.claude,undefined);
+  assert.ok(partial.sdks.opencode.path);
+  await assert.rejects(fs.access(path.join(partial.sdks.opencode.path,'@anthropic-ai/claude-agent-sdk')));
+  await ensureTools(root,{...f.options,engines:['claude']});
+  assert.equal((await toolSetStatus(root)).ready,true);
+  assert.equal(readBindings(root).sdks.opencode.path,partial.sdks.opencode.path);
+});
+
+test('cancelled waiting installer preserves the current owner and does not run any install',async t=>{
+  const f=await fixture(t),root=await f.app('waiting');
+  const lock=path.join(root,'.runtime/tool-setup.lock/owner.json');
+  await write(lock,{id:'active-fixture',pid:process.pid});
+  const controller=new AbortController();
+  const pending=ensureTools(root,{...f.options,engines:['codex'],signal:controller.signal});
+  setTimeout(()=>controller.abort(),10);
+  await assert.rejects(pending,error=>error.name==='AbortError');
+  assert.equal(JSON.parse(await fs.readFile(lock)).id,'active-fixture');
+  assert.deepEqual(f.calls,[]);
+});
+
+test('browser Codex login prepares only its engine and cancels while waiting for an existing tool owner',async t=>{
+  const {AccountSetup}=await import('../../services/ai-config/auth.mjs');
+  const f=await fixture(t),root=await f.app('login wait'),lock=path.join(root,'.runtime/tool-setup.lock/owner.json');
+  await write(lock,{pid:process.pid,id:'other-operation'});
+  let started=0;
+  class Client{constructor(){started++;throw Error('no program before preparation');}}
+  const auth=new AccountSetup(root,{},{Client});
+  const pending=auth.begin('chatgpt');
+  const outcome=assert.rejects(pending,{code:'LOGIN_CANCELLED'});
+  for(let i=0;i<150&&!auth.preparing;i++)await new Promise(resolve=>setTimeout(resolve,10));
+  assert.ok(auth.preparing);
+  await auth.close();
+  await outcome;
+  assert.equal(started,0);
+  assert.equal(auth.snapshot().phase,'cancelled');
+  assert.equal(JSON.parse(await fs.readFile(lock)).id,'other-operation');
+});

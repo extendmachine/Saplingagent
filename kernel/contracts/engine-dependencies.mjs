@@ -4,12 +4,12 @@ import fs from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import {sdkModules} from '../tooling/bindings.mjs';
-export function engineModules(root) {
-  return sdkModules(root,path.join(root, existsSync(path.join(root, 'kernel/package.json')) ? 'kernel' : 'backend/agent-runtime', 'node_modules'));
+export function engineModules(root,engine) {
+  return sdkModules(root,path.join(root, existsSync(path.join(root, 'kernel/package.json')) ? 'kernel' : 'backend/agent-runtime', 'node_modules'),engine);
 }
 export async function engineDependency(root, name) {
   if (!['@anthropic-ai/claude-agent-sdk','@opencode-ai/sdk'].includes(name)) throw new Error('Unknown engine dependency.');
-  const directory=path.join(engineModules(root),name);
+  const directory=path.join(engineModules(root,name==='@opencode-ai/sdk'?'opencode':'claude'),name);
   const pkg=JSON.parse(await fs.readFile(path.join(directory,'package.json'),'utf8'));
   const exported=pkg.exports?.['.'];
   const entry=typeof exported==='string'?exported:exported?.import||exported?.default||pkg.main;

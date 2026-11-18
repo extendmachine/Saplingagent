@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { ensureTools } from './tooling/tools.mjs';
+import {prepareProviderTools,runtimeEngines} from './tooling/providers.mjs';
 import {toolProgress} from './tooling/progress.mjs';
 import {readLanguage} from './localization/store.mjs';
 import { prepareManagedEnvironment } from './contracts/local-storage.mjs';
@@ -22,5 +22,5 @@ try {
  await assertMcpClientsStopped(root);
  await run(npm.command,[...npm.args,'ci','--include=optional','--no-audit','--no-fund'],path.join(root,'kernel'));
  const language=await readLanguage(root);
- await ensureTools(root,{onProgress:event=>console.log(toolProgress(event,language))});
+ await prepareProviderTools(root,await runtimeEngines(root),{onProgress:event=>console.log(toolProgress(event,language))});
 }finally{await release();}

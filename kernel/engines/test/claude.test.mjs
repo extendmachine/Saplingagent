@@ -1,4 +1,4 @@
-import {readBindings} from '../../tooling/bindings.mjs';
+import {linkNativeProvider} from './native-provider-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -10,7 +10,7 @@ import { ConfigurationStore } from '../../services/ai-config/store.mjs';
 import { claudeConnections, readConnections, defaultSelection } from '../../contracts/ai-configuration.mjs';
 const project=fileURLToPath(new URL('../../../',import.meta.url));
 const profile={label:'Synthetic Claude',engine:'claude',protocol:'anthropic',baseUrl:'http://127.0.0.1:1/v1',model:'synthetic-claude',apiKey:'synthetic-only-key'};
-async function fixture(t){const base=path.join(project,'.cache/claude-tests');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,"中文 app's "));t.after(()=>fs.rm(root,{recursive:true,force:true}));await new ConfigurationStore(root).save(profile);await fs.mkdir(path.join(root,'.runtime'),{recursive:true});await fs.writeFile(path.join(root,'.runtime/tool-bindings.json'),JSON.stringify({schemaVersion:1,root,tools:readBindings(project)?.tools||{},sdk:readBindings(project)?.sdk}));return root;}
+async function fixture(t){const base=path.join(project,'.cache/claude-tests');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,"中文 app's "));t.after(()=>fs.rm(root,{recursive:true,force:true}));await new ConfigurationStore(root).save(profile);return root;}
 function fakeQuery(events, capture=[]){return args=>{capture.push(args);return {async *[Symbol.asyncIterator](){for(const event of events)yield event;},async initializationResult(){return {};},async mcpServerStatus(){return [{name:'seedagent',status:'connected',tools:[{name:'synthetic_tool'}]}];},async supportedCommands(){return [{name:'saplingagent:seed-page-edit',description:'Synthetic'}];},close(){this.closed=true;}};};}
 const init={type:'system',subtype:'init',session_id:'synthetic-thread'};
 const start={type:'stream_event',event:{type:'message_start',message:{id:'message-1'}}};
@@ -27,7 +27,7 @@ test('result errors and stream ending without a result cannot report success',as
 test('tool hooks register actual native MCP input and lifecycle before execution',async t=>{const {p,r,capture,received}=await provider(t,[init,done]);await p.execute(r,'Synthetic');const o=capture[1].options;const input={tool_use_id:'tool-1',tool_name:'mcp__seedagent__workspace_write_file',tool_input:{path:'front/a.txt',content:'Synthetic'}};await o.hooks.PreToolUse[0].hooks[0](input);await o.hooks.PostToolUse[0].hooks[0](input);assert.deepEqual(received.filter(e=>e.type==='tool').map(e=>e.status),['running','completed']);assert.deepEqual(received.find(e=>e.type==='tool').input,input.tool_input);});
 test('stop wins over result, suppresses late deltas and closes query',async t=>{const {p,r,received,capture}=await provider(t,[init,start,delta,done]);r.cancelRequested=true;await p.execute(r,'Synthetic');assert.equal(capture.length,1);assert.deepEqual(received,[{type:'done',status:'interrupted'}]);});
 test('pinned native Claude SDK connects MCP and discovers local plugin Skills without a model prompt',{skip:process.platform!=='darwin'},async t=>{
- const root=await fixture(t);const probe=http.createServer((req,res)=>{probe.requests++;res.writeHead(401);res.end('{}');});probe.requests=0;await new Promise(r=>probe.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>probe.close(r)));
+ const root=await fixture(t);await linkNativeProvider(project,root,'claude');const probe=http.createServer((req,res)=>{probe.requests++;res.writeHead(401);res.end('{}');});probe.requests=0;await new Promise(r=>probe.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>probe.close(r)));
  const store=new ConfigurationStore(root),saved=await readConnections(root);await store.save({...profile,id:saved.activeId,revision:saved.revision,baseUrl:`http://127.0.0.1:${probe.address().port}/v1`});
  await fs.mkdir(path.join(root,'backend/mcp-runtime'),{recursive:true});await fs.writeFile(path.join(root,'backend/mcp-runtime/server.mjs'),`import fs from 'node:fs';import readline from 'node:readline';fs.writeFileSync('mcp-auth-summary.json',JSON.stringify(Object.fromEntries(['ANTHROPIC_API_KEY','ANTHROPIC_AUTH_TOKEN','CLAUDE_CODE_OAUTH_TOKEN'].map(name=>[name,Boolean(process.env[name])]))));for await(const line of readline.createInterface({input:process.stdin})){const m=JSON.parse(line);if(m.id===undefined)continue;let result={};if(m.method==='initialize')result={protocolVersion:'2024-11-05',capabilities:{tools:{}},serverInfo:{name:'synthetic-mcp',version:'1'}};if(m.method==='tools/list')result={tools:[{name:'synthetic_tool',description:'Synthetic test tool',inputSchema:{type:'object',properties:{}}}]};process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');}`);
  await fs.mkdir(path.join(root,'.agents/.claude-plugin'),{recursive:true});await fs.writeFile(path.join(root,'.agents/.claude-plugin/plugin.json'),'{"name":"saplingagent"}');await fs.mkdir(path.join(root,'.agents/skills/synthetic-skill'),{recursive:true});await fs.writeFile(path.join(root,'.agents/skills/synthetic-skill/SKILL.md'),'---\nname: synthetic-skill\ndescription: Synthetic test workflow\n---\nSynthetic only.');
@@ -35,7 +35,7 @@ test('pinned native Claude SDK connects MCP and discovers local plugin Skills wi
 });
 
 test('native SDK streams through custom /v1/messages and resumes the persisted thread against a synthetic API',{skip:process.platform!=='darwin'},async t=>{
- const root=await fixture(t),requests=[];
+ const root=await fixture(t),requests=[];await linkNativeProvider(project,root,'claude');
  const api=http.createServer(async(req,res)=>{
    let body='';for await(const chunk of req)body+=chunk;const input=body?JSON.parse(body):{};requests.push({path:req.url,authorized:req.headers['x-api-key']===profile.apiKey,messages:input.messages?.length,images:(input.messages||[]).flatMap(message=>Array.isArray(message.content)?message.content:[]).filter(block=>block.type==='image').length});
    if(!req.url.startsWith('/v1/messages')){res.writeHead(404);res.end('{}');return;}

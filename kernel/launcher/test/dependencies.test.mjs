@@ -180,3 +180,21 @@ test('standalone kernel dependency repair also refuses connected MCP clients',as
  assert.deepEqual(await fs.readFile(path.join(f.root,'kernel/package-lock.json')),before);
  assert.equal(await fs.access(path.join(f.root,'.runtime/kernel-operation.lock')).then(()=>true,()=>false),false);
 });
+
+test('owned shutdown cancels a running group and releases the project installer lock',async t=>{
+  const {root}=await fixture(t),controller=new AbortController();
+  let entered;
+  const started=new Promise(resolve=>{entered=resolve;});
+  const pending=ensureApplicationDependencies(root,{
+    signal:controller.signal,
+    install:async (_root,_group,_settings,_progress,signal)=>{
+      assert.equal(signal,controller.signal);
+      entered();
+      await delay(10000,undefined,{signal});
+    },
+  });
+  await Promise.race([started,pending]);
+  controller.abort();
+  await assert.rejects(pending,error=>error.name==='AbortError');
+  await assert.rejects(fs.access(path.join(root,`.runtime/${platform}-install.lock`)),{code:'ENOENT'});
+});
