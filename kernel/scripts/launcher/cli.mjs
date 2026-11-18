@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
-import { readConnections,defaultSelection,codexConnection,claudeConnections,openCodeConnections } from '../../contracts/ai-configuration.mjs';
+import { readConnections,readCredential } from '../../contracts/ai-configuration.mjs';
 import { initializeDownloadedRecords } from './recipient-records.mjs';
 import { setup } from '../setup.mjs';
 import {prepareManagedEnvironment} from '../../contracts/local-storage.mjs';
@@ -72,13 +72,18 @@ async function signature() {
   for (const service of services.filter(s=>s!=='kernel')) hash.update(await fs.readFile(path.join(root, service, 'package-lock.json')));
   return hash.digest('hex');
 }
-async function installed(engines) {
+async function installed() {
+  if (services.includes('kernel')) {
+    const {applicationDependencyStatus} = await import('../../launcher/dependencies.mjs');
+    return (await applicationDependencyStatus(root)).ready;
+  }
+  // Older complete-folder layouts predate the kernel and per-group receipts.
   try {
     const stamp = JSON.parse(await fs.readFile(stampFile, 'utf8'));
     return stamp.signature === await signature() && stamp.arch === process.arch
       && await exists(path.join(root, 'front/node_modules/vite/bin/vite.js'))
       && await exists(path.join(root, 'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json'))
-      && (hasTooling(root)?(await toolSetStatus(root,engines??await runtimeEngines(root))).ready:await exists(cli)&&await exists(opencode)&&await exists(claudeBinary(root)));
+      && (hasTooling(root)?(await toolSetStatus(root,await runtimeEngines(root))).ready:await exists(cli)&&await exists(opencode)&&await exists(claudeBinary(root)));
   } catch { return false; }
 }
 async function coreInstalled() {
@@ -144,7 +149,7 @@ async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
     }
     // A failed staging download leaves a previously complete installation usable.
     // Once npm ci can replace business dependencies, the old marker is no longer valid.
-    await fs.rm(stampFile, { force: true });
+    if (!coreOnly) await fs.rm(stampFile, { force: true });
     for (const service of coreOnly?['kernel']:appOnly?services.filter(s=>s!=='kernel'):services) {
       console.log(t("Installing locked dependencies for {p0}…",{p0:(service)}));
       const installArgs = ['ci', '--include=optional', ...(['kernel', 'backend/agent-runtime'].includes(service) ? [] : ['--ignore-scripts']), '--no-audit', '--no-fund'];
@@ -229,23 +234,31 @@ async function configuredAccess() {
   const mcp = await readMcpAccess(root);
   if (mcp.enabled && mcp.externalOnly) return true;
   const connections = await readConnections(root);
-  const selection = defaultSelection(connections);
   const profile = connections.profiles.find(p=>p.id===connections.activeId);
   if(profile?.kind === 'api' || profile?.kind === 'subscription'){
-    if(selection.engine === 'codex')await codexConnection(root,connections);
-    else if(selection.engine === 'claude')await claudeConnections(root,connections);
-    else await openCodeConnections(root,connections);
+    await readCredential(root,profile);
     return true;
   }
   return await exists(cli)&&loggedIn();
 }
 async function start(noOpen) {
-  if(hasTooling(root)&&await installed([])){
-    await prepareProviderTools(root,await runtimeEngines(root),{onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
-    cli=codexBinary(root);opencode=openCodeBinary(root);
-    env.SEED_CODEX_BIN=windows?cli:path.join(root,'kernel/scripts/macos/codex.sh');
+  if (services.includes('kernel')) {
+    const {ensureApplicationDependencies} = await import('../../launcher/dependencies.mjs');
+    const controller = new AbortController();
+    const cancel = () => controller.abort();
+    const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+    for (const signal of signals) process.on(signal, cancel);
+    try {
+      await ensureApplicationDependencies(root, {signal:controller.signal, onProgress:line=>console.log(line)});
+      controller.signal.throwIfAborted();
+    } finally {
+      for (const signal of signals) process.off(signal, cancel);
+    }
+    cli = codexBinary(root);
+    env.SEED_CODEX_BIN = windows ? cli : path.join(root, 'kernel/scripts/macos/codex.sh');
+  } else if (!await installed()) {
+    throw new Error(t("Installation is incomplete or dependency lockfiles have changed. Run: bash Saplingagent.sh install --repair"));
   }
-  if (!await installed()) throw new Error(t("Installation is incomplete or dependency lockfiles have changed. Run: bash Saplingagent.sh install --repair"));
   await localSetup();
   if (!await configuredAccess()) throw new Error(t("Choose Configure AI in Saplingagent.sh and save an account/API/subscription scheme or enable external-only MCP access."));
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
@@ -308,7 +321,10 @@ async function doctor() {
   for(const [name,item]of Object.entries(readBindings(root)?.tools||{}))console.log(t('Tool {name}: {source}, {version}; {path}',{name,source:t(item.source==='shared'?'shared tool library':'local installation'),version:item.version,path:item.path}));
   console.log(t("{p0} {p1}; Node {p2}; folder: {p3}",{p0:(windows ? 'Windows' : 'macOS'),p1:(process.arch),p2:(process.versions.node),p3:(root)}));
   const local = await installed();
-  console.log(t("Project dependencies:{p0}",{p0:(local ?t("installed"):t("not installed or changed; run bash Saplingagent.sh install --repair"))}));
+  const repairHelp = services.includes('kernel')
+    ? "missing or changed; start the app to prepare dependencies"
+    : "not installed or changed; run bash Saplingagent.sh install --repair";
+  console.log(t("Project dependencies:{p0}", {p0:local ? t("installed") : t(repairHelp)}));
   let authenticated = false;
   if (await exists(cli)) {
     const version = await run(cli, ['--version'], { capture: true });

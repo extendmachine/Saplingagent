@@ -43,11 +43,14 @@ async function packages(root){
     const directory=path.join(root,relative),manifestFile=path.join(directory,'package.json');
     if(!await exists(manifestFile))continue;
     const manifestBytes=await fs.readFile(manifestFile),manifest=JSON.parse(manifestBytes);
-    const names=[...new Set([...Object.keys(manifest.dependencies||{}),...Object.keys(manifest.devDependencies||{})])];
-    const lockBytes=await fs.readFile(path.join(directory,'package-lock.json')).catch(e=>{if(e.code==='ENOENT'&&!names.length)return Buffer.from('{"packages":{"":{}}}');if(e.code==='ENOENT')throw issue('DEPENDENCY_LOCK_MISSING',`Missing ${relative}/package-lock.json. Save a lockfile for this service before starting.`,400);throw e;});
+    const optional = manifest.optionalDependencies || {};
+    const names = [...new Set([...Object.keys(manifest.dependencies || {}), ...Object.keys(manifest.devDependencies || {})])]
+      .filter(name => !Object.hasOwn(optional, name));
+    const empty = !names.length && !Object.keys(optional).length;
+    const lockBytes=await fs.readFile(path.join(directory,'package-lock.json')).catch(e=>{if(e.code==='ENOENT'&&empty)return Buffer.from('{"packages":{"":{}}}');if(e.code==='ENOENT')throw issue('DEPENDENCY_LOCK_MISSING',`Missing ${relative}/package-lock.json. Save a lockfile for this service before starting.`,400);throw e;});
     const lock=JSON.parse(lockBytes);
     if(!lock.packages?.[''])throw issue('DEPENDENCY_LOCK_INVALID',`Unsupported dependency lockfile in ${relative}. Regenerate it with the project's npm.`,400);
-    let present=['dependencies','devDependencies'].every(kind=>{
+    let present=['dependencies','devDependencies','optionalDependencies'].every(kind=>{
       const declared=manifest[kind]||{},locked=lock.packages[''][kind]||{};
       return Object.keys(declared).length===Object.keys(locked).length&&Object.entries(declared).every(([name,value])=>locked[name]===value);
     });
@@ -65,7 +68,7 @@ async function packages(root){
     }
     for(const file of requiredEntries[relative]||[])if(!await exists(path.join(directory,file)))present=false;
     if(relative==='kernel'&&!hasTooling(root)&&(!await exists(openCodeBinary(root))||!await exists(claudeBinary(root))))present=false;
-    groups.push({name:relative,signature:digest(manifestBytes,lockBytes,process.platform,process.arch),present,empty:names.length===0,lockBytes});
+    groups.push({name:relative,signature:digest(manifestBytes,lockBytes,process.platform,process.arch),present,empty,lockBytes});
   }
   return groups;
 }

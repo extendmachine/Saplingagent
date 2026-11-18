@@ -24,16 +24,19 @@ folder cannot be repaired by downloading Node alone. Concurrent Node downloads
 retain the existing installer lock behavior and ask the user to retry.
 
 `ensureApplicationDependencies(root, {onProgress})` is the shared JavaScript
-entry used by daily launch. The internal CLI action `ensure-dependencies` exposes
+entry used by the native app and the shell start command. Shell diagnostics read
+the same group receipts and file checks. The internal CLI action `ensure-dependencies` exposes
 the same headless operation. It never opens setup, checks a remote login, calls a
 model, resets account/project configuration or initializes customer Git.
 
 `applicationDependencyStatus(root)` checks the core, frontend and package-based
-immediate backend services. Packages declaring dependencies require a local
+immediate backend services. Packages declaring required or optional dependencies require a local
 `package-lock.json`; dependency-free services do not. It compares package and
 lockfile hashes, platform/architecture, direct installed package versions and
 entry files, and the required frontend/AI executable markers. Local-file npm
-packages are supported. A valid legacy installation signature can be adopted.
+packages are supported. Optional-only services run npm once per manifest/lock
+revision and device. A successful npm run may omit an unsupported optional package.
+A valid legacy installation signature can be adopted.
 This is an installation/readiness check, not an exhaustive hash audit of every
 transitive package byte. Explicit dependency repair remains available for other
 damage.
