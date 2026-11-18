@@ -62,14 +62,14 @@ export async function finishConfiguration(root,directory,{timeout=30000,resume=r
   await removeSessionDirectory(session);
   await writeJSON(path.join(root,'.runtime/configuration-complete.json'),{schemaVersion:1,id:session.id,root,phase:session.configurationMode==='ai'&&session.restartAfterClose&&session.restartAfterClose!=='none'?'restarting':'complete',completedAt:new Date().toISOString(),temporaryFilesRemoved:true});
   if((await json(sessionFile(root)))?.id===session.id)await fs.rm(sessionFile(root));
-  await dailyLog(root,'configuration_cleanup_complete',{sessionId:session.id});
+  await dailyLog(root,'configuration_cleanup_complete',{sessionId:session.id}).catch(()=>{});
   }finally{try{if(ownsLock&&(await json(path.join(lock,'owner.json')))?.pid===process.pid)await fs.rm(lock,{recursive:true,force:true});}finally{await release();}}
   if(session.configurationMode==='ai'){
     try{
       const restarted=await resume(root,session);
       await writeJSON(path.join(root,'.runtime/ai-configuration.json'),{schemaVersion:1,id:session.id,root,phase:'complete',...restarted,completedAt:new Date().toISOString()});
       await writeJSON(path.join(root,'.runtime/configuration-complete.json'),{schemaVersion:1,id:session.id,root,phase:'complete',temporaryFilesRemoved:true,...restarted,completedAt:new Date().toISOString()});
-      await dailyLog(root,'ai_configuration_finished',{sessionId:session.id,restarted:restarted.restarted});
+      await dailyLog(root,'ai_configuration_finished',{sessionId:session.id,restarted:restarted.restarted}).catch(()=>{});
       return {complete:true,root,...restarted};
     }catch(error){
       await writeJSON(path.join(root,'.runtime/ai-configuration.json'),{schemaVersion:1,id:session.id,root,phase:'restart-failed',error:{code:error.code||'CONFIGURATION_RESTART_FAILED'},saved:true,temporaryFilesRemoved:true}).catch(()=>{});

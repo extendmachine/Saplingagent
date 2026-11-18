@@ -151,3 +151,5 @@ distinguish saved/restarting, complete and restart-failed. A restart failure nev
 rolls back credentials or claims readiness; reopen the app and inspect
 `logs/project-launcher`. Unknown or interrupted owner leases remain available for
 inspection and are not automatically deleted.
+
+Configuration cleanup and restart diagnostics are best effort. The persisted completion phase reflects the outcome of the service restart even when the launcher log directory is unavailable.
