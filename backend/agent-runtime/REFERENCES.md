@@ -106,3 +106,5 @@ https://git-scm.com/docs/git-status and https://git-scm.com/docs/git are public
 official documentation. Background status can conflict through optional index
 refresh; GIT_OPTIONAL_LOCKS=0 suppresses optional locks, not required mutation locks.
 No account/network operation is added by local Git status or version labels.
+
+2026-11-17, TASK-20261117-003. The locally generated pinned Codex App Server v2 schema exposes `TurnStartParams.clientUserMessageId`, `ThreadReadParams.includeTurns`, and the `clientId` field of `ThreadItem.userMessage` to identify an individual attempt. [OpenAI App Server protocol](https://developers.openai.com/codex/app-server/).

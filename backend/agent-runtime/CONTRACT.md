@@ -223,3 +223,10 @@ business result. Git subprocesses disable optional index locking; required Git
 mutation locks remain effective. Version label locks record process ownership;
 recovery requires a dead owner, exclusive recovery coordination and unchanged
 file identity. Live/unknown owners and legacy locks are kept for inspection.
+
+
+## Request recovery and replay
+
+A rejected Codex turn/start with a definitive protocol refusal ends the run. After an unknown submission outcome, the Agent reads the original thread and accepts only the turn containing the matching user-message clientId. Stop can retry that scoped check. Permanent size rejections (including HTTP 413) retry terminal metadata alone. A project-local pending terminal record supports recovery after an Agent restart. Replaying a message whose request ledger entry has already expired returns HTTP 409 and preserves the saved reply.
+
+Retries get distinct native Codex client IDs. The Agent can recover an ambiguous native turn only from its original thread, with exact attempt ownership. While a terminal write lacks acknowledgement, a journal under `data/agent-runtime/pending-saves` records its intended patch. A damaged entry is retained and affected sends report `SESSION_RECOVERY_REQUIRED`; the rest of the project can continue.
