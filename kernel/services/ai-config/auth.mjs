@@ -1,3 +1,4 @@
+import {ensureNativeConfigurationCommitted} from '../../contracts/configuration-write.mjs';
 import {prepareManagedEnvironment} from '../../contracts/local-storage.mjs';
 import path from 'node:path';
 import {prepareProviderTools} from '../../tooling/providers.mjs';
@@ -22,6 +23,7 @@ export class AccountSetup {
     try{
       await privateDirectory(path.join(this.root,'local-secrets'));
       await privateDirectory(path.join(this.root,'local-secrets/codex'));
+      await ensureNativeConfigurationCommitted(this.root);
       if(epoch!==this.epoch)throw failure('LOGIN_CANCELLED','Sign-in was cancelled.',409);
       const env={...await prepareManagedEnvironment(this.root),CODEX_HOME:path.join(this.root,'local-secrets/codex'),SEED_ROOT:this.root};
       for(const key of ['OPENAI_API_KEY','CODEX_API_KEY','CODEX_ACCESS_TOKEN','SAPLING_CODEX_API_KEY'])delete env[key];

@@ -1,3 +1,4 @@
+import {connectionsFile, readConfigurationFiles} from "../contracts/configuration-transaction.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID, createHash } from "node:crypto";
@@ -270,10 +271,8 @@ export class ProjectLauncher {
     return status.connectionsFingerprint === await this.connectionsFingerprint();
   }
   async connectionsFingerprint() {
-    const bytes = await fs.readFile(path.join(this.root, 'local-secrets/ai-config/connections.json')).catch(e => {
-      if (e.code === 'ENOENT') return Buffer.from(''); throw e;
-    });
-    const hash = createHash('sha256').update(bytes);
+    const [connections] = await readConfigurationFiles(this.root,[connectionsFile]);
+    const hash = createHash('sha256').update(connections ?? '');
     const mcp = await fs.readFile(path.join(this.root, 'config/mcp-access.json')).catch(e => {
       if (e.code === 'ENOENT') return null; throw e;
     });

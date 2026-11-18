@@ -81,7 +81,7 @@ TASK-20261012-001, Codex. The standalone setup service binds 127.0.0.1 at an OS-
 - POST /api/config/login/cancel: cancel only the owned current auth flow.
 - POST /api/config/close: close only setup service and its owned auth process, returning to launcher; running chat services stay as they are.
 
-All responses no-store. JSON only, bounded body64KiB. Static assets served from explicitly built configuration UI, never arbitrary root files. Errors use {error:{code,message}} without raw upstream data. Disk/schema/lock errors are explicit; malformed files are preserved. Serial writes use an exclusive project-local writer lock, individually atomic key/ledger/profile publication (an I/O failure requires reloading actual state; this is not a cross-file transaction), stale locks are not silently broken. Saving is not quota/network/model/tool validation. Runtime kernel/contracts/ai-configuration.mjs translate private schemes to Codex args/env, OpenCode native provider config or Claude Agent SDK env/options, retaining existing manual configuration and permissions. No dependency upgrades.
+All responses no-store. JSON only, bounded body64KiB. Static assets served from explicitly built configuration UI, never arbitrary root files. Errors use {error:{code,message}} without raw upstream data. Disk/schema/lock errors are explicit; malformed files are preserved. Serial writes use an exclusive project-local writer lock, a private transaction for key/ledger/profile publication, and ownership checks before recovering an exited writer. Saving is not quota/network/model/tool validation. Runtime kernel/contracts/ai-configuration.mjs translate private schemes to Codex args/env, OpenCode native provider config or Claude Agent SDK env/options, retaining existing manual configuration and permissions. No dependency upgrades.
 
 ## Explicit credential import (2026-10-13 / TASK-20261013-002)
 
@@ -90,7 +90,7 @@ POST `/api/config/credentials/import`: `{engine:codex|claude,source:local|upload
 - Codex local: read only `<CODEX_HOME or user-home/.codex>/auth.json`, on explicit click. Upload: JSON text from a selected file. Maximum decoded credential document 32KiB, plain object with nonempty token strings `tokens.id_token`, `tokens.access_token`, `tokens.refresh_token`; optional account_id/auth_mode/last_refresh retained, unrelated fields dropped. API-key-only files are rejected; use API configuration instead. Publish to project `local-secrets/codex/auth.json`, register credential reference, select codex-account. Existing destination (including malformed files) requires replace:true; no automatic backup or silent overwrite. Source stays unchanged. File/keychain-only fallback failures are actionable, not reported as successful login.
 - Claude local API: read inherited `ANTHROPIC_API_KEY`, optional ANTHROPIC_BASE_URL/ANTHROPIC_MODEL; otherwise read only `<CLAUDE_CONFIG_DIR or user-home/.claude>/settings.json` and extract env.ANTHROPIC_API_KEY/ANTHROPIC_BASE_URL/ANTHROPIC_MODEL plus top-level model. No `.credentials.json`, keychain, OAuth token or apiKeyHelper execution. Upload: accept `apiKey`, `ANTHROPIC_API_KEY` or `env.ANTHROPIC_API_KEY` with optional baseUrl/model (or equivalent env fields). Reject subscription OAuth documents. profile supplies id/label/baseUrl/model/token limits; explicit nonblank form fields override document hints. Create/select a Claude/Anthropic Messages scheme via existing profile validation, keeping custom provider URL. Existing selected API key requires replace:true. Never put credential values in state/TOML/argv/ledger. API documents may be named auth.json, but Claude Code subscription credential files are not API key documents.
 
-Errors: 400 INVALID_CREDENTIALS/UNSUPPORTED_AUTH/CREDENTIALS_TOO_LARGE/INVALID_CONFIG/KEY_REQUIRED; 404 LOCAL_AUTH_NOT_FOUND/LOCAL_API_NOT_FOUND; 409 CREDENTIAL_EXISTS/CONFIG_CHANGED/CONFIG_BUSY/LOGIN_BUSY/IMPORT_BUSY; 500 LOCAL_AUTH_UNREADABLE/CONFIG_STORAGE_ERROR. Missing local files and unsupported keychain/desktop/subscription auth lead to official Codex login or Claude API setup. Imports share the existing individually atomic credential/ledger/profile writes, not a cross-file transaction; after I/O failure inspect actual state. Successful import confirms local storage only; expiry, model access, quota, network and Windows-native acceptance remain separate.
+Errors: 400 INVALID_CREDENTIALS/UNSUPPORTED_AUTH/CREDENTIALS_TOO_LARGE/INVALID_CONFIG/KEY_REQUIRED; 404 LOCAL_AUTH_NOT_FOUND/LOCAL_API_NOT_FOUND; 409 CREDENTIAL_EXISTS/CONFIG_CHANGED/CONFIG_BUSY/LOGIN_BUSY/IMPORT_BUSY; 500 LOCAL_AUTH_UNREADABLE/CONFIG_STORAGE_ERROR. Missing local files and unsupported keychain/desktop/subscription auth lead to official Codex login or Claude API setup. Imports publish through the shared credential/ledger/profile transaction. Successful import confirms local storage only; expiry, model access, quota, network and Windows-native acceptance remain separate.
 
 ## Claude Agent engine (TASK-20261012-005–009)
 
@@ -147,8 +147,7 @@ External configuration rejects project/open and project/restart with CONFIGURATI
 Credential/profile/ledger writes and script setup share one ownership-tagged
 `local-secrets/ai-config/write.lock`. Its file handle closes before the protected
 work; the matching writer removes only its own receipt on completion. Existing
-unknown/stale locks produce CONFIG_BUSY for inspection, never deletion by PID
-guess. Ledger publication is an atomic same-directory replacement so reopening
+unverified locks produce CONFIG_BUSY for inspection. A valid writer identity and confirmed process exit allow recovery. Ledger publication is an atomic same-directory replacement so reopening
 the script cannot overwrite an in-flight profile update. Managed storage rejects
 symlinked ancestors before creating child directories (PROJECT_STORAGE_LOCATION).
 These checks constrain the configuration service's own destinations, not Agent tools.
@@ -208,3 +207,9 @@ AI-mode mutations never reset source, conversations, project identity/icon, comp
 
 
 The configuration page opens with Node and kernel dependencies. Codex account sign-in prepares Codex on demand and cancellation interrupts its preparation. Saving or importing profiles does not require another provider's tools.
+
+### Credential updates and repair
+
+Saving a scheme and fetching its model list may reuse a saved API key only for the same URL origin. Changing the scheme, host or effective port requires an explicitly supplied credential or an unauthenticated endpoint. The API returns KEY_ORIGIN_CHANGED when this check fails. A broken project Codex login returns a sanitized repairRequired status; the page can still replace it explicitly. Schemes with unreadable credentials remain editable and are omitted from engine catalogs until repaired. Healthy schemes can still be selected.
+
+Configuration writers stage the credential, reference ledger and connection revision under the shared writer lease. Project readers see the previous committed configuration until all replacements succeed. If a writer stops before publication, the prior image remains readable and its verified pending transaction is restored before the next write. Private recovery data stays in local-secrets/ai-config with owner-only access. External tools continue to use the conventional Codex auth.json. The configuration launcher stops project-owned runtime services before reconfiguration.

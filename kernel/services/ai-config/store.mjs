@@ -1,9 +1,10 @@
+import {publishConfigurationFiles,connectionsFile,ledgerFile,codexAuthFile} from '../../contracts/configuration-transaction.mjs';
 import {withConfigurationWrite} from '../../contracts/configuration-write.mjs';
 import {ensureManagedDirectory} from '../../contracts/local-storage.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { connectionsPath, credentialPath, readConnections, readCredential, codexCredentialStatus } from '../../contracts/ai-configuration.mjs';
+import { credentialPath, withAIConnections, readConnections, readCredential, codexCredentialStatus } from '../../contracts/ai-configuration.mjs';
 export const failure = (code, message, status = 400) => Object.assign(new Error(message), { code, status });
 const text = (value, field, max = 240) => {
   if (typeof value !== 'string' || !value.trim() || value.length > max || /[\x00-\x1f\x7f]/.test(value)) throw failure('INVALID_CONFIG', `Enter a valid ${field}.`);
@@ -36,6 +37,7 @@ export function validateProfile(input, previous) {
   if (input.apiKey !== undefined && typeof input.apiKey !== 'string') throw failure('INVALID_CONFIG', 'API key must be text.');
   if (typeof input.apiKey === 'string' && (input.apiKey.length > 8192 || /[\r\n\x00]/.test(input.apiKey))) throw failure('INVALID_CONFIG', 'API key contains invalid characters.');
   if (!noAuth && !input.apiKey?.trim() && (!previous || previous.noAuth || previous.kind !== 'api')) throw failure('KEY_REQUIRED','Enter an API key, or select an endpoint that requires no authentication.');
+  if (!noAuth && !input.apiKey?.trim() && new URL(previous.baseUrl).origin!==url.origin) throw failure('KEY_ORIGIN_CHANGED','Enter a new API key for the changed provider address.');
   const contextWindow = input.contextWindow === undefined ? 128000 : Number(input.contextWindow);
   const maxOutput = input.maxOutput === undefined ? 16384 : Number(input.maxOutput);
   if (!Number.isInteger(contextWindow) || contextWindow < 4096 || contextWindow > 4000000 || !Number.isInteger(maxOutput) || maxOutput < 1 || maxOutput > contextWindow) throw failure('INVALID_CONFIG','Enter valid context and output token limits (output must not exceed context).');
@@ -46,58 +48,58 @@ export async function privateDirectory(folder) {
   if (!(await fs.lstat(folder)).isDirectory() || (await fs.lstat(folder)).isSymbolicLink()) throw failure('CONFIG_STORAGE_ERROR','Configuration folder must be a normal directory.',500);
   await fs.chmod(folder,0o700);
 }
-async function atomicJSON(file, value) {
-  try { if (!(await fs.lstat(file)).isFile()) throw failure('CONFIG_STORAGE_ERROR','Configuration file must be a normal file.',500); }
-  catch (error) { if (error.code !== 'ENOENT') throw error; }
-  const temp = `${file}.${randomUUID()}.tmp`;
-  try { await fs.writeFile(temp,JSON.stringify(value,null,2)+'\n',{ flag:'wx',mode:0o600 }); await fs.rename(temp,file); await fs.chmod(file,0o600); }
-  finally { await fs.rm(temp,{force:true}); }
-}
 export class ConfigurationStore {
   constructor(root) { this.root = root; }
   async state() {
-    const data = await readConnections(this.root);
-    const profiles = await Promise.all(data.profiles.map(async profile => ({ ...Object.fromEntries(['id','label','engine','kind','protocol','baseUrl','model','noAuth','contextWindow','maxOutput'].filter(key=>profile[key]!==undefined).map(key=>[key,profile[key]])), hasKey: (profile.kind === 'subscription' || (profile.kind === 'api' && !profile.noAuth)) && await readCredential(this.root,profile).then(()=>true,()=>false) })));
-    return { revision:data.revision, activeId:data.activeId, profiles, codex: await codexCredentialStatus(this.root) };
+    return withAIConnections(this.root,async (data, secret, accountStatus) => {
+      const publicFields=['id','label','engine','kind','protocol','baseUrl','model','noAuth','contextWindow','maxOutput'];
+      const profiles=await Promise.all(data.profiles.map(async profile => {
+        const metadata=Object.fromEntries(publicFields.filter(key=>profile[key]!==undefined).map(key=>[key,profile[key]]));
+        const needsKey=profile.kind==='subscription'||(profile.kind==='api'&&!profile.noAuth);
+        return {...metadata,hasKey:needsKey && await secret(profile).then(()=>true,()=>false)};
+      }));
+      return {revision:data.revision, activeId:data.activeId, profiles, codex:await accountStatus()};
+    });
   }
   async write(work, revision) {
-    const directory = path.dirname(connectionsPath(this.root));
     for (const folder of ['local-secrets','local-secrets/ai-config','local-secrets/api-keys','local-secrets/notes']) await ensureManagedDirectory(this.root,folder);
     return withConfigurationWrite(this.root,async()=>{
     try {
       const data = await readConnections(this.root);
       if (revision !== undefined && revision !== data.revision) throw failure('CONFIG_CHANGED','Configuration changed. Reload it before saving.',409);
-      const ledgerFile = path.join(this.root,'local-secrets/notes/project-secrets.json');
+      const ledgerPath=path.join(this.root,'local-secrets',ledgerFile);
       let ledger = { schema_version:1, project:{ name:'Saplingagent',root:this.root },credentials:[] };
-      try { ledger = JSON.parse(await fs.readFile(ledgerFile,'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw failure('CONFIG_STORAGE_ERROR','Credential ledger cannot be read; preserve and repair it.',500); }
+      try { ledger = JSON.parse(await fs.readFile(ledgerPath,'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw failure('CONFIG_STORAGE_ERROR','Credential ledger cannot be read; preserve and repair it.',500); }
       if (!ledger || typeof ledger !== 'object' || Array.isArray(ledger) || (ledger.credentials !== undefined && !Array.isArray(ledger.credentials))) throw failure('CONFIG_STORAGE_ERROR','Credential ledger has an invalid structure.',500);
       ledger.credentials ||= [];
-      await work(data,ledger);
-      data.revision++; await atomicJSON(ledgerFile,ledger); await atomicJSON(connectionsPath(this.root),data);
+      const changes=new Map();
+      await work(data,ledger,changes);
+      data.revision++;
+      changes.set(ledgerFile,ledger);changes.set(connectionsFile,data);
+      await publishConfigurationFiles(this.root,changes);
       return this.state();
     } catch (error) { if (error.code && error.status) throw error; throw failure('CONFIG_STORAGE_ERROR','Unable to save configuration. Check the project folder and reload the page to inspect its state.',500); }
     });
   }
   async save(input) {
-    return this.write((data,ledger)=>this.saveProfile(data,ledger,input),input.revision);
+    return this.write((data,ledger,changes)=>this.saveProfile(data,ledger,changes,input),input.revision);
   }
-  async saveProfile(data,ledger,input) {
+  async saveProfile(data,ledger,changes,input) {
       const previous = data.profiles.find(p=>p.id===input.id);
       if (input.id && !previous && input.id !== 'codex-account') throw failure('NOT_FOUND','Saved scheme no longer exists.',404);
       const profile = validateProfile(input,previous);
-      if (profile.kind === 'chatgpt' && !(await codexCredentialStatus(this.root)).chatgpt) throw failure('LOGIN_REQUIRED','Sign in with your ChatGPT account first. API-key credentials are a separate method.');
+      if (profile.kind === 'chatgpt' && !changes.has(codexAuthFile) && !(await codexCredentialStatus(this.root)).chatgpt) throw failure('LOGIN_REQUIRED','Sign in with your ChatGPT account first. API-key credentials are a separate method.');
       if (profile.kind === 'subscription') {
         // A blank edit may retain only a valid credential of the same kind.
         if (input.apiKey?.trim()) {
-          await atomicJSON(credentialPath(this.root,profile.id),{oauthToken:input.apiKey.trim()});
-          await readCredential(this.root,profile);
-        } else await readCredential(this.root,profile).catch(()=>{throw failure('KEY_REQUIRED','The saved subscription token is unavailable. Paste the token printed by claude setup-token.');});
+          changes.set('api-keys/'+path.basename(credentialPath(this.root,profile.id)),{oauthToken:input.apiKey.trim()});
+        } else await readCredential(this.root,previous).catch(()=>{throw failure('KEY_REQUIRED','The saved subscription token is unavailable. Paste the token printed by claude setup-token.');});
         const entry = { id:`ai-${profile.id}`,category:'oauth-token',service:'agent-runtime/Claude Agent',environment:'local',purpose:`${profile.label} (claude setup-token, personal local use)`,credential_file:`../api-keys/ai-${profile.id}.json`,official_reference:'kernel/services/ai-config/REFERENCES.md',status:'configured',updated_at:new Date().toISOString() };
         const index=ledger.credentials.findIndex(e=>e.id===entry.id);if(index<0)ledger.credentials.push(entry);else ledger.credentials[index]={...ledger.credentials[index],...entry};
       } else if (profile.kind === 'api') {
         const file = credentialPath(this.root,profile.id);
-        if (!profile.noAuth && input.apiKey?.trim()) await atomicJSON(file,{apiKey:input.apiKey.trim()});
-        if (!profile.noAuth) await readCredential(this.root,profile);
+        if (!profile.noAuth && input.apiKey?.trim()) changes.set('api-keys/'+path.basename(file),{apiKey:input.apiKey.trim()});
+        else if (!profile.noAuth) await readCredential(this.root,previous);
         const entry = { id:`ai-${profile.id}`, category:'api-key',service:profile.engine === 'codex' ? 'agent-runtime/Codex' : profile.engine === 'claude' ? 'agent-runtime/Claude Agent' : 'agent-runtime/OpenCode',environment:'local',purpose:profile.label,credential_file:`../api-keys/ai-${profile.id}.json`,official_reference:'kernel/services/ai-config/REFERENCES.md',status:profile.noAuth ? 'disabled' : 'configured',updated_at:new Date().toISOString() };
         const index=ledger.credentials.findIndex(e=>e.id===entry.id);if(index<0)ledger.credentials.push(entry);else ledger.credentials[index]={...ledger.credentials[index],...entry};
         // Turning off authentication retains the old private key as a disabled
@@ -110,17 +112,17 @@ export class ConfigurationStore {
       if(input.activate !== false)data.activeId=profile.id;
   }
   async importCodex(input, credential) {
-    return this.write(async(data,ledger)=> {
+    return this.write(async(data,ledger,changes)=> {
       await privateDirectory(path.join(this.root,'local-secrets/codex'));
       const file=path.join(this.root,'local-secrets/codex/auth.json');
       let exists=true;try{await fs.lstat(file);}catch(error){if(error.code==='ENOENT')exists=false;else throw error;}
       if(exists&&!input.replace)throw failure('CREDENTIAL_EXISTS','This project already has Codex credentials. Select Replace existing credentials to import a different account.',409);
-      await atomicJSON(file,credential);
-      await this.saveProfile(data,ledger,{id:'codex-account',engine:'codex',kind:'chatgpt',label:'ChatGPT account',activate:true});
+      changes.set(codexAuthFile,credential);
+      await this.saveProfile(data,ledger,changes,{id:'codex-account',engine:'codex',kind:'chatgpt',label:'ChatGPT account',activate:true});
     },input.revision);
   }
   async importClaude(input, credential) {
-    return this.write(async(data,ledger)=> {
+    return this.write(async(data,ledger,changes)=> {
       const draft=input.profile||{};
       const previous=data.profiles.find(p=>p.id===draft.id);
       if(previous&&previous.engine!=='claude')throw failure('INVALID_CONFIG','Choose a Claude API scheme to import credentials.');
@@ -129,15 +131,27 @@ export class ConfigurationStore {
         let exists=true;try{await fs.lstat(credentialPath(this.root,previous.id));}catch(error){if(error.code==='ENOENT')exists=false;else throw error;}
         if(exists&&!input.replace)throw failure('CREDENTIAL_EXISTS','This scheme already has a key. Select Replace existing credentials or create a new scheme.',409);
       }
-      await this.saveProfile(data,ledger,{...draft,label:draft.label?.trim()||'Claude API',baseUrl:draft.baseUrl?.trim()||credential.baseUrl||'https://api.anthropic.com/v1',model:draft.model?.trim()||credential.model,engine:'claude',kind:'api',protocol:'anthropic',apiKey:credential.apiKey,noAuth:false,activate:true});
+      await this.saveProfile(data,ledger,changes,{...draft,label:draft.label?.trim()||'Claude API',baseUrl:draft.baseUrl?.trim()||credential.baseUrl||'https://api.anthropic.com/v1',model:draft.model?.trim()||credential.model,engine:'claude',kind:'api',protocol:'anthropic',apiKey:credential.apiKey,noAuth:false,activate:true});
     },input.revision);
   }
-  async activate(input) { return this.write(async data=> { if(!data.profiles.some(p=>p.id===input.id))throw failure('NOT_FOUND','Scheme not found.',404);data.activeId=input.id; },input.revision); }
+  async activate(input) {
+    return this.write(async data=>{
+      const profile=data.profiles.find(p=>p.id===input.id);
+      if(!profile)throw failure('NOT_FOUND','Scheme not found.',404);
+      if(profile.kind==='chatgpt'){
+        if(!(await codexCredentialStatus(this.root)).chatgpt)throw failure('LOGIN_REQUIRED','Sign in with ChatGPT or replace the saved login.');
+      }else await readCredential(this.root,profile).catch(error=>{
+        if(error.code==='CREDENTIAL_UNAVAILABLE')throw failure('KEY_REQUIRED','Replace the unavailable credential before selecting this scheme.');
+        throw error;
+      });
+      data.activeId=input.id;
+    },input.revision);
+  }
   async models(input) {
     if (input?.kind === 'subscription') throw failure('INVALID_CONFIG','Model discovery is not available for subscription tokens. Enter a Claude model ID.');
     const data=await readConnections(this.root); const previous=data.profiles.find(p=>p.id===input.id);
     const profile=validateProfile({ ...input,model:input.model || 'model-discovery' },previous);
-    const key=profile.noAuth ? null : input.apiKey?.trim() || await readCredential(this.root,profile);
+    const key=profile.noAuth ? null : input.apiKey?.trim() || await readCredential(this.root,previous);
     const headers=key ? profile.protocol==='anthropic' ? {'x-api-key':key,'anthropic-version':'2023-06-01'} : {Authorization:`Bearer ${key}`} : {};
     const url=new URL(profile.baseUrl);url.pathname=url.pathname.replace(/\/$/,'')+'/models';
     let response;
