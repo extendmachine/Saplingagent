@@ -11,6 +11,7 @@ import { readConnections,readCredential } from '../../contracts/ai-configuration
 import { initializeDownloadedRecords } from './recipient-records.mjs';
 import { setup } from '../setup.mjs';
 import {prepareManagedEnvironment} from '../../contracts/local-storage.mjs';
+import {ensureNativeConfigurationCommitted} from '../../contracts/configuration-write.mjs';
 import {assertSetupAvailable} from '../../contracts/kernel.mjs';
 import {readMcpAccess,assertMcpClientsStopped} from '../../contracts/mcp-access.mjs';
 import { codexBinary, claudeBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
@@ -97,6 +98,7 @@ async function localSetup() {
   catch (error) { if (error.code !== 'EEXIST') throw error; }
 }
 async function loggedIn() {
+  await ensureNativeConfigurationCommitted(root);
   const result = await run(cli, [...authArgs, 'login', 'status'], { capture: true });
   if (result.code === 0) return true;
   if (/not logged in/i.test(result.output + result.errorOutput)) return false;
@@ -185,6 +187,7 @@ async function login(deviceAuth) {
   console.log(t("Project login complete. Choose Start app in Saplingagent.sh."));
 }
 async function logout() {
+  await ensureNativeConfigurationCommitted(root);
   if (!await exists(cli)) throw new Error(t("Install project dependencies first: bash Saplingagent.sh install --repair"));
   await required(cli, [...authArgs, 'logout'], { capture: true });
   console.log(t("Logged out of the Codex account for this project; application files and sessions are retained. Choose Configure AI in Saplingagent.sh to sign in again."));

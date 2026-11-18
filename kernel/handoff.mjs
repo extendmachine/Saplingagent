@@ -33,6 +33,7 @@ export async function startMaintenance(root, action, id) {
     const sources = [
       'kernel/compat/paths.mjs',
       'kernel/contracts/ai-configuration.mjs',
+      'kernel/contracts/configuration-transaction.mjs',
       'kernel/contracts/configuration-write.mjs',
       'kernel/contracts/engine-dependencies.mjs',
       'kernel/contracts/kernel.mjs',

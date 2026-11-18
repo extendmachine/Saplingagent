@@ -150,13 +150,13 @@ bash Saplingagent.sh --lang zh
 | OpenCode API | 支持 Chat Completions、Responses 或 Anthropic Messages，按服务商协议选择 |
 | Claude Agent API | 使用 Anthropic Messages 协议、你自己的 API key 和准确模型 ID |
 
-在 **API Base URL** 字段填写 API 基础地址，不要填写网站首页。预设可辅助配置 OpenAI、OpenRouter、Anthropic 或本地 Ollama 兼容端点。需要其他协议、任意自定义请求头或独立订阅 OAuth 的服务商，仍需对应适配。
+在 **API Base URL** 字段填写 API 基础地址，不要填写网站首页。预设可辅助配置 OpenAI、OpenRouter、Anthropic 或本地 Ollama 兼容端点。编辑已有方案时，原地址的协议、主机和端口都相同，可以留空继续使用已保存的密钥。更换其中任一项后，请先填写新密钥，再读取模型或保存。需要其他协议、任意自定义请求头或独立订阅 OAuth 的服务商，仍需对应适配。
 
 **获取模型 / Fetch models**是可选的目录查询；不支持查询时可手动填写模型 ID。用于应用开发的模型应支持流式输出与工具调用。保存方案不代表已验证模型兼容性或可用额度。
 
 点击 **保存并使用 / Save & use**，完成所有修改后选择 **保存并构建应用 / Save & build app**。等待构建完成，再点击 **完成配置 / Finish setup**，随后双击项目内 App。可以保存多个方案并切换默认项；更换服务商时可在空闲对话中选择 AI 并点击“应用”，保留当前历史，也可按需新建对话。**完成配置 / Finish setup** 会交回项目内启动器，等待外部配置进程退出后清理临时目录，单独关闭浏览器标签不会停止服务。浏览器未自动打开时，使用终端打印的本地网址。
 
-方案元数据保存在 `local-secrets/ai-config/connections.json`，API key 保存在 `local-secrets/api-keys/`，Codex 登录凭据保存在 `local-secrets/codex/`。凭据总账只保存文件引用。页面不会将已有密钥回填到表单；编辑时留空可保留旧密钥。安装不会自动导入全局凭据。
+方案元数据保存在 `local-secrets/ai-config/connections.json`，API key 保存在 `local-secrets/api-keys/`，Codex 登录凭据保存在 `local-secrets/codex/`。凭据总账只保存文件引用。页面不会将已有密钥回填到表单。安装不会自动导入全局凭据。
 
 OpenCode 独立方案和自定义 Codex API 方案无需先登录 ChatGPT。修改默认方案后，点击**重启应用**加载配置。已有对话保留原来的引擎与模型；需要在原对话换用新方案时，在空闲状态选择 AI 并点击**应用（Apply）**，下一次发送才交接历史，也可选择**新建对话**。详见 [AI 配置指南](docs/ai-configuration.html)和[配置服务契约](kernel/services/ai-config/CONTRACT.md)。
 
