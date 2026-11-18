@@ -52,7 +52,7 @@
 
 ## 本机工具复用与共享环境
 
-安装器优先复用版本兼容的本机 Node、Codex CLI、Claude Code；未找到、检测失败或版本不匹配时，将已验证版本装入当前用户的共享工具库，后续项目直接复用。OpenCode 使用同一机制，Go 仅在编译启动器时准备。首版以 release 固定版本作为复用标准，不覆盖用户已有程序。账号、会话、业务数据和应用依赖继续独立。需要完整文件夹自包含时运行 `SAPLING_RUNTIME_MODE=portable bash Saplingagent.sh install`。详见[共享工具与修复](docs/shared-runtime.html)。此项 main 开发内容另行同步 release。
+安装时先准备 Node 并打开设置页。选择内置引擎后，项目会按需准备它的 CLI 和所需 SDK；只使用外部 MCP 时无需安装内置引擎。多个项目可以复用本机工具和同一用户的共享工具库。Go 在导出原生启动器时准备。首版以 release 固定版本作为复用标准，不覆盖用户已有程序。账号、会话、业务数据和应用依赖继续独立。需要完整文件夹自包含时运行 `SAPLING_RUNTIME_MODE=portable bash Saplingagent.sh install`。详见[共享工具与修复](docs/shared-runtime.html)。此项 main 开发内容另行同步 release。
 
 
 ## 内核 0.9.9 更新

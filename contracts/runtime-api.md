@@ -81,6 +81,8 @@ The demand-started backend/ai-config serves a separate compiled React entry at i
 
 ## Complete project restart (2026-10-15)
 
+The chat engine picker can request preparation using POST /api/engines/prepare with a JSON object containing engine (codex, claude, opencode). It returns the same catalog as GET /api/engines. Readiness and errors are engine-specific. Ordinary catalog polling leaves unselected engines uninstalled. External MCP-only projects can enable a built-in engine through AI configuration.
+
 POST /api/runtime/restart {scope?:'all'|'backend'} defaults to all. Runtime rereads Node backend discovery and optional config/services.json before stopping live processes, then replaces frontend/backends and registered project processes in dependency order. GET /api/runtime/status.services adds optional project:true and port for those processes; commands/env remain private. Complete success requires readiness; frontend refresh works with an in-memory marker when sessionStorage is unavailable. Public gateway/control stay live, internal port edits apply through Restart app. Errors and retry remain in-page. See kernel/services/runtime-manager/CONTRACT.md and docs/project-services.html for the manifest/readiness/drain contract.
 
 ## Chat attachments and fresh rendered pages (2026-10-15)

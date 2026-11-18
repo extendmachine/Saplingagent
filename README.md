@@ -48,7 +48,7 @@ The public project introduction, videos and application examples are maintained 
 
 ## Shared local tools
 
-The installer reuses compatible installed Node, Codex CLI and Claude Code, or prepares tested versions in one per-user library for later projects. OpenCode uses the same resolver; Go is prepared only for native compilation. Initial reuse requires the exact tested release pins; incompatible programs are retained and a supported version is installed alongside them. Credentials, conversations, data and application dependencies stay separate. Use `SAPLING_RUNTIME_MODE=portable bash Saplingagent.sh install` for a project-contained tool store. See [shared tools and repair](docs/shared-runtime.html). This main development feature is published to release separately.
+Installation prepares Node and opens setup. Choosing a built-in engine prepares its compatible CLI and required SDK on demand. External MCP access needs no built-in engine. Projects can reuse installed tools and one per-user library. Go is prepared when exporting the native launcher. Initial reuse requires the exact tested release pins; incompatible programs are retained and a supported version is installed alongside them. Credentials, conversations, data and application dependencies stay separate. Use `SAPLING_RUNTIME_MODE=portable bash Saplingagent.sh install` for a project-contained tool store. See [shared tools and repair](docs/shared-runtime.html). This main development feature is published to release separately.
 
 
 ## Kernel 0.9.9 update
