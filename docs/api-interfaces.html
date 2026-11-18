@@ -67,7 +67,7 @@
 </tr>
 <tr>
 <td>POST /api/chat</td>
-<td>{sessionId?,text,requestId?} → SSE：session、snapshot、text_delta、status、tool、approval、error、done</td>
+<td>{sessionId?,text,requestId?} → SSE：session、snapshot、text_delta、status、tool、approval、error、done. Replaying a saved message after its retry record expires returns 409 REQUEST_HISTORY_EXPIRED. 已有请求的重试记录过期时返回 409，可发送一条新消息继续。 A damaged pending save sets session.recoveryError and returns 409 SESSION_RECOVERY_REQUIRED on send. 待保存记录损坏时可查看历史，其他会话仍可使用。</td>
 </tr>
 <tr>
 <td>GET /api/events?sessionId=…</td>

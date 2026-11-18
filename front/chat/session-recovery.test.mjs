@@ -660,3 +660,22 @@ test('native completion clears an earlier unconfirmed-stop warning', async t => 
   } }); t.after(() => h.close());
   await h.send(); assert.equal(h.current.isRunning, false); assert.equal(h.current.error, '');
 });
+
+test('expired retry history and a damaged pending save show a terminal actionable error', async t => {
+  for (const code of ['REQUEST_HISTORY_EXPIRED', 'SESSION_RECOVERY_REQUIRED']) {
+    const h = await harness({ route: request => {
+      if (request.url === '/api/chat') return json({error:{code, message:'Review the saved conversation'}}, 409);
+    } }); t.after(() => h.close());
+    await h.send(); await h.settle();
+    assert.equal(h.current.errorIssue.code, code);
+    assert.equal(h.current.isRunning, false); assert.equal(h.current.retryable, false);
+    await h.current.retry(); assert.equal(h.requests.filter(request => request.url === '/api/chat').length, 1);
+  }
+});
+
+test('restoring a conversation with a damaged pending save keeps history readable and shows recovery instructions', async t => {
+  const saved = {...session('damaged', [message('msg','Retain this')]), recoveryError:{code:'SESSION_RECOVERY_REQUIRED',message:'Inspect recovery record'}};
+  const h = await harness({savedId:'damaged', route:() => json({session:saved})}); t.after(() => h.close());
+  assert.equal(h.current.errorIssue.code, 'SESSION_RECOVERY_REQUIRED'); assert.equal(h.current.messages[0].text,'Retain this');
+  assert.equal(h.current.isRunning, false); assert.equal(h.current.retryable, false); assert.equal(h.current.startNew(),true);
+});

@@ -132,6 +132,12 @@ export function useSeedRuntime() {
     bindingRevision.current = revision;
     setEngineRevision(bindingRevision.current);
     setHandoff(saved.handoff ?? null);
+    if (saved.recoveryError?.code === 'SESSION_RECOVERY_REQUIRED') {
+      setError(Object.assign(new Error(saved.recoveryError.message), {code:saved.recoveryError.code}));
+      setRetryable(false);
+      lastRequest.current = null;
+      return;
+    }
     if (!lastRequest.current && retryBelongsToBinding) {
       const user = [...saved.messages].reverse().find(message => message.role === 'user');
       if (user) lastRequest.current = { sessionId: saved.id, text: user.text, requestId: user.requestId || user.id, engineRevision: bindingRevision.current, engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null, ...(user.attachments?.length ? { attachmentIds: user.attachments.map(value => value.id) } : {}) };
@@ -429,6 +435,14 @@ export function useSeedRuntime() {
     } catch (failure) {
       if (!currentTarget(controller.signal, expectedEpoch, id) || isAborted(failure)) return;
       if (detachMissingSession(failure, request.sessionId || id, controller.signal, expectedEpoch)) return;
+      if (failure instanceof Error && 'code' in failure && ['REQUEST_HISTORY_EXPIRED', 'SESSION_RECOVERY_REQUIRED'].includes(String(failure.code))) {
+        setRunning(false);
+        setActivity('');
+        setError(failure);
+        setRetryable(false);
+        lastRequest.current = null;
+        return;
+      }
       flush();
       try {
         await recover(controller.signal, expectedEpoch, request.requestId);

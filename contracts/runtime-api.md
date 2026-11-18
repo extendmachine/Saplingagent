@@ -143,3 +143,10 @@ ownership remain active; further Stop retries interruption, never closes other
 conversations' shared transport. Later completion clears the warning. Chat headers
 have a120-second transport budget, ordinary requests10seconds, with no new whole-
 turn hard deadline. No automatic resend, source rollback or permissions change.
+
+
+## Request recovery and replay
+
+POST /api/chat returns 409 REQUEST_HISTORY_EXPIRED when an existing user message outlives its detailed retry ledger. Keep the saved conversation and use a new request ID for a genuinely new instruction. Terminal save retries and native turn identification are scoped to the original request.
+
+A damaged pending terminal record rejects sends in its conversation with HTTP 409 `SESSION_RECOVERY_REQUIRED`. Other conversations stay usable.
