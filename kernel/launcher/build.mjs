@@ -448,6 +448,17 @@ async function compileLauncherUnlocked(
     // This app only runs its own helper and never controls another application.
     for (const key of Object.keys(plist))
       if (key.endsWith("UsageDescription")) delete plist[key];
+    const folderPurpose = "This app reads the project configuration and saves runtime files in the project folder.";
+    const folderKeys = ["NSDesktopFolderUsageDescription", "NSDocumentsFolderUsageDescription", "NSDownloadsFolderUsageDescription"];
+    for (const key of folderKeys) plist[key] = launcherMessages.en[folderPurpose];
+    plist.CFBundleDevelopmentRegion = "en";
+    for (const [locale, language] of [["en", "en"], ["zh-Hans", "zh"]]) {
+      const directory = path.join(artifact, "Contents/Resources", locale + ".lproj");
+      await fs.mkdir(directory, {recursive: true});
+      const explanation = JSON.stringify(launcherMessages[language][folderPurpose]);
+      const strings = folderKeys.map(key => `"${key}" = ${explanation};\n`).join("");
+      await fs.writeFile(path.join(directory, "InfoPlist.strings"), strings);
+    }
     if (icon.length) {
       plist.CFBundleIconFile = "project.icns";
       delete plist.CFBundleIconName;

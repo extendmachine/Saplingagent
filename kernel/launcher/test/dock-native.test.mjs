@@ -9,6 +9,7 @@ import {execFile,spawn} from 'node:child_process';
 import {promisify} from 'node:util';
 import {setTimeout as delay} from 'node:timers/promises';
 import {compileLauncher} from '../build.mjs';
+import {launcherMessages} from '../../localization/launcher-messages.mjs';
 const exec=promisify(execFile),source=path.resolve(fileURLToPath(new URL('../../../',import.meta.url)));
 const goRelative='.runtime/go1.27.2-darwin-arm64';
 const available=process.platform==='darwin'&&await fs.access(path.join(source,goRelative,'go/bin/go')).then(()=>true,()=>false);
@@ -43,7 +44,12 @@ async function clearFixtureOrphans(root,ownerPID){
 }
 
 test('compiled macOS app stays in the Dock, reopens, quits its helper, and keeps the same cluster contract',{skip:!available,timeout:180000},async t=>{
- const base=path.join(source,'.cache/dock-native-tests');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,"项目 user's "));
+ // A newly compiled bundle has a new macOS privacy identity. Running it under
+ // a Desktop/Documents/Downloads checkout would require a human folder grant.
+ // Use the OS's per-user temporary directory for this synthetic project only.
+ const {stdout:temp}=await exec('/usr/bin/getconf',['DARWIN_USER_TEMP_DIR']);
+ const base=await fs.realpath(temp.trim());
+ const root=await fs.mkdtemp(path.join(base,"sapling-dock-项目 user's "));
  let appPID,bundleId; t.after(async()=>{
   // LaunchServices can start the app before its bridge writes the first receipt.
   // Even an assertion/timeout in that interval must clean up this exact fixture.
@@ -61,9 +67,33 @@ test('compiled macOS app stays in the Dock, reopens, quits its helper, and keeps
  const app=path.join(root,receipt.artifact),helper=path.join(app,'Contents/MacOS/launcher');
  const plist=JSON.parse((await exec('/usr/bin/plutil',['-convert','json','-o','-',path.join(app,'Contents/Info.plist')])).stdout);
  assert.equal(plist.LSUIElement,false);assert.equal(plist.CFBundleExecutable,'applet');assert.equal(plist.OSAAppletStayOpen,true);assert.equal(plist.CFBundleDisplayName,project.name);
- assert.equal(Object.keys(plist).some(k=>k.endsWith('UsageDescription')),false);
+ const folderKeys=['NSDesktopFolderUsageDescription','NSDocumentsFolderUsageDescription','NSDownloadsFolderUsageDescription'];
+ const purpose='This app reads the project configuration and saves runtime files in the project folder.';
+ assert.deepEqual(Object.keys(plist).filter(key=>key.endsWith('UsageDescription')).sort(),folderKeys);
+ for(const key of folderKeys)assert.equal(plist[key],launcherMessages.en[purpose]);
+ for(const [locale,language] of [['en','en'],['zh-Hans','zh']]){
+  const file=path.join(app,'Contents/Resources',locale+'.lproj/InfoPlist.strings');
+  const localized=JSON.parse((await exec('/usr/bin/plutil',['-convert','json','-o','-',file])).stdout);
+  assert.deepEqual(localized,Object.fromEntries(folderKeys.map(key=>[key,launcherMessages[language][purpose]])));
+ }
  await exec('/usr/bin/codesign',['--verify',app]);await exec(helper,['--verify']);assert.equal((await exec(helper,['--root'])).stdout.trim(),root);
  const calls=async()=> (await fs.readFile(path.join(root,'calls.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+ if(process.getuid()!==0){
+  // Exercise a real denied file read without changing the user's privacy settings.
+  const config=path.join(root,'kernel/config/macos.json');
+  await fs.chmod(config,0o000);
+  try{
+   await assert.rejects(fs.readFile(config),{code:'EACCES'});
+   await exec('/usr/bin/open',[app]);
+   const findLaunched=`ObjC.import('AppKit');var a=$.NSRunningApplication.runningApplicationsWithBundleIdentifier(${JSON.stringify(bundleId)}).firstObject;a.isNil()||!a.finishedLaunching?'':String(a.processIdentifier);`;
+   appPID=await waitFor(async()=>Number((await exec('/usr/bin/osascript',['-l','JavaScript','-e',findLaunched])).stdout.trim()),'denied Dock app to finish launching');
+   await appAction(appPID,'a.terminate;');
+   await waitFor(async()=>!alive(appPID),'Quit before first helper on denied folder');
+   await assert.rejects(fs.access(path.join(root,'calls.jsonl')),{code:'ENOENT'});
+  }finally{
+   await fs.chmod(config,0o600);
+  }
+ }
  await exec('/usr/bin/open',[app]);const started=await waitFor(async()=>(await calls()).find(c=>c.action==='--dock-start'),'native startup');appPID=started.pid;assert.ok(alive(appPID));assert.match(started.nonce,/^[a-f0-9-]{36}$/i);
  assert.equal((await appAction(appPID,'String(a.activationPolicy);')).stdout.trim(),'0');
  await exec('/usr/bin/open',[app]);await waitFor(async()=>(await calls()).find(c=>c.action==='--dock-open'),'Dock reopen');

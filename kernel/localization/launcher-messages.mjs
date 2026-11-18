@@ -1,6 +1,11 @@
 // Shared source for Node, generated Go data and macOS applet resources.
 export const launcherMessages = {
   "en": {
+    "Opening the project folder…": "Opening the project folder…",
+    "If macOS asks for access to the folder containing this project, choose Allow to continue.": "If macOS asks for access to the folder containing this project, choose Allow to continue.",
+    "Cannot read the project folder.": "Cannot read the project folder.",
+    "Check the folder permissions. If macOS denied access, enable this app in System Settings → Privacy & Security → Files & Folders, then reopen it.": "Check the folder permissions. If macOS denied access, enable this app in System Settings → Privacy & Security → Files & Folders, then reopen it.",
+    "This app reads the project configuration and saves runtime files in the project folder.": "This app reads the project configuration and saves runtime files in the project folder.",
     "Tool {name}: {source}, {version}; {path}": "Tool {name}: {source}, {version}; {path}",
     "shared tool library": "shared tool library",
     "local installation": "local installation",
@@ -141,6 +146,11 @@ export const launcherMessages = {
     "Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--ai-only] [--no-open] / opencode / kernel.": "Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--ai-only] [--no-open] / opencode / kernel."
   },
   "zh": {
+    "Opening the project folder…": "正在打开项目文件夹…",
+    "If macOS asks for access to the folder containing this project, choose Allow to continue.": "如果 macOS 请求访问此项目所在的文件夹，选择“允许”即可继续。",
+    "Cannot read the project folder.": "无法读取项目文件夹。",
+    "Check the folder permissions. If macOS denied access, enable this app in System Settings → Privacy & Security → Files & Folders, then reopen it.": "请检查文件夹的访问权限。如果 macOS 拒绝访问，请在“系统设置 → 隐私与安全 → 文件和文件夹”中为此应用开启访问，然后重新打开应用。",
+    "This app reads the project configuration and saves runtime files in the project folder.": "此应用需要读取项目配置，并在项目文件夹中保存运行所需的文件。",
     "Tool {name}: {source}, {version}; {path}": "工具 {name}：{source}，{version}；{path}",
     "shared tool library": "共享工具库",
     "local installation": "本机安装",

@@ -88,3 +88,14 @@ Checked2026-11-03: https://learn.microsoft.com/en-us/powershell/module/microsoft
 (Microsoft, public, no sign-in required to read) defines $Env:NAME environment
 syntax. Launcher browser open, verified Go extraction and directory rename use
 that syntax; source checks do not replace native Windows acceptance.
+
+## First-launch folder access on macOS
+
+Checked 2026-11-18 for TASK-20261118-001. These Apple bundle resource keys
+supply the reason shown when macOS requests the corresponding folder access.
+The owner chooses whether to allow the request. The public documentation covers
+macOS 10.15 and later and is accessible without signing in.
+
+- [Desktop folder](https://developer.apple.com/documentation/bundleresources/information-property-list/nsdesktopfolderusagedescription)
+- [Documents folder](https://developer.apple.com/documentation/bundleresources/information-property-list/nsdocumentsfolderusagedescription)
+- [Downloads folder](https://developer.apple.com/documentation/bundleresources/information-property-list/nsdownloadsfolderusagedescription)

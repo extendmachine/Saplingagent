@@ -148,6 +148,15 @@ cluster; it exits only after shutdown succeeds. A busy/refusing/unverifiable
 backend keeps the Dock app available with an error. Closing a browser is not Quit.
 Force Quit, crashes and power loss cannot execute this graceful lifecycle.
 
+On a fresh macOS launch, the app uses its bundle and the system language to
+show progress before checking project folder access. It opens the platform
+configuration for reading, including its legacy location, so macOS can ask
+the user about the folder. After access is available, the app uses the saved
+project language and starts its usual helper. A denied read shows recovery
+instructions and a Dock click retries the check. If access was denied before
+any helper started, the app can quit without sending stop to another process.
+An app that already started a helper still requires confirmed shutdown.
+
 `entry.mjs --dock-start|--dock-open|--dock-status|--dock-stop --dock-pid PID
 --dock-nonce UUID` is the local native-helper protocol. Start/open may prepare
 dependencies and return after readiness; native UI runs this asynchronously.

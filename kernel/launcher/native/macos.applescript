@@ -9,20 +9,29 @@ property startupTask : missing value
 property permitExit : false
 property reportedFailure : false
 property statusFailures : 0
+property folderAccessDenied : false
 property progressWindow : missing value
 property progressLabel : missing value
 property progressDetail : missing value
 property uiLanguage : "en"
 property uiCatalog : missing value
 
-on loadLanguage()
+on loadBundleLanguage()
  set uiLanguage to "en"
  try
-  set appPath to (current application's NSString's stringWithString:(POSIX path of (path to me)))'s stringByStandardizingPath()
-  set projectPath to appPath's stringByDeletingLastPathComponent()
   set preferred to (current application's NSLocale's preferredLanguages())'s firstObject() as text
   if preferred starts with "zh" then set uiLanguage to "zh"
-  set preferenceData to current application's NSData's dataWithContentsOfFile:(projectPath's stringByAppendingPathComponent:"config/ui-language.json")
+  if uiCatalog is missing value then
+   set catalogURL to current application's NSBundle's mainBundle()'s URLForResource:"launcher-messages" withExtension:"json"
+   set catalogData to current application's NSData's dataWithContentsOfURL:catalogURL
+   if catalogData is not missing value then set uiCatalog to current application's NSJSONSerialization's JSONObjectWithData:catalogData options:0 |error|:(missing value)
+  end if
+ end try
+end loadBundleLanguage
+
+on loadProjectLanguage(projectURL)
+ try
+  set preferenceData to current application's NSData's dataWithContentsOfURL:(projectURL's URLByAppendingPathComponent:"config/ui-language.json")
   if preferenceData is not missing value then
    set preference to current application's NSJSONSerialization's JSONObjectWithData:preferenceData options:0 |error|:(missing value)
    if preference is not missing value then
@@ -30,12 +39,27 @@ on loadLanguage()
     if ((preference's objectForKey:"schemaVersion") as integer) is 1 and (storedLanguage is "en" or storedLanguage is "zh") then set uiLanguage to storedLanguage
    end if
   end if
-  set catalogData to current application's NSData's dataWithContentsOfFile:(appPath's stringByAppendingPathComponent:"Contents/Resources/launcher-messages.json")
-  if catalogData is not missing value then set uiCatalog to current application's NSJSONSerialization's JSONObjectWithData:catalogData options:0 |error|:(missing value)
- on error
-  -- Invalid preference must never change startup/quit ownership.
  end try
-end loadLanguage
+end loadProjectLanguage
+
+on deniedProjectRead(projectURL)
+ -- Check a file the launcher needs, in the app that macOS names in the prompt.
+ -- A missing or malformed project still follows the ordinary startup diagnostics.
+ repeat with relativePath in {"kernel/config/macos.json", "config/macos.json"}
+  set configURL to projectURL's URLByAppendingPathComponent:(contents of relativePath)
+  set {configHandle, readError} to current application's NSFileHandle's fileHandleForReadingFromURL:configURL |error|:(reference)
+  if configHandle is not missing value then
+   configHandle's closeFile()
+   return false
+  end if
+  if (readError's domain() as text) is not (current application's NSCocoaErrorDomain as text) then return false
+  set errorCode to readError's code() as integer
+  -- NSFileHandle can return the generic/write Cocoa error for a read-only open.
+  if errorCode is in {(current application's NSFileReadNoPermissionError as integer), (current application's NSFileWriteNoPermissionError as integer)} then return true
+  if errorCode is not in {(current application's NSFileReadNoSuchFileError as integer), (current application's NSFileNoSuchFileError as integer)} then return false
+ end repeat
+ return false
+end deniedProjectRead
 
 on translated(messageKey)
  if uiCatalog is not missing value then
@@ -81,8 +105,7 @@ end hideProgress
 
 on initializeOwner()
 	if helperPath is missing value then
-		my loadLanguage()
-		set helperPath to (POSIX path of (path to me)) & "Contents/MacOS/launcher"
+		set helperPath to ((current application's NSBundle's mainBundle()'s bundleURL()'s URLByAppendingPathComponent:"Contents/MacOS/launcher")'s |path|()) as text
 		set ownerPID to ((current application's NSProcessInfo's processInfo()'s processIdentifier()) as integer) as text
 		set ownerNonce to (current application's NSUUID's UUID()'s UUIDString()) as text
 	end if
@@ -94,15 +117,26 @@ on invokeHelper(actionName)
 end invokeHelper
 
 on beginLaunch(actionName)
-	my loadLanguage()
-	my initializeOwner()
 	if startupTask is not missing value then
 		if (startupTask's isRunning()) as boolean then
 			my showProgress((my translated("Preparing dependencies and starting the project…")))
 			return
 		end if
 	end if
+	my loadBundleLanguage()
+	my initializeOwner()
 	set reportedFailure to false
+	my showProgress((my translated("Opening the project folder…")))
+	progressDetail's setStringValue:(my translated("If macOS asks for access to the folder containing this project, choose Allow to continue."))
+	progressWindow's displayIfNeeded()
+	set projectURL to current application's NSBundle's mainBundle()'s bundleURL()'s URLByDeletingLastPathComponent()
+	set folderAccessDenied to my deniedProjectRead(projectURL)
+	if folderAccessDenied then
+		my updateProgress((my translated("Cannot read the project folder.")))
+		progressDetail's setStringValue:(my translated("Check the folder permissions. If macOS denied access, enable this app in System Settings → Privacy & Security → Files & Folders, then reopen it."))
+		return
+	end if
+	my loadProjectLanguage(projectURL)
 	my showProgress((my translated("Preparing dependencies and starting the project…")))
 	set startupTask to current application's NSTask's alloc()'s init()
 	set childEnvironment to (current application's NSProcessInfo's processInfo()'s environment())'s mutableCopy()
@@ -111,14 +145,13 @@ on beginLaunch(actionName)
 	startupTask's setEnvironment:childEnvironment
 	startupTask's setLaunchPath:helperPath
 	startupTask's setArguments:{actionName, "--dock-pid", ownerPID, "--dock-nonce", ownerNonce}
-	startupTask's setCurrentDirectoryPath:((current application's NSString's stringWithString:(POSIX path of (path to me)))'s stringByDeletingLastPathComponent())
+	startupTask's setCurrentDirectoryURL:projectURL
 	startupTask's setStandardOutput:(current application's NSFileHandle's fileHandleWithNullDevice())
 	startupTask's setStandardError:(current application's NSFileHandle's fileHandleWithNullDevice())
 	startupTask's |launch|()
 end beginLaunch
 
 on reportFailure(messageText)
-	my loadLanguage()
 	my updateProgress((my translated("Startup could not complete. Check logs/project-launcher.")))
 	display alert (my translated("Project launcher")) message messageText buttons {(my translated("OK"))} default button 1
 end reportFailure
@@ -140,6 +173,7 @@ on reopen
 end reopen
 
 on idle
+	if helperPath is missing value or folderAccessDenied then return 2
 	try
 		set currentState to paragraph 1 of (my invokeHelper("--dock-status"))
 		set statusFailures to 0
@@ -182,8 +216,8 @@ on idle
 end idle
 
 on quit
-	my loadLanguage()
-	if permitExit then
+	-- A denied first open never launched a helper or attached to any services.
+	if permitExit or (folderAccessDenied and startupTask is missing value) then
 		continue quit
 	else
 	try
