@@ -32,9 +32,14 @@ function authorized(header, token) {
 }
 async function body(request, limit = 5 * 1024 * 1024) {
   let size = 0; const chunks = [];
-  for await (const chunk of request) {
+  const rejectOversize = () => {
+    request.resume();
+    throw new WorkspaceError('PAYLOAD_TOO_LARGE', 'Request is too large', 413);
+  };
+  if (Number(request.headers['content-length']) > limit) rejectOversize();
+  for await (const chunk of request.iterator({ destroyOnReturn:false })) {
     size += chunk.length;
-    if (size > limit) throw new WorkspaceError('PAYLOAD_TOO_LARGE', 'Request is too large', 413);
+    if (size > limit) rejectOversize();
     chunks.push(chunk);
   }
   try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }

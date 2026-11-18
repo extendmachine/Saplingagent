@@ -129,3 +129,38 @@ test('size rejection is distinct from malformed data and leaves metadata writes 
   const saved = await store.patchSession(original.id, { running: false, activeRequestId: null });
   assert.deepEqual(saved.messages, []);
 });
+
+test('lookup is atomic across creates and restarts, handles legacy first user messages, and isolates malformed records', async t => {
+  const root = await fixture(t);
+  let store = await createStore(root);
+  const legacy = await store.createSession();
+  await store.patchSession(legacy.id, {messages:[{role:'system',id:'system',text:'s'},{role:'user',id:'legacy-first',text:'hello'}]});
+  const directory = path.join(root, 'data/workspace/sessions');
+  for (const [id, fields] of [['bad-message',{messages:[null]}], ['bad-ledger',{requests:[null]}]]) {
+    await fs.writeFile(path.join(directory, id + '.json'), JSON.stringify({...legacy, id, ...fields}));
+  }
+  store = await createStore(root);
+  assert.equal((await store.createSession({firstRequestId:'legacy-first'})).id, legacy.id);
+  const created = await Promise.all(Array.from({length:8}, () => store.createSession({firstRequestId:'same'})));
+  assert.equal(new Set(created.map(s => s.id)).size, 1);
+  store = await createStore(root);
+  assert.equal((await store.createSession({firstRequestId:'same'})).id, created[0].id);
+  assert.equal((await store.listSessions()).length, 2);
+  await store.patchSession(legacy.id, {messages:[{role:'user',id:'updated',text:'again'}]});
+  assert.equal((await store.createSession({firstRequestId:'updated'})).id, legacy.id);
+  assert.notEqual((await store.createSession({firstRequestId:'legacy-first'})).id, legacy.id);
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(directory, 'bad-message.json'), 'utf8')).messages,[null]);
+});
+
+test('wire-size rejection returns readable 413 responses for both length and chunked bodies', async t => {
+  const token = 'synthetic-workspace-service-token';
+  const server = await createWorkspaceServer({root:await fixture(t), token});
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const payload = 'x'.repeat(6 * 1024 * 1024);
+  const url = 'http://127.0.0.1:' + server.address().port + '/sessions/oversize';
+  for (const body of [payload, (async function* () { for (let offset=0; offset<payload.length; offset+=65536) yield payload.slice(offset, offset+65536); })()]) {
+    const response = await fetch(url, {method:'PATCH', headers:{Authorization:'Bearer ' + token}, duplex:'half', body});
+    assert.equal(response.status, 413); assert.equal((await response.json()).error.code, 'PAYLOAD_TOO_LARGE');
+  }
+});
