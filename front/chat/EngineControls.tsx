@@ -25,7 +25,7 @@ export function EngineControls({ agent, composer, changingSession }: { agent: Ag
   const catalogError = agent.enginesError || engine?.modelCatalogError;
   const models = engine?.models ?? [];
   const missingModel = accountModels && Boolean(draft.modelId && !models.some(item => item.id === draft.modelId));
-  const ready = codex ? Boolean(agent.status?.codexReady ?? agent.status?.ready) && codexModelSelectable(engine, draft.modelId, Boolean(agent.enginesError)) : Boolean(engine?.ready && engine.authenticated && provider?.models.some(item => item.id === draft.modelId));
+  const ready = codex ? Boolean(engine?.ready ?? agent.status?.codexReady ?? agent.status?.ready) && codexModelSelectable(engine, draft.modelId, Boolean(agent.enginesError)) : Boolean(engine?.ready && engine.authenticated && provider?.models.some(item => item.id === draft.modelId));
   const configuredModel = engine?.model || engine?.defaultModelId || engine?.requestedModel;
   const mismatchedApiModel = codex && engine?.modelSelection === 'api' && Boolean(draft.modelId && !codexModelSelectable(engine, draft.modelId));
   const usage = agent.selection.engine === 'codex' ? agent.modelUsage : null;
@@ -41,6 +41,8 @@ export function EngineControls({ agent, composer, changingSession }: { agent: Ag
     setDraft(value);
   }
   function chooseEngine(value: EngineSelection['engine']) {
+    if(!editable())return;
+    if(!agent.engines.find(item=>item.id===value)?.ready)void agent.refreshEngines(undefined,false,value);
     const first = agent.engines.find(item => item.id === value)?.providers?.[0];
     choose(value === 'codex' ? { engine: value, providerId: null, modelId: null } : { engine: value, providerId: first?.id ?? null, modelId: first?.defaultModelId || first?.models[0]?.id || null });
   }
@@ -56,7 +58,7 @@ export function EngineControls({ agent, composer, changingSession }: { agent: Ag
   }
   function refreshModels() {
     if (agent.enginesLoading || !editable()) return;
-    void agent.refreshEngines(undefined, true);
+    void agent.refreshEngines(undefined,true,engine?.needsPreparation?'codex':undefined);
   }
   return <div className="conversation-engine-controls">
     <div className="engine-picker" title={accountModels ? t('engine.catalogLimit') : undefined}>
@@ -80,6 +82,8 @@ export function EngineControls({ agent, composer, changingSession }: { agent: Ag
       <span title={engine?.modelSelection === 'api' ? t('engine.apiModel') : undefined}>{t(engine?.modelSelection === 'api' && !draft.modelId ? 'engine.chosenApiModel' : 'engine.chosenModel', { model: draft.modelId || configuredModel || t('engine.autoModelUnknown') })}</span>
       {agent.selection.engine === 'codex' && <span title={actual ? usage?.updatedAt : undefined}>{actual ? t('engine.lastActualModel', { model: actual }) : t('engine.actualUnreported')}</span>}
     </div>}
+    {!codex && agent.enginesLoading && <p className="engine-note" role="status">{t('engine.preparing')}</p>}
+    {!codex && !agent.enginesLoading && (agent.enginesError || engine?.error) && <ErrorNotice compact error={agent.enginesError || engine?.error || ''} />}
     {codex && agent.enginesLoading && <p className="engine-note" role="status">{t('engine.modelsLoading')}</p>}
     {codex && catalogError && <div className="engine-catalog-warning" role="status"><p>{t(models.length ? 'engine.modelsStale' : 'engine.modelsFailed')}</p><ErrorNotice compact error={message('engine.modelsRetry', undefined, catalogError)} /></div>}
     {accountModels && !agent.enginesLoading && !catalogError && !models.length && <p className="engine-note">{t('engine.modelsEmpty')}</p>}

@@ -1,3 +1,7 @@
+import {prepareProviderTools} from '../../kernel/tooling/providers.mjs';
+import {hasTooling} from '../../kernel/tooling/tools.mjs';
+import {readMcpAccess} from '../../kernel/contracts/mcp-access.mjs';
+import {codexBinary} from '../../kernel/contracts/local-process.mjs';
 import { readReleaseMetadata } from '../../kernel/contracts/release.mjs';
 import { kernelStatus } from '../../kernel/contracts/kernel.mjs';
 import { readConnections,defaultSelection,codexConnection,codexCredentialStatus } from '../../kernel/contracts/ai-configuration.mjs';
@@ -93,7 +97,12 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   const connections = await readConnections(root);
   const selectedConnection = connections.profiles.find(p => p.id === connections.activeId);
   const configuredSelection = defaultSelection(connections);
-  const canStartOptionalCodex = configuredSelection.engine !== 'codex' && (await codexCredentialStatus(root)).saved;
+  const externalOnly=(await readMcpAccess(root)).externalOnly;
+  const preparing=new AbortController();
+  const prepareEngine=engine=>prepareProviderTools(root,[engine],{signal:preparing.signal});
+  const managedTools=hasTooling(root);
+  const probeDefault=engine=>!managedTools||engine===configuredSelection.engine;
+  const canStartOptionalCodex = !externalOnly && configuredSelection.engine !== 'codex' && (await codexCredentialStatus(root).catch(()=>({saved:false}))).saved;
   let status = { ready: false, authenticated: false, provider: 'Codex App Server', model: '', skills: [], mcp: { ready: false, tools: [] }, permissions };
   let openCodeStatus = { id: 'opencode', label: 'OpenCode', ready: false, authenticated: false, providers: [], error: null };
   let claudeStatus = { id: 'claude', label: 'Claude Agent', ready: false, authenticated: false, providers: [], error: null };
@@ -396,13 +405,13 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   async function startClaude() {
     if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
     if (claudeStartup) return claudeStartup;
-    claudeStartup = claude.start().then(catalog => (claudeStatus = { ...catalog, error: catalog.error || null })).catch(error => (claudeStatus = { ...claudeStatus, ready: false, error: safeError(error) })).finally(() => { claudeStartup = null; });
+    claudeStartup = prepareEngine('claude').then(()=>claude.start()).then(catalog => (claudeStatus = { ...catalog, error: catalog.error || null })).catch(error => (claudeStatus = { ...claudeStatus, ready: false, error: safeError(error) })).finally(() => { claudeStartup = null; });
     return claudeStartup;
   }
   async function startOpenCode() {
     if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
     if (openCodeStartup) return openCodeStartup;
-    openCodeStartup = openCode.start().then(catalog => { openCodeStatus = { ...catalog, error: null }; return openCodeStatus; }).catch(error => {
+    openCodeStartup = prepareEngine('opencode').then(()=>openCode.start()).then(catalog => { openCodeStatus = { ...catalog, error: null }; return openCodeStatus; }).catch(error => {
       openCodeStatus = { ...openCodeStatus, ready: false, error: safeError(error) };
       return openCodeStatus;
     }).finally(() => { openCodeStartup = null; });
@@ -417,6 +426,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     let client;
     startup = (async () => {
       await previous?.close();
+      await prepareEngine('codex');
       if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
       const connection = await codexConnection(root, connections);
       const args = ['-c', 'cli_auth_credentials_store="file"', '-c', 'web_search="live"', ...permissionConfigArgs()];
@@ -426,7 +436,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       for (const [name, value] of Object.entries(sharedMcpEnv)) args.push('-c', `mcp_servers.seedagent.env.${name}=${JSON.stringify(value)}`);
       args.push(...connection.args);
       if(connection.profile?.kind === 'api')args.push('-c','web_search="disabled"');
-      rpc = client = new AppServerClass({ cwd: root, env: { ...process.env, ...connection.env, CODEX_HOME: path.join(root, 'local-secrets/codex'), SEED_ROOT: root, SEED_AGENT_MANAGED: '1', SEED_AGENT_PORT: String(process.env.SEED_AGENT_PORT || config.agentPort), SEEDAGENT_PROJECT_ROOT: root, SEEDAGENT_WORKSPACE_PORT: String(process.env.SEED_WORKSPACE_PORT || config.workspacePort), SEEDAGENT_BUILDER_PORT: String(process.env.SEED_BUILDER_PORT || config.builderPort) }, args });
+      rpc = client = new AppServerClass({ cwd: root, ...(hasTooling(root)?{command:codexBinary(root)}:{}), env: { ...process.env, ...connection.env, CODEX_HOME: path.join(root, 'local-secrets/codex'), SEED_ROOT: root, SEED_AGENT_MANAGED: '1', SEED_AGENT_PORT: String(process.env.SEED_AGENT_PORT || config.agentPort), SEEDAGENT_PROJECT_ROOT: root, SEEDAGENT_WORKSPACE_PORT: String(process.env.SEED_WORKSPACE_PORT || config.workspacePort), SEEDAGENT_BUILDER_PORT: String(process.env.SEED_BUILDER_PORT || config.builderPort) }, args });
       client.on('notification', message => { if (rpc === client) notification(message).catch(error => log('notification_error', { code: error.code || 'INTERNAL' })); });
       client.on('request', message => { if (rpc === client) Promise.resolve(serverRequest(message)).catch(() => log('server_request_error')); });
       client.on('disconnect', error => { if (rpc !== client) return; status.ready = false; status.error = safeError(error); resumed.clear(); if (!closing) for (const run of active.values()) if (run.session && (run.session.engine || 'codex') === 'codex') finish(run, 'failed', error).catch(() => {}); });
@@ -491,6 +501,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   }
   async function start() {
     lastStart=Date.now();
+    if(externalOnly)return recoverSavedRuns();
     if(configuredSelection.engine==='claude'){
       await startClaude();
       if (!runtimeStatus().ready) throw new ApiError('AGENT_NOT_READY',claudeStatus.error || 'Claude Agent is not ready. Check AI configuration.',503);
@@ -721,20 +732,31 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         return send(res, 200, { taskId: `RUN-${run.requestId}` });
       }
       if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ready: true, service: 'agent-runtime', agentReady: runtimeStatus().ready });
-      if (req.method === 'GET' && url.pathname === '/api/status') { if (!runtimeStatus().ready && !startup && !openCodeStartup && !claudeStartup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...runtimeStatus(), codexReady: status.ready && !startup && !drain.prepared, defaultEngine: configuredSelection.engine, restarting: drain.prepared, activeRuns: active.size + pendingChats }); }
-      if (req.method === 'GET' && url.pathname === '/api/engines') {
-        if (!openCode.ready && !openCodeStartup) await startOpenCode();
-        if (connections.profiles.some(p=>p.engine==='claude') && !claude.ready && !claudeStartup) await startClaude();
-        if(canStartOptionalCodex && !rpc && !startup)startCodex().catch(()=>{});
-        if (url.searchParams.get('refresh') === 'codex') {
+      if (req.method === 'GET' && url.pathname === '/api/status') { if (!externalOnly && !runtimeStatus().ready && !startup && !openCodeStartup && !claudeStartup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...runtimeStatus(), codexReady: status.ready && !startup && !drain.prepared, defaultEngine: configuredSelection.engine, restarting: drain.prepared, activeRuns: active.size + pendingChats }); }
+      const prepareCatalog=req.method==='POST'&&url.pathname==='/api/engines/prepare';
+      if (prepareCatalog || req.method === 'GET' && url.pathname === '/api/engines') {
+        if(prepareCatalog){
+          const {engine}=await readBody(req);
+          if(!['codex','opencode','claude'].includes(engine))throw new ApiError('INVALID_INPUT','Choose a supported AI engine.');
+          if(externalOnly)throw new ApiError('AGENT_NOT_READY','Open AI configuration to select a built-in engine.',409);
+          if(engine==='opencode')await startOpenCode();
+          if(engine==='claude')await startClaude();
+          if(engine==='codex'&&(!rpc||rpc.closed))await startCodex();
+        }else if(!externalOnly){
+          if (!openCode.ready && probeDefault('opencode')) await startOpenCode();
+          if (connections.profiles.some(p=>p.engine==='claude') && !claude.ready && probeDefault('claude')) await startClaude();
+          if(canStartOptionalCodex && !rpc && !startup && probeDefault('codex'))startCodex().catch(()=>{});
+        }
+        if (!externalOnly && url.searchParams.get('refresh') === 'codex') {
           try {
             if (startup) await startup;
-            else if ((!rpc || rpc.closed) && !drain.prepared && (configuredSelection.engine === 'codex' || canStartOptionalCodex)) await startCodex();
+            else if ((!rpc || rpc.closed) && !drain.prepared && probeDefault('codex') && (configuredSelection.engine === 'codex' || canStartOptionalCodex)) await startCodex();
             await refreshCodexModels();
           } catch { if (!apiModel) modelState.modelCatalogError = modelCatalogFailure; }
         }
         const codex = { id: 'codex', label: 'Codex', ready: status.ready && !startup, authenticated: status.authenticated, model: status.model, ...modelState, models: codexModels, error: status.error || null };
-        return send(res, 200, { defaultEngine: configuredSelection.engine, defaultSelection: configuredSelection, engines: [codex, openCodeStatus, claudeStatus] });
+        const engines=[codex,openCodeStatus,claudeStatus].map(engine=>({...engine,needsPreparation:managedTools&&!externalOnly&&engine.id!==configuredSelection.engine&&!engine.ready}));
+        return send(res, 200, { defaultEngine: configuredSelection.engine, defaultSelection: configuredSelection, engines });
       }
       if (req.method === 'GET' && url.pathname === '/api/git') return send(res, 200, { git: await readGitVersion(root, { limit: url.searchParams.has('limit') ? Number(url.searchParams.get('limit')) : 25 }) });
       if (req.method === 'POST' && ['/api/git/commit', '/api/git/switch', '/api/git/checkout', '/api/git/label'].includes(url.pathname)) {
@@ -914,7 +936,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   server.startAgent = start;
   server.shutdown = () => {
     if (shutdown) return shutdown;
-    closing = true; status.ready = false;
+    closing = true; preparing.abort(); status.ready = false;
     for (const run of active.values()) run.progress?.stop();
     // Close our detached App Server group first, before any RPC/storage wait.
     // Waiting for turn/interrupt here can exceed the supervisor's stop deadline.

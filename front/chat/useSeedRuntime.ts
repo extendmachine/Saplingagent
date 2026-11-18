@@ -176,15 +176,21 @@ export function useSeedRuntime() {
     }
   }, []);
 
-  const refreshEngines = useCallback(async (signal?: AbortSignal, refreshCodex = false) => {
+  const refreshEngines = useCallback(async (signal?: AbortSignal, refreshCodex = false, prepareEngine?: EngineSelection['engine']) => {
     const request = ++enginesEpoch.current;
     setEnginesLoading(true);
     try {
-      const response = await checkedFetch(refreshCodex ? '/api/engines?refresh=codex' : '/api/engines', { signal });
+      const response = prepareEngine
+        ? await checkedFetch('/api/engines/prepare', { method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({engine:prepareEngine}) }, 600000)
+        : await checkedFetch(refreshCodex ? '/api/engines?refresh=codex' : '/api/engines', { signal });
       const value = await response.json() as { engines?: EngineOption[]; defaultSelection?: EngineSelection };
       if (!Array.isArray(value.engines)) throw new Error('Invalid engine catalog format.');
       if (!signal?.aborted && request === enginesEpoch.current) {
         setEngines(value.engines);
+        if(prepareEngine==='codex'){
+          const codexReady=value.engines.find(item=>item.id==='codex')?.ready===true;
+          setStatus(current=>current?{...current,codexReady}:current);
+        }
         setEnginesError('');
         if(!session.current && !running.current && !selectionChosen.current && value.defaultSelection)setSelectionState(value.defaultSelection);
       }
@@ -197,6 +203,14 @@ export function useSeedRuntime() {
       if (!signal?.aborted && request === enginesEpoch.current) setEnginesLoading(false);
     }
   }, []);
+
+  const restoreOptionalEngine=engines.find(item=>item.id===selection.engine)?.needsPreparation;
+  useEffect(()=>{
+    if(!activeSessionId||isLoading||isRestarting||!restoreOptionalEngine)return;
+    const controller=new AbortController();
+    void refreshEngines(controller.signal,false,selection.engine);
+    return ()=>controller.abort();
+  },[activeSessionId,isLoading,isRestarting,restoreOptionalEngine,refreshEngines,selection.engine]);
 
   const receive = useCallback((event: ServerEvent) => {
     switch (event.type) {
