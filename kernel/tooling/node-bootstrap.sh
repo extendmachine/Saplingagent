@@ -50,7 +50,7 @@ sapling_node_location() {
   fi
   SAPLING_NODE_SOURCE="$SAPLING_NODE_HOME/runtimes/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}"
   if sapling_node_valid "$SAPLING_NODE_SOURCE"; then return; fi
-  for SAPLING_NODE_REPAIRED in "$SAPLING_NODE_SOURCE"-repair-*; do
+  for SAPLING_NODE_REPAIRED in "$SAPLING_NODE_SOURCE"-gen-* "$SAPLING_NODE_SOURCE"-repair-*; do
     if sapling_node_valid "$SAPLING_NODE_REPAIRED"; then SAPLING_NODE_SOURCE="$SAPLING_NODE_REPAIRED"; return; fi
   done
   if [ -e "$SAPLING_NODE_SOURCE" ]; then
@@ -71,4 +71,28 @@ sapling_link_node() {
   fi
   printf '%s\n' "$SAPLING_NODE_MODE" > "$SEED_PROJECT_DIR/.runtime/runtime-mode"
   SEED_NODE_DIR="$SAPLING_NODE_ALIAS"; SEED_NODE_BIN="$SEED_NODE_DIR/bin/node"
+}
+
+# FD 9 is opened by the shell before Node exists. Perl is already required by
+# macOS shasum. flock acts on the inherited open-file description and the OS
+# releases it when its last holder exits, even after SIGKILL.
+sapling_acquire_node_lock() {
+  local elapsed=0 status
+  while :; do
+    if /usr/bin/perl -MFcntl=:flock -MErrno=EWOULDBLOCK,EAGAIN -e '
+      open(my $lock, ">&=", 9) or die "Node installer lock: $!";
+      flock($lock, LOCK_EX | LOCK_NB) and exit 0;
+      exit 75 if $! == EWOULDBLOCK || $! == EAGAIN;
+      die "Node installer lock: $!";
+    '; then return 0; else status=$?; fi
+    if [ "$status" -ne 75 ]; then return "$status"; fi
+    if [ "$elapsed" -ge 600 ]; then
+      sapling_message installer_025 >&2
+      printf '%s\n' "$SEED_BOOTSTRAP_LOCK" >&2
+      return 1
+    fi
+    if [ $((elapsed % 15)) -eq 0 ]; then sapling_message installer_025 >&2; fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
 }

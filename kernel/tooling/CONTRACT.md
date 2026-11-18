@@ -60,3 +60,9 @@ installation without optional native binaries, two fresh Mac installs,
 configuration HTTP, concurrent installs and repair are checked separately.
 Native Windows junction/install acceptance remains pending. No model/account
 entitlement or real authentication is implied.
+
+On macOS the Node downloader holds an OS advisory lock for the current version
+and architecture. Concurrent installers recheck the library after acquisition.
+A persistent lock file can be reused after a crash or reboot. The downloader
+publishes a unique complete generation, including when an older installer left
+its directory lock behind. Existing generations remain usable.
