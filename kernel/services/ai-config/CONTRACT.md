@@ -144,13 +144,18 @@ External configuration rejects project/open and project/restart with CONFIGURATI
 
 ## Project-relative configuration writes (TASK-20261019-040)
 
-Credential/profile/ledger writes and script setup share one ownership-tagged
-`local-secrets/ai-config/write.lock`. Its file handle closes before the protected
-work; the matching writer removes only its own receipt on completion. Existing
-unverified locks produce CONFIG_BUSY for inspection. A valid writer identity and confirmed process exit allow recovery. Ledger publication is an atomic same-directory replacement so reopening
-the script cannot overwrite an in-flight profile update. Managed storage rejects
-symlinked ancestors before creating child directories (PROJECT_STORAGE_LOCATION).
-These checks constrain the configuration service's own destinations, not Agent tools.
+Credential/profile/ledger writes and script setup share a project-local
+`local-secrets/ai-config/write.lock`. A writer publishes a complete directory
+with a PID and generation in `owner.json`. Its handles close before the protected
+work, including project relocation. Prior regular-file receipts remain readable.
+Only a verified dead owner can be replaced. A short SQLite write reservation
+serializes that replacement across processes and releases automatically if the
+recovery process dies. Its private `write-recovery.sqlite` file contains no
+credentials or tables. Existing live, ambiguous or malformed receipts return
+`CONFIG_BUSY`. The transaction journal keeps the previous committed profile
+and ledger available during restoration. Managed storage rejects symlinked
+ancestors before creating child directories (`PROJECT_STORAGE_LOCATION`).
+These checks apply to the configuration service's destinations.
 Official login children use project-local temp/cache/XDG defaults and CODEX_HOME.
 Explicit local account imports still read the selected original source without
 changing it. Directory rename waits for active AI requests and owned auth exit.

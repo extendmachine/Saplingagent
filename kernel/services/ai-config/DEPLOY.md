@@ -43,7 +43,7 @@ Choose ChatGPT browser/device login or save a custom Codex Responses/OpenCode Ch
 
 Save name/folder/icon first without moving the directory, then save/select your AI scheme. Complete all edits and choose **Save settings & restart**. The short-lived helper in a private external OS temporary directory waits for owned management/runtime shutdown, moves the independent folder, restarts preparation and services from the actual root and verifies readiness before cleaning up its files. Wait for the restarted configuration page before choosing **Export app**. Export does not rename. Never replace an existing destination; maintainer worktrees stay in place. A failure retains the actual current folder, saved settings and project-local receipt for correction and retry; no automatic rollback or transcript/credential replacement. Close setup is a separate action and does not save unsaved inputs. App readiness is distinct from remote account/quota validation.
 
-Credentials are local-secrets/ files; global accounts/config remain unchanged. Codex auth and Claude API keys are imported only after an explicit configuration-page action. A saved configuration is not a successful remote/model test. Actual login/Windows/provider tool streaming remain human acceptance. Roll back source through Git without deleting local-secrets/ or conversations; return to old-compatible saved scheme before running older sources. Stale writer lock local-secrets/ai-config/write.lock may only be removed after confirming no setup process is running. Preserve malformed files and repair them explicitly. Configuration is demand-started. The explicit Save settings & restart operation restarts only this verified owned application.
+Credentials are local-secrets/ files; global accounts/config remain unchanged. Codex auth and Claude API keys are imported only after an explicit configuration-page action. A saved configuration is not a successful remote/model test. Actual login/Windows/provider tool streaming remain human acceptance. Roll back source through Git without deleting local-secrets/ or conversations; return to old-compatible saved scheme before running older sources. After an interrupted write, retry setup to restore the last committed state. The recovery guidance below covers unknown and older lock receipts. Preserve malformed files and repair them explicitly. Configuration is demand-started. The explicit Save settings & restart operation restarts only this verified owned application.
 
 ## Claude Agent delivery
 
@@ -111,11 +111,17 @@ Finish AI settings closes owned account operations, completes the lifecycle hand
 
 Verification: isolated HTTP tests cover mode snapshots, saved/activated/imported profiles, repeat synthetic login, all forged project mutations, preparation failure/concurrency, shutdown draining, read-only catalogs, failed-finish retry and legacy setup. They use local synthetic credentials/processes and do not test actual remote authentication or native Windows behavior. No new dependency or persistent service is introduced.
 
-If the OS kills a configuration writer, the next write or native Codex handoff
-checks the recorded owner and repairs its interrupted transaction. If even the
-recovery process was interrupted, keep the journal, verify both writer and
-recovery processes have exited, and inspect the matching
-`local-secrets/ai-config/write.lock` and `write.lock.<owner-id>.reclaim`
-receipts before removing stale receipts and reopening setup. The journal may
-temporarily contain private credentials. Keep it inside the private project
-folder and exclude it from reports and source packages.
+If a configuration save or its recovery process exits, reopen setup and retry the
+save, or start native Codex again. Once the previous owner has exited, the next
+attempt takes over and restores the last committed configuration. This also
+works after repeated interruptions. A live owner still reports `CONFIG_BUSY`.
+
+The private `local-secrets/ai-config/write.lock` is normally a directory
+containing `owner.json`. Older installations can have a regular writer receipt
+and an empty `write.lock.<owner-id>.reclaim` file. On macOS and Windows, recovery
+checks the legacy guard for an open OS handle. An inconclusive check, a damaged
+receipt or a PID still in use requires inspection. Leave the journal and active
+receipts in place when retrying. A leftover guard for an already retired
+legacy ID does not prevent a new save. The private transaction journal may
+contain credentials and belongs inside the project, excluded from reports and
+source packages.

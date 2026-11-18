@@ -100,7 +100,7 @@ test('independent readers keep using the committed scheme during publication',as
   await assert.rejects(readCredential(root,initial.profiles[0]),e=>e.code==='CREDENTIAL_UNAVAILABLE');
 });
 
-test('a process exit mid-import preserves the old account and recovers before native Codex starts',async t=>{
+test('repeated process deaths during takeover preserve the old account before native Codex starts',async t=>{
   const {root,store}=await fixture(t);
   const original={tokens:{access_token:'old-fixture',refresh_token:'old-refresh'}};
   const prior=await store.importCodex({},original),file=path.join(root,'local-secrets/codex/auth.json');
@@ -115,8 +115,28 @@ test('a process exit mid-import preserves the old account and recovers before na
   assert.equal(child.status,86,child.stderr);
   assert.match(await fs.readFile(file,'utf8'),/new-fixture/);
   assert.deepEqual(await new ConfigurationStore(root).state(),prior);
+  for(const phase of ['before','after']){
+    const recovery=spawnSync(process.execPath,['--input-type=module','-'],{cwd:repo,encoding:'utf8',env:{...process.env,SAPLING_FIXTURE:root},input:`
+      import fs from 'node:fs/promises';
+      import path from 'node:path';
+      import {ensureNativeConfigurationCommitted} from './kernel/contracts/configuration-write.mjs';
+      const marker=path.join(process.env.SAPLING_FIXTURE,'local-secrets/ai-config/write.lock/owner.json'),rename=fs.rename;
+      const stop=async()=>{await fs.writeFile(path.join(process.env.SAPLING_FIXTURE,'recovery-at-${phase}'),'reached');process.kill(process.pid,'SIGKILL');};
+      fs.rename=async(from,to)=>{
+        if(to===marker && '${phase}'==='before')await stop();
+        await rename(from,to);
+        if(to===marker)await stop();
+      };
+      await ensureNativeConfigurationCommitted(process.env.SAPLING_FIXTURE);
+    `});
+    assert.ok(recovery.signal==='SIGKILL' || (process.platform==='win32' && recovery.status===1),recovery.stderr);
+    assert.equal(await fs.readFile(path.join(root,'recovery-at-'+phase),'utf8'),'reached');
+    assert.deepEqual(await new ConfigurationStore(root).state(),prior);
+  }
   await codexConnection(root,await readConnections(root));
   assert.deepEqual(JSON.parse(await fs.readFile(file,'utf8')),original);
+  const entries=await fs.readdir(path.join(root,'local-secrets/ai-config'));
+  assert.ok(!entries.some(name=>name==='write.lock' || name.startsWith('write-candidate-') || name.endsWith('.reclaim')));
   assert.equal((await store.save({...draft,revision:prior.revision})).revision,prior.revision+1);
 });
 

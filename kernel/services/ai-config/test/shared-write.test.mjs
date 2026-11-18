@@ -32,8 +32,9 @@ test('a failed writer releases its own lock; a replaced lock is not deleted', as
   const root=await fixture(t),file=path.join(root,'local-secrets/ai-config/write.lock');
   await assert.rejects(withConfigurationWrite(root,async()=>{throw Error('synthetic failure');}),/synthetic failure/);
   assert.equal(await fs.access(file).then(()=>true,()=>false),false);
-  await withConfigurationWrite(root,async()=>{await fs.writeFile(file,JSON.stringify({id:'another-writer',pid:process.pid}));});
-  assert.equal(JSON.parse(await fs.readFile(file)).id,'another-writer');
+  const marker=path.join(file,'owner.json');
+  await withConfigurationWrite(root,async()=>{await fs.writeFile(marker,JSON.stringify({id:'another-writer',pid:process.pid}));});
+  assert.equal(JSON.parse(await fs.readFile(marker)).id,'another-writer');
   await assert.rejects(withConfigurationWrite(root,async()=>{}),e=>e.code==='CONFIG_BUSY');
 });
 test('setup refuses a linked secrets ancestor before creating external files', async t => {
