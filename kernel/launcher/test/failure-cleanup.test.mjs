@@ -46,7 +46,7 @@ test('shutdown retries a failed child stop once and truthfully reports final fai
   for (const persistent of [false, true]) {
     let stops = 0, cleanup = 0, servers = 0; const messages = [];
     const code = await stopRuntime({ release: async () => {}, closeConnections() {}, closeServers: async () => { servers++; }, stopChildren: async () => { if (++stops === 1 || persistent) throw Error('synthetic stop failure'); }, cleanup: async () => { cleanup++; }, report: phase => messages.push(phase) });
-    assert.equal(stops, 2); assert.equal(servers, 1); assert.equal(code, persistent ? 1 : 0); assert.equal(cleanup, persistent ? 0 : 1);
+    assert.equal(stops, 2); assert.equal(servers, persistent ? 0 : 1); assert.equal(code, persistent ? 1 : 0); assert.equal(cleanup, persistent ? 0 : 1);
     assert.deepEqual(messages, persistent ? ['retry', 'stop-failed'] : ['retry']);
   }
 });

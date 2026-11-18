@@ -5,15 +5,14 @@ export async function stopRuntime({ release, closeConnections, closeServers, sto
     try { await operation(); } catch (error) { failed = true; report(phase, error); }
   };
   await attempt('release', release);
-  await attempt('connections', closeConnections);
-  // Attach rejection handling immediately while owned children are stopping.
-  const servers = attempt('servers', closeServers);
   for (let index = 0; index < 2; index++) {
     try { await stopChildren(); stopped = true; break; }
     catch (error) { report(index === 0 ? 'retry' : 'stop-failed', error); }
   }
-  if (!stopped) failed = true;
-  await servers;
-  if (stopped) await attempt('cleanup', cleanup);
+  // A live controller can retry retained children over the existing control port.
+  if (!stopped) return 1;
+  await attempt('connections', closeConnections);
+  await attempt('servers', closeServers);
+  await attempt('cleanup', cleanup);
   return failed ? 1 : 0;
 }

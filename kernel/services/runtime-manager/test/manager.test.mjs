@@ -374,13 +374,15 @@ test('legacy Dock stop retries a failed confirmed stop without closing recovery 
  let callback=0;
  const {manager,request}=await fixture(t,{onMaintenance:()=>{callback++;assert.equal(manager.children.size,0)}});
  const pids=manager.state().services.map(service=>service.pid),stop=manager.stopChild.bind(manager);let failures=0;
- manager.stopChild=async name=>{if(failures++<2)throw Object.assign(new Error('synthetic refusal'),{code:'SERVICE_STOP_FAILED'});return stop(name)};
+ manager.stopChild=async name=>{if(name==='agent' && failures++<2)throw Object.assign(new Error('synthetic refusal'),{code:'SERVICE_STOP_FAILED'});return stop(name)};
  const headers={Authorization:'Bearer fixture-token'};
  assert.equal((await request('/api/runtime/stop-and-wait',headers,'POST',{instanceId:manager.instanceId})).status,503);
  assert.equal(manager.closed,true);assert.equal(manager.closing,null);
  assert.equal((await request('/api/runtime/stop',headers,'POST')).status,503);assert.equal(callback,0);
  const failedStatus=await (await request('/api/runtime/status')).json();assert.equal(failedStatus.phase,'failed');assert.equal(failedStatus.canStop,true);
- for(const pid of pids)assert.doesNotThrow(()=>process.kill(pid,0));
+ assert.deepEqual(failedStatus.services.map(s=>s.name),['agent']);
+ const retained=failedStatus.services[0].pid;
+ for(const pid of pids)if(pid===retained)assert.doesNotThrow(()=>process.kill(pid,0));else assert.throws(()=>process.kill(pid,0),{code:'ESRCH'});
  const success=await request('/api/runtime/stop',headers,'POST');assert.equal(success.status,202);assert.deepEqual(await success.json(),{stopping:true});
  for(const pid of pids)assert.throws(()=>process.kill(pid,0));assert.equal(manager.children.size,0);
  await until(()=>callback===1);
@@ -391,6 +393,7 @@ test('new controls enforce instance-only input, local auth and fixed logs destin
  const {root,manager,request,config}=await fixture(t,{gateway:true,onMaintenance:()=>{callback++},openLogs:async directory=>{opened=directory;return{requested:true}}});
  const body={instanceId:manager.instanceId},headers={Authorization:'Bearer fixture-token'};
  assert.equal((await request('/api/runtime/restart',headers,'POST',{scope:'all',instanceId:'previous-project'})).status,409);
+ assert.equal((await request('/api/runtime/stop',headers,'POST',{instanceId:'old'})).status,409);
  for(const endpoint of ['stop-and-wait','open-logs']) {
    assert.equal((await request(`/api/runtime/${endpoint}`,{},'POST',body)).status,401);
    assert.equal((await request(`/api/runtime/${endpoint}`,{Origin:'https://example.invalid'},'POST',body)).status,403);

@@ -22,6 +22,7 @@ export const errorMessages = {
     conflict: ['The update overlaps with locally modified kernel files.', 'Review and merge the listed files before retrying. Keep your source backup; application files are preserved.'],
     kernel: ['This kernel package cannot be applied to the current installation.', 'Check the installed version and update source. Use an explicitly selected compatible backup if recovery is needed.'],
     session: ['This saved conversation is no longer available.', 'Keep your draft and select an existing conversation or start a new one. Nothing will be sent automatically.'],
+    runtimeUnknown: ['The launcher could not verify the project runtime.', 'Wait briefly and retry. Check Project status and logs/project-launcher if the problem persists.'],
     stopped: ['The project has not confirmed that all its services stopped.', 'Wait briefly, then choose Stop app again. If it still fails, inspect logs/project-launcher and Project status.'],
     attachment: ['The file could not be attached.', 'Check its size and type, then select the file again. Wait for uploads to finish before sending.'],
     sessionTooLarge: ['The response exceeded conversation storage limits and was not saved.', 'Copy any unsaved output before leaving this page, then start a new conversation. Completed requests will not run again when retried.'],
@@ -51,6 +52,7 @@ export const errorMessages = {
     conflict: ['此次更新与本地修改的内核文件冲突。', '先检查并合并列出的文件，再重试。保留源码备份；应用文件会保留。'],
     kernel: ['此内核包无法应用到当前安装。', '检查已安装版本和更新来源；需要恢复时，请明确选择兼容的备份。'],
     session: ['这个已保存的对话已不可用。', '保留草稿，选择已有对话或新建对话。系统不会自动发送内容。'],
+    runtimeUnknown: ['启动器无法确认项目服务的状态。', '请稍候再试。如果仍然失败，请查看项目状态和 logs/project-launcher。'],
     stopped: ['项目尚未确认全部服务已停止。', '稍候再点击“停止应用”；仍然失败时，请检查 logs/project-launcher 和“项目状态”。'],
     attachment: ['文件未能添加为附件。', '检查文件大小和类型，重新选择文件，并等待上传完成后再发送。'],
     sessionTooLarge: ['回复超过会话存储上限，正文未保存。', '离开页面前复制未保存的内容，然后新建对话。已完成的请求在重试时不会重新执行。'],
@@ -73,6 +75,7 @@ const groups = {
   input: ['INVALID_RUNTIME_HOME','INVALID_RUNTIME_MODE'],
   sessionTooLarge: ['SESSION_TOO_LARGE'], saveRejected: ['SESSION_SAVE_REJECTED'], stopUnconfirmed: ['STOP_UNCONFIRMED'],
   session: ['SESSION_NOT_FOUND'], stopped: ['SERVICE_STOP_FAILED','STOP_UNAVAILABLE'],
+  runtimeUnknown: ['RUNTIME_UNVERIFIED','DOCK_RUNTIME_UNVERIFIED'],
   storage: ['ENOSPC','EROFS','SESSION_SAVE_FAILED','WORKSPACE_UNAVAILABLE','LANGUAGE_SAVE_FAILED']
 };
 export function describeError(error, language = 'en') {

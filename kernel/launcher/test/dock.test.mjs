@@ -114,3 +114,39 @@ test('existing external configuration opens without starting another application
  const f=await fixture(t);f.options.configuration=async()=>({configurationHost:'external',port:12345});
  assert.equal(await f.dock().start(f.input),'ready');assert.equal(f.calls.prepare,0);assert.equal(f.calls.start,0);assert.equal(f.calls.open,1);
 });
+
+test('a remount archives a verified dead Dock owner and its stopped worker before cold launch', async t => {
+  const f = await fixture(t);
+  await f.dock().start(f.input);
+  await f.dock().stop(f.input);
+  const owner = JSON.parse(await fs.readFile(path.join(f.root,'.runtime/native-app.json')));
+  const old = {...owner, dev: owner.dev + 1};
+  await f.write('.runtime/native-app.json',old);
+  const next = {pid:91003, nonce:randomUUID()};
+  f.identities.set(next.pid,{...owner.process,stamp:'next app'});
+  await assert.rejects(f.dock().start(next),{code:'DOCK_RECORD_INVALID'});
+  f.identities.delete(owner.pid);
+  const stateFile = '.runtime/native-app-state.json';
+  const state = JSON.parse(await fs.readFile(path.join(f.root,stateFile)));
+  await f.write(stateFile,{...state,workerFinished:false});
+  await assert.rejects(f.dock().start(next),{code:'DOCK_RECORD_INVALID'});
+  await f.write(stateFile,state);
+  f.setState({phase:'unverified',unverified:true});
+  await assert.rejects(f.dock().start(next),{code:'DOCK_RECORD_INVALID'});
+  f.setState({phase:'stopped'});
+  for (const different of [{ino:old.ino+1},{projectId:randomUUID()},{root:f.root+'-copy'}]) {
+    await f.write('.runtime/native-app.json',{...old,...different});
+    await assert.rejects(f.dock().start(next),{code:'DOCK_RECORD_INVALID'});
+  }
+  await f.write('.runtime/native-app.json',old);
+  f.identities.set(owner.pid,{stamp:'unrelated reused pid',executable:'/another/app'});
+  assert.equal(await f.dock().start(next),'ready');
+  const [archive] = (await fs.readdir(path.join(f.root,'.runtime'))).filter(file=>file.startsWith('dock-archive-'));
+  for(const file of ['native-app.json','native-app-state.json','native-app-request.json']){
+    const saved=JSON.parse(await fs.readFile(path.join(f.root,'.runtime',archive,file)));
+    assert.equal(saved.nonce,owner.nonce);
+  }
+  const current=JSON.parse(await fs.readFile(path.join(f.root,'.runtime/native-app.json')));
+  assert.equal(current.pid,next.pid);
+  assert.equal(current.dev,owner.dev);
+});

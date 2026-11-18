@@ -235,3 +235,7 @@ still fails, reporting the failure without an unhandled Promise rejection.
 Maintenance handoff includes the complete builtin shared-tool resolver import
 closure used by the copied worker's process contract, so it remains independent
 of the kernel source being replaced. Worker tests execute the detached copy.
+
+## Native owner recovery and runtime discovery (2026-11-17)
+
+The registered Dock app may recover a stale owner after a volume remount. Under the control lock it verifies the project path, ID, directory inode, matching record nonces, terminated owner and worker identities and absence of a live project runtime before archiving the old records in the local runtime folder. A copied folder, an active owner or unreadable identity requires inspection. A failed status probe with a possibly live controller reports an unverified runtime. Launch, restart and stop retry status before acting. A successful stop requires the previously verified controller PID to exit. A failed partial stop keeps the remaining service names available for retry.

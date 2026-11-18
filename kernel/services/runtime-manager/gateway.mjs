@@ -27,7 +27,7 @@ export function createGateway(options) {
     const page = () => { if (res.headersSent || res.destroyed) return; res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "frame-ancestors 'self'" }); res.end(renderRuntimeStatusPage(manager)); };
     if (route === '/__saplingagent/runtime' && req.method === 'GET') return page();
     const mutation = !['GET', 'HEAD'].includes(req.method);
-    if (mutation && (manager.operation || manager.maintenance)) return send(res, 503, { error: { code: 'RUNTIME_RESTARTING', message: 'Services are restarting. Please wait.' } });
+    if (mutation && (manager.operation || manager.maintenance || manager.closed)) return send(res, 503, { error: { code: 'RUNTIME_RESTARTING', message: 'Services are restarting. Please wait.' } });
     if (mutation) manager.gatewayWrites++;
     let done = false;
     const finish = () => { if (done) return; done = true; if (mutation) manager.gatewayWrites--; };

@@ -87,13 +87,17 @@ async function launch() {
           },
           report: (phase, error) => console.error(`Runtime shutdown ${phase}: ${error.code || 'SERVICE_STOP_FAILED'}. Check project logs.`),
         });
+        if (manager.children.size) {
+          stopping = false;
+          return;
+        }
         process.exit(result || code);
       }
 		for (const signal of [
 			"SIGINT",
 			"SIGTERM",
 			"SIGHUP"
-		]) process.once(signal, () => { void stop().catch(() => { console.error("Runtime shutdown failed. Check project logs."); process.exit(1); }); });
+		]) process.on(signal, () => { void stop().catch(() => { stopping = false; console.error("Runtime shutdown failed. Check project logs and retry."); }); });
     for(const signal of earlySignals)process.off(signal,earlyStop);
     if(startupInterrupted){await stop();return;}
 		try {

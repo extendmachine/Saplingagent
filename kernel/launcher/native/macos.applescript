@@ -8,6 +8,7 @@ property ownerNonce : missing value
 property startupTask : missing value
 property permitExit : false
 property reportedFailure : false
+property statusFailures : 0
 property progressWindow : missing value
 property progressLabel : missing value
 property progressDetail : missing value
@@ -141,6 +142,7 @@ end reopen
 on idle
 	try
 		set currentState to paragraph 1 of (my invokeHelper("--dock-status"))
+		set statusFailures to 0
 		if currentState is "handoff" then
 			-- Node completion can precede the helper's final log-handle close.
 			if startupTask is not missing value then
@@ -167,7 +169,14 @@ on idle
 			end if
 		end if
 	on error
-		-- A transient status failure must not silently remove the user's Quit control.
+		set statusFailures to statusFailures + 1
+		if statusFailures ≥ 3 then
+			if reportedFailure is false then
+				set reportedFailure to true
+				my reportFailure((my translated("Could not verify project status. Check logs/project-launcher and click the Dock icon to retry.")))
+			end if
+			return 15
+		end if
 	end try
 	return 2
 end idle
