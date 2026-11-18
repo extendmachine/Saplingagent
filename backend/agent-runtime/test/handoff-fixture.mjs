@@ -85,7 +85,8 @@ export async function handoffFixture(options = {}) {
   await new Promise(resolve => proxy.listen(0, '127.0.0.1', resolve));
   await fs.writeFile(path.join(root, 'config/runtime.json'), JSON.stringify({ workspacePort: proxy.address().port, frontPort: 6120, agentPort: 4310, builderPort: 4312, reasoningEffort: 'medium', preferredModel: options.preferredModel }));
   const server = await createAgentServer({ root, AppServerClass: FakeCodex, OpenCodeProviderClass: providerClass('opencode'), ClaudeProviderClass: providerClass('claude') });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); await server.startAgent();
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  if (!options.deferStartup) await server.startAgent();
   const base = `http://127.0.0.1:${server.address().port}`;
   const request = (route, data, method = data === undefined ? 'GET' : 'POST') => fetch(base + route, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: data === undefined ? undefined : JSON.stringify(data) });
   return {

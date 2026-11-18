@@ -40,6 +40,33 @@ test('one logical conversation survives all engines, model change and returning 
   assert.equal((await (await f.request('/api/sessions')).json()).sessions.length, 1);
 });
 
+test('a default engine startup failure still releases an abandoned conversation for another engine', async t => {
+  const f = await handoffFixture({ deferStartup: true, codexInitialize() { throw Error('Synthetic Codex unavailable'); } });
+  t.after(() => f.cleanup());
+  const workspaceUrl = 'http://127.0.0.1:' + f.workspace.address().port;
+  const write = async (route, method, value) => {
+    const response = await fetch(workspaceUrl + route, { method, headers: { Authorization: 'Bearer ' + f.token, 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+    assert.equal(response.ok, true, await response.clone().text());
+    return (await response.json()).session;
+  };
+  const session = await write('/sessions', 'POST', selections.codex);
+  const messages = [{ id: 'interrupted', requestId: 'interrupted', role: 'user', text: 'Keep this question' }];
+  await write('/sessions/' + session.id, 'PATCH', {
+    messages, running: true, activeRequestId: 'interrupted',
+    requests: [{ id: 'interrupted', status: 'inProgress', startedAt: new Date().toISOString() }],
+  });
+  await assert.rejects(f.server.startAgent(), /Synthetic Codex unavailable/);
+  const recovered = await f.session(session.id);
+  assert.equal(recovered.running, false);
+  assert.equal(recovered.activeRequestId, null);
+  assert.equal(recovered.requests[0].status, 'interrupted');
+  assert.deepEqual(recovered.messages, messages);
+  const switched = await f.switch(recovered, 'claude');
+  assert.equal(switched.status, 200, await switched.clone().text());
+  assert.equal((await switched.json()).session.id, session.id);
+  assert.equal(f.prompts.length, 0);
+});
+
 test('busy and catalog reservation reject chat/switch; unavailable targets and stale callers retain history', async t => {
   const f = await handoffFixture(); t.after(() => f.cleanup());
   f.autoComplete = false;

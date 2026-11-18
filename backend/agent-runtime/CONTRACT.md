@@ -229,6 +229,8 @@ file identity. Live/unknown owners and legacy locks are kept for inspection.
 
 A rejected Codex turn/start with a definitive protocol refusal ends the run. After an unknown submission outcome, the Agent reads the original thread and accepts only the turn containing the matching user-message clientId. Stop can retry that scoped check. Permanent size rejections (including HTTP 413) retry terminal metadata alone. A project-local pending terminal record supports recovery after an Agent restart. Replaying a message whose request ledger entry has already expired returns HTTP 409 and preserves the saved reply.
 
+At startup, the Agent repairs saved terminal writes and marks abandoned running sessions interrupted independently of starting the default engine. Status polling retries failed session recovery without restarting a ready engine or repeatedly scanning sessions after successful recovery. A provider outage therefore permits switching an interrupted conversation to an available engine. Recovery uses the existing revision checks and preserves the message history.
+
 Retries get distinct native Codex client IDs. The Agent can recover an ambiguous native turn only from its original thread, with exact attempt ownership. While a terminal write lacks acknowledgement, a journal under `data/agent-runtime/pending-saves` records its intended patch. A damaged entry is retained and affected sends report `SESSION_RECOVERY_REQUIRED`; the rest of the project can continue.
 
 ## Preparing a chat engine

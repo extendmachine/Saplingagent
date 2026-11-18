@@ -319,10 +319,11 @@ test('RPC replacement closes old transport, ignores stale events and preserves l
   await f.complete(turn); await until(() => ch.ended);
 });
 
-test('not-ready retries retain only one owned App Server', async t => {
+test('not-ready retries retain one owned App Server and reuse successful session recovery', async t => {
   const f = await fixture({}, { mcpUnavailable: true }); t.after(() => f.cleanup());
   for (let index = 0; index < 3; index++) await f.server.startAgent();
   assert.equal(f.rpcs.filter(rpc => !rpc.closed).length, 1);
+  assert.equal(f.workspaceRequests.filter(entry => entry === 'GET /sessions').length, 1);
 });
 
 test('unconfirmed Stop reserves its own turn without closing or failing another conversation', { timeout: 15000 }, async t => {

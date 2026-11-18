@@ -499,18 +499,34 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         }
       }
   }
-  async function start() {
-    lastStart=Date.now();
-    if(externalOnly)return recoverSavedRuns();
-    if(configuredSelection.engine==='claude'){
+  let startupSessionRecovery, lastRecoveryAttempt = 0;
+  function recoverStartupSessions() {
+    if (!startupSessionRecovery) {
+      lastRecoveryAttempt = Date.now();
+      startupSessionRecovery = recoverSavedRuns().catch(error => {
+        startupSessionRecovery = undefined;
+        throw error;
+      });
+    }
+    return startupSessionRecovery;
+  }
+  async function startDefaultEngine() {
+    lastStart = Date.now();
+    if (externalOnly) return;
+    if (configuredSelection.engine === 'claude') {
       await startClaude();
-      if (!runtimeStatus().ready) throw new ApiError('AGENT_NOT_READY',claudeStatus.error || 'Claude Agent is not ready. Check AI configuration.',503);
-      await recoverSavedRuns();
-    }else if(configuredSelection.engine==='opencode'){
+      if (!runtimeStatus().ready) throw new ApiError('AGENT_NOT_READY', claudeStatus.error || 'Claude Agent is not ready. Check AI configuration.', 503);
+    } else if (configuredSelection.engine === 'opencode') {
       await startOpenCode();
-      if(!openCodeStatus.ready||!openCodeStatus.authenticated||!openCodeStatus.mcp?.ready||!openCodeStatus.providers.some(p=>p.id===configuredSelection.providerId&&p.models.some(m=>m.id===configuredSelection.modelId)))throw new ApiError('AGENT_NOT_READY',openCodeStatus.error||'OpenCode provider or MCP is not ready. Check AI configuration.',503);
-      await recoverSavedRuns();
-    }else{await startCodex();await recoverSavedRuns();}
+      const { ready, authenticated, mcp, providers } = openCodeStatus;
+      if (!ready || !authenticated || !mcp?.ready || !providers.some(p => p.id === configuredSelection.providerId && p.models.some(m => m.id === configuredSelection.modelId))) {
+        throw new ApiError('AGENT_NOT_READY', openCodeStatus.error || 'OpenCode provider or MCP is not ready. Check AI configuration.', 503);
+      }
+    } else await startCodex();
+  }
+  async function start() {
+    const results = await Promise.allSettled([recoverStartupSessions(), startDefaultEngine()]);
+    for (const result of results) if (result.status === 'rejected') throw result.reason;
   }
   async function interrupt(run) {
     run.cancelRequested = true;
@@ -732,7 +748,12 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         return send(res, 200, { taskId: `RUN-${run.requestId}` });
       }
       if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ready: true, service: 'agent-runtime', agentReady: runtimeStatus().ready });
-      if (req.method === 'GET' && url.pathname === '/api/status') { if (!externalOnly && !runtimeStatus().ready && !startup && !openCodeStartup && !claudeStartup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...runtimeStatus(), codexReady: status.ready && !startup && !drain.prepared, defaultEngine: configuredSelection.engine, restarting: drain.prepared, activeRuns: active.size + pendingChats }); }
+      if (req.method === 'GET' && url.pathname === '/api/status') {
+        const now = Date.now();
+        if (!startupSessionRecovery && now - lastRecoveryAttempt > 15000) recoverStartupSessions().catch(() => {});
+        if (!externalOnly && !runtimeStatus().ready && !startup && !openCodeStartup && !claudeStartup && now - lastStart > 15000) startDefaultEngine().catch(() => {});
+        return send(res, 200, { ...runtimeStatus(), codexReady: status.ready && !startup && !drain.prepared, defaultEngine: configuredSelection.engine, restarting: drain.prepared, activeRuns: active.size + pendingChats });
+      }
       const prepareCatalog=req.method==='POST'&&url.pathname==='/api/engines/prepare';
       if (prepareCatalog || req.method === 'GET' && url.pathname === '/api/engines') {
         if(prepareCatalog){
