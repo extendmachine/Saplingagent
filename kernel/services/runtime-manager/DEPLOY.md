@@ -73,3 +73,38 @@ logs/project-launcher; bash Saplingagent.sh configure --ai-only opens this same
 AI-only flow. Plain configure remains full project setup.
 This JavaScript controller change requires one cold launch for existing running
 instances; it does not require rebuilding the native app. Current kernel0.9.9.
+
+## Run several static frontends
+
+In a project that is ready to run, add `"frontendMode": "static"` to its
+`config/runtime.json`, preserving its existing settings. Choose **Restart app**.
+The public URL and settings page stay at the same address. The gateway serves
+the built site, so Vite, its file watcher and its development WebSocket can exit.
+Edit the source normally and choose **Restart app** to publish the next build.
+To resume live editing with HMR, select `"frontendMode": "development"` or remove
+the setting, then choose **Restart app**. This choice applies to one project.
+
+The build runs `npm run build` in `front/` using the project's Node/npm.
+The default public output is `front/dist/index.html` at the URL `/`.
+For a custom static build, set `frontendDist` to its public output directory
+relative to `front/` and `frontendBase` to the mount declared in your build
+configuration, for example `/notes/`. Visiting the gateway root then redirects
+there. Keep server-rendered apps and custom Vite development middleware in
+development mode, or register their required services separately. Static mode
+serves GET/HEAD files and the application's client-side routes.
+
+A build needs the frontend's installed dependencies, disk space for a project-local
+staging copy and temporary memory for its compiler. The controller checks a complete
+copy before publishing. A failed rebuild leaves the last successful page available
+and reports the error in Settings. For a new app without a successful build, open
+`/__saplingagent/runtime`. Run `npm run build` in `front/`, check the configured
+output and its nonempty `index.html`, then choose **Restart app**. Once rebuilt,
+reload open pages to fetch the new asset names.
+
+中文：同时运行多个已开发完成的应用时，可在各自的 `config/runtime.json` 中添加
+`"frontendMode": "static"`，然后在设置中选择“重启应用”。这会编译并显示本项目的网页，
+空闲时无需运行 Vite。修改页面后再次“重启应用”即可更新。需要边编辑边预览时，
+将值改回 `"development"`，再重启。自定义静态构建还可填写输出目录
+`frontendDist` 和与构建设置相同的网址前缀 `frontendBase`。
+构建失败时请打开项目状态页，在 `front/` 运行 `npm run build` 检查报错；
+确认生成了 `index.html` 后重试。

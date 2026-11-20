@@ -18,6 +18,7 @@ export const errorMessages = {
     missingAuth: ['No supported local login was found.', 'Use official sign-in, upload your own supported credential file, or configure an API scheme.'],
     input: ['Some settings are missing or invalid.', 'Check the highlighted fields, provider URL, model and credentials, then save again.'],
     setup: ['Project configuration has not finished yet.', 'Save the project and AI settings, complete Save & build app, and wait for restart before opening the app.'],
+    frontendBuild: ['The project could not publish its frontend build.', 'Run npm run build in front/, check frontendDist and its index.html, then choose Restart app.'],
     dependency: ['A required local component could not start or be prepared.', 'Run Install / repair from Saplingagent.sh. Check your network and available disk space, then retry.'],
     permission: ['The operation was denied by the operating system or local access checks.', 'Open the app from its launcher and use its current local address. Check the project folder’s access permissions.'],
     conflict: ['The update overlaps with locally modified kernel files.', 'Review and merge the listed files before retrying. Keep your source backup; application files are preserved.'],
@@ -51,6 +52,7 @@ export const errorMessages = {
     missingAuth: ['未找到受支持的本机登录。', '请使用官方登录、上传自己的受支持凭据文件，或配置 API 方案。'],
     input: ['部分设置缺失或无效。', '检查提示的字段、服务商网址、模型及凭据，然后重新保存。'],
     setup: ['项目配置尚未完成。', '先保存项目和 AI 设置，再完成“保存并构建应用”；等待重启后打开应用。'],
+    frontendBuild: ['项目未能生成可用的前端页面。', '请在 front/ 运行 npm run build，检查 frontendDist 及其中的 index.html，然后选择“重启应用”。'],
     dependency: ['所需的本地组件无法启动或准备失败。', '在 Saplingagent.sh 中运行“安装／修复”，检查网络和磁盘空间后重试。'],
     permission: ['操作被系统权限或本地访问检查拒绝。', '请从启动器打开应用并使用当前本机网址，同时检查项目文件夹的访问权限。'],
     conflict: ['此次更新与本地修改的内核文件冲突。', '先检查并合并列出的文件，再重试。保留源码备份；应用文件会保留。'],
@@ -68,6 +70,7 @@ export const errorMessages = {
   }
 };
 const groups = {
+  frontendBuild: ['FRONTEND_BUILD_FAILED'],
   configurationModeInvalid: ['CONFIGURATION_MODE_INVALID'], configurationClosing: ['CONFIGURATION_CLOSING'], configurationRestart: ['CONFIGURATION_RESTART_FAILED'],
   configurationMode: ['CONFIGURATION_MODE_CONFLICT'], aiOnly: ['AI_CONFIGURATION_ONLY'],
   auth: ['UNAUTHENTICATED','AUTH_REQUIRED','LOGIN_REQUIRED','LOGIN_FAILED','INVALID_API_KEY','TOKEN_EXPIRED','AUTHENTICATION_ERROR'],

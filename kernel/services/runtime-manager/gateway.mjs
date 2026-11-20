@@ -13,9 +13,10 @@ export function createGateway(options) {
   const sockets = new Set();
   const server = http.createServer((req, res) => {
     try { localAccess(req, options); } catch (error) { return send(res, error.status, { error: { code: error.code, message: 'Local endpoint authentication failed.' } }); }
-    const route = new URL(req.url, 'http://127.0.0.1').pathname;
+    const url = new URL(req.url, 'http://127.0.0.1');
+    const route = url.pathname;
     if (route === '/__saplingagent/help' && req.method === 'GET') {
-      const requested = new URL(req.url,'http://127.0.0.1').searchParams.get('lang');
+      const requested = url.searchParams.get('lang');
       return void readLanguage(manager.root,normalizeLanguage(req.headers['accept-language'])).then(saved=>{
         if (res.destroyed) return;
         res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"frame-ancestors 'self'"});
@@ -26,12 +27,21 @@ export function createGateway(options) {
     if (route.startsWith('/api/runtime/')) return void control(req, res);
     const page = () => { if (res.headersSent || res.destroyed) return; res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "frame-ancestors 'self'" }); res.end(renderRuntimeStatusPage(manager)); };
     if (route === '/__saplingagent/runtime' && req.method === 'GET') return page();
+    const api = route.startsWith('/api/');
+    if (!api && manager.config.frontendMode === 'static') {
+      if (route === '/api' || route === '/__saplingagent' || route.startsWith('/__saplingagent/')) return send(res,404,{error:{code:'NOT_FOUND'}});
+      if (manager.staticSite) return void manager.staticSite.handle(req,res,url).catch(() => {
+        if (res.headersSent) return res.destroy();
+        if (!res.destroyed) send(res,503,{error:{code:'SERVICE_UNAVAILABLE',message:'Cannot read the built frontend. Retry Restart app.'}});
+      });
+      if (req.method === 'GET' && (req.headers.accept || '').includes('text/html')) return page();
+      return send(res,503,{error:{code:'SERVICE_UNAVAILABLE',message:'The frontend is not built. See runtime status.',control:'/__saplingagent/runtime'}});
+    }
     const mutation = !['GET', 'HEAD'].includes(req.method);
     if (mutation && (manager.operation || manager.maintenance || manager.closed)) return send(res, 503, { error: { code: 'RUNTIME_RESTARTING', message: 'Services are restarting. Please wait.' } });
     if (mutation) manager.gatewayWrites++;
     let done = false;
     const finish = () => { if (done) return; done = true; if (mutation) manager.gatewayWrites--; };
-    const api = route.startsWith('/api/');
     const port = api ? manager.config.agentPort : manager.config.vitePort;
     let upstreamResponse;
     const upstream = http.request({ hostname: '127.0.0.1', port, path: req.url, method: req.method, headers: req.headers }, response => {
@@ -61,6 +71,9 @@ export function createGateway(options) {
   });
   server.on('upgrade', (req, socket, head) => {
     try { localAccess(req, options); } catch { socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); return; }
+    if (manager.config.frontendMode === 'static') {
+      socket.end('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n'); return;
+    }
     const proxy = http.request({ hostname: '127.0.0.1', port: manager.config.vitePort, path: req.url, headers: req.headers });
     proxy.once('upgrade', (response, upstream, initial) => {
       sockets.add(socket); sockets.add(upstream);
