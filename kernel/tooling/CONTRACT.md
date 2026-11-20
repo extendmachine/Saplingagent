@@ -82,3 +82,30 @@ rebased executable paths because Windows junction targets are absolute. Shared m
 programs from PATH or the selected library after a switch. Go is optional until
 compilation and a binding from another mode may be discarded without downloading
 a compiler. A mode change preserves installed tool generations and project data.
+
+### Ordinary project npm installs
+
+Setup, dependency repair and kernel maintenance keep npm's working cache at
+`.cache/npm` and install each group's own `node_modules`. In shared mode the
+installer copies verified public tarballs between the working cache and
+`<tool library>/cache/public-npm-v1/sha512/`. Install scripts, npm logs,
+registry indexes and credentials stay in the project. A filesystem with clone
+support can reuse disk blocks. Each project can change or remove its files
+independently. A cold concurrent install can download the same package twice.
+Portable mode uses its local cache throughout.
+
+The bridge supports npm's content-v2 SHA-512 storage used by the pinned npm.
+It verifies each newly copied blob against the lockfile digest before atomic
+publication. Cache misses, filesystem errors and unsupported packages fall
+back to the ordinary npm install. An altered lock may read existing blobs
+matching canonical public registry URLs and SHA-512 integrity. A project can
+publish only the bytes for the public package set reviewed by the maintainer.
+Private registry URLs and custom tarballs do not enter the library.
+
+When changing a seed lock, verify each unique registry tarball URL and integrity
+against the corresponding package version's anonymous public npm registry
+metadata. After verification update the group's entry in
+`public-npm-locks.json` with the lowercase SHA-256 of its sorted, unique
+`resolved + space + integrity` lines, joined with newlines and no final newline.
+The test in `test/npm-cache.test.mjs` checks the fingerprints and exercises two
+independent projects with the actual npm CLI offline.

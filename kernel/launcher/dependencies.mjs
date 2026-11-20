@@ -1,3 +1,4 @@
+import {withPublicNpmCache} from '../tooling/npm-cache.mjs';
 import { launcherMessages } from '../localization/launcher-messages.mjs';
 import { formatMessage } from '../localization/public.mjs';
 import { readLanguage } from '../localization/store.mjs';
@@ -101,7 +102,8 @@ async function repairGroup(root,group,settings,onProgress,signal){
   // Keep installer output available to the caller; never inherit account keys into npm lifecycle scripts.
   const run=(exe,args,options={})=>command(root,exe,args,{env,onOutput:onProgress,signal,...options});
   if(group.name!=='codex'){
-    await run(npm.command,[...npm.args,'ci','--include=dev','--include=optional',...(['kernel','backend/agent-runtime'].includes(group.name)?[]:['--ignore-scripts']),'--no-audit','--no-fund'],{cwd:path.join(root,group.name)});
+    const cwd=path.join(root,group.name);
+    await withPublicNpmCache(root,cwd,() => run(npm.command,[...npm.args,'ci','--include=dev','--include=optional',...(['kernel','backend/agent-runtime'].includes(group.name)?[]:['--ignore-scripts']),'--no-audit','--no-fund'],{cwd}),{signal});
     if(group.name==='kernel'&&hasTooling(root)&&!(await toolSetStatus(root,await runtimeEngines(root))).ready)await prepare();
     return;
   }

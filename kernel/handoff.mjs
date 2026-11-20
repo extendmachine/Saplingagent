@@ -49,6 +49,8 @@ export async function startMaintenance(root, action, id) {
       'kernel/recover.mjs',
       'kernel/storage.mjs',
       'kernel/tooling/bindings.mjs',
+      'kernel/tooling/npm-cache.mjs',
+      'kernel/tooling/public-npm-locks.json',
       'kernel/tooling/progress.mjs',
       'kernel/tooling/providers.mjs',
       'kernel/tooling/store.mjs',

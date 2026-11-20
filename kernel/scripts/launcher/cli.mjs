@@ -1,3 +1,4 @@
+import {withPublicNpmCache} from '../../tooling/npm-cache.mjs';
 import { readLanguage, writeLanguage } from '../../localization/store.mjs';
 import { normalizeLanguage, describeError, formatMessage } from '../../localization/public.mjs';
 import { launcherMessages } from '../../localization/launcher-messages.mjs';
@@ -155,7 +156,8 @@ async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
     for (const service of coreOnly?['kernel']:appOnly?services.filter(s=>s!=='kernel'):services) {
       console.log(t("Installing locked dependencies for {p0}…",{p0:(service)}));
       const installArgs = ['ci', '--include=optional', ...(['kernel', 'backend/agent-runtime'].includes(service) ? [] : ['--ignore-scripts']), '--no-audit', '--no-fund'];
-      await required(npm.command, [...npm.args, ...installArgs], { cwd: path.join(root, service) });
+      const cwd=path.join(root, service);
+      await withPublicNpmCache(root,cwd,() => required(npm.command, [...npm.args, ...installArgs], {cwd}));
     }
     // A CLI discovered in an old kernel dependency tree can be removed by npm ci.
     if(hasTooling(root)&&!(await toolSetStatus(root,engines)).ready){
