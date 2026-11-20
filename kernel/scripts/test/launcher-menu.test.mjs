@@ -17,6 +17,7 @@ async function fixture(t, { failure = false, longRunning = false } = {}) {
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   await fs.copyFile(path.join(project, 'Saplingagent.sh'), path.join(root, 'Saplingagent.sh'));
   await fs.mkdir(path.join(root, 'kernel/scripts/macos'), { recursive: true });
+  await fs.copyFile(path.join(project,'kernel/scripts/platform.sh'),path.join(root,'kernel/scripts/platform.sh'));
   await fs.copyFile(path.join(project,'kernel/scripts/Saplingagent.sh'),path.join(root,'kernel/scripts/Saplingagent.sh'));await fs.mkdir(path.join(root,'kernel/localization'),{recursive:true});await fs.copyFile(path.join(project,'kernel/localization/installer-messages.sh'),path.join(root,'kernel/localization/installer-messages.sh'));
   await fs.writeFile(path.join(root, 'kernel/scripts/macos/bootstrap.sh'), `#!/bin/bash
 cd "$(dirname "$0")/../../.."
@@ -30,7 +31,7 @@ while true; do sleep 0.05; done` : failure ? 'exit 7' : 'exit 0'}
 }
 function execute(root, input = '', args = [], language = 'en', extraEnv = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn('/bin/bash', [path.join(root, 'Saplingagent.sh'), ...(language ? ['--lang', language] : []), ...args], { cwd: '/', env: { ...process.env, ...extraEnv }, stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn('/bin/bash', [path.join(root, 'Saplingagent.sh'), ...(language ? ['--lang', language] : []), ...args], { cwd: '/', env: { ...process.env, SAPLING_PLATFORM: 'macos', ...extraEnv }, stdio: ['pipe', 'pipe', 'pipe'] });
     let output = '';
     child.stdout.on('data', chunk => output += chunk);
     child.stderr.on('data', chunk => output += chunk);
@@ -90,7 +91,7 @@ test('help and unknown actions never invoke bootstrap', async t => {
 });
 test('terminating the menu forwards the signal and waits for its active child', async t => {
   const root = await fixture(t, { longRunning: true });
-  const child = spawn('/bin/bash', [path.join(root, 'Saplingagent.sh'), '--lang', 'en'], { stdio: ['pipe', 'ignore', 'ignore'] });
+  const child = spawn('/bin/bash', [path.join(root, 'Saplingagent.sh'), '--lang', 'en'], { env: {...process.env,SAPLING_PLATFORM:'macos'}, stdio: ['pipe', 'ignore', 'ignore'] });
   const exited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal })));
   t.after(() => { if (child.exitCode === null) child.kill('SIGTERM'); });
   child.stdin.write('3\n');
