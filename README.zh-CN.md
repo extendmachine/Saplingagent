@@ -57,7 +57,9 @@
 多个项目还可复用已验证的公开 npm 安装包。各项目分别安装可写依赖、管理自己的进程，关闭其中一个项目时其他项目可以继续运行。在设备上长期运行时，可在 `config/runtime.json` 中加入 `"frontendMode": "static"`，再点击**重启应用**。前端构建后由现有网关提供页面，可省去常驻的 Vite 进程。需要边改边看时，使用默认的 `development` 模式。
 
 
-## 内核 0.9.9 更新
+## 内核 1.0.0
+
+同一个 Bash 入口支持 macOS、Windows 和无桌面的 GNU/Linux。安装时可按回车接受检测结果，也可手动选择平台；探测失败时默认 Linux。每台设备仅安装对应系统和 CPU 的运行包。
 
 从主页面选择 **设置 → 配置 AI**，即可打开或复用独立配置网页。支持中英文、准备进度、错误说明和可复制的本地地址；仅打开配置不会停止应用。 这里现在只修改 AI 账号、服务商、模型及 MCP 接入，不要求重新填写项目名称、改名或编译 App。首次保存账号／方案前请先保存工作，所属服务会暂停；完成后选择 **完成并重启**。已有文件、会话、图标和编译结果保留。终端备用入口为 `bash Saplingagent.sh configure --ai-only`；不带此参数仍进入完整项目配置。
 
@@ -65,9 +67,9 @@
 
 默认页面恢复为纯对话布局。源码保留可选的 GitHub → Saplingagent 工作流**界面原型**，但默认页面不再加载；分析、生成和发布仍为示例，尚未实现对应后端。**仅升级内核会保留用户自己的前后端**，不会安装该原型或覆盖自定义聊天界面。旧标签与第三方条款保持不变。
 
-## 0.9.9：网页配置、本机启动器与内核归并
+## 1.0.0：网页配置、本机启动器与内核归并
 
-当前源码版本为 **内核 0.9.9**。下方一行安装命令下载公开 release 分支。使用包含 Linux 启动器的源码时，无桌面 x64 或 ARM64 设备请按 [Linux 终端安装指南](docs/linux-install.html) 操作。以下原生应用步骤适用于 macOS 和 Windows。
+当前源码版本为 **内核 1.0.0**。下方一行安装命令下载公开 release 分支。在 Linux 上，无桌面 x64 或 ARM64 设备请按 [Linux 终端安装指南](docs/linux-install.html) 操作。以下原生应用步骤适用于 macOS 和 Windows。
 
 1. 运行 `bash Saplingagent.sh`，检测设备、安装最小管理内核后直接打开配置网页。
 2. 在网页修改项目名称、目标文件夹名称和图标，先点击“保存项目设置”；这一步只保存，不移动目录。再完成 AI 账号或接口配置并保存。
@@ -87,7 +89,7 @@ macOS 上，应用会作为普通应用留在 Dock。点击 Dock 图标可重新
 
 ### 1. 获取完整应用
 
-在 **macOS 终端**或 **Windows Git Bash** 中运行以下命令，即可下载并安装，随后打开中文配置网页。Windows 请先安装 [Git for Windows](https://gitforwindows.org/)。
+在 **macOS 终端**、**Linux Bash** 或 **Windows Git Bash** 中运行以下命令，即可下载并安装，随后打开中文配置网页。Windows 请先安装 [Git for Windows](https://gitforwindows.org/)。
 
 ```bash
 bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/Saplingagent/release/install.sh | bash -s -- --lang zh'
@@ -198,7 +200,7 @@ bash Saplingagent.sh logout
 
 主页面右上角的**设置（Settings）**会在新标签页打开当前项目的 `/__saplingagent/runtime`，保留原聊天页与草稿，在那里查看状态、重启或停止应用。主页面不再显示底部内核标识和独立的重启／内核按钮。更新内核时直接打开 `/__saplingagent/kernel`，依次选择**检查内核更新 → 升级内核并重启**（英文界面对应 Check for kernel update → Upgrade kernel & restart）。升级器固定 release 提交并校验清单，显示变更和冲突，再停止当前应用、备份和替换内核、修复内核自己的依赖、完整重启并跳转到实际端口。页面、聊天、MCP、Skills、自定义业务和应用依赖声明保留。独立进度网页在原服务停止后继续工作，失败时可重试或手动恢复；不自动回退。
 
-当前内核版本为 **0.9.9 / schema3**；release 分支同步本版本；GitHub Releases 的旧标签和附件另行管理。0.9.1 的 schema2 原型不能直接跨边界升级：请下载0.9.2到新目录，保留原目录，再人工迁移自己的应用/数据/配置；不要覆盖真实凭据或重新生成旧目录基线。之后同 schema3 内核可在网页升级。完整说明：[内核管理](docs/kernel-management.html)。
+当前内核版本为 **1.0.0 / schema3**；release 分支同步本版本；GitHub Releases 的旧标签和附件另行管理。0.9.1 的 schema2 原型不能直接跨边界升级：请下载0.9.2到新目录，保留原目录，再人工迁移自己的应用/数据/配置；不要覆盖真实凭据或重新生成旧目录基线。之后同 schema3 内核可在网页升级。完整说明：[内核管理](docs/kernel-management.html)。
 
 
 ## 导入已有的本地凭据
@@ -392,9 +394,9 @@ Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍
 
 ## 发布版本识别
 
-当前统一称为 **内核版本 0.9.9**，唯一依据为 `kernel/manifest.json`，不再区分产品版本。页面、配置、安装和更新均读取内核版本；数据不可用时如实显示不可用。旧 `config/release.json` 与 `releaseVersion` 字段仅为兼容别名，不作为运行时版本依据。
+当前统一称为 **内核版本 1.0.0**，唯一依据为 `kernel/manifest.json`，不再区分产品版本。页面、配置、安装和更新均读取内核版本；数据不可用时如实显示不可用。旧 `config/release.json` 与 `releaseVersion` 字段仅为兼容别名，不作为运行时版本依据。
 
-源码 ZIP 的 `delivery.json` 记录 `kernelVersion` 和精确的 `sourceCommit`，`releaseVersion` 是同值兼容别名。固定下载 **0.9.9** 请使用 [v0.9.9 发布页面](https://github.com/extendmachine/Saplingagent/releases/tag/v0.9.9) 中的 macOS/Windows 源码 ZIP 和 SHA-256 校验文件；一行安装命令下载当前 release 分支。不可移动的标签、发布页面和包内回执必须对应同一份已核对源码，旧标签保持不变。参见[发布检查表](docs/release-checklist.html)。源码包不是已签名的原生安装器；真机和真实模型验收单独记录。
+源码 ZIP 的 `delivery.json` 记录 `kernelVersion` 和精确的 `sourceCommit`，`releaseVersion` 是同值兼容别名。固定下载 **1.0.0** 请使用 [v1.0.0 发布页面](https://github.com/extendmachine/Saplingagent/releases/tag/v1.0.0) 中的 macOS、Linux、Windows 源码 ZIP 和 SHA-256 校验文件；一行安装命令下载当前 release 分支。不可移动的标签、发布页面和包内回执必须对应同一份已核对源码，旧标签保持不变。参见[发布检查表](docs/release-checklist.html)。源码包不是已签名的原生安装器；真机和真实模型验收单独记录。
 
 ## 旧内核编号的一次性升级
 

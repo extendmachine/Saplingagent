@@ -72,7 +72,7 @@ link or disable setup Host/Origin checks. Errors/slow startup point to
 logs/project-launcher; bash Saplingagent.sh configure --ai-only opens this same
 AI-only flow. Plain configure remains full project setup.
 This JavaScript controller change requires one cold launch for existing running
-instances; it does not require rebuilding the native app. Current kernel0.9.9.
+instances; it does not require rebuilding the native app. Current kernel 1.0.0.
 
 ## Run several static frontends
 

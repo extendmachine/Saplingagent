@@ -8,12 +8,18 @@ import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
+const targets = {
+  macOS: { config: 'macos', label: 'macOS 13.5+', architectures: ['arm64', 'x64'] },
+  Windows: { config: 'windows', label: 'Windows 10/11 x64 and ARM64', architectures: ['x64', 'arm64'] },
+  Linux: { config: 'linux', label: 'GNU/Linux glibc x64 and ARM64', architectures: ['x64', 'arm64'] },
+};
+
 export function distributable(file) {
   if (!file || file.startsWith('/') || file.split('/').some(part => part === '..')) return false;
   if (/(^|\/)(?:\.git|\.worktrees|\.cache|\.runtime|local-secrets|logs|data|snapshots|node_modules|\.venv|\.test-data|dist|build)(\/|$)/.test(file)) return false;
   if (['config/project.json','config/project-icon.png','config/ui-language.json'].includes(file)) return false;
   if (/^config\/\.ui-language-.*\.tmp$/.test(file)) return false;
-  if (/(^|\/)ai-tasks\/runtime(\/|$)/.test(file)) return false;
+  if (/(^|\/)ai-tasks\/(?:runtime(?:\/|$)|TASK-[^/]*\.md$)/.test(file)) return false;
   if (/(^|\/)(?:selfdata\.json|\.DS_Store|\.env(?:\..*)?|auth\.json|service-token)$/.test(file)) return false;
   if (/\.(?:key|pem|p12|pfx|log)$/i.test(file)) return false;
   return /^(?:assets\/|kernel\/|front\/|backend\/|contracts\/|config\/|scripts\/|docs\/|rules\/|services\/|\.agents\/(?:skills\/|\.claude-plugin\/plugin\.json$))/.test(file)
@@ -22,8 +28,11 @@ export function distributable(file) {
 
 
 export async function packageSource({ ref = 'release', outputDir = path.join(root, '.cache/releases'), sourceRoot = root, platform = 'macOS' } = {}) {
-  if (!['macOS', 'Windows'].includes(platform)) throw new Error('Unsupported package target');
-  if (!['darwin', 'win32'].includes(process.platform)) throw new Error('Source ZIP packaging requires macOS or Windows.');
+  if (!Object.hasOwn(targets, platform)) throw new Error('Unsupported package target');
+  const target = targets[platform];
+  if (!['darwin', 'linux', 'win32'].includes(process.platform)) throw new Error('Source ZIP packaging requires macOS, Linux or Windows.');
+  // The Windows .NET ZIP writer cannot preserve executable bits for Linux.
+  if (platform === 'Linux' && process.platform === 'win32') throw new Error('Build Linux source ZIPs on macOS or Linux to preserve executable permissions.');
   const git = args => execFileSync('git', args, { cwd: sourceRoot, maxBuffer: 64 * 1024 * 1024 });
   const commit = git(['rev-parse', '--verify', `${ref}^{commit}`]).toString().trim();
   const declaredKernel = validateKernelManifest(JSON.parse(git(['show', `${commit}:kernel/manifest.json`])));
@@ -44,6 +53,7 @@ export async function packageSource({ ref = 'release', outputDir = path.join(roo
   const [major,minor,patch]=release.version.split('.').map(Number);
   if(major>0||minor>9||minor===9&&patch>=3)required.push('kernel/configuration/host.mjs','kernel/configuration/bundle.mjs','kernel/configuration/controller.mjs','kernel/configuration/bootstrap.mjs','kernel/configuration/handoff.mjs','kernel/configuration/session.mjs','kernel/configuration/move.mjs','kernel/launcher/dependencies.mjs','kernel/launcher/public.mjs','kernel/launcher/entry.mjs','kernel/launcher/manager.mjs','kernel/launcher/build.mjs','kernel/launcher/io.mjs','kernel/launcher/toolchain.json','kernel/launcher/native/main.go','kernel/launcher/native/spawn_darwin.go','kernel/launcher/native/spawn_windows.go','kernel/launcher/windows-icon.ps1','kernel/ui/setup/ProjectSetup.tsx','docs/project-launcher.html');
   if (platform === 'Windows') required.push('kernel/scripts/windows/bootstrap.sh','kernel/scripts/windows/bootstrap.ps1', 'kernel/config/windows.json', 'docs/windows-install.html', 'docs/windows-install.zh.html');
+  if (platform === 'Linux') required.push('kernel/scripts/platform.sh', 'kernel/scripts/linux/bootstrap.sh', 'kernel/scripts/linux/node-download.sh', 'kernel/scripts/linux/node.mjs', 'kernel/config/linux.json', 'docs/linux-install.html');
   for (const file of required) if (!files.some(entry => entry.path === file)) throw new Error(`Delivery version is missing ${file}`);
   const ruleFiles = entries.filter(entry => entry.path.startsWith('rules/'));
   if (ruleFiles.some(entry => !files.some(file => file.path === entry.path))) throw new Error('Incomplete rules; distribution refused.');
@@ -84,8 +94,8 @@ export async function packageSource({ ref = 'release', outputDir = path.join(roo
       const content = await fs.readFile(path.join(directory, file.path));
       manifestFiles.push({ path: file.path, bytes: content.length, sha256: createHash('sha256').update(content).digest('hex'), ...(generated.includes(file.path) ? { initializedForRecipient: true } : {}) });
     }
-    const settings = JSON.parse(await fs.readFile(path.join(directory, `kernel/config/${platform === 'Windows' ? 'windows' : 'macos'}.json`), 'utf8'));
-    await fs.writeFile(path.join(directory, 'delivery.json'), JSON.stringify({ schemaVersion: 2, kernelVersion: release.version, releaseVersion: release.version, sourceCommit: commit, sourceRef: ref, distribution: { source: 'release-archive', gitIncluded: false }, platform: platform === 'Windows' ? 'Windows 10/11 x64 and ARM64' : 'macOS 13.5+', architectures: platform === 'Windows' ? ['x64', 'arm64'] : ['arm64', 'x64'], runtimes: settings, files: manifestFiles }, null, 2) + '\n');
+    const settings = JSON.parse(await fs.readFile(path.join(directory, `kernel/config/${target.config}.json`), 'utf8'));
+    await fs.writeFile(path.join(directory, 'delivery.json'), JSON.stringify({ schemaVersion: 2, kernelVersion: release.version, releaseVersion: release.version, sourceCommit: commit, sourceRef: ref, distribution: { source: 'release-archive', gitIncluded: false }, platform: target.label, architectures: target.architectures, runtimes: settings, files: manifestFiles }, null, 2) + '\n');
     if (process.platform === 'win32') {
       const powershell = path.win32.join(process.env.SystemRoot || 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe');
       execFileSync(powershell, ['-NoProfile', '-NonInteractive', '-Command', '$ErrorActionPreference=\"Stop\"; Add-Type -AssemblyName System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::CreateFromDirectory($env:SAPLING_PACKAGE_FOLDER,$env:SAPLING_PACKAGE_ZIP,[IO.Compression.CompressionLevel]::Optimal,$true)'], { windowsHide: true, env: { ...process.env, SAPLING_PACKAGE_FOLDER: directory, SAPLING_PACKAGE_ZIP: tempZip } });

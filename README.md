@@ -23,7 +23,7 @@
 
 <p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 & ARM64 · GNU/Linux headless x64 & ARM64 · MIT open source · Commercial use permitted</sub></p>
 
-**Saplingagent · Kernel 0.9.9 · Contained kernel layout.** Use the release-branch download or one-line installer below for this source version. See [project setup and local compilation](docs/project-launcher.html).
+**Saplingagent · Kernel 1.0.0 · Contained kernel layout.** Use the release-branch download or one-line installer below for this source version. See [project setup and local compilation](docs/project-launcher.html).
 
 **Development branch: main.** This branch is the maintainer’s workspace for development and testing. Start shared changes here, validate them, then promote them to release when publication is requested.
 
@@ -53,7 +53,9 @@ Installation prepares Node and opens setup. Choosing a built-in engine prepares 
 For multiple projects, shared mode can also reuse verified public npm tarballs for recognized lockfiles. Each project keeps its own writable dependencies and processes, so stopping one project leaves the others running. For a deployed UI, set `"frontendMode": "static"` in `config/runtime.json` and choose **Restart app**. The gateway builds and serves the frontend without keeping a Vite process running. Use the default `development` mode for live edits.
 
 
-## Kernel 0.9.9 update
+## Kernel 1.0.0
+
+Install on macOS, Windows or headless GNU/Linux from the same Bash entry. At the platform prompt, press Enter to use the detected system or choose another installer. When detection fails, the default is Linux. Each installer prepares the matching CPU package.
 
 Open **Settings → Configure AI** from the main page to launch or reuse the independent setup website. Progress, English/Chinese errors and a copyable local address keep setup usable when the default browser cannot open. Opening setup alone does not stop your application.
 
@@ -65,7 +67,7 @@ The default page is conversation-only. The complete source retains an optional G
 
 ## Configure and launch
 
-For a headless GNU/Linux x64 or ARM64 device, use the [Linux terminal setup guide](docs/linux-install.html) with a source checkout containing that launcher. The public one-line installer below tracks the release branch. The desktop launcher instructions in this section apply to macOS and Windows.
+For a headless GNU/Linux x64 or ARM64 device, use the [Linux terminal setup guide](docs/linux-install.html) from the complete release source. The public one-line installer below tracks the release branch. The desktop launcher instructions in this section apply to macOS and Windows.
 
 The right-hand chat supports saved-conversation switching and renaming, per-conversation drafts, attachments, GFM tables and math formulas. Collapse the panel and drag its small chat opener to a convenient position. The context gauge shows the latest token count and window reported by Codex; unavailable readings stay unknown. It is not a billing meter or a promise of automatic context compaction. These controls belong to the editable application, independently of kernel updates.
 
@@ -81,7 +83,7 @@ On macOS, the app stays in the Dock while the existing project services run. Cli
 
 ### 1. Get the complete application
 
-For a new installation, run one command in **macOS Terminal** or **Windows Git Bash** (install [Git for Windows](https://gitforwindows.org/) first):
+For a new installation, run one command in **macOS Terminal**, **Linux Bash** or **Windows Git Bash** (install [Git for Windows](https://gitforwindows.org/) first):
 
 ```bash
 bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/Saplingagent/release/install.sh | bash'
@@ -181,7 +183,7 @@ The Git-free delivery workflow downloads the release snapshot without `.git`. In
 
 The chat page has a compact top-right **Settings** link to `/__saplingagent/runtime` for status, restart and stop; it opens a new tab to retain your chat and draft. It has no bottom kernel badge or embedded restart/kernel buttons. For updates, open `/__saplingagent/kernel` directly, then **Check for kernel update → Upgrade kernel & restart**. Review the verified release SHA, paths and conflicts, then accept the compatibility warning. A copied temporary progress process stops owned services, backs up/applies core, repairs its own dependencies and restarts the complete application at its actual selected port. App/chat pages, application-owned MCP, Skills, demos, business code, application dependency manifests, configuration, data and customer Git are retained. Restart app/backend remains available without an upgrade. Recovery is explicit; no automatic rollback. Direct control: `/__saplingagent/kernel`.
 
-This source declares **Kernel0.9.9 / schema3 / layout1**, the single Saplingagent version. Release promotion is separate from main development; inspect the committed release metadata before downloading. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
+This source declares **Kernel1.0.0 / schema3 / layout1**, the single Saplingagent version. Release promotion is separate from main development; inspect the committed release metadata before downloading. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
 
 ## Import existing local credentials
 
@@ -397,11 +399,11 @@ The App Server is a project-owned native stdio subprocess. Credentials and agent
 
 Restart app uses the existing persistent gateway and owned live PID-tree shutdown. Finish work before restarting. Forced parent/window termination, power loss and separately detached programs cannot guarantee cleanup; active command side effects are not undone. Ports/manager/launcher changes require normal stop and reopening the same Bash entry. No process-name/port kill, root elevation, automatic rollback or prompt resend is added.
 
-To create a committed clean Windows source ZIP, use `<project-node> kernel/scripts/package-windows.mjs release .cache/releases`. Both platform packages include the one executable Saplingagent.sh, all companion sources/helpers/rules, fresh recipient records and per-file/ZIP hashes, excluding credentials/data/logs/dependencies/Git. Copy the complete folder, not just one script. Remove stale installation locks only after confirming the installer has stopped.
+To create a committed clean Windows source ZIP, use `<project-node> kernel/scripts/package-windows.mjs release .cache/releases`. The macOS, Linux and Windows source packages include the one executable Saplingagent.sh, all companion sources/helpers/rules, fresh recipient records and per-file/ZIP hashes, excluding credentials/data/logs/dependencies/Git. Copy the complete folder, not just one script. Remove stale installation locks only after confirming the installer has stopped.
 
 ## Automatic device selection
 
-The common Bash entry detects macOS, native Windows Bash and GNU/Linux. Mac chooses Intelx64 or AppleSiliconarm64 (including Rosetta). Windows verifies build17763+, selects native x64/ARM64 ahead of emulated-terminal architecture, checks official Node24.21.0 checksums and actual runtime architecture, then installs pinned Codex0.146.1/OpenCode1.19.0 native binaries. No manual CPU selection. GNU/Linux uses the terminal launcher on supported glibc x64 and ARM64 systems. Re-run Install / repair dependencies after moving the source folder to another device; installed dependencies are OS-specific. Native Windows login/model/MCP/restart and ARM hardware tests remain unverified on the current Mac host.
+The common Bash entry detects macOS, native Windows Bash and GNU/Linux. Mac chooses Intelx64 or AppleSiliconarm64 (including Rosetta). Windows verifies build17763+, selects native x64/ARM64 ahead of emulated-terminal architecture, checks official Node24.21.0 checksums and actual runtime architecture, then installs pinned Codex0.146.1/OpenCode1.19.0 native binaries. No manual CPU selection. GNU/Linux uses the terminal launcher on supported glibc x64 and ARM64 systems. Re-run Install / repair dependencies after moving the source folder to another device; installed dependencies are OS-specific. Native Windows installation and model use still require a Windows hardware check.
 
 
 ## Automatic local ports
@@ -416,9 +418,9 @@ Use the paperclip, drop files into AI chat or paste an image. Attachments stay i
 
 ## Release identity
 
-The installed **Kernel0.9.9** is the only Saplingagent version, read from `kernel/manifest.json`. Setup, runtime/kernel management, Bash and packages use it. There is no separate product version. Missing/invalid metadata is unavailable. Legacy `config/release.json` and `releaseVersion` receipt names remain compatibility mirrors/aliases; they are not runtime authority.
+The installed **Kernel1.0.0** is the only Saplingagent version, read from `kernel/manifest.json`. Setup, runtime/kernel management, Bash and packages use it. There is no separate product version. Missing/invalid metadata is unavailable. Legacy `config/release.json` and `releaseVersion` receipt names remain compatibility mirrors/aliases; they are not runtime authority.
 
-Downloadable source ZIPs record `kernelVersion` and the exact `sourceCommit` in `delivery.json`; `releaseVersion` remains an equal compatibility alias. For **0.9.9**, use the [v0.9.9 release](https://github.com/extendmachine/Saplingagent/releases/tag/v0.9.9) for pinned macOS/Windows source ZIPs and SHA-256 checksums, or the one-line installer for the current `release` branch. The immutable tag, release page and package receipts must identify the same checked source. Existing tags are preserved. See the [release checklist](docs/release-checklist.html). Source packages are not signed native installers; real-device/model acceptance is recorded separately.
+Downloadable source ZIPs record `kernelVersion` and the exact `sourceCommit` in `delivery.json`; `releaseVersion` remains an equal compatibility alias. For **1.0.0**, use the [v1.0.0 release](https://github.com/extendmachine/Saplingagent/releases/tag/v1.0.0) for pinned macOS, Linux and Windows source ZIPs and SHA-256 checksums, or the one-line installer for the current `release` branch. The immutable tag, release page and package receipts must identify the same checked source. Existing tags are preserved. See the [release checklist](docs/release-checklist.html). Source packages are not signed native installers; real-device/model acceptance is recorded separately.
 
 ### Kernel source boundary
 

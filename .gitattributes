@@ -1,1 +1,3 @@
 *.sh text eol=lf
+**/ai-tasks/TASK-*.md export-ignore
+**/ai-tasks/runtime export-ignore
