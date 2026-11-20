@@ -66,7 +66,7 @@ async function configureAI(){
   catch(error){if(error.code){configuration={phase:'failed',error};renderConfiguration()}else{configuration={phase:'starting'};byId('configuration-message').textContent=t('Setup status is unavailable. Reconnect before retrying; the launcher may still be preparing.')}}
   finally{configurationSubmitting=false;enable();schedule()}
 }
-function schedule(){clearTimeout(timer);if(!stopped)timer=setTimeout(update,2000)}
+function schedule(){clearTimeout(timer);if(!stopped&&!document.hidden)timer=setTimeout(update,2000)}
 async function update(){
   if(pending||polling||stopped){schedule();return}polling=true;
   try{const s=await request('/api/runtime/status',null,3000);if(pending||stopped)return;if(!s.instanceId||!Array.isArray(s.services))throw Error(t("Invalid status"));if(expectedRoot&&s.applicationRoot!==expectedRoot)throw Object.assign(Error(t("This port now belongs to a different project. Reopen the original project’s native app; its address may have changed.")),{code:'ROOT_CHANGED'});const previous=last,wasConnected=connected,changed=last&&last.instanceId!==s.instanceId;if(changed)configuration={phase:'idle'};last=s;connected=true;render(s);void syncLanguage();await syncConfiguration();byId('reconnect').hidden=true;if(changed)message(t("A new runtime is connected. Review its status before using the controls."));else if(s.error)message(errorText(s.error));else if(s.phase==='ready'&&(!wasConnected||previous?.error||previous?.phase!=='ready'))message(t("Startup checks passed. Open app to continue."));}
@@ -88,7 +88,11 @@ async function action(kind){
 }
 byId('configure').onclick=()=>configureAI();
 byId('restart').onclick=()=>action('restart');byId('backend').onclick=()=>action('backend');byId('stop').onclick=()=>action('stop');byId('logs').onclick=()=>action('logs');byId('reconnect').onclick=()=>{stopped=false;message(t("Reconnecting…"));void update()};
-void update();
+document.addEventListener('visibilitychange',()=>{
+  clearTimeout(timer);
+  if(!document.hidden&&!stopped&&!pending&&!polling)void update();
+});
+if(!document.hidden)void update();
 </script></body></html>`;
 
 export function renderRuntimeStatusPage(manager) {

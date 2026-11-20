@@ -3,7 +3,7 @@
 ## Project status page (TASK-20261019-048)
 
 The existing GET `/__saplingagent/runtime` is the lightweight launcher status page,
-independent of application Vite. It refreshes every two seconds, shows project name,
+independent of application Vite. It refreshes every two seconds while visible, pauses polling while hidden, refreshes on return, and shows project name,
 installed kernel version, actual project directory/public URL, runtime phase and
 managed service process IDs/ports. Running means the owned process has not exited;
 it is not a continuous health claim. Overall ready means startup checks passed.
