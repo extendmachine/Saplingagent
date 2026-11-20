@@ -224,6 +224,8 @@ user conversations, source, identity and launcher remain intact. See
 `kernel/configuration/CONTRACT.md`.
 
 
+When the macOS Dock app is ready or stopped, its normal full status probe runs at most once every 20 seconds. A project-local maintenance request wakes the probe on the next two-second idle check. Starting, reopening, quitting and active transitions retain prompt lifecycle checks. Existing exported applications gain the change on rebuild.
+
 ## Current shared tool runtime (2026-11-03)
 
 TASK-20261103-001 supersedes historical project-local-tool-only statements for third-party Node/npm, Codex/Claude/OpenCode programs, engine SDKs, Go and their download cache. Installation detects compatible local programs, otherwise uses a per-user versioned shared library. Native launch, repair and full app/backend restart resolve the same bindings. Project credentials/sessions/config/data/logs/build output remain local. Portable mode is available. See kernel/tooling/CONTRACT.md (from the project root), rule11 and docs/shared-runtime.html. Kernel remains0.9.9; release promotion and native Windows acceptance are separate.
