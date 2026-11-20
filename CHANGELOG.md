@@ -8,6 +8,11 @@
 - Reduce background status polling and improve Dock shutdown and recovery. Native macOS launchers need a rebuild to pick up the Dock changes.
 - Kernel updates retain schema 3, layout 1 and application API 1. A full source download includes application changes; a kernel-only update preserves the recipient’s application code.
 
+### Codex login import revision (2026-11-19)
+
+- Use the local user’s Codex login when Configure AI is launched with the project’s own `CODEX_HOME`. If no separate login file is available, direct users to official sign-in or file upload.
+- Existing 1.0.0 installations can apply the revised kernel from the normal kernel update screen. The public source revision is tagged `v1.0.0+rev.2`.
+
 ### Chat and runtime reliability
 
 - Recover failed chat restores without leaving the UI running; isolate event cancellation from status polling and give chat headers a120-second transport budget.

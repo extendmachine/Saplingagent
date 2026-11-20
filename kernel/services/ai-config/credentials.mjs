@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { codexAuthFile } from '../../contracts/configuration-transaction.mjs';
 import { failure } from './store.mjs';
 
 export const credentialLimit = 32768;
@@ -33,12 +34,14 @@ export function claudeCredentials(value) {
   const apiKey = secret(value.apiKey ?? value.ANTHROPIC_API_KEY ?? value.env?.ANTHROPIC_API_KEY);
   return { apiKey, baseUrl: value.baseUrl ?? value.ANTHROPIC_BASE_URL ?? value.env?.ANTHROPIC_BASE_URL, model: value.model ?? value.ANTHROPIC_MODEL ?? value.env?.ANTHROPIC_MODEL };
 }
-async function readDocument(file, missingCode, missingMessage) {
+async function readDocument(file, missingCode, missingMessage, excludedFile) {
   let handle;
   try {
     // Bounded reads even when a file grows after stat; never run credential helpers.
     handle = await fs.open(file, 'r');
-    if (!(await handle.stat()).isFile()) throw failure('LOCAL_AUTH_UNREADABLE', 'The local credential source is not a normal file.', 500);
+    const stat = await handle.stat({ bigint: true });
+    if (!stat.isFile()) throw failure('LOCAL_AUTH_UNREADABLE', 'The local credential source is not a normal file.', 500);
+    if (excludedFile && stat.ino !== 0n && stat.ino === excludedFile.ino && stat.dev === excludedFile.dev) return null;
     const buffer = Buffer.alloc(credentialLimit + 1); let size = 0;
     while (size < buffer.length) {
       const { bytesRead } = await handle.read(buffer, size, buffer.length - size, null);
@@ -54,6 +57,25 @@ async function readDocument(file, missingCode, missingMessage) {
   } finally { await handle?.close(); }
 }
 
+async function readLocalCodex(root, home, codexHome) {
+  const destination = path.resolve(root, 'local-secrets', codexAuthFile);
+  const missingCode = 'LOCAL_AUTH_NOT_FOUND';
+  const missingMessage = 'No separate local Codex auth.json was found. Use official sign-in or upload auth.json. Keychain or desktop-only login may have no file.';
+  const projectFile = await fs.stat(destination, { bigint: true }).catch(error => {
+    if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return null;
+    throw failure('LOCAL_AUTH_UNREADABLE', 'Cannot inspect the project credential file. Check file access or use a JSON upload.', 500);
+  });
+  const fallback = path.resolve(home, '.codex', 'auth.json');
+  const candidates = new Set(codexHome ? [path.resolve(codexHome, 'auth.json'), fallback] : [fallback]);
+  for (const file of candidates) {
+    // The running app exports its private CODEX_HOME. Skip that file and any alias.
+    if (file === destination) continue;
+    const value = await readDocument(file, missingCode, missingMessage, projectFile);
+    if (value) return value;
+  }
+  throw failure(missingCode, missingMessage, 404);
+}
+
 export class CredentialImport {
   constructor(store, { home = os.homedir(), env = process.env } = {}) { Object.assign(this, { store, home, env }); }
   async run(input) {
@@ -63,7 +85,7 @@ export class CredentialImport {
     try {
       let value;
       if (input.source === 'upload') value = parseCredentialJSON(input.json);
-      else if (input.engine === 'codex') value = await readDocument(path.join(this.env.CODEX_HOME || path.join(this.home, '.codex'), 'auth.json'), 'LOCAL_AUTH_NOT_FOUND', 'No local Codex auth.json was found. Keychain or desktop-only login cannot be imported this way; use official sign-in or upload auth.json.');
+      else if (input.engine === 'codex') value = await readLocalCodex(this.store.root, this.home, this.env.CODEX_HOME);
       else if (this.env.ANTHROPIC_API_KEY) value = { ANTHROPIC_API_KEY: this.env.ANTHROPIC_API_KEY, baseUrl: this.env.ANTHROPIC_BASE_URL, model: this.env.ANTHROPIC_MODEL };
       else {
         value = await readDocument(path.join(this.env.CLAUDE_CONFIG_DIR || path.join(this.home, '.claude'), 'settings.json'), 'LOCAL_API_NOT_FOUND', 'No local Claude API settings were found. Set ANTHROPIC_API_KEY in the launcher terminal, upload an API key JSON or enter a key. Subscription/keychain login is not imported.');
