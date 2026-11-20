@@ -51,7 +51,7 @@ test('two projects install with genuine offline npm ci using only reviewed tarba
   const published = path.join(home,'cache/public-npm-v1/sha512',suffix);
   const cached = root => path.join(root,'.cache/npm/_cacache/content-v2/sha512',suffix);
   // Only the fixture kernel approves this synthetic tarball.
-  for (const file of ['tooling/bindings.mjs','tooling/npm-cache.mjs','contracts/local-storage.mjs']) {
+  for (const file of ['tooling/bindings.mjs','tooling/device.mjs','tooling/npm-cache.mjs','contracts/local-storage.mjs']) {
     await write(path.join(dir,'kernel',file),await fs.readFile(path.join(project,'kernel',file)));
   }
   await write(path.join(dir,'kernel/tooling/public-npm-locks.json'),{fixture:hash('sha256',tarball+' '+sri,'hex')});

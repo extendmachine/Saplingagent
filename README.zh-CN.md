@@ -21,7 +21,7 @@
   <a href="docs/index.html">使用文档</a>
 </p>
 
-<p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 / ARM64 · MIT 开源 · 允许商业使用</sub></p>
+<p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 / ARM64 · GNU/Linux 无桌面 x64 / ARM64 · MIT 开源 · 允许商业使用</sub></p>
 
 **开发分支：main。** 本分支用于维护者的开发和测试。共享修改先在 main 实现并验证，再按发布要求同步到 release。
 
@@ -52,7 +52,9 @@
 
 ## 本机工具复用与共享环境
 
-安装时先准备 Node 并打开设置页。选择内置引擎后，项目会按需准备它的 CLI 和所需 SDK；只使用外部 MCP 时无需安装内置引擎。多个项目可以复用本机工具和同一用户的共享工具库。Go 在导出原生启动器时准备。首版以 release 固定版本作为复用标准，不覆盖用户已有程序。账号、会话、业务数据和应用依赖继续独立。需要完整文件夹自包含时运行 `SAPLING_RUNTIME_MODE=portable bash Saplingagent.sh install`。详见[共享工具与修复](docs/shared-runtime.html)。此项 main 开发内容另行同步 release。
+安装时先准备 Node 并打开设置页。选择内置引擎后，项目会按需准备它的 CLI 和所需 SDK；只使用外部 MCP 时无需安装内置引擎。多个项目可以复用本机工具和同一用户的共享工具库。Go 在导出原生启动器时准备。首版以 release 固定版本作为复用标准，不覆盖用户已有程序。账号、会话、业务数据和应用依赖继续独立。需要完整文件夹自包含时运行 `SAPLING_RUNTIME_MODE=portable bash Saplingagent.sh install`。详见[共享工具与修复](docs/shared-runtime.html)。
+
+多个项目还可复用已验证的公开 npm 安装包。各项目分别安装可写依赖、管理自己的进程，关闭其中一个项目时其他项目可以继续运行。在设备上长期运行时，可在 `config/runtime.json` 中加入 `"frontendMode": "static"`，再点击**重启应用**。前端构建后由现有网关提供页面，可省去常驻的 Vite 进程。需要边改边看时，使用默认的 `development` 模式。
 
 
 ## 内核 0.9.9 更新
@@ -65,7 +67,7 @@
 
 ## 0.9.9：网页配置、本机启动器与内核归并
 
-当前源码版本为 **内核 0.9.9**。请通过下方一行安装命令或 release 分支下载本版本。
+当前源码版本为 **内核 0.9.9**。下方一行安装命令下载公开 release 分支。使用包含 Linux 启动器的源码时，无桌面 x64 或 ARM64 设备请按 [Linux 终端安装指南](docs/linux-install.html) 操作。以下原生应用步骤适用于 macOS 和 Windows。
 
 1. 运行 `bash Saplingagent.sh`，检测设备、安装最小管理内核后直接打开配置网页。
 2. 在网页修改项目名称、目标文件夹名称和图标，先点击“保存项目设置”；这一步只保存，不移动目录。再完成 AI 账号或接口配置并保存。
@@ -137,9 +139,9 @@ bash Saplingagent.sh --lang zh
 
 手动下载源码后运行统一入口，即可安装并进入配置网页；一键安装命令已自动执行这一步。在旧终端菜单中，对应操作为 **1. 安装 / 修复依赖**、**2. 配置 AI 接口**和 **3. 启动应用**。失败时根据提示重试。更新依赖前请先停止正在运行的应用；若通过终端启动服务，请保留启动终端，按 Control+C 停止它所管理的服务并退出启动器。
 
-安装程序将固定版本的 Node **24.21.0**、Codex **0.146.1**、OpenCode、Claude Agent SDK **0.3.296** 和锁定依赖安装到项目内，并核对官方 Node SHA-256。无需预装 Node、npm、Homebrew 或 Codex 桌面应用，也无需 sudo 或全局 npm 安装。版本声明见 [kernel/config/macos.json](kernel/config/macos.json) 和各模块的锁文件。
+macOS 和 Windows 安装程序会查找固定版本的 Node **24.21.0**，下载时核对官方 SHA-256，再按配置准备所选 AI 引擎和锁定依赖。无需预装 Node、npm、Homebrew 或 Codex 桌面应用，也无需 sudo 或全局 npm 安装。版本声明见 [kernel/config/macos.json](kernel/config/macos.json) 和各模块的锁文件。
 
-新安装不需要配置 Git；Windows 由 Git for Windows 提供 Git Bash。安装需要访问官方下载、npm 与所选模型服务。`.runtime/` 保存运行时，各模块 `node_modules/` 保存依赖，`.cache/npm/` 保存 npm 缓存。请保留整个应用文件夹。
+新安装不需要配置 Git；Windows 由 Git for Windows 提供 Git Bash。安装需要访问官方下载、npm 与所选模型服务。`.runtime/` 保存项目运行环境的绑定，各模块 `node_modules/` 保存依赖，`.cache/npm/` 保存 npm 缓存。请保留整个应用文件夹。
 
 ### 3. 配置 AI，开始第一次对话
 
@@ -314,7 +316,7 @@ flowchart LR
 ```text
 Saplingagent/
 ├── README.md / README.zh-CN.md # 英文 / 中文项目说明
-├── Saplingagent.sh             # macOS / Windows 中英文统一菜单
+├── Saplingagent.sh             # 桌面与 Linux 终端的中英文启动入口
 ├── front/                     # React 聊天与应用功能
 ├── backend/
 │   ├── agent-runtime/         # 模型引擎、对话、SSE 与 Git API
@@ -375,12 +377,12 @@ Codex 认证、使用限制和 App Server 说明于 **2026-10-14**重新核对�
 - [Codex 认证](https://learn.chatgpt.com/docs/auth)
 - [Codex 使用限制与计费](https://learn.chatgpt.com/docs/pricing)
 - [Sign in with ChatGPT / App Server](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server)
-- [本地文档首页](docs/index.html) · [中文 macOS 安装](docs/macos-install.zh.html) · [中文 Windows 安装](docs/windows-install.zh.html)
+- [本地文档首页](docs/index.html) · [中文 macOS 安装](docs/macos-install.zh.html) · [中文 Windows 安装](docs/windows-install.zh.html) · [Linux 终端安装](docs/linux-install.html)
 - [AI 配置](docs/ai-configuration.html) · [Git 版本管理](docs/git-versions.html) · [服务接口](docs/api-interfaces.html)
 
 项目规则随 `rules/` 交付。本文翻译不改变授权、凭据处理、任务协调或 Full Access。只有明确要求向其他项目引入规范时，才使用[规范分发指南](rules/DISTRIBUTION.md)；正常安装不依赖开发者的规范源文件夹。
 
-Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍使用 Git Bash 的同一入口，不要求独立 `.ps1`、全局 Node / Codex、注册表 / 全局 PATH 或永久执行策略修改。启动器自动选择 Mac Intel / Apple Silicon、Windows x64 / ARM64；Linux、WSL 和 32 位设备在下载前被拒绝。强制关闭终端、断电或另行脱离的程序不保证能清理；运行命令的副作用不会被自动撤销。更多平台实现与调试细节见 [English README](README.md#windows-operation-and-delivery)。
+Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍使用 Git Bash 的同一入口，不要求独立 `.ps1`、全局 Node / Codex、注册表 / 全局 PATH 或永久执行策略修改。启动器自动选择 Mac Intel / Apple Silicon、Windows x64 / ARM64。GNU/Linux 使用独立的终端启动流程，支持采用 glibc 的 x64 和 ARM64 系统。强制关闭终端、断电或另行脱离的程序不保证能清理；运行命令的副作用不会被自动撤销。更多平台实现与调试细节见 [English README](README.md#windows-operation-and-delivery)。
 
 ## 文件对话与页面读取
 
