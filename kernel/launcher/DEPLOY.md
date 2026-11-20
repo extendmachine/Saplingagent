@@ -18,8 +18,7 @@ reopen and configuration handoff. A protected-directory consent dialog requires
 a separate human check. Project settings and runtime files keep their usual
 locations inside each project.
 
-GNU/Linux glibc x64/ARM64 uses the terminal launcher with official pinned Node
-and npm on PATH, Bash and util-linux flock. Install/configure opens AI-only web
+GNU/Linux glibc x64/ARM64 uses the terminal launcher with Bash, coreutils, util-linux flock, curl, tar and gzip. Installation reuses compatible Node/npm or verifies and downloads the matching Linux distribution. Install/configure opens AI-only web
 setup and prints its loopback URL. After initial setup, use
 `bash Saplingagent.sh start` in the foreground. Configuration of a running
 project resumes its runtime after changes. Native launcher export remains a

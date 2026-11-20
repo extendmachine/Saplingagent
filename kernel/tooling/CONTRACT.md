@@ -112,8 +112,7 @@ independent projects with the actual npm CLI offline.
 
 ## GNU/Linux
 
-On GNU/Linux supply the official pinned Node distribution with npm on PATH or
-under the user library’s runtimes/node-vVERSION-linux-ARCH directory. A
+On GNU/Linux the installer looks for the pinned official Node/npm on PATH and in the user library. When absent, it downloads the selected Linux architecture from nodejs.org, checks the official SHA-256, and publishes the complete runtime under a per-version installation lock. Shared mode uses the user library and portable mode uses the project store. A
 project-local alias points to it in shared mode; portable mode copies the Node
 executable and npm tree under .runtime/tool-store and uses a relative alias.
 The default shared AI tool library is ~/.local/share/Saplingagent. Linux
