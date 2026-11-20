@@ -38,7 +38,7 @@ The root startup holds the shared `.runtime/kernel-operation.lock` until runtime
 
 ## Code-first release identity (2026-10-17)
 
-The Bash menu reads config/release.json; the source downloader resolves an immutable release commit before reading its declared version and stores releaseVersion plus sourceCommit in delivery.json. Source ZIP filenames include both version and short commit. Packaging and kernel/scripts/verify-release.mjs read committed metadata, never uncommitted local values. Follow contracts/release.md: freeze/check code, finalize version, main-first integration, requested release promotion, exact-commit/tag/hash checks, packages and GitHub Release, then downloaded-artifact verification. Use the owner-selected kernel version. Preserve public tags by default; correct mistaken labels only on explicit owner instruction with saved previous targets and publication evidence. Current release identity uses the unified kernel version 0.9.9; customer Git history remains independent.
+The Bash menu reads kernel/manifest.json. The source downloader resolves an immutable release commit and records kernelVersion, its releaseVersion compatibility alias and sourceCommit in delivery.json. Source ZIP filenames include both version and short commit. Packaging and kernel/scripts/verify-release.mjs read committed metadata, never uncommitted local values. Follow contracts/release.md: freeze/check code, finalize version, main-first integration, requested release promotion, exact-commit/tag/hash checks, packages and GitHub Release, then downloaded-artifact verification. Use the owner-selected kernel version. Preserve public tags by default; correct mistaken labels only on explicit owner instruction with saved previous targets and publication evidence. Current release identity uses the unified kernel version 1.0.0; customer Git history remains independent.
 
 ## Current configuration and thin app workflow
 
@@ -48,7 +48,7 @@ Customer launcher management uses the public kernel/launcher/public.mjs facade. 
 
 ## Current kernel version
 
-The Bash menu/downloader now read kernel/manifest.json; kernelVersion in delivery receipts is authoritative and releaseVersion is the same compatibility alias. Build/package/config metadata mirrors are checked against that one version (currently0.9.9). Previous product/kernel distinction notes above are historical. Old updater transition: docs/kernel-version-migration.html.
+The Bash menu/downloader now read kernel/manifest.json; kernelVersion in delivery receipts is authoritative and releaseVersion is the same compatibility alias. Build/package/config metadata mirrors are checked against that one version (currently 1.0.0). Previous product/kernel distinction notes above are historical. Old updater transition: docs/kernel-version-migration.html.
 
 
 ## Personal Claude subscription startup (2026-10-22)
@@ -66,4 +66,4 @@ AI changes does not stop or restart the app.
 
 ## Current shared tool runtime (2026-11-03)
 
-TASK-20261103-001 supersedes historical project-local-tool-only statements for third-party Node/npm, Codex/Claude/OpenCode programs, engine SDKs, Go and their download cache. Installation detects compatible local programs, otherwise uses a per-user versioned shared library. Native launch, repair and full app/backend restart resolve the same bindings. Project credentials/sessions/config/data/logs/build output remain local. Portable mode is available. See kernel/tooling/CONTRACT.md (from the project root), rule11 and docs/shared-runtime.html. Kernel remains0.9.9; release promotion and native Windows acceptance are separate.
+TASK-20261103-001 supersedes historical project-local-tool-only statements for third-party Node/npm, Codex/Claude/OpenCode programs, engine SDKs, Go and their download cache. Installation detects compatible local programs, otherwise uses a per-user versioned shared library. Native launch, repair and full app/backend restart resolve the same bindings. Project credentials/sessions/config/data/logs/build output remain local. Portable mode is available. See kernel/tooling/CONTRACT.md (from the project root), rule11 and docs/shared-runtime.html. Kernel 1.0.0 includes shared tools. Native Windows acceptance is tracked separately.

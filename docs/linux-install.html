@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Saplingagent on GNU/Linux</title>
+<main>
+<h1>Run Saplingagent on GNU/Linux</h1>
+<p>The headless launcher supports glibc x64 and ARM64. Install Bash, GNU coreutils, util-linux (flock), curl, tar and gzip. Setup reuses an official Node.js distribution with bundled npm matching <code>kernel/config/linux.json</code>. If none is available it downloads the matching Linux archive, checks its official SHA-256 and installs it once per user. Debian 12 is the reference environment. macOS and Windows offer native desktop launchers.</p>
+<ol>
+<li>Download the Linux source ZIP from the <a href="https://github.com/extendmachine/Saplingagent/releases/tag/v1.0.0">kernel 1.0.0 release</a> and extract it into a new folder. Give it your project name before setup. The current user needs write access to the folder and its parent for the temporary configuration page.</li>
+<li>In that folder, run <code>bash Saplingagent.sh --lang en install</code>. Press Enter to accept Linux or choose it from the menu. Unrecognized platforms default to Linux. Visit the printed loopback URL. Choose a model account/provider or enable external-only MCP, save, and finish configuration.</li>
+<li>Run <code>bash Saplingagent.sh start</code>. Visit the URL printed by this project and keep the terminal open. Press Control+C to stop it. To change AI settings later, run <code>bash Saplingagent.sh configure</code>. Inspect <code>logs/</code> for diagnostics.</li>
+</ol>
+<p>When connecting via SSH, forward <em>each printed port</em> to that same local port, for example <code>ssh -N -L 127.0.0.1:5173:127.0.0.1:5173 user@server</code>. Open <code>http://127.0.0.1:5173/</code> locally in this example. Setup and application ports can differ.</p>
+<p>Selected AI tools and SDKs reuse the per-user <code>~/.local/share/Saplingagent</code> library. To keep private copies of tools, set <code>SAPLING_RUNTIME_MODE=portable</code> on the first install. Application dependencies, credentials, configuration, sessions and running services remain per project. Account-backed conversations require the selected provider’s access.</p>
+<section lang="zh"><h2>在 GNU/Linux 运行</h2>
+<p>支持采用 glibc 的 x64 和 ARM64。准备 Bash、GNU coreutils、util-linux（含 flock）、curl、tar 和 gzip 即可。安装器先查找 <code>kernel/config/linux.json</code> 指定版本的官方 Node.js 和 npm，找不到时自动下载当前架构的 Linux 包，核对官方 SHA-256 后放入用户共享工具库。后续项目可直接复用。Linux 使用终端启动，macOS 和 Windows 可导出桌面启动器。</p>
+<ol><li>从<a href="https://github.com/extendmachine/Saplingagent/releases/tag/v1.0.0">内核 1.0.0 发布页面</a>下载 Linux 源码 ZIP 并解压到新的项目目录，先起好文件夹名称。当前用户需要有权写入此目录及其上级目录，以便创建临时配置网页。</li>
+<li>在项目目录执行 <code>bash Saplingagent.sh --lang zh install</code>。按回车接受 Linux，也可从菜单选择；探测失败时默认使用 Linux。打开显示的网址，设置 AI 账号、服务商或仅外部 MCP，保存并完成配置。</li>
+<li>执行 <code>bash Saplingagent.sh start</code>，访问终端实际报告的网址。保持终端开启，按 Control+C 停止。以后用 <code>bash Saplingagent.sh configure</code> 修改 AI 配置，日志见 <code>logs/</code>。</li></ol>
+<p>远程设备请使用 SSH 将配置页和应用各自显示的端口转发到本机同一端口，命令示例见上文。AI 工具与 SDK 默认复用当前用户的共享目录。需要项目独立副本时，在首次安装时指定 <code>SAPLING_RUNTIME_MODE=portable</code>。</p></section>
+</main></html>

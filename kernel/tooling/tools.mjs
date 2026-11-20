@@ -1,3 +1,4 @@
+import {deviceName} from './device.mjs';
 import fs from 'node:fs/promises';
 import {setTimeout as delay} from 'node:timers/promises';
 import {existsSync} from 'node:fs';
@@ -10,7 +11,7 @@ import {ensureShared,atomicJSON} from './store.mjs';
 
 const json=file=>fs.readFile(file,'utf8').then(JSON.parse).catch(()=>null);
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
-const settingsFor=root=>json(path.join(root,`kernel/config/${process.platform==='win32'?'windows':'macos'}.json`));
+const settingsFor=root=>json(path.join(root,`kernel/config/${deviceName()}.json`));
 export const hasTooling=root=>existsSync(path.join(root,'kernel/tooling/sdk/package-lock.json'));
 export function npmFor(node=process.execPath,platform=process.platform){
   return {command:node,args:[platform==='win32'?path.join(path.dirname(node),'node_modules/npm/bin/npm-cli.js'):path.resolve(path.dirname(node),'../lib/node_modules/npm/bin/npm-cli.js')]};

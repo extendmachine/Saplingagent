@@ -4,6 +4,28 @@ set -euo pipefail
 
 SEED_PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 source "$SEED_PROJECT_DIR/kernel/localization/installer-messages.sh"
+source "$SEED_PROJECT_DIR/kernel/scripts/macos/device.sh"
+case "${1:-}" in
+  install|login|configure|start|doctor|logout|opencode|kernel|runtime-only) ;;
+  *) sapling_message installer_018 >&2; exit 1 ;;
+esac
+if ! SEED_OS_VERSION="$(sapling_macos_version)"; then
+  sapling_message installer_019 >&2
+  exit 1
+fi
+SEED_OS_MAJOR="${SEED_OS_VERSION%%.*}"
+SEED_OS_REST="${SEED_OS_VERSION#*.}"
+SEED_OS_MINOR="${SEED_OS_REST%%.*}"
+if [ "$SEED_OS_MAJOR" -lt 13 ] || { [ "$SEED_OS_MAJOR" -eq 13 ] && [ "$SEED_OS_MINOR" -lt 5 ]; }; then
+  sapling_message installer_020 >&2
+  exit 1
+fi
+if ! SEED_MAC_ARCH="$(sapling_macos_arch)"; then
+  SEED_MAC_ARCH=unknown
+  sapling_message installer_021 >&2
+  exit 1
+fi
+sapling_message installer_022
 # Bind installer/tool scratch space before running curl, tar or Node.
 for SAPLING_LOCAL_DIRECTORY in .runtime .runtime/tmp .cache .cache/npm .cache/node-compile .cache/runtime local-secrets local-secrets/runtime local-secrets/runtime/config data data/runtime data/runtime-state; do
   if [ -L "$SEED_PROJECT_DIR/$SAPLING_LOCAL_DIRECTORY" ]; then
@@ -21,31 +43,7 @@ export XDG_DATA_HOME="$SEED_PROJECT_DIR/data/runtime"
 export XDG_STATE_HOME="$SEED_PROJECT_DIR/data/runtime-state"
 export XDG_CACHE_HOME="$SEED_PROJECT_DIR/.cache/runtime"
 
-case "${1:-}" in
-  install|login|configure|start|doctor|logout|opencode|kernel|runtime-only) ;;
-  *) sapling_message installer_018 >&2; exit 1 ;;
-esac
-if [ "$(/usr/bin/uname -s)" != "Darwin" ]; then
-  sapling_message installer_019 >&2
-  exit 1
-fi
-SEED_OS_VERSION="$(/usr/bin/sw_vers -productVersion)"
-SEED_OS_MAJOR="${SEED_OS_VERSION%%.*}"
-SEED_OS_REST="${SEED_OS_VERSION#*.}"
-SEED_OS_MINOR="${SEED_OS_REST%%.*}"
-if [ "$SEED_OS_MAJOR" -lt 13 ] || { [ "$SEED_OS_MAJOR" -eq 13 ] && [ "$SEED_OS_MINOR" -lt 5 ]; }; then
-  sapling_message installer_020 >&2
-  exit 1
-fi
-SEED_MAC_ARCH="$(/usr/bin/uname -m)"
-# Detect Apple Silicon even when the terminal is running under Rosetta.
-if [ "$(/usr/sbin/sysctl -n hw.optional.arm64 2>/dev/null || true)" = "1" ]; then SEED_MAC_ARCH="arm64"; fi
-case "${SEED_MAC_ARCH}" in
-  arm64) ;;
-  x86_64) SEED_MAC_ARCH="x64" ;;
-  *) sapling_message installer_021 >&2; exit 1 ;;
-esac
-sapling_message installer_022
+
 SEED_NODE_VERSION="$(/usr/bin/plutil -extract nodeVersion raw -o - "$SEED_PROJECT_DIR/kernel/config/macos.json")"
 if ! [[ "${SEED_NODE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   sapling_message installer_023 >&2

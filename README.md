@@ -21,9 +21,9 @@
   <a href="docs/index.html">Documentation</a>
 </p>
 
-<p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 & ARM64 · MIT open source · Commercial use permitted</sub></p>
+<p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 & ARM64 · GNU/Linux headless x64 & ARM64 · MIT open source · Commercial use permitted</sub></p>
 
-**Saplingagent · Kernel 0.9.9 · Contained kernel layout.** Use the release-branch download or one-line installer below for this source version. See [project setup and local compilation](docs/project-launcher.html).
+**Saplingagent · Kernel 1.0.0 · Contained kernel layout.** Use the release-branch download or one-line installer below for this source version. See [project setup and local compilation](docs/project-launcher.html).
 
 <a id="demo"></a>
 
@@ -98,8 +98,12 @@ Office editing covers basic changes. Word controls format whole paragraphs; Powe
 
 Installation prepares Node and opens setup. Choosing a built-in engine prepares its compatible CLI and required SDK on demand. External MCP access needs no built-in engine. Projects can reuse installed tools and one per-user library. Go is prepared when exporting the native launcher. Initial reuse requires the exact tested release pins; incompatible programs are retained and a supported version is installed alongside them. Credentials, conversations, data and application dependencies stay separate. Use `SAPLING_RUNTIME_MODE=portable bash Saplingagent.sh install` for a project-contained tool store. See [shared tools and repair](docs/shared-runtime.html).
 
+For multiple projects, shared mode can also reuse verified public npm tarballs for recognized lockfiles. Each project keeps its own writable dependencies and processes, so stopping one project leaves the others running. For a deployed UI, set `"frontendMode": "static"` in `config/runtime.json` and choose **Restart app**. The gateway builds and serves the frontend without keeping a Vite process running. Use the default `development` mode for live edits.
 
-## Kernel 0.9.9 update
+
+## Kernel 1.0.0
+
+Install on macOS, Windows or headless GNU/Linux from the same Bash entry. At the platform prompt, press Enter to use the detected system or choose another installer. When detection fails, the default is Linux. Each installer prepares the matching CPU package.
 
 Open **Settings → Configure AI** from the main page to launch or reuse the independent setup website. Progress, English/Chinese errors and a copyable local address keep setup usable when the default browser cannot open. Opening setup alone does not stop your application.
 
@@ -110,6 +114,8 @@ Startup, Restart backend and Restart app now reselect occupied internal ports, p
 The default page is conversation-only. The complete source retains an optional GitHub-to-Saplingagent workflow **UI prototype**, which is not mounted by the default page. Its analysis, generation and publication are examples, not implemented backend operations. **Kernel-only upgrades preserve your application frontend/backend** and do not install this prototype or overwrite customized chat. Existing tags and third-party terms remain unchanged.
 
 ## Configure and launch
+
+For a headless GNU/Linux x64 or ARM64 device, use the [Linux terminal setup guide](docs/linux-install.html) from the complete release source. The public one-line installer below tracks the release branch. The desktop launcher instructions in this section apply to macOS and Windows.
 
 The right-hand chat supports saved-conversation switching and renaming, per-conversation drafts, attachments, GFM tables and math formulas. Collapse the panel and drag its small chat opener to a convenient position. The context gauge shows the latest token count and window reported by Codex; unavailable readings stay unknown. It is not a billing meter or a promise of automatic context compaction. These controls belong to the editable application, independently of kernel updates.
 
@@ -125,7 +131,7 @@ On macOS, the app stays in the Dock while the existing project services run. Cli
 
 ### 1. Get the complete application
 
-For a new installation, run one command in **macOS Terminal** or **Windows Git Bash** (install [Git for Windows](https://gitforwindows.org/) first):
+For a new installation, run one command in **macOS Terminal**, **Linux Bash** or **Windows Git Bash** (install [Git for Windows](https://gitforwindows.org/) first):
 
 ```bash
 bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/Saplingagent/release/install.sh | bash'
@@ -154,7 +160,9 @@ Or [download release source](https://github.com/extendmachine/Saplingagent/archi
 
 ### 2. Install through the launcher
 
-Use the same **Saplingagent.sh** entry from the application folder on both platforms:
+From the application folder, run `bash Saplingagent.sh install`. In a terminal, press Enter to accept the detected platform or choose macOS (MacBook), GNU/Linux or Windows. Failed detection defaults to Linux. For automation, use `bash Saplingagent.sh install --platform auto` to skip the prompt or replace `auto` with `macos`, `linux` or `windows` to select an installer explicitly. Each installer prepares the package for that OS and CPU. For a headless device see the [Linux guide](docs/linux-install.html).
+
+Desktop prerequisites:
 
 - **macOS:** open Terminal in the complete project folder.
 - **Windows10/11 x64 or ARM64:** install/use [Git for Windows](https://gitforwindows.org/), then open **Git Bash** in the complete project folder. Windows CMD/PowerShell do not run Bash scripts directly. Git Bash is required; WSL/Linux is not this native Windows installation path.
@@ -171,13 +179,13 @@ Choose **English** or **中文** (Enter defaults to English). The script install
 4. Choose **Finish setup**. B starts A at the final path, receives its acknowledgement and exits. A waits for B to release its files, then removes the verified external capsule. The page confirms the handoff; `.runtime/configuration-complete.json` records actual cleanup.
 5. Double-click the app. It checks Node and declared dependencies, installs missing or changed groups locally, starts the project and opens its actual URL. Reopen `bash Saplingagent.sh configure` to change settings or rebuild. Unchanged native executables are reused; new builds replace the previous output after validation.
 
-Keep the complete folder. Source, local runtimes, compiler and data remain inside it. Renaming the customer project does not change Saplingagent's kernel identity. Native Windows icon/folder replacement still requires real-device acceptance; local Mac compilation is not Developer ID notarization. See the [launcher guide](docs/project-launcher.html).
+Keep the complete folder. Source, installed application dependencies and data remain inside it. Shared tool bindings are revalidated when the project moves. Renaming the customer project does not change Saplingagent's kernel identity. Native Windows icon/folder replacement still requires real-device acceptance; local Mac compilation is not Developer ID notarization. See the [launcher guide](docs/project-launcher.html).
 
 Explicit fallback commands remain: `bash Saplingagent.sh configure --no-open`, `install --repair`, `start`, `doctor`, and `kernel`. `SAPLING_LEGACY_MENU=1 bash Saplingagent.sh` opens the previous terminal menu. Script installation opens web setup; it does not initialize or erase customer Git.
 
-Installation supports macOS 13.5+ on Apple Silicon or Intel, downloads official Node **24.21.0**, checks its official SHA-256 checksum, and installs project-local Codex **0.146.1**, OpenCode, Claude Agent SDK **0.3.296** and locked dependencies. No preinstalled Node, npm, Homebrew or Codex desktop app is required. Git is required for local version history; on Mac, install Apple Command Line Tools with `xcode-select --install` if Git is missing (full Xcode is unnecessary); Windows requires Git Bash and its bundled shell utilities. Windows10 must be version1809+; ARM64 and x64 are detected automatically. Internet access to official downloads, npm and your model provider is required. Versions are declared in [kernel/config/macos.json](kernel/config/macos.json) and dependency lockfiles.
+Installation supports macOS 13.5+ on Apple Silicon or Intel, downloads official Node **24.21.0**, checks its official SHA-256 checksum, and prepares the selected provider and locked dependencies on demand. No preinstalled Node, npm, Homebrew or Codex desktop app is required. Git is required for local version history; on Mac, install Apple Command Line Tools with `xcode-select --install` if Git is missing (full Xcode is unnecessary); Windows requires Git Bash and its bundled shell utilities. Windows10 must be version1809+; ARM64 and x64 are detected automatically. Internet access to official downloads, npm and your model provider is required. Versions are declared in [kernel/config/macos.json](kernel/config/macos.json) and dependency lockfiles.
 
-Runtimes stay in `.runtime/`, dependencies in their modules' `node_modules/`, and npm cache in `.cache/npm/`. No sudo or global npm installation is needed. Keep the entire application folder; the single user-facing launcher uses its internal scripts and configuration.
+Project runtime bindings stay in `.runtime/`, installed dependencies in each module’s `node_modules/`, and the project npm cache in `.cache/npm/`. No sudo or global npm installation is needed. Keep the entire application folder; the single user-facing launcher uses its internal scripts and configuration.
 
 ### 3. Configure AI and start your first conversation
 
@@ -223,7 +231,7 @@ The Git-free delivery workflow downloads the release snapshot without `.git`. In
 
 The chat page has a compact top-right **Settings** link to `/__saplingagent/runtime` for status, restart and stop; it opens a new tab to retain your chat and draft. It has no bottom kernel badge or embedded restart/kernel buttons. For updates, open `/__saplingagent/kernel` directly, then **Check for kernel update → Upgrade kernel & restart**. Review the verified release SHA, paths and conflicts, then accept the compatibility warning. A copied temporary progress process stops owned services, backs up/applies core, repairs its own dependencies and restarts the complete application at its actual selected port. App/chat pages, application-owned MCP, Skills, demos, business code, application dependency manifests, configuration, data and customer Git are retained. Restart app/backend remains available without an upgrade. Recovery is explicit; no automatic rollback. Direct control: `/__saplingagent/kernel`.
 
-This source declares **Kernel0.9.9 / schema3 / layout1**, the single Saplingagent version. Release promotion is separate from main development; inspect the committed release metadata before downloading. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
+This source declares **Kernel1.0.0 / schema3 / layout1**, the single Saplingagent version. Release promotion is separate from main development; inspect the committed release metadata before downloading. The0.9.1/schema2 prototype requires a deliberate complete-tooling transition: download0.9.2 into a new folder, retain your original folder and reconcile your own app/data/config. Do not blindly overwrite credentials or regenerate an old baseline. Future compatible schema3 kernels upgrade from the web control. [Kernel management](docs/kernel-management.html) documents failures, retry and manual source recovery.
 
 ## Import existing local credentials
 
@@ -257,7 +265,7 @@ Claude can also run through the official **Claude Agent SDK** as its own local a
 
 Run `bash Saplingagent.sh` to open web setup, then choose **API / custom provider** → **Anthropic · Messages**. The preset selects **Claude Agent**. Enter your own API key, exact model ID and API Base URL (`https://api.anthropic.com/v1`, or your compatible gateway URL). **Save & use** → **Save & build app** → wait for completion → **Finish setup** → open the generated app. Change providers with Apply in an idle conversation, or create a new conversation. Model discovery is optional; gateways must support Anthropic Messages streaming and tool calls. Claude schemes do not require Codex login.
 
-The SDK is pinned to `0.3.296` and installs its native binary inside the application folder; a separate global Claude Code installation is unnecessary. API keys stay in `local-secrets/api-keys/`, and SDK state/transcripts in `local-secrets/claude/`. Project `CLAUDE.md` imports `AGENTS.md`; `.agents/` loads the existing Skills as the `saplingagent` local plugin. Full Access remains enabled as the current OS user. There is no default whole-turn deadline, automatic fallback, automatic resend or silent replacement of missing sessions.
+The SDK is pinned to `0.3.296`. Shared mode reuses the matching Claude Code executable or installs the build for this OS and CPU in the user’s tool library. Portable mode stores it with this project. API keys stay in `local-secrets/api-keys/`, and SDK state/transcripts in `local-secrets/claude/`. Project `CLAUDE.md` imports `AGENTS.md`; `.agents/` loads the existing Skills as the `saplingagent` local plugin. Full Access remains enabled as the current OS user. There is no default whole-turn deadline, automatic fallback, automatic resend or silent replacement of missing sessions.
 
 Claude API usage uses the customer's own account and provider billing. A separate personal/local option accepts a manually generated `claude setup-token` credential; it does not import a global subscription login or claim approval for third-party subscription access. Anthropic's account, usage and integration conditions still apply. See the [personal token guide](docs/claude-subscription.html). SDK components follow Anthropic's terms, separately from this project's license. See [SDK overview](https://code.claude.com/docs/en/agent-sdk/overview) and [quickstart / authentication](https://code.claude.com/docs/en/agent-sdk/quickstart).
 
@@ -283,7 +291,7 @@ flowchart LR
     Codex --> Skills[Project Skills and rules]
 ```
 
-1. [kernel/scripts/macos/codex.sh](kernel/scripts/macos/codex.sh) selects project-local Node and Codex, sets project `CODEX_HOME`, and uses file credential storage.
+1. [kernel/scripts/macos/codex.sh](kernel/scripts/macos/codex.sh) resolves this project’s Node and Codex bindings, sets project `CODEX_HOME`, and uses file credential storage.
 2. [kernel/engines/rpc.mjs](kernel/engines/rpc.mjs) launches `codex app-server --listen stdio://` and exchanges newline-delimited JSON through stdin/stdout.
 3. [server.mjs](backend/agent-runtime/server.mjs) sends `initialize`, then `initialized`; checks `account/read` and `model/list`; creates/resumes threads; starts turns; and forwards incremental text/tool events to the browser through SSE.
 4. Startup arguments configure `mcp_servers.seedagent` to launch [the project MCP server](backend/mcp-runtime/server.mjs) with local service endpoints. It exposes **15 tools** for project context, files, commands, change records, preferences and Skills.
@@ -362,7 +370,7 @@ Stop services before moving the application. Move the whole folder. On the same 
 ```text
 Saplingagent/
 ├── README.md / README.zh-CN.md # English / Chinese project guides
-├── Saplingagent.sh             # macOS / Windows bilingual setup launcher
+├── Saplingagent.sh             # bilingual setup launcher for desktop or Linux terminal
 ├── front/                     # React chat and application features
 ├── backend/
 │   ├── agent-runtime/         # Agent engines, turns, SSE, Git API
@@ -425,7 +433,7 @@ Codex authentication, usage and App Server documentation rechecked on **2026-10-
 - [Codex authentication](https://learn.chatgpt.com/docs/auth)
 - [Codex usage and pricing](https://learn.chatgpt.com/docs/pricing)
 - [Sign in with ChatGPT / App Server](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server)
-- [Local documentation](docs/index.html), [macOS guide](docs/macos-install.html), [service interfaces](docs/api-interfaces.html)
+- [Local documentation](docs/index.html), [macOS guide](docs/macos-install.html), [Linux guide](docs/linux-install.html), [service interfaces](docs/api-interfaces.html)
 
 The user's project rules ship under `rules/`. Translating their prose does not relax approval, credential handling or task-coordination requirements. The complete [rules distribution guide](rules/DISTRIBUTION.md) applies only when explicitly asked to introduce/copy the rules into another project; normal installation requires no developer-specific rules source folder.
 
@@ -439,11 +447,11 @@ The App Server is a project-owned native stdio subprocess. Credentials and agent
 
 Restart app uses the existing persistent gateway and owned live PID-tree shutdown. Finish work before restarting. Forced parent/window termination, power loss and separately detached programs cannot guarantee cleanup; active command side effects are not undone. Ports/manager/launcher changes require normal stop and reopening the same Bash entry. No process-name/port kill, root elevation, automatic rollback or prompt resend is added.
 
-To create a committed clean Windows source ZIP, use `<project-node> kernel/scripts/package-windows.mjs release .cache/releases`. Both platform packages include the one executable Saplingagent.sh, all companion sources/helpers/rules, fresh recipient records and per-file/ZIP hashes, excluding credentials/data/logs/dependencies/Git. Copy the complete folder, not just one script. Remove stale installation locks only after confirming the installer has stopped.
+To create a committed clean Windows source ZIP, use `<project-node> kernel/scripts/package-windows.mjs release .cache/releases`. The macOS, Linux and Windows source packages include the one executable Saplingagent.sh, all companion sources/helpers/rules, fresh recipient records and per-file/ZIP hashes, excluding credentials/data/logs/dependencies/Git. Copy the complete folder, not just one script. Remove stale installation locks only after confirming the installer has stopped.
 
 ## Automatic device selection
 
-The common Bash entry detects macOS or native Windows Bash environments and routes automatically. Mac chooses Intelx64 or AppleSiliconarm64 (including Rosetta). Windows verifies build17763+, selects native x64/ARM64 ahead of emulated-terminal architecture, checks official Node24.21.0 checksums and actual runtime architecture, then installs pinned Codex0.146.1/OpenCode1.19.0 native binaries. No manual CPU selection. Linux/WSL and32-bit devices fail before download. Re-run Install / repair dependencies after moving the source folder to another device; installed dependencies are OS-specific. Native Windows login/model/MCP/restart and ARM hardware tests remain unverified on the current Mac host.
+The common Bash entry detects macOS, native Windows Bash and GNU/Linux. Mac chooses Intelx64 or AppleSiliconarm64 (including Rosetta). Windows verifies build17763+, selects native x64/ARM64 ahead of emulated-terminal architecture, checks official Node24.21.0 checksums and actual runtime architecture, then installs pinned Codex0.146.1/OpenCode1.19.0 native binaries. No manual CPU selection. GNU/Linux uses the terminal launcher on supported glibc x64 and ARM64 systems. Re-run Install / repair dependencies after moving the source folder to another device; installed dependencies are OS-specific. Native Windows installation and model use still require a Windows hardware check.
 
 
 ## Automatic local ports
@@ -458,9 +466,9 @@ Use the paperclip, drop files into AI chat or paste an image. Attachments stay i
 
 ## Release identity
 
-The installed **Kernel0.9.9** is the only Saplingagent version, read from `kernel/manifest.json`. Setup, runtime/kernel management, Bash and packages use it. There is no separate product version. Missing/invalid metadata is unavailable. Legacy `config/release.json` and `releaseVersion` receipt names remain compatibility mirrors/aliases; they are not runtime authority.
+The installed **Kernel1.0.0** is the only Saplingagent version, read from `kernel/manifest.json`. Setup, runtime/kernel management, Bash and packages use it. There is no separate product version. Missing/invalid metadata is unavailable. Legacy `config/release.json` and `releaseVersion` receipt names remain compatibility mirrors/aliases; they are not runtime authority.
 
-Downloadable source ZIPs record `kernelVersion` and the exact `sourceCommit` in `delivery.json`; `releaseVersion` remains an equal compatibility alias. For **0.9.9**, use the [v0.9.9 release](https://github.com/extendmachine/Saplingagent/releases/tag/v0.9.9) for pinned macOS/Windows source ZIPs and SHA-256 checksums, or the one-line installer for the current `release` branch. The immutable tag, release page and package receipts must identify the same checked source. Existing tags are preserved. See the [release checklist](docs/release-checklist.html). Source packages are not signed native installers; real-device/model acceptance is recorded separately.
+Downloadable source ZIPs record `kernelVersion` and the exact `sourceCommit` in `delivery.json`; `releaseVersion` remains an equal compatibility alias. For **1.0.0**, use the [v1.0.0 release](https://github.com/extendmachine/Saplingagent/releases/tag/v1.0.0) for pinned macOS, Linux and Windows source ZIPs and SHA-256 checksums, or the one-line installer for the current `release` branch. The immutable tag, release page and package receipts must identify the same checked source. Existing tags are preserved. See the [release checklist](docs/release-checklist.html). Source packages are not signed native installers; real-device/model acceptance is recorded separately.
 
 ### Kernel source boundary
 

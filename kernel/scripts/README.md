@@ -1,6 +1,34 @@
-# Project-local launcher and source delivery
+# Project launcher and release source delivery
 
-`Saplingagent.sh` is the single bilingual user entry on macOS and native Windows (Git Bash). Run `bash Saplingagent.sh` in the complete application folder. Install / update prepares pinned Node/Codex/OpenCode and locked local dependencies; Configure AI opens a standalone React configuration page; Start app supervises owned chat services; Diagnostics checks installation/configuration without inference. See the root README and OS installation guides.
+Run `bash Saplingagent.sh` from a complete project folder using macOS Terminal,
+GNU/Linux Bash or Windows Git Bash. Installation prepares the required runtime
+and opens the configuration page. Start and diagnostics operate on this project.
+
+## Install a release snapshot
+
+The remote `install.sh` resolves the public release branch to a commit and
+downloads that commit's complete cross-platform source. An example for a new
+Linux project in the current folder is:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/extendmachine/Saplingagent/release/install.sh | bash -s -- --platform linux --dir ./MyProject
+```
+
+Omit `--platform` for the first-install terminal menu. Both the one-line entry
+and the local `bash Saplingagent.sh --platform linux install` accept
+`auto`, `macos`, `linux` or `windows`. The command-line option takes precedence
+over `SAPLING_PLATFORM`. The local launcher owns host detection and dispatches
+to one platform installer. Automatic detection falls back to Linux when the
+host is unknown. Use Windows Git Bash for a native Windows install.
+
+`--download-only` leaves a source snapshot ready to move to another computer.
+Its delivery receipt records the exact release commit and the platform as
+`universal`. The first install on the target computer chooses the platform guide
+and updates the receipt. The downloader prints the local command to run next,
+including an explicit platform selection when supplied. Earlier release archives
+retain their original platform-specific receipts and installer capabilities.
+Archive validation and fresh-folder checks run before publication. A piped
+installation gives the project launcher the controlling terminal for its prompts.
 
 ## Configuration boundary
 

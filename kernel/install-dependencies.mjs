@@ -1,4 +1,5 @@
 // Repair only management dependencies. Application manifests/locks are never written.
+import {withPublicNpmCache} from './tooling/npm-cache.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -20,7 +21,8 @@ try {
  await fs.access(npmCLI);
  await assertKernelOffline(root);
  await assertMcpClientsStopped(root);
- await run(npm.command,[...npm.args,'ci','--include=optional','--no-audit','--no-fund'],path.join(root,'kernel'));
+ const cwd=path.join(root,'kernel');
+ await withPublicNpmCache(root,cwd,() => run(npm.command,[...npm.args,'ci','--include=optional','--no-audit','--no-fund'],cwd));
  const language=await readLanguage(root);
  await prepareProviderTools(root,await runtimeEngines(root),{onProgress:event=>console.log(toolProgress(event,language))});
 }finally{await release();}

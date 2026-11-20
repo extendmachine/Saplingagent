@@ -1,3 +1,5 @@
+import {withPublicNpmCache} from '../../tooling/npm-cache.mjs';
+import {deviceName} from '../../tooling/device.mjs';
 import { readLanguage, writeLanguage } from '../../localization/store.mjs';
 import { normalizeLanguage, describeError, formatMessage } from '../../localization/public.mjs';
 import { launcherMessages } from '../../localization/launcher-messages.mjs';
@@ -23,7 +25,7 @@ import {readBindings} from '../../tooling/bindings.mjs';
 
 const t = (key, params) => {
   const text = formatMessage(launcherMessages,process.env.SAPLING_LANG,key,params);
-  return process.platform === 'win32' ? text.replaceAll('.runtime/macos-install.lock', '.runtime/windows-install.lock') : text;
+  return text.replaceAll('.runtime/macos-install.lock', `.runtime/${deviceName()}-install.lock`);
 };
 
 const root = path.resolve(fileURLToPath(new URL('../../../', import.meta.url)));
@@ -33,7 +35,9 @@ try{await assertSetupAvailable(root);if(explicitLanguage)await writeLanguage(roo
 // The explicit command choice is consumed here; configuration children re-read the saved preference.
 process.env.SAPLING_LANG_EXPLICIT='0';
 const windows = process.platform === 'win32';
-const platformName = windows ? 'windows' : 'macos';
+const platformName = deviceName();
+const linux = process.platform === 'linux';
+const codexCommand = () => process.platform === 'darwin' ? path.join(root, 'kernel/scripts/macos/codex.sh') : cli;
 const launcher = 'Saplingagent.sh';
 const settings = JSON.parse(await fs.readFile(path.join(root, `kernel/config/${platformName}.json`), 'utf8'));
 let cli = codexBinary(root);
@@ -42,7 +46,7 @@ let opencode = openCodeBinary(root);
 const stampFile = path.join(root, `.runtime/${platformName}-install.json`);
 const services = [...(await fs.access(path.join(root,'kernel/package.json')).then(()=>['kernel'],()=>[])), 'front', 'backend/app-builder', 'backend/mcp-runtime', 'backend/agent-runtime'];
 const authArgs = ['-c', 'cli_auth_credentials_store="file"'];
-const env = { ...await prepareManagedEnvironment(root), TMPDIR:path.join(root,'.runtime/tmp'),TMP:path.join(root,'.runtime/tmp'),TEMP:path.join(root,'.runtime/tmp'),PATH:path.dirname(process.execPath)+path.delimiter+(process.env.PATH||''),SEED_ROOT: root, SEED_CODEX_BIN: windows ? cli : path.join(root, 'kernel/scripts/macos/codex.sh'), SEED_IMPORT_EXISTING_AUTH: '0', CODEX_HOME: path.join(root, 'local-secrets/codex'), npm_config_cache: path.join(root, '.cache/npm') };
+const env = { ...await prepareManagedEnvironment(root), TMPDIR:path.join(root,'.runtime/tmp'),TMP:path.join(root,'.runtime/tmp'),TEMP:path.join(root,'.runtime/tmp'),PATH:path.dirname(process.execPath)+path.delimiter+(process.env.PATH||''),SEED_ROOT: root, SEED_CODEX_BIN: codexCommand(), SEED_IMPORT_EXISTING_AUTH: '0', CODEX_HOME: path.join(root, 'local-secrets/codex'), npm_config_cache: path.join(root, '.cache/npm') };
 for (const key of ['OPENAI_API_KEY', 'CODEX_API_KEY', 'CODEX_ACCESS_TOKEN']) delete env[key];
 
 async function run(command, args, { cwd = root, capture = false, childEnv = env } = {}) {
@@ -120,7 +124,7 @@ async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
     await assertMcpClientsStopped(root);
     await initializeDownloadedRecords(root);
     console.log(t("Release snapshot installed locally. Git and application source are not changed; upgrade only the kernel from the web control."));
-    if (!windows) for (const file of ['Saplingagent.sh', 'kernel/scripts/macos/bootstrap.sh', 'kernel/scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
+    if (process.platform === 'darwin') for (const file of ['Saplingagent.sh', 'kernel/scripts/macos/bootstrap.sh', 'kernel/scripts/macos/codex.sh']) await fs.chmod(path.join(root, file), 0o755);
     if (!repair && !coreOnly && await installed()) {
       await localSetup();
       console.log(t("Dependency check complete: installed versions match this local source. See the source result above. Configure AI or start; use install --repair for damaged dependencies."));
@@ -129,7 +133,7 @@ async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
     const engines=coreOnly?[]:await runtimeEngines(root);
     if(hasTooling(root)){
     await ensureTools(root,{engines,onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
-    cli=codexBinary(root);opencode=openCodeBinary(root);env.SEED_CODEX_BIN=windows?cli:path.join(root,'kernel/scripts/macos/codex.sh');
+    cli=codexBinary(root);opencode=openCodeBinary(root);env.SEED_CODEX_BIN=codexCommand();
     }else{
     if(!appOnly){
     const packageFile = path.join(stage, 'package.json');
@@ -155,12 +159,13 @@ async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
     for (const service of coreOnly?['kernel']:appOnly?services.filter(s=>s!=='kernel'):services) {
       console.log(t("Installing locked dependencies for {p0}…",{p0:(service)}));
       const installArgs = ['ci', '--include=optional', ...(['kernel', 'backend/agent-runtime'].includes(service) ? [] : ['--ignore-scripts']), '--no-audit', '--no-fund'];
-      await required(npm.command, [...npm.args, ...installArgs], { cwd: path.join(root, service) });
+      const cwd=path.join(root, service);
+      await withPublicNpmCache(root,cwd,() => required(npm.command, [...npm.args, ...installArgs], {cwd}));
     }
     // A CLI discovered in an old kernel dependency tree can be removed by npm ci.
     if(hasTooling(root)&&!(await toolSetStatus(root,engines)).ready){
       await ensureTools(root,{engines,onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
-      cli=codexBinary(root);opencode=openCodeBinary(root);env.SEED_CODEX_BIN=windows?cli:path.join(root,'kernel/scripts/macos/codex.sh');
+      cli=codexBinary(root);opencode=openCodeBinary(root);env.SEED_CODEX_BIN=codexCommand();
     }
     if(!hasTooling(root)){
       await required(opencode, ['--version'], { capture: true });
@@ -217,7 +222,7 @@ async function configureAI(noOpen,aiOnly=false) {
   const {openConfiguration}=await import('../../configuration/bootstrap.mjs');
   const address=await openConfiguration(root,{noOpen:noOpen||process.env.SAPLING_NO_OPEN==='1',configurationMode:aiOnly?'ai':'setup'});
   if(address.relativeDirectory)console.log(t(aiOnly?"Temporary configuration folder (beside this project): {p0} — removed after finishing AI configuration.":"Temporary configuration folder (beside this project): {p0} — removed after Finish setup.",{p0:(address.relativeDirectory)}));
-  console.log(t(aiOnly?"AI configuration: http://127.0.0.1:{p0}/. Save your AI settings, then finish and restart. This script will close.":"Project setup: http://127.0.0.1:{p0}/. Continue in your browser. This script will close.",{p0:(address.port)}));
+  console.log(t(linux?"AI configuration: http://127.0.0.1:{p0}/. Save and finish; for a first setup run bash Saplingagent.sh start.":aiOnly?"AI configuration: http://127.0.0.1:{p0}/. Save your AI settings, then finish and restart. This script will close.":"Project setup: http://127.0.0.1:{p0}/. Continue in your browser. This script will close.",{p0:(address.port)}));
 }
 async function installKernelAndConfigure(repair=false){
  if(!await exists(path.join(root,'kernel/package.json')))return install(repair);
@@ -231,7 +236,7 @@ async function installKernelAndConfigure(repair=false){
   await install(true,{coreOnly:true});
   await fs.writeFile(signatureFile,JSON.stringify({signature:coreSignature,arch:process.arch})+'\n');
  }
- await configureAI(process.env.SAPLING_NO_OPEN==='1');
+ await configureAI(linux||process.env.SAPLING_NO_OPEN==='1',linux);
 }
 async function configuredAccess() {
   const mcp = await readMcpAccess(root);
@@ -258,7 +263,7 @@ async function start(noOpen) {
       for (const signal of signals) process.off(signal, cancel);
     }
     cli = codexBinary(root);
-    env.SEED_CODEX_BIN = windows ? cli : path.join(root, 'kernel/scripts/macos/codex.sh');
+    env.SEED_CODEX_BIN = codexCommand();
   } else if (!await installed()) {
     throw new Error(t("Installation is incomplete or dependency lockfiles have changed. Run: bash Saplingagent.sh install --repair"));
   }
@@ -322,7 +327,7 @@ async function start(noOpen) {
 }
 async function doctor() {
   for(const [name,item]of Object.entries(readBindings(root)?.tools||{}))console.log(t('Tool {name}: {source}, {version}; {path}',{name,source:t(item.source==='shared'?'shared tool library':'local installation'),version:item.version,path:item.path}));
-  console.log(t("{p0} {p1}; Node {p2}; folder: {p3}",{p0:(windows ? 'Windows' : 'macOS'),p1:(process.arch),p2:(process.versions.node),p3:(root)}));
+  console.log(t("{p0} {p1}; Node {p2}; folder: {p3}",{p0:(linux ? 'Linux' : windows ? 'Windows' : 'macOS'),p1:(process.arch),p2:(process.versions.node),p3:(root)}));
   const local = await installed();
   const repairHelp = services.includes('kernel')
     ? "missing or changed; start the app to prepare dependencies"
@@ -359,16 +364,16 @@ async function doctor() {
 }
 
 try {
-  if (!['darwin', 'win32'].includes(process.platform)) throw new Error(t("This entry point supports macOS and Windows only."));
+  if (!platformName) throw new Error('Unsupported operating system.');
   const [action, ...args] = process.argv.slice(2);
   if (action === 'install' && args.every(x => ['--repair','--app-only'].includes(x))) {if(args.includes('--app-only'))await install(args.includes('--repair'),{appOnly:true});else await installKernelAndConfigure(args.includes('--repair'));}
   else if (action === 'login' && args.every(x => x === '--device-auth')) await login(args.includes('--device-auth'));
-  else if (action === 'start' && args.every(x => x === '--no-open')) await start(args.includes('--no-open'));
+  else if (action === 'start' && args.every(x => x === '--no-open')) await start(linux||args.includes('--no-open'));
   else if (action === 'kernel') await required(process.execPath,[path.join(root,'kernel/cli.mjs'),...args]);
   else if (action === 'ensure-dependencies' && !args.length) { const {ensureApplicationDependencies}=await import('../../launcher/dependencies.mjs'); await ensureApplicationDependencies(root,{onProgress:message=>console.log(message)}); }
   else if (action === 'doctor' && !args.length) await doctor();
   else if (action === 'logout' && !args.length) await logout();
-  else if (action === 'configure' && args.every(x=>['--no-open','--ai-only'].includes(x))) await configureAI(args.includes('--no-open'),args.includes('--ai-only'));
+  else if (action === 'configure' && args.every(x=>['--no-open','--ai-only'].includes(x))) await configureAI(linux||args.includes('--no-open'),linux||args.includes('--ai-only'));
   else if (action === 'opencode' && !args.length) await configureOpenCode();
   else throw new Error(t("Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--ai-only] [--no-open] / opencode / kernel."));
 } catch (error) { const info=describeError(error,process.env.SAPLING_LANG);console.error([info.summary,info.action,info.code,info.details].filter(Boolean).join('\n')); process.exitCode = 1; }

@@ -1,13 +1,20 @@
 # Saplingagent changelog
 
-## Unreleased reliability fixes on main — kernel0.9.9 (2026-11-03)
+## 1.0.0 — Platform-specific installation and shared tools (2026-11-19)
+
+- Install on macOS, Windows or headless GNU/Linux. The Bash installer detects the platform, allows manual selection and defaults to Linux when detection fails.
+- Share compatible Node/npm, AI tools and verified public npm tarballs across projects. Keep credentials, dependencies, conversations, ports and shutdown independent per project.
+- Set `"frontendMode": "static"` in `config/runtime.json` and restart the app to serve a built frontend through the existing gateway. Development mode retains Vite hot reload.
+- Reduce background status polling and improve Dock shutdown and recovery. Native macOS launchers need a rebuild to pick up the Dock changes.
+- Kernel updates retain schema 3, layout 1 and application API 1. A full source download includes application changes; a kernel-only update preserves the recipient’s application code.
+
+### Chat and runtime reliability
 
 - Recover failed chat restores without leaving the UI running; isolate event cancellation from status polling and give chat headers a120-second transport budget.
 - Skip individually invalid session files unchanged. Save terminal metadata after permanent response rejection, retain true request outcomes, and keep visible unsaved output available to copy.
 - Close replaced Codex transports and ignore stale events. An unconfirmed Stop keeps only its own task reserved, without terminating other conversations.
 - Correct Windows environment syntax, clean cancelled startup/transient build/early-exit helpers by ownership, and observe/retry shutdown failures.
 - Keep logging best-effort, Git optional locking disabled, and recover only proven-dead version-label owners. Preserve unknown locks and shared tool generations.
-- These are main development changes, not a release/tag promotion. Deploy application-owned chat/Agent/Workspace together; kernel-only updates cannot replace custom application code.
 
 ## 0.9.9 — AI settings without rebuilding your project (2026-10-29)
 

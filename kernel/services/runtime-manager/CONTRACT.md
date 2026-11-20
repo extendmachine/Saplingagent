@@ -3,7 +3,7 @@
 ## Project status page (TASK-20261019-048)
 
 The existing GET `/__saplingagent/runtime` is the lightweight launcher status page,
-independent of application Vite. It refreshes every two seconds, shows project name,
+independent of application Vite. It refreshes every two seconds while visible, pauses polling while hidden, refreshes on return, and shows project name,
 installed kernel version, actual project directory/public URL, runtime phase and
 managed service process IDs/ports. Running means the owned process has not exited;
 it is not a continuous health claim. Overall ready means startup checks passed.
@@ -182,3 +182,27 @@ one normal cold launch; no native rebuild or version increment is required.
 ## Partial service shutdown (2026-11-17)
 
 Stop attempts every owned service in reverse dependency order and includes the frontend. A second attempt targets retained failures. The control and status listeners stay available while a child may still be alive. Status reports SERVICE_STOP_FAILED and the services still owned. After all children exit the controller closes its listeners, cleans its discovery record and exits. A legacy asynchronous stop request can include the observed instanceId and returns 409 if the instance changed.
+
+## Static frontend mode
+
+The per-project `config/runtime.json` setting `frontendMode` accepts
+`development` (default, Vite HMR) or `static`. Status includes the effective
+`frontendMode`; in static mode there is no `front` child PID, Vite listener or
+WebSocket. The numeric `ports.vitePort` remains a compatible preference.
+The gateway first applies its local Host/Origin and request checks, then serves
+the existing runtime/help/kernel and streaming Agent API routes as usual.
+Other paths in static mode accept GET/HEAD within the configured mount, provide
+file content types, validators and ranges, and use index.html for extensionless
+HTML navigations. Missing assets return 404.
+
+Cold launch and Restart app run the project's `front/package.json` build script.
+Backend restart reuses a successful matching build, rebuilding on mode, endpoint
+or mount changes and when recovering a failed build. `frontendDist` defaults to
+`dist` relative to `front/`. `frontendBase` defaults to `/`; custom builds set
+their own base and use the matching trailing-slash gateway mount. The gateway
+snapshots only ordinary public output into `.runtime/static-frontend/`, skips
+dotfiles and rejects links. It switches snapshots after successful completion
+and retains the old one for already streaming requests. Shutdown retires the
+snapshot and a later build reaps abandoned snapshots from dead owners.
+The application owns its normal build output and custom build command.
+The kernel defines no new service, process-sharing or credential boundary.

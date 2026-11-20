@@ -10,7 +10,7 @@ import {ensureShared,atomicJSON,sharedEntry} from '../store.mjs';
 const source=fileURLToPath(new URL('../../../',import.meta.url));
 async function write(file,value){await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,typeof value==='string'?value:JSON.stringify(value));}
 async function localNode(root){
-  const directory=path.join(root,`.runtime/node-v${process.versions.node}-${process.platform==='win32'?'win':'darwin'}-${process.arch}`);
+  const directory=path.join(root,`.runtime/node-v${process.versions.node}-${process.platform==='win32'?'win':process.platform}-${process.arch}`);
   const node=path.join(directory,process.platform==='win32'?'node.exe':'bin/node');
   await write(node,'portable Node fixture');await write(npmFor(node).args[0],'npm fixture');
   return directory;
@@ -22,7 +22,7 @@ async function fixture(t){
   const home=path.join(base,'shared'),calls=[];
   const app=async name=>{
     const root=path.join(base,name);await fs.mkdir(root,{recursive:true});
-    await write(path.join(root,`kernel/config/${process.platform==='win32'?'windows':'macos'}.json`),{nodeVersion:process.versions.node,codexVersion:'0.146.1'});
+    await write(path.join(root,`kernel/config/${process.platform==='win32'?'windows':process.platform==='darwin'?'macos':process.platform}.json`),{nodeVersion:process.versions.node,codexVersion:'0.146.1'});
     for(const name of ['sdk/package.json','sdk/package-lock.json','versions.json'])await fs.mkdir(path.dirname(path.join(root,'kernel/tooling',name)),{recursive:true}).then(()=>fs.copyFile(path.join(source,'kernel/tooling',name),path.join(root,'kernel/tooling',name)));
     await write(path.join(root,'local-secrets/auth-sentinel'),'private fixture');await write(path.join(root,'data/session-sentinel'),'conversation fixture');
     return root;

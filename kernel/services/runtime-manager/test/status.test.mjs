@@ -24,16 +24,30 @@ test('logs dispatch opens only the project folder with argv on Mac and Windows, 
 });
 
 function pageHarness(fetch) {
-  const elements=new Map();
+  const elements=new Map(), listeners=new Map();
   const element=()=>({textContent:'',disabled:false,hidden:false,children:[],attrs:{},appendChild(child){this.children.push(child)},replaceChildren(...children){this.children=children},setAttribute(key,value){this.attrs[key]=value},removeAttribute(key){delete this.attrs[key];delete this[key]}});
-  const document={getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id)},createElement:element,title:'',documentElement:{lang:'en'},querySelectorAll(){return []}};
+  const document={hidden:false,addEventListener(name,handler){listeners.set(name,handler)},getElementById(id){if(!elements.has(id))elements.set(id,element());return elements.get(id)},createElement:element,title:'',documentElement:{lang:'en'},querySelectorAll(){return []}};
   const timers=[];
   const context=vm.createContext({document,fetch,URL,AbortSignal,Date,console,setTimeout(fn){const timer={fn,cancelled:false};timers.push(timer);return timer},clearTimeout(timer){if(timer)timer.cancelled=true}});
   vm.runInContext(renderRuntimeStatusPage({state:()=>({applicationRoot:'/project'})}).match(/<script>([\s\S]*)<\/script>/)[1],context);
-  return{context,elements,timers,flush:()=>new Promise(resolve=>setImmediate(resolve)),run:code=>vm.runInContext(code,context)};
+  return{context,elements,timers,show(visible){document.hidden=!visible;listeners.get('visibilitychange')();},flush:()=>new Promise(resolve=>setImmediate(resolve)),run:code=>vm.runInContext(code,context)};
 }
 const state={instanceId:'fixture-instance',projectName:'<script>unsafe</script>',kernelVersion:'0.9.5',applicationRoot:'/project',url:'http://127.0.0.1:5178/',phase:'ready',canRestart:true,canStop:true,ports:{runtimeManagerPort:4319},services:[{name:'worker',pid:1234,running:true,healthCheck:'process'}]};
 const response=data=>({ok:true,json:async()=>data});
+
+test('a hidden status tab pauses polling and refreshes immediately on return',async()=>{
+  let polls=0, resume;
+  const waiting=new Promise(resolve=>{resume=resolve});
+  const h=pageHarness(async route=>{
+    if(route.endsWith('/status')&&++polls===1)await waiting;
+    return response(state);
+  });
+  h.show(false);resume();await h.flush();
+  const activeTimers=()=>h.timers.filter(timer=>!timer.cancelled).length;
+  assert.equal(polls,1);assert.equal(activeTimers(),0);
+  h.show(true);await h.flush();assert.equal(polls,2);assert.equal(activeTimers(),1);
+  h.show(false);assert.equal(activeTimers(),0);
+});
 
 test('status page confirms the matching stop response then halts polling without navigating', async()=>{
   const calls=[];const h=pageHarness(async(route,options)=>{calls.push({route,options});return response(route.endsWith('/status')?state:{stopped:true,instanceId:state.instanceId})});

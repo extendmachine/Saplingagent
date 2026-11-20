@@ -10,7 +10,7 @@ import {npmCommand} from '../../contracts/local-process.mjs';
 import {prepareFixtureBindings} from '../../tooling/test/fixture-bindings.mjs';
 
 const source=fileURLToPath(new URL('../../../',import.meta.url));
-const platforms=['darwin','win32'];
+const platforms=['darwin','win32','linux'];
 async function write(root,file,value){const target=path.join(root,file);await fs.mkdir(path.dirname(target),{recursive:true});await fs.writeFile(target,value);}
 
 async function fixture(t,externalOnly,{subscription=false}={}){

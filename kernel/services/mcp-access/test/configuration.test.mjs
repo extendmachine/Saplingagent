@@ -24,7 +24,7 @@ test('missing config is disabled without writes; strict revisioned saves and ext
 });
 
 test('configuration targets final project runtime, never this process or a configuration capsule',async t=>{
-  const root=await fixture(t);const os=process.platform==='win32'?'windows':'macos';
+  const root=await fixture(t);const os=process.platform==='win32'?'windows':process.platform==='darwin'?'macos':process.platform;
   await write(root,`kernel/config/${os}.json`,{nodeVersion:'24.21.0'});
   const first=await getMcpAccess(root);assert.equal(first.enabled,false);assert.equal(first.available,false);
   const config=first.configuration.mcpServers.saplingagent;assert.ok(config.command.startsWith(root+path.sep));assert.equal(config.args[0],path.join(root,'kernel/services/mcp-access/server.mjs'));

@@ -14,7 +14,7 @@ const exec=promisify(execFile),source=path.resolve(fileURLToPath(new URL('../../
 const goRelative='.runtime/go1.27.2-darwin-arm64';
 const available=process.platform==='darwin'&&await fs.access(path.join(source,goRelative,'go/bin/go')).then(()=>true,()=>false);
 const alive=pid=>{try{process.kill(pid,0);return true;}catch{return false;}};
-async function waitFor(read,description){for(let i=0;i<600;i++){const result=await read().catch(()=>null);if(result)return result;await delay(50);}throw Error('Timed out: '+description);}
+async function waitFor(read,description,attempts=600){for(let i=0;i<attempts;i++){const result=await read().catch(()=>null);if(result)return result;await delay(50);}throw Error('Timed out: '+description);}
 async function appAction(pid,action){return exec('/usr/bin/osascript',['-l','JavaScript','-e',`ObjC.import('AppKit');var a=$.NSRunningApplication.runningApplicationWithProcessIdentifier(${pid});${action}`]);}
 
 // A LaunchServices app can exit while its helper is blocked before the first
@@ -98,6 +98,19 @@ test('compiled macOS app stays in the Dock, reopens, quits its helper, and keeps
  assert.equal((await appAction(appPID,'String(a.activationPolicy);')).stdout.trim(),'0');
  await exec('/usr/bin/open',[app]);await waitFor(async()=>(await calls()).find(c=>c.action==='--dock-open'),'Dock reopen');
  assert.equal(new Set((await calls()).map(c=>c.pid)).size,1);
+ // Once ready, a quiet Dock app must not repeatedly spawn a Node status
+ // helper. An explicit project handoff still wakes that check on the next tick.
+ const statusCount=async()=>(await calls()).filter(c=>c.action==='--dock-status').length;
+ const beforeReady=await statusCount();
+ await waitFor(async()=>(await statusCount())>beforeReady,'first ready poll after reopen');
+ const readyCount=await statusCount();
+ await delay(4500);
+ assert.equal(await statusCount(),readyCount);
+ const requestFile=path.join(root,'.runtime/native-app-request.json');
+ await fs.mkdir(path.dirname(requestFile),{recursive:true});
+ await fs.writeFile(requestFile,'{}');
+ try { await waitFor(async()=>(await statusCount())>readyCount,'prompt poll for a maintenance request',120); }
+ finally { await fs.unlink(requestFile); }
  await appAction(appPID,'a.terminate;');await waitFor(async()=>!alive(appPID),'normal Quit');assert.equal(await fs.readFile(path.join(root,'stopped'),'utf8'),'yes');
  await exec('/usr/bin/codesign',['--verify',app]);
  // Explicit handoff exits without sending a backend Stop (configuration owns it).

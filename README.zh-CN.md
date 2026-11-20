@@ -21,7 +21,7 @@
   <a href="docs/index.html">使用文档</a>
 </p>
 
-<p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 / ARM64 · MIT 开源 · 允许商业使用</sub></p>
+<p align="center"><sub>macOS 13.5+ · Windows 10/11 x64 / ARM64 · GNU/Linux 无桌面 x64 / ARM64 · MIT 开源 · 允许商业使用</sub></p>
 
 <a id="demo"></a>
 
@@ -108,8 +108,12 @@ Office 支持基础编辑：Word 格式作用于整段，PowerPoint 以文字修
 
 安装时先准备 Node 并打开设置页。选择内置引擎后，项目会按需准备它的 CLI 和所需 SDK；只使用外部 MCP 时无需安装内置引擎。多个项目可以复用本机工具和同一用户的共享工具库。Go 在导出原生启动器时准备。首版以 release 固定版本作为复用标准，不覆盖用户已有程序。账号、会话、业务数据和应用依赖继续独立。需要完整文件夹自包含时运行 `SAPLING_RUNTIME_MODE=portable bash Saplingagent.sh install`。详见[共享工具与修复](docs/shared-runtime.html)。
 
+多个项目还可复用已验证的公开 npm 安装包。各项目分别安装可写依赖、管理自己的进程，关闭其中一个项目时其他项目可以继续运行。在设备上长期运行时，可在 `config/runtime.json` 中加入 `"frontendMode": "static"`，再点击**重启应用**。前端构建后由现有网关提供页面，可省去常驻的 Vite 进程。需要边改边看时，使用默认的 `development` 模式。
 
-## 内核 0.9.9 更新
+
+## 内核 1.0.0
+
+同一个 Bash 入口支持 macOS、Windows 和无桌面的 GNU/Linux。安装时可按回车接受检测结果，也可手动选择平台；探测失败时默认 Linux。每台设备仅安装对应系统和 CPU 的运行包。
 
 从主页面选择 **设置 → 配置 AI**，即可打开或复用独立配置网页。支持中英文、准备进度、错误说明和可复制的本地地址；仅打开配置不会停止应用。 这里现在只修改 AI 账号、服务商、模型及 MCP 接入，不要求重新填写项目名称、改名或编译 App。首次保存账号／方案前请先保存工作，所属服务会暂停；完成后选择 **完成并重启**。已有文件、会话、图标和编译结果保留。终端备用入口为 `bash Saplingagent.sh configure --ai-only`；不带此参数仍进入完整项目配置。
 
@@ -117,9 +121,9 @@ Office 支持基础编辑：Word 格式作用于整段，PowerPoint 以文字修
 
 默认页面恢复为纯对话布局。源码保留可选的 GitHub → Saplingagent 工作流**界面原型**，但默认页面不再加载；分析、生成和发布仍为示例，尚未实现对应后端。**仅升级内核会保留用户自己的前后端**，不会安装该原型或覆盖自定义聊天界面。旧标签与第三方条款保持不变。
 
-## 0.9.9：网页配置、本机启动器与内核归并
+## 1.0.0：网页配置、本机启动器与内核归并
 
-当前源码版本为 **内核 0.9.9**。请通过下方一行安装命令或 release 分支下载本版本。
+当前源码版本为 **内核 1.0.0**。下方一行安装命令下载公开 release 分支。在 Linux 上，无桌面 x64 或 ARM64 设备请按 [Linux 终端安装指南](docs/linux-install.html) 操作。以下原生应用步骤适用于 macOS 和 Windows。
 
 右侧聊天支持历史会话切换与改名、各会话独立草稿、附件、GFM 表格和数学公式。收起面板后可拖动聊天入口，并记住位置。上下文条显示 Codex 最近报告的 token 数量和上下文容量；没有报告时显示未知。它不是费用统计，也不承诺自动压缩阈值。这些组件属于用户可编辑的应用部分，独立于内核升级。
 
@@ -141,7 +145,7 @@ macOS 上，应用会作为普通应用留在 Dock。点击 Dock 图标可重新
 
 ### 1. 获取完整应用
 
-在 **macOS 终端**或 **Windows Git Bash** 中运行以下命令，即可下载并安装，随后打开中文配置网页。Windows 请先安装 [Git for Windows](https://gitforwindows.org/)。
+在 **macOS 终端**、**Linux Bash** 或 **Windows Git Bash** 中运行以下命令，即可下载并安装，随后打开中文配置网页。Windows 请先安装 [Git for Windows](https://gitforwindows.org/)。
 
 ```bash
 bash -o pipefail -c 'curl -fsSL https://raw.githubusercontent.com/extendmachine/Saplingagent/release/install.sh | bash -s -- --lang zh'
@@ -170,6 +174,8 @@ cd Saplingagent
 
 ### 2. 通过统一入口安装
 
+在终端运行 `bash Saplingagent.sh install`，按回车采用检测结果，也可手动选择 macOS（MacBook）、GNU/Linux 或 Windows。系统识别失败时默认 Linux。无人值守安装可使用 `bash Saplingagent.sh install --platform auto`；明确指定系统时，把 `auto` 换成 `macos`、`linux` 或 `windows`。每个安装器仅准备对应系统和 CPU 的运行包。[Linux 安装指南](docs/linux-install.html)
+
 进入完整应用文件夹，运行：
 
 ```bash
@@ -185,9 +191,9 @@ bash Saplingagent.sh --lang zh
 
 如需旧版终端菜单，运行 `SAPLING_LEGACY_MENU=1 bash Saplingagent.sh --lang zh`。显式恢复命令仍可使用 `configure --no-open`、`install --repair`、`start`、`doctor` 和 `kernel`。
 
-安装程序将固定版本的 Node **24.21.0**、Codex **0.146.1**、OpenCode、Claude Agent SDK **0.3.296** 和锁定依赖安装到项目内，并核对官方 Node SHA-256。无需预装 Node、npm、Homebrew 或 Codex 桌面应用，也无需 sudo 或全局 npm 安装。版本声明见 [kernel/config/macos.json](kernel/config/macos.json) 和各模块的锁文件。
+macOS 和 Windows 安装程序会查找固定版本的 Node **24.21.0**，下载时核对官方 SHA-256，再按配置准备所选 AI 引擎和锁定依赖。无需预装 Node、npm、Homebrew 或 Codex 桌面应用，也无需 sudo 或全局 npm 安装。版本声明见 [kernel/config/macos.json](kernel/config/macos.json) 和各模块的锁文件。
 
-新安装不需要配置 Git；Windows 由 Git for Windows 提供 Git Bash。安装需要访问官方下载、npm 与所选模型服务。`.runtime/` 保存运行时，各模块 `node_modules/` 保存依赖，`.cache/npm/` 保存 npm 缓存。请保留整个应用文件夹。
+新安装不需要配置 Git；Windows 由 Git for Windows 提供 Git Bash。安装需要访问官方下载、npm 与所选模型服务。`.runtime/` 保存项目运行环境的绑定，各模块 `node_modules/` 保存依赖，`.cache/npm/` 保存 npm 缓存。请保留整个应用文件夹。
 
 ### 3. 配置 AI，开始第一次对话
 
@@ -242,7 +248,7 @@ bash Saplingagent.sh logout
 
 主页面右上角的**设置（Settings）**会在新标签页打开当前项目的 `/__saplingagent/runtime`，保留原聊天页与草稿，在那里查看状态、重启或停止应用。主页面不再显示底部内核标识和独立的重启／内核按钮。更新内核时直接打开 `/__saplingagent/kernel`，依次选择**检查内核更新 → 升级内核并重启**（英文界面对应 Check for kernel update → Upgrade kernel & restart）。升级器固定 release 提交并校验清单，显示变更和冲突，再停止当前应用、备份和替换内核、修复内核自己的依赖、完整重启并跳转到实际端口。页面、聊天、MCP、Skills、自定义业务和应用依赖声明保留。独立进度网页在原服务停止后继续工作，失败时可重试或手动恢复；不自动回退。
 
-当前内核版本为 **0.9.9 / schema3**；release 分支同步本版本；GitHub Releases 的旧标签和附件另行管理。0.9.1 的 schema2 原型不能直接跨边界升级：请下载0.9.2到新目录，保留原目录，再人工迁移自己的应用/数据/配置；不要覆盖真实凭据或重新生成旧目录基线。之后同 schema3 内核可在网页升级。完整说明：[内核管理](docs/kernel-management.html)。
+当前内核版本为 **1.0.0 / schema3**；release 分支同步本版本；GitHub Releases 的旧标签和附件另行管理。0.9.1 的 schema2 原型不能直接跨边界升级：请下载0.9.2到新目录，保留原目录，再人工迁移自己的应用/数据/配置；不要覆盖真实凭据或重新生成旧目录基线。之后同 schema3 内核可在网页升级。完整说明：[内核管理](docs/kernel-management.html)。
 
 
 ## 导入已有的本地凭据
@@ -280,7 +286,7 @@ Claude Agent 通过官方 **Claude Agent SDK**作为独立的本地引擎运行�
 
 安装后进入 **配置 AI → API / 自定义服务商 → Anthropic · Messages**，预设会选择 **Claude Agent**。填写自己的 API key、准确模型 ID，以及 `https://api.anthropic.com/v1` 或兼容网关地址。保存并使用，再保存并构建应用，完成配置后打开 App；更换服务商时可在空闲对话中选择 AI 并点击“应用”，保留当前历史，也可按需新建对话。网关需支持 Anthropic Messages 流式输出与工具调用，模型发现可选，Claude 方案无需 Codex 登录。
 
-SDK 固定为 `0.3.296`，原生二进制安装在应用文件夹内，无需全局安装 Claude Code。共享 API key 位于 `local-secrets/api-keys/`，Claude 状态和会话位于 `local-secrets/claude/`。项目 `CLAUDE.md` 引入 `AGENTS.md`，`.agents/` 作为本地 `saplingagent` 插件加载现有 Skills。
+SDK 固定为 `0.3.296`。共享模式复用匹配的 Claude Code，缺少时将当前系统和 CPU 对应的程序安装到用户工具库。便携模式将它保存在项目中。共享 API key 位于 `local-secrets/api-keys/`，Claude 状态和会话位于 `local-secrets/claude/`。项目 `CLAUDE.md` 引入 `AGENTS.md`，`.agents/` 作为本地 `saplingagent` 插件加载现有 Skills。
 
 本项目支持客户自己的 API 方案，以及本人手动提供 `claude setup-token` 的本机订阅方案；不自动登录或导入订阅 OAuth 文件。第三方产品使用订阅认证需遵循 Anthropic 的集成条件和适用批准要求；SDK 组件遵循其自身条款。参见 [SDK 概览](https://code.claude.com/docs/en/agent-sdk/overview)和[快速开始与认证](https://code.claude.com/docs/en/agent-sdk/quickstart)。
 
@@ -362,7 +368,7 @@ flowchart LR
 ```text
 Saplingagent/
 ├── README.md / README.zh-CN.md # 英文 / 中文项目说明
-├── Saplingagent.sh             # macOS / Windows 中英文统一菜单
+├── Saplingagent.sh             # 桌面与 Linux 终端的中英文启动入口
 ├── front/                     # React 聊天与应用功能
 ├── backend/
 │   ├── agent-runtime/         # 模型引擎、对话、SSE 与 Git API
@@ -423,12 +429,12 @@ Codex 认证、使用限制和 App Server 说明于 **2026-10-14**重新核对�
 - [Codex 认证](https://learn.chatgpt.com/docs/auth)
 - [Codex 使用限制与计费](https://learn.chatgpt.com/docs/pricing)
 - [Sign in with ChatGPT / App Server](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server)
-- [本地文档首页](docs/index.html) · [中文 macOS 安装](docs/macos-install.zh.html) · [中文 Windows 安装](docs/windows-install.zh.html)
+- [本地文档首页](docs/index.html) · [中文 macOS 安装](docs/macos-install.zh.html) · [中文 Windows 安装](docs/windows-install.zh.html) · [Linux 终端安装](docs/linux-install.html)
 - [AI 配置](docs/ai-configuration.html) · [Git 版本管理](docs/git-versions.html) · [服务接口](docs/api-interfaces.html)
 
 项目规则随 `rules/` 交付。本文翻译不改变授权、凭据处理、任务协调或 Full Access。只有明确要求向其他项目引入规范时，才使用[规范分发指南](rules/DISTRIBUTION.md)；正常安装不依赖开发者的规范源文件夹。
 
-Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍使用 Git Bash 的同一入口，不要求独立 `.ps1`、全局 Node / Codex、注册表 / 全局 PATH 或永久执行策略修改。启动器自动选择 Mac Intel / Apple Silicon、Windows x64 / ARM64；Linux、WSL 和 32 位设备在下载前被拒绝。强制关闭终端、断电或另行脱离的程序不保证能清理；运行命令的副作用不会被自动撤销。更多平台实现与调试细节见 [English README](README.md#windows-operation-and-delivery)。
+Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍使用 Git Bash 的同一入口，不要求独立 `.ps1`、全局 Node / Codex、注册表 / 全局 PATH 或永久执行策略修改。启动器自动选择 Mac Intel / Apple Silicon、Windows x64 / ARM64。GNU/Linux 使用独立的终端启动流程，支持采用 glibc 的 x64 和 ARM64 系统。强制关闭终端、断电或另行脱离的程序不保证能清理；运行命令的副作用不会被自动撤销。更多平台实现与调试细节见 [English README](README.md#windows-operation-and-delivery)。
 
 ## 文件对话与页面读取
 
@@ -436,9 +442,9 @@ Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍
 
 ## 发布版本识别
 
-当前统一称为 **内核版本 0.9.9**，唯一依据为 `kernel/manifest.json`，不再区分产品版本。页面、配置、安装和更新均读取内核版本；数据不可用时如实显示不可用。旧 `config/release.json` 与 `releaseVersion` 字段仅为兼容别名，不作为运行时版本依据。
+当前统一称为 **内核版本 1.0.0**，唯一依据为 `kernel/manifest.json`，不再区分产品版本。页面、配置、安装和更新均读取内核版本；数据不可用时如实显示不可用。旧 `config/release.json` 与 `releaseVersion` 字段仅为兼容别名，不作为运行时版本依据。
 
-源码 ZIP 的 `delivery.json` 记录 `kernelVersion` 和精确的 `sourceCommit`，`releaseVersion` 是同值兼容别名。固定下载 **0.9.9** 请使用 [v0.9.9 发布页面](https://github.com/extendmachine/Saplingagent/releases/tag/v0.9.9) 中的 macOS/Windows 源码 ZIP 和 SHA-256 校验文件；一行安装命令下载当前 release 分支。不可移动的标签、发布页面和包内回执必须对应同一份已核对源码，旧标签保持不变。参见[发布检查表](docs/release-checklist.html)。源码包不是已签名的原生安装器；真机和真实模型验收单独记录。
+源码 ZIP 的 `delivery.json` 记录 `kernelVersion` 和精确的 `sourceCommit`，`releaseVersion` 是同值兼容别名。固定下载 **1.0.0** 请使用 [v1.0.0 发布页面](https://github.com/extendmachine/Saplingagent/releases/tag/v1.0.0) 中的 macOS、Linux、Windows 源码 ZIP 和 SHA-256 校验文件；一行安装命令下载当前 release 分支。不可移动的标签、发布页面和包内回执必须对应同一份已核对源码，旧标签保持不变。参见[发布检查表](docs/release-checklist.html)。源码包不是已签名的原生安装器；真机和真实模型验收单独记录。
 
 ## 旧内核编号的一次性升级
 

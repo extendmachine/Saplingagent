@@ -2,7 +2,7 @@
 
 TASK-20261009-015, project-level startup/distribution tool, does not add new business services. Human Guide:../../Docs/macos-install.html.
 
-- System: macOS 13.5+; Select arm64/x64 according to the current running architecture, and use the corresponding x64 runtime under Rosetta.
+- System: macOS 13.5+; The macOS route verifies the product version with sw_vers or the system version plist. The bootstrap and Codex wrapper select the same native darwin-arm64/darwin-x64 runtime, including arm64 under Rosetta. If uname fails, hardware/translation sysctl readings can still identify the CPU. Unrecognized architectures stop before any download.
 - Fixed version: Node 24.21.0 / Codex CLI 0.146.1 of kernel/config/macos.json; Node is installed to .runtime/node-v<version>-darwin-<arch>, Codex to .runtime/codex, npm cache .cache/npm.
 - User entry: Saplingagent.sh. Run with bash; no arguments first selects English or Chinese, then opens the Bash menu: Install / update, Configure AI (Codex or OpenCode), Start app, Diagnostics, Change language and Quit. Explicit install/login/opencode/start/doctor/logout actions and existing flags remain available from that same file. Paths are derived from the script location.
 - bootstrap.sh: Only download Node in install, HTTPS to get the official distribution package and SHA-256 table, check, decompress and perform version check and upgrade; fail to clean up your own stage/lock. When other operations lack Node, it is clearly required to install it first.
@@ -96,6 +96,6 @@ Saplingagent.sh rereads saplingagent.storageMode from this independent folder's 
 
 The shared launcher now exposes menu6 / `bash Saplingagent.sh kernel` for every storage mode. Native bootstrap forwards status/check/update/restore arguments using the existing project Node and terminal transport. Kernel/source maintenance is offline, explicit and separate from the application Git history. Node/dependency installer locks interlock with kernel apply/start. See ../../kernel/DEPLOY.md and ../../docs/kernel-management.html. Actual native Windows update/recovery acceptance remains pending.
 
-## Current kernel 0.9.9 entry
+## Current kernel 1.0.0 entry
 
 Default Bash startup installs/repairs only the local kernel, assembles the configuration bundle, starts it from a visible, session-owned sibling directory (`../sapling-config-*`), then exits its short-lived project process. Set and save name/icon/AI in the web page. Save & build app stops owned runtime processes, applies the folder name and compiles the thin native launcher into the project. Finish setup hands cleanup back to project-local A; B exits before A deletes the temporary bundle. Double-click the app to check/install dependencies and open the project. Reopen `bash Saplingagent.sh configure` for later changes. Explicit shell commands and `SAPLING_LEGACY_MENU=1` remain recovery tools. See `docs/project-launcher.html`; old menu sections above describe historical releases.

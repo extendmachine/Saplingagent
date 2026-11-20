@@ -36,7 +36,7 @@ try{
     await finishConfiguration(root,path.resolve(process.argv[cleanup+1]));
   }else{
     await assertSetupAvailable(root);
-    const noOpen=process.argv.includes('--no-open')||process.env.SAPLING_NO_OPEN==='1';
+    const noOpen=process.platform==='linux'||process.argv.includes('--no-open')||process.env.SAPLING_NO_OPEN==='1';
     if(process.argv.includes('--launch')){
       launchProgress('checking');
       const configuration=await findConfiguration(root);
@@ -54,7 +54,7 @@ try{
         launchProgress('ready');
       }
     }else{
-      const address=await openConfiguration(root,{noOpen,configurationMode:process.argv.includes('--ai-only')?'ai':'setup'});
+      const address=await openConfiguration(root,{noOpen,configurationMode:process.platform==='linux'||process.argv.includes('--ai-only')?'ai':'setup'});
       await reportConfiguration({ok:true,port:address.port,instanceId:address.instanceId,configurationMode:address.configurationMode});
       console.log(formatMessage(launcherMessages,process.env.SAPLING_LANG,'Project setup: {url}',{url:`http://127.0.0.1:${address.port}/`}));
     }

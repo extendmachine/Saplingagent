@@ -11,7 +11,7 @@ import {applicationDependencyStatus,ensureApplicationDependencies} from '../depe
 import {codexBinary,openCodeBinary,claudeBinary} from '../../contracts/local-process.mjs';
 
 const source=path.resolve(fileURLToPath(new URL('../../../',import.meta.url)));
-const platform=process.platform==='win32'?'windows':'macos';
+const platform=process.platform==='win32'?'windows':process.platform==='darwin'?'macos':process.platform;
 async function write(file,value){await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,typeof value==='string'?value:JSON.stringify(value));}
 async function fixture(t){
   const base=path.join(source,'.cache/dependency-tests');await fs.mkdir(base,{recursive:true});

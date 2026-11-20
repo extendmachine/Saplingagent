@@ -1,15 +1,19 @@
 #!/bin/bash
-# Standalone release downloader. Compatible with macOS Bash 3.2 and Windows Git Bash.
+# Cross-platform release downloader for Bash 3.2 or later.
 set -euo pipefail
 sapling_lang="${SAPLING_LANG:-en}"
 sapling_destination='./Saplingagent'
+sapling_requested="${SAPLING_PLATFORM-}"
+sapling_has_platform="${SAPLING_PLATFORM+x}"
 sapling_download_only=0
 sapling_stage=''
 say() { if [ "$sapling_lang" = zh ]; then printf '%s\n' "$2"; else printf '%s\n' "$1"; fi; }
 fail() { say "$1" "$2" >&2; exit 1; }
 usage() {
-  printf '%s\n' 'Usage: bash install.sh [--dir PATH] [--lang en|zh] [--download-only]'
-  printf '%s\n' 'Downloads Saplingagent release into a NEW folder; installs its kernel and opens web setup.'
+  say 'Usage: bash install.sh [--dir PATH] [--lang en|zh] [--platform auto|macos|windows|linux] [--download-only]' \
+      '用法：bash install.sh [--dir 路径] [--lang en|zh] [--platform auto|macos|windows|linux] [--download-only]'
+  say 'Downloads release into a new folder and starts configuration. Use --download-only to install later.' \
+      '将 release 下载到新文件夹并启动配置。选择 --download-only 可以稍后再安装。'
 }
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -17,17 +21,18 @@ while [ "$#" -gt 0 ]; do
       [ "$#" -ge 2 ] || { usage >&2; exit 2; }
       if [ "$1" = --dir ]; then sapling_destination="$2"; else sapling_lang="$2"; fi
       shift 2 ;;
+    --platform)
+      [ "$#" -ge 2 ] || { usage >&2; exit 2; }
+      sapling_requested="$2"; sapling_has_platform=x; shift 2 ;;
     --download-only) sapling_download_only=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; exit 2 ;;
   esac
 done
 case "$sapling_lang" in en|zh) ;; *) usage >&2; exit 2 ;; esac
-case "$(uname -s)" in
-  Darwin) sapling_platform='macOS' ;;
-  MINGW*|MSYS*|CYGWIN*) sapling_platform='Windows' ;;
-  *) fail 'Use macOS Terminal or Windows Git Bash. Linux/WSL is not supported.' '请使用 macOS 终端或 Windows Git Bash；暂不支持 Linux / WSL。' ;;
-esac
+if [ -n "$sapling_has_platform" ]; then
+  case "$sapling_requested" in auto|macos|windows|linux) ;; *) usage >&2; exit 2 ;; esac
+fi
 for sapling_command in curl tar mktemp; do
   command -v "$sapling_command" >/dev/null || fail "Missing command: $sapling_command" "缺少命令：$sapling_command"
 done
@@ -76,18 +81,46 @@ while IFS= read -r sapling_entry; do
 done < "$sapling_stage/types.txt"
 mkdir "$sapling_stage/app"
 tar -xzf "$sapling_stage/source.tar.gz" --strip-components=1 -C "$sapling_stage/app"
-for sapling_file in kernel/manifest.json config/release.json install.sh Saplingagent.sh AGENTS.md FINAL_GOAL.md TODO.md AI_TASKS.md rules/README.md kernel/scripts/launcher/recipient-records.mjs kernel/scripts/macos/bootstrap.sh kernel/scripts/windows/bootstrap.sh; do
+for sapling_file in kernel/manifest.json config/release.json install.sh Saplingagent.sh AGENTS.md FINAL_GOAL.md TODO.md AI_TASKS.md rules/README.md kernel/scripts/Saplingagent.sh kernel/scripts/launcher/recipient-records.mjs kernel/scripts/macos/bootstrap.sh kernel/scripts/windows/bootstrap.sh; do
   [ -f "$sapling_stage/app/$sapling_file" ] && [ ! -L "$sapling_stage/app/$sapling_file" ] || fail "Incomplete source: $sapling_file" "源码不完整：$sapling_file"
 done
 sapling_release_json="$(cat "$sapling_stage/app/kernel/manifest.json")"
 sapling_version_pattern='"version"[[:space:]]*:[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)"'
 if [[ "$sapling_release_json" =~ $sapling_version_pattern ]]; then sapling_release_version="${BASH_REMATCH[1]}";
 else fail 'Kernel version metadata is missing or invalid.' '内核版本元数据缺失或无效。'; fi
+sapling_receipt_platform=universal
+if [ -f "$sapling_stage/app/kernel/scripts/platform.sh" ]; then
+  [ -f "$sapling_stage/app/kernel/scripts/linux/bootstrap.sh" ] || fail 'Incomplete Linux installer in this source snapshot.' '该源码快照缺少 Linux 安装程序。'
+else
+  # Older release launchers use host-specific receipts and do not accept --platform.
+  # Restrict this compatibility path to snapshots that predate the selector.
+  if grep -Fq '"kernel/scripts/platform.sh"' "$sapling_stage/app/kernel/manifest.json"; then
+    fail 'Incomplete platform selector in this source snapshot.' '该源码快照缺少平台选择程序。'
+  fi
+  case "$(uname -s 2>/dev/null || true)" in
+    Darwin) sapling_legacy_host=macos ;;
+    MINGW*|MSYS*|CYGWIN*) sapling_legacy_host=windows ;;
+    *) sapling_legacy_host=linux ;;
+  esac
+  sapling_target="$sapling_requested"
+  case "$sapling_target" in ''|auto) sapling_target="$sapling_legacy_host" ;; esac
+  if [ "$sapling_download_only" -eq 0 ] && [ "$sapling_target" != "$sapling_legacy_host" ]; then
+    fail 'This older release installs only for the current host. Use --download-only to transfer the source.' '此旧版本仅支持为当前主机安装。可使用 --download-only 下载并转移源码。'
+  fi
+  case "$sapling_target" in
+    macos) sapling_receipt_platform=macOS ;;
+    windows) sapling_receipt_platform=Windows ;;
+    linux)
+      [ -f "$sapling_stage/app/kernel/scripts/linux/bootstrap.sh" ] || fail 'This release does not include a Linux installer.' '此发行版本没有 Linux 安装程序。'
+      sapling_receipt_platform=Linux ;;
+  esac
+  sapling_has_platform=''
+fi
 sapling_hash() {
   if [ "$sapling_hash_command" = sha256sum ]; then sha256sum "$1"; else shasum -a 256 "$1"; fi
 }
 {
-  printf '{"schemaVersion":2,"kernelVersion":"%s","releaseVersion":"%s","sourceRef":"release","sourceCommit":"%s","platform":"%s","initializeRecords":true,"distribution":{"source":"release-archive","gitIncluded":false},"recordHashes":{' "$sapling_release_version" "$sapling_release_version" "$sapling_sha" "$sapling_platform"
+  printf '{"schemaVersion":2,"kernelVersion":"%s","releaseVersion":"%s","sourceRef":"release","sourceCommit":"%s","platform":"%s","initializeRecords":true,"distribution":{"source":"release-archive","gitIncluded":false},"recordHashes":{' "$sapling_release_version" "$sapling_release_version" "$sapling_sha" "$sapling_receipt_platform"
   sapling_separator=''
   for sapling_file in AGENTS.md FINAL_GOAL.md TODO.md AI_TASKS.md; do
     sapling_hash_line="$(sapling_hash "$sapling_stage/app/$sapling_file")";sapling_digest="${sapling_hash_line%% *}"
@@ -104,11 +137,17 @@ chmod +x "$sapling_destination/Saplingagent.sh" "$sapling_destination/install.sh
 cleanup; sapling_stage=''; trap - EXIT
 say "Saplingagent kernel $sapling_release_version ready: $sapling_destination ($sapling_sha)" "Saplingagent 内核 $sapling_release_version 已就绪：${sapling_destination}（${sapling_sha}）"
 if [ "$sapling_download_only" -eq 1 ]; then
-  say 'Next: enter this folder and run bash Saplingagent.sh.' '下一步：进入该文件夹，运行 bash Saplingagent.sh。'
+  if [ -n "$sapling_has_platform" ]; then
+    say "Next: enter this folder and run bash Saplingagent.sh --platform $sapling_requested install." "下一步：进入该文件夹，运行 bash Saplingagent.sh --platform $sapling_requested install。"
+  else
+    say 'Next: enter this folder and run bash Saplingagent.sh.' '下一步：进入该文件夹，运行 bash Saplingagent.sh。'
+  fi
   exit 0
 fi
 export SAPLING_LANG="$sapling_lang"
 cd "$sapling_destination"
-# Keep native Windows interactive bootstrap in the foreground (no background bridge).
-bash ./Saplingagent.sh --lang "$sapling_lang" install <&3
-say 'Continue project setup and launcher compilation in your browser.' '请在浏览器继续项目配置并编译启动器。'
+# Keep stdin on the terminal. The pinned launcher owns platform selection and its menu.
+set -- --lang "$sapling_lang"
+if [ -n "$sapling_has_platform" ]; then set -- "$@" --platform "$sapling_requested"; fi
+bash ./Saplingagent.sh "$@" install <&3
+say 'Finish configuration at the URL printed by setup. On Linux, then run bash Saplingagent.sh start.' '请在安装程序显示的网址完成配置。如使用 Linux，随后运行 bash Saplingagent.sh start。'

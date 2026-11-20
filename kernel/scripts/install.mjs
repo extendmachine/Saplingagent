@@ -3,6 +3,7 @@ import {formatMessage} from '../localization/public.mjs';
 import {readLanguage} from '../localization/store.mjs';
 import {prepareManagedEnvironment} from '../contracts/local-storage.mjs';
 import {acquireKernelLock,assertKernelOffline} from '../contracts/kernel.mjs';
+import {withPublicNpmCache} from '../tooling/npm-cache.mjs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { npmCommand, openCodeBinary } from '../contracts/local-process.mjs';
@@ -17,12 +18,13 @@ const release=await acquireKernelLock(root,'legacy-install');
 try {
 await assertKernelOffline(root);
 for (const service of ['front', 'backend/app-builder', 'backend/mcp-runtime', 'backend/agent-runtime']) {
-  await new Promise((resolve, reject) => {
+  const cwd = path.join(root, service);
+  await withPublicNpmCache(root, cwd, () => new Promise((resolve, reject) => {
     // OpenCode's pinned package selects its locked platform binary in postinstall.
     const args = service === 'backend/agent-runtime' ? ['ci'] : ['ci', '--ignore-scripts'];
-    const child = spawn(npm.command, [...npm.args, ...args], { cwd: path.join(root, service), stdio: 'inherit', env });
+    const child = spawn(npm.command, [...npm.args, ...args], { cwd, stdio: 'inherit', env });
     child.once('error', reject); child.once('exit', code => code === 0 ? resolve() : reject(new Error(text('Install failed: {service}',{service}))));
-  });
+  }));
 }
 await new Promise((resolve, reject) => {
   const command = openCodeBinary(root);

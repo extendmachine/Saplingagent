@@ -1,6 +1,6 @@
 {
   "name": "saplingagent-engine-sdk",
-  "version": "0.9.9",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "license": "MIT",

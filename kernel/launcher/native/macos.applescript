@@ -9,6 +9,8 @@ property startupTask : missing value
 property permitExit : false
 property reportedFailure : false
 property statusFailures : 0
+property nextStatusUptime : 0
+property requestPath : missing value
 property folderAccessDenied : false
 property progressWindow : missing value
 property progressLabel : missing value
@@ -117,6 +119,7 @@ on invokeHelper(actionName)
 end invokeHelper
 
 on beginLaunch(actionName)
+	set nextStatusUptime to 0
 	if startupTask is not missing value then
 		if (startupTask's isRunning()) as boolean then
 			my showProgress((my translated("Preparing dependencies and starting the project…")))
@@ -130,6 +133,7 @@ on beginLaunch(actionName)
 	progressDetail's setStringValue:(my translated("If macOS asks for access to the folder containing this project, choose Allow to continue."))
 	progressWindow's displayIfNeeded()
 	set projectURL to current application's NSBundle's mainBundle()'s bundleURL()'s URLByDeletingLastPathComponent()
+	set requestPath to (projectURL's URLByAppendingPathComponent:".runtime/native-app-request.json")'s |path|()
 	set folderAccessDenied to my deniedProjectRead(projectURL)
 	if folderAccessDenied then
 		my updateProgress((my translated("Cannot read the project folder.")))
@@ -175,6 +179,13 @@ end reopen
 on idle
 	if helperPath is missing value or folderAccessDenied then return 2
 	try
+		-- A stable app checks the small handoff marker in-process. Only an actual
+		-- status probe starts the shell, native helper and Node.
+		set nowUptime to (current application's NSProcessInfo's processInfo()'s systemUptime()) as real
+		if nowUptime < nextStatusUptime then
+			if not ((current application's NSFileManager's defaultManager()'s fileExistsAtPath:requestPath) as boolean) then return 2
+		end if
+		set nextStatusUptime to 0
 		set currentState to paragraph 1 of (my invokeHelper("--dock-status"))
 		set statusFailures to 0
 		if currentState is "handoff" then
@@ -189,6 +200,7 @@ on idle
 			my reportFailure((my translated("The project could not start. Check logs/project-launcher in the project folder, then click the Dock icon to retry.")))
 		else if currentState is "ready" or currentState is "stopped" then
 			my hideProgress()
+			set nextStatusUptime to nowUptime + 20
 		else if currentState is "bootstrapping" then
 			my updateProgress((my translated("Installing the missing local runtime. This may take a few minutes…")))
 		else if currentState is "starting" then

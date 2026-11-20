@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { portKeys,selectRuntimePorts } from './ports.mjs';
 import { loadProjectServices, assignProjectPorts, serviceCommand, servicePortEnv } from './services.mjs';
 import {prepareProviderTools,runtimeEngines} from '../../tooling/providers.mjs';
+import {buildStaticFrontend, frontendSettings} from './static-frontend.mjs';
 import { readMcpAccess } from '../../contracts/mcp-access.mjs';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -29,6 +30,7 @@ export class RuntimeManager {
   }
   state() {
     return { applicationRoot:path.resolve(this.root),instanceId: this.instanceId, generation: this.generation, phase: this.phase, busy: !!this.operation || !!this.maintenance, canRestart: !this.operation && !this.maintenance && !this.closed, jobId: this.jobId || null, scope: this.scope || 'all', error: this.error,
+      frontendMode: this.config?.frontendMode || 'development',
       aiConnection: this.config?.externalMcpOnly ? 'external-mcp' : 'builtin',
       ports: this.config ? Object.fromEntries(portKeys.map(key => [key, this.config[key]])) : null,
       services: [...this.children].map(([name, child]) => {
@@ -49,11 +51,14 @@ export class RuntimeManager {
       await fs.appendFile(path.join(directory, `runtime-manager-${day}.log`), JSON.stringify({ time: new Date().toISOString(), event, ...fields }) + '\n', { mode: 0o600 });
     } catch { /* Metadata logging must not prevent lifecycle operations. */ }
   }
+  endpointEnv(config) {
+    const projectEnv = Object.fromEntries(Object.entries(this.projectPorts).map(([name, port]) => [servicePortEnv(name), String(port)]));
+    return { SEED_ROOT: this.root, SEED_FRONT_PORT: String(config.frontPort), SEED_VITE_PORT: String(config.vitePort), SEED_RUNTIME_MANAGER_PORT: String(config.runtimeManagerPort), SEED_AGENT_PORT: String(config.agentPort), SEED_WORKSPACE_PORT: String(config.workspacePort), SEED_BUILDER_PORT: String(config.builderPort), SEED_PDF_EDITOR_PORT: String(config.pdfEditorPort), SEED_OPENCODE_PORT: String(config.openCodePort), SEED_SERVICE_PORTS: JSON.stringify(this.projectPorts), ...projectEnv };
+  }
   launch(definition, config) {
     if (this.closed) throw failure('MANAGER_STOPPED', 'Runtime manager is stopping.');
-    const projectEnv = Object.fromEntries(Object.entries(this.projectPorts).map(([name, port]) => [servicePortEnv(name), String(port)]));
     const spec = definition.launchSpec;
-    const env = { ...process.env, SEED_ROOT: this.root, SEED_FRONT_PORT: String(config.frontPort), SEED_VITE_PORT: String(config.vitePort), SEED_RUNTIME_MANAGER_PORT: String(config.runtimeManagerPort), SEED_AGENT_PORT: String(config.agentPort), SEED_WORKSPACE_PORT: String(config.workspacePort), SEED_BUILDER_PORT: String(config.builderPort), SEED_PDF_EDITOR_PORT: String(config.pdfEditorPort), SEED_OPENCODE_PORT: String(config.openCodePort), SEED_SERVICE_PORTS: JSON.stringify(this.projectPorts), ...projectEnv, ...(spec?.env || definition.env), ...(definition.project && definition.port ? { PORT: String(definition.port), SEED_SERVICE_PORT: String(definition.port) } : {}) };
+    const env = { ...process.env, ...this.endpointEnv(config), ...(spec?.env || definition.env), ...(definition.project && definition.port ? { PORT: String(definition.port), SEED_SERVICE_PORT: String(definition.port) } : {}) };
     const child = spawn(spec?.command || process.execPath, spec?.args || [path.join(this.root, definition.file), ...(definition.args || [])], { cwd: spec?.cwd || this.root, env, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
     this.children.set(definition.name, child);
     child.stdout.on('data', chunk => { if (this.output) process.stdout.write(`[${definition.name}] ${chunk}`); });
@@ -134,7 +139,7 @@ export class RuntimeManager {
     const overrides = Object.fromEntries(Object.entries(this.portOverrides || {}).filter(([key]) => ['frontPort', 'runtimeManagerPort'].includes(key) || !this.sourcePorts || config[key] === this.sourcePorts[key]));
     this.sourcePorts ??= Object.fromEntries(ports.map(key => [key, config[key]]));
     const mcp = await readMcpAccess(this.root);
-    const effective = { ...config, ...overrides, externalMcpOnly: mcp.enabled && mcp.externalOnly };
+    const effective = { ...config, ...frontendSettings(config), ...overrides, externalMcpOnly: mcp.enabled && mcp.externalOnly };
     // Effective preferences may collide with a previously allocated public port.
     // Resolve these after owned shutdown, while retaining the live listeners.
     return effective;
@@ -193,13 +198,17 @@ export class RuntimeManager {
     // as if they belonged to a competing project.
     const previousConfig = this.config;
     const frontKey = this.frontDefinition?.portKey || 'frontPort';
-    let restartFront = scope === 'all' || !alive(this.children.get('front')) || config[frontKey] !== previousConfig[frontKey];
+    const isStatic = config.frontendMode === 'static';
+    const frontReady = isStatic
+      ? !this.staticBuildRequired && this.staticSite && this.staticSite.base === config.frontendBase && this.staticSite.dist === config.frontendDist
+      : alive(this.children.get('front'));
+    let restartFront = scope === 'all' || !frontReady || config[frontKey] !== previousConfig[frontKey];
     if (restartFront) await this.stopChild('front');
     const previousProjectPorts = this.projectPorts;
     for (let attempt = 0; attempt < 8; attempt++) {
       if (this.closed) throw failure('MANAGER_STOPPED', 'Runtime manager is stopping.');
       const fixed = { frontPort: config.frontPort, runtimeManagerPort: config.runtimeManagerPort };
-      if (!restartFront && this.frontDefinition) {
+      if (!restartFront && this.frontDefinition && !isStatic) {
         const key = this.frontDefinition.portKey || 'frontPort';
         fixed[key] = previousConfig[key];
       }
@@ -235,6 +244,19 @@ export class RuntimeManager {
     }
   }
   async startFrontend(config) {
+    if (config.frontendMode === 'static') {
+      this.staticBuildRequired = true;
+      const next = await buildStaticFrontend(this.root, config, {
+        signal: this.controlAbort.signal,
+        endpointEnv: this.endpointEnv(config),
+        onOutput: chunk => { if (this.output) process.stdout.write(chunk); }
+      });
+      const previous = this.staticSite;
+      this.staticSite = next;
+      this.staticBuildRequired = false;
+      await previous?.retire();
+      return;
+    }
     if (!this.frontDefinition) return;
     const port = config[this.frontDefinition.portKey || 'frontPort'];
     await availablePort(port);
@@ -243,7 +265,16 @@ export class RuntimeManager {
     const end = Date.now() + this.healthTimeout;
     while (!this.closed && Date.now() < end) {
       if (!alive(this.children.get('front'))) throw failure(this.children.get('front')?.bindConflict?'PORT_OCCUPIED':'SERVICE_EXITED', 'Frontend could not start. Check its local diagnostics.', 'front');
-      try { if ((await fetch(`http://127.0.0.1:${port}/`, {signal: AbortSignal.timeout(1000)})).ok) return; } catch {}
+      try {
+        const response = await fetch(`http://127.0.0.1:${port}/`, {signal: AbortSignal.timeout(1000)});
+        await response.body?.cancel();
+        if (response.ok) {
+          const previous = this.staticSite;
+          this.staticSite = null;
+          await previous?.retire();
+          return;
+        }
+      } catch {}
       await delay(100);
     }
     throw failure('SERVICE_NOT_READY', 'Frontend did not become ready. Repair dependencies and retry.', 'front');
@@ -340,6 +371,7 @@ export class RuntimeManager {
     this.closing = (async () => {
       await this.operation;
       await this.stopOwnedServices({includeFront:true});
+      await this.staticSite?.retire(); this.staticSite = null;
       this.phase = 'stopped'; this.error = null;
       await this.log('stop');
     })().catch(error => {

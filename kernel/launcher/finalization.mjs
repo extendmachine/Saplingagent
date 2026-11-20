@@ -61,7 +61,7 @@ export async function beginFinalization(root, {project, management, language, fi
     throw issue('PROJECT_HANDOFF_UNAVAILABLE', 'Management ownership changed. Reload setup before restarting.');
   if (!isInside(root, node)) throw issue('PROJECT_LOCAL_NODE_REQUIRED', 'Run this project with its installed local Node runtime before saving and restarting.');
   if (await exists(path.join(root, '.runtime/kernel/active-job.json'))) throw issue('PROJECT_BUSY', 'Finish kernel maintenance before restarting setup.');
-  for (const file of ['launcher-compile.lock','macos-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])
+  for (const file of ['launcher-compile.lock','macos-install.lock','linux-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])
     if (await exists(path.join(root,'.runtime',file))) throw issue('PROJECT_BUSY','Finish dependency installation before restarting setup.');
   await relocationLedger(root); // Validate before any shutdown or physical move.
   await assertMcpClientsStopped(root);

@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 import { createGateway } from '../gateway.mjs';
 const exec = promisify(execFile);
 import { RuntimeManager } from '../manager.mjs';
+import {frontendSettings} from '../static-frontend.mjs';
 import { createManagerServer } from '../server.mjs';
 import { createDrainGate } from '../../../contracts/runtime-drain.mjs';
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -472,4 +473,113 @@ test('custom service port takeover refreshes argv and all dependent endpoint map
  const data=await(await fetch(`http://127.0.0.1:${current.port}/`)).json();assert.equal(data.arg,String(current.port));assert.equal(data.services.documents,current.port);
  const front=await(await fetch(`http://127.0.0.1:${config.frontPort}/`)).json();assert.equal(front.services.documents,current.port);
  const agent=await(await fetch(`http://127.0.0.1:${config.frontPort}/api/status`)).json();assert.equal(agent.services.documents,current.port);
+});
+
+test('static frontend settings require a public output folder and a local URL mount', () => {
+  assert.equal(frontendSettings({}).frontendMode,'development');
+  assert.equal(frontendSettings({frontendMode:'static',frontendBase:'/学习.app/'}).frontendBase,'/%E5%AD%A6%E4%B9%A0.app/');
+  for (const frontendBase of ['//app/','/api/','/__saplingagent/my-app/','/./','/a/../','https://example.invalid/']) {
+    assert.throws(() => frontendSettings({frontendMode:'static',frontendBase}), {code:'INVALID_CONFIG'});
+  }
+  for (const frontendDist of ['.', '..', '../', '/output', 'node_modules/pkg', 'C:/dist', '.private']) {
+    assert.throws(() => frontendSettings({frontendMode:'static',frontendDist}), {code:'INVALID_CONFIG'});
+  }
+});
+
+test('static mode builds the project frontend, serves it on the gateway and recovers after a failed rebuild', async t => {
+  async function setup(manager) {
+    const front = path.join(manager.root, 'front');
+    await fs.mkdir(front);
+    await fs.writeFile(path.join(front,'package.json'), JSON.stringify({scripts:{build:'node build.cjs'}}));
+    await fs.writeFile(path.join(front,'build.cjs'), `const fs = require('node:fs');
+const version = fs.readFileSync('version.txt','utf8');
+fs.mkdirSync('site/assets',{recursive:true});
+fs.writeFileSync('site/index.html', version);
+fs.writeFileSync('site/assets/app.js', 'asset-' + version);
+fs.writeFileSync('site/.private', 'fixture');
+fs.writeFileSync('runs', fs.existsSync('runs') ? fs.readFileSync('runs','utf8')+'x' : 'x');
+if (version === 'fail') process.exit(1);
+if (fs.existsSync('pause')) {
+  fs.writeFileSync('started', '1');
+  const poll = setInterval(() => { if (!fs.existsSync('pause')) clearInterval(poll); },15);
+}`);
+    await fs.writeFile(path.join(front,'version.txt'),'first');
+    const file = path.join(manager.root,'config/runtime.json');
+    const config = JSON.parse(await fs.readFile(file,'utf8'));
+    await fs.writeFile(file, JSON.stringify({...config,frontendMode:'static',frontendDist:'site',frontendBase:'/notes/'}));
+  }
+  const {root, config, manager} = await fixture(t, {gateway:true,beforeStart:setup});
+  const front = path.join(root,'front');
+  const get = (route,options) => fetch(`http://127.0.0.1:${config.frontPort}${route}`, options);
+  const html = {headers:{Accept:'text/html'}};
+  assert.equal(manager.phase,'ready', JSON.stringify(manager.error));
+  assert.equal(manager.state().frontendMode,'static');
+  assert.equal(manager.children.has('front'), false);
+  assert.equal((await get('/',{redirect:'manual'})).headers.get('location'),'/notes/');
+  assert.equal(await (await get('/notes/')).text(),'first');
+  assert.equal(await (await get('/notes/report/intro',html)).text(),'first');
+  assert.equal((await get('/notes/missing.js',html)).status,404);
+  assert.equal((await get('/notes/.private')).status,404);
+  assert.equal((await get('/__saplingagent/unknown',html)).status,404);
+  assert.equal((await get('/notes/assets/app.js',{method:'HEAD',headers:{Authorization:'Bearer fixture-token'}})).headers.get('content-type').includes('javascript'),true);
+  assert.equal((await get('/notes/assets/app.js',{headers:{Range:'bytes=0-4'}})).status,206);
+  assert.equal((await get('/notes/',{method:'POST',headers:{Authorization:'Bearer fixture-token'}})).status,405);
+  assert.equal((await get('/notes/',{headers:{Origin:'https://example.invalid'}})).status,403);
+  assert.equal((await (await get('/api/status')).json()).name,'agent');
+  assert.equal((await (await get('/api/runtime/status')).json()).frontendMode,'static');
+  assert.equal((await get('/__saplingagent/runtime')).status,200);
+  const builds = () => fs.readFile(path.join(front,'runs'),'utf8');
+  manager.restart({scope:'backend'}); await manager.operation;
+  assert.equal(await builds(),'x');
+  await fs.writeFile(path.join(front,'version.txt'),'second');
+  await fs.writeFile(path.join(front,'pause'),'1');
+  manager.restart();
+  await until(() => fs.access(path.join(front,'started')).then(()=>true,()=>false));
+  assert.equal(await (await get('/notes/')).text(),'first');
+  await fs.unlink(path.join(front,'pause')); await manager.operation;
+  assert.equal(await (await get('/notes/')).text(),'second');
+  await fs.writeFile(path.join(front,'version.txt'),'fail');
+  manager.restart(); await manager.operation;
+  assert.equal(manager.phase,'failed');
+  assert.equal(manager.error.code,'FRONTEND_BUILD_FAILED');
+  assert.equal(await (await get('/notes/')).text(),'second');
+  await fs.writeFile(path.join(front,'version.txt'),'fixed');
+  manager.restart({scope:'backend'}); await manager.operation;
+  assert.equal(manager.phase,'ready', JSON.stringify(manager.error));
+  assert.equal(await (await get('/notes/')).text(),'fixed');
+  const file = path.join(root,'config/runtime.json');
+  await fs.writeFile(file,JSON.stringify({...config,frontendMode:'development'}));
+  manager.restart({scope:'backend'}); await manager.operation;
+  assert.equal(manager.phase,'ready', JSON.stringify(manager.error));
+  assert.ok(manager.children.get('front').pid);
+  assert.equal((await (await get('/')).json()).name,'front');
+  assert.equal(manager.staticSite,null);
+  assert.deepEqual(await fs.readdir(path.join(root,'.runtime/static-frontend')),[]);
+});
+
+test('a fresh static mode workspace with no publishable build retains recovery controls', async t => {
+  const {manager,config,root} = await fixture(t,{gateway:true,async beforeStart(manager) {
+    const file = path.join(manager.root,'config/runtime.json');
+    await fs.writeFile(file,JSON.stringify({...JSON.parse(await fs.readFile(file)), frontendMode:'static'}));
+    await fs.mkdir(path.join(manager.root,'front'));
+    await fs.writeFile(path.join(manager.root,'front/package.json'), JSON.stringify({scripts:{build:'node -v'}}));
+  }});
+  const get = (route,options) => fetch(`http://127.0.0.1:${config.frontPort}${route}`,options);
+  assert.equal(manager.phase,'failed');
+  assert.equal(manager.error.code,'FRONTEND_BUILD_FAILED', JSON.stringify(manager.error));
+  assert.equal((await get('/assets/app.js')).status,503);
+  assert.match(await (await get('/',{headers:{Accept:'text/html'}})).text(),/runtime/i);
+  const out = path.join(root,'front/dist');
+  await fs.mkdir(out);
+  await fs.writeFile(path.join(out,'index.html'),'now ready');
+  if (process.platform !== 'win32') {
+    await fs.symlink(path.join(root,'config/runtime.json'),path.join(out,'linked.txt'));
+    manager.restart(); await manager.operation;
+    assert.equal(manager.error.code,'FRONTEND_BUILD_FAILED');
+    assert.equal((await get('/linked.txt')).status,503);
+    await fs.unlink(path.join(out,'linked.txt'));
+  }
+  manager.restart(); await manager.operation;
+  assert.equal(manager.phase,'ready', JSON.stringify(manager.error));
+  assert.equal(await (await get('/')).text(),'now ready');
 });

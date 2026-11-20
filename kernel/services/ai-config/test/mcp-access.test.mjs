@@ -17,7 +17,7 @@ async function fixture(t){
   const holder=await fs.mkdtemp(path.join(parent,'flow-')),root=path.join(holder,'Before'),directory=path.join(holder,'sapling-config-fixture');
   await fs.mkdir(root);await fs.mkdir(directory);
   const session={schemaVersion:1,id:randomUUID(),nonce:'a'.repeat(64),root,directory,pid:process.pid,projectId:null,bootstrapPids:[]};await saveSession(session);
-  const device=process.platform==='win32'?'windows':'macos';
+  const device=process.platform==='win32'?'windows':process.platform==='darwin'?'macos':process.platform;
   await fs.mkdir(path.join(root,'kernel/config'),{recursive:true});await fs.writeFile(path.join(root,`kernel/config/${device}.json`),JSON.stringify({nodeVersion:'24.21.0'}));
   const assets=path.join(directory,'ui');await fs.mkdir(assets);await fs.writeFile(path.join(assets,'index.html'),'<meta name="config-token" content="__SAPLING_CONFIG_TOKEN__">');
   let server,compiled=0;

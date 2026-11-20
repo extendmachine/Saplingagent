@@ -14,7 +14,7 @@ async function fixture(t, { auth = 'missing', badDev = false } = {}) {
   const parent = path.join(project, '.cache/macos-tests'); await fs.mkdir(parent, { recursive: true });
   const root = await fs.mkdtemp(path.join(parent, "\u6d4b\u8bd5 app's "));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  for (const file of ['kernel/tooling/providers.mjs','kernel/tooling/bindings.mjs','kernel/tooling/tools.mjs','kernel/tooling/store.mjs','kernel/tooling/progress.mjs','kernel/tooling/node-bootstrap.sh','kernel/localization/public.mjs','kernel/localization/errors.mjs','kernel/localization/store.mjs','kernel/localization/launcher-messages.mjs','kernel/localization/installer-messages.sh','kernel/contracts/configuration-transaction.mjs','kernel/contracts/configuration-write.mjs','kernel/contracts/local-storage.mjs','kernel/contracts/mcp-access.mjs','kernel/contracts/kernel.mjs', 'kernel/compat/paths.mjs', 'kernel/contracts/ai-configuration.mjs', 'kernel/contracts/local-process.mjs', 'kernel/contracts/engine-dependencies.mjs', 'kernel/scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'kernel/scripts/launcher/recipient-records.mjs', 'kernel/scripts/setup.mjs', 'kernel/scripts/macos/cli.mjs', 'kernel/scripts/macos/bootstrap.sh', 'kernel/scripts/macos/codex.sh', 'Saplingagent.sh', 'kernel/scripts/Saplingagent.sh', 'kernel/config/macos.json', 'config/runtime.json']) {
+  for (const file of ['kernel/tooling/providers.mjs','kernel/tooling/bindings.mjs','kernel/tooling/device.mjs','kernel/tooling/npm-cache.mjs','kernel/tooling/public-npm-locks.json','kernel/tooling/tools.mjs','kernel/tooling/store.mjs','kernel/tooling/progress.mjs','kernel/tooling/node-bootstrap.sh','kernel/localization/public.mjs','kernel/localization/errors.mjs','kernel/localization/store.mjs','kernel/localization/launcher-messages.mjs','kernel/localization/installer-messages.sh','kernel/contracts/configuration-transaction.mjs','kernel/contracts/configuration-write.mjs','kernel/contracts/local-storage.mjs','kernel/contracts/mcp-access.mjs','kernel/contracts/kernel.mjs', 'kernel/compat/paths.mjs', 'kernel/contracts/ai-configuration.mjs', 'kernel/contracts/local-process.mjs', 'kernel/contracts/engine-dependencies.mjs', 'kernel/scripts/launcher/cli.mjs', 'scripts/launcher/source-update.mjs', 'scripts/launcher/git-storage.mjs', 'kernel/scripts/launcher/recipient-records.mjs', 'kernel/scripts/setup.mjs', 'kernel/scripts/macos/cli.mjs', 'kernel/scripts/macos/bootstrap.sh','kernel/scripts/macos/device.sh', 'kernel/scripts/macos/codex.sh', 'Saplingagent.sh', 'kernel/scripts/Saplingagent.sh','kernel/scripts/platform.sh', 'kernel/config/macos.json', 'config/runtime.json']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(project, file), path.join(root, file));
   }
   const settings = JSON.parse(await fs.readFile(path.join(root, 'kernel/config/macos.json'), 'utf8'));
@@ -38,7 +38,7 @@ function runCli(root, action, extraEnv = {},nodeExecutable=process.execPath) {
   });
 }
 test('distribution filter excludes runtime/private files while retaining complete rules and Skills', () => {
-  for (const file of ['local-secrets/codex/auth.json', 'backend/a/local-secrets/key.txt', 'data/session.json', 'backend/agent-runtime/ai-tasks/runtime/run.md', 'front/node_modules/react/index.js', '.runtime/codex/package.json', '.worktrees/coordination/TODO.md', 'logs/front/x.log', 'backend/a/.env.local', 'backend/a/token.pem', 'front/dist/index.html', '1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', 'Saplingagent.command', '4-Doctor.command', '5-Configure-OpenCode.command']) assert.equal(distributable(file), false, file);
+  for (const file of ['local-secrets/codex/auth.json', 'backend/a/local-secrets/key.txt', 'data/session.json', 'backend/agent-runtime/ai-tasks/runtime/run.md', 'kernel/ai-tasks/TASK-20261119-009.md', 'front/node_modules/react/index.js', '.runtime/codex/package.json', '.worktrees/coordination/TODO.md', 'logs/front/x.log', 'backend/a/.env.local', 'backend/a/token.pem', 'front/dist/index.html', '1-Install.command', '2-Login-Codex.command', '3-Start-Saplingagent.command', 'Saplingagent.command', '4-Doctor.command', '5-Configure-OpenCode.command']) assert.equal(distributable(file), false, file);
   for (const file of ['config/release.json','README.zh-CN.md','assets/brand/saplingagent-growth-logo.png','assets/cases/document-workspace/workspace-overview.jpg','kernel/manifest.json','kernel/recover.mjs','contracts/kernel.mjs','LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md', 'rules/README.md', 'rules/clawtask-package-skill-v2.zip', '.agents/skills/seed-page-edit/SKILL.md', 'Saplingagent.sh', 'install.sh', 'kernel/scripts/launcher/recipient-records.mjs', '.agents/.claude-plugin/plugin.json', 'kernel/engines/providers/claude.mjs', 'front/App.tsx', 'kernel/scripts/macos/codex.sh']) assert.equal(distributable(file), true, file);
 });
 test('missing login does not launch services or copy global authentication', async t => {
@@ -186,7 +186,7 @@ async function menuPty(root,{storageChoice=false,independent=false}={}) {
 pid,fd=pty.fork()
 if pid==0:
  os.chdir(sys.argv[1]);os.execv('/bin/bash',['/bin/bash','Saplingagent.sh','--lang','zh'])
-text=b'';end=time.time()+15;menu=False;storage=False;quit=False;status=None
+text=b'';end=time.time()+15;menu=False;platform=False;storage=False;quit=False;status=None
 try:
  while time.time()<end:
   if select.select([fd],[],[],0.1)[0]:
@@ -195,6 +195,7 @@ try:
    decoded=text.decode('utf8',errors='replace')
    if sys.argv[3]=='yes' and '请选择 [0, 2-6, 9]' in decoded and not quit:os.write(fd,b'0\\n');quit=True
    if '请选择 [0-4, 6, 9]' in decoded and not menu:os.write(fd,b'1\\n');menu=True
+   if '[1-3, 0]:' in decoded and not platform:os.write(fd,b'\\n');platform=True
    if sys.argv[2]=='yes' and '请选择 [1-3]' in decoded and not storage:os.write(fd,b'1\\n');storage=True
    if '安装 / 修复执行完成' in decoded and not quit:os.write(fd,b'0\\n');quit=True
   done,value=os.waitpid(pid,os.WNOHANG)

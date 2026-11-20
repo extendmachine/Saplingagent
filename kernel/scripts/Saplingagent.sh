@@ -21,22 +21,38 @@ elif [ -f "$SAPLING_ROOT/config/ui-language.json" ] && [ ! -L "$SAPLING_ROOT/con
 fi
 if [ -z "${SAPLING_LANG:-}" ]; then
   SAPLING_LOCALE="${SAPLING_LANG_HINT:-${LC_ALL:-${LANG:-${LANGUAGE:-}}}}"
-  if [ -z "$SAPLING_LOCALE" ] && [ "$(uname -s)" = Darwin ]; then SAPLING_LOCALE="$(/usr/bin/defaults read -g AppleLanguages 2>/dev/null || true)"; fi
+  if [ -z "$SAPLING_LOCALE" ] && [ "$(uname -s 2>/dev/null || true)" = Darwin ]; then SAPLING_LOCALE="$(/usr/bin/defaults read -g AppleLanguages 2>/dev/null || true)"; fi
   case "$SAPLING_LOCALE" in zh*|*'"zh-'*|*' zh-'*) SAPLING_LANG=zh ;; *) SAPLING_LANG=en ;; esac
 fi
-if [ "${1:-}" = '--lang' ]; then
-  if [ "$#" -lt 2 ]; then printf '%s\n' 'Usage / 用法: bash Saplingagent.sh --lang en|zh [action]' >&2; exit 2; fi
-  SAPLING_LANG="$2"
-  SAPLING_LANG_CHOSEN=1
-  SAPLING_LANG_EXPLICIT=1
-  shift 2
-fi
+# Global flags can appear on either side of an action; bootstrap-specific
+# arguments keep their original order and exact bytes.
+SAPLING_REQUESTED_PLATFORM="${SAPLING_PLATFORM-auto}"
+SAPLING_PLATFORM_EXPLICIT="${SAPLING_PLATFORM+x}"
+SAPLING_ACTION_ARGS=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --lang)
+      [ "$#" -ge 2 ] || { printf '%s\n' 'Usage / 用法: --lang en|zh' >&2; exit 2; }
+      SAPLING_LANG="$2"; SAPLING_LANG_CHOSEN=1; SAPLING_LANG_EXPLICIT=1; shift 2 ;;
+    --platform)
+      [ "$#" -ge 2 ] || { printf '%s\n' 'Usage / 用法: --platform auto|macos|linux|windows' >&2; exit 2; }
+      SAPLING_REQUESTED_PLATFORM="$2"; SAPLING_PLATFORM_EXPLICIT=x; shift 2 ;;
+    *) SAPLING_ACTION_ARGS+=("$1"); shift ;;
+  esac
+done
+# The alternate expansion works on Bash 3.2 with an empty array and nounset.
+set -- ${SAPLING_ACTION_ARGS[@]+"${SAPLING_ACTION_ARGS[@]}"}
 case "$SAPLING_LANG" in
   en|zh) ;;
   *) printf '%s\n' 'Language must be en or zh / 语言必须是 en 或 zh。' >&2; exit 2 ;;
 esac
 export SAPLING_LANG SAPLING_LANG_EXPLICIT
 source "$SAPLING_ROOT/kernel/localization/installer-messages.sh"
+source "$SAPLING_ROOT/kernel/scripts/platform.sh"
+if ! sapling_select_platform "$SAPLING_REQUESTED_PLATFORM"; then
+  sapling_message platform_invalid >&2
+  exit 2
+fi
 
 
 usage() {
@@ -45,18 +61,19 @@ usage() {
 }
 
 select_bootstrap() {
-  case "$(uname -s)" in
-    Darwin) SAPLING_BOOTSTRAP="$SAPLING_ROOT/kernel/scripts/macos/bootstrap.sh" ;;
-    MINGW*|MSYS*|CYGWIN*) SAPLING_BOOTSTRAP="$SAPLING_ROOT/kernel/scripts/windows/bootstrap.sh" ;;
-    *) sapling_message installer_003 >&2; return 1 ;;
-  esac
+  if [ "$SAPLING_PLATFORM_FALLBACK" = 1 ]; then sapling_message platform_fallback >&2; SAPLING_PLATFORM_FALLBACK=0; fi
+  if [ "${1:-}" = install ] && [ -z "$SAPLING_PLATFORM_EXPLICIT" ] && [ -t 0 ] && [ -t 1 ]; then
+    sapling_prompt_platform || return $?
+    SAPLING_PLATFORM_EXPLICIT=x
+  fi
+  SAPLING_BOOTSTRAP="$SAPLING_ROOT/kernel/scripts/$SAPLING_PLATFORM/bootstrap.sh"
 }
 
 # Explicit actions skip the menu and preserve bootstrap exit status.
 if [ "$#" -gt 0 ]; then
   case "$1" in
     -h|--help) usage; exit 0 ;;
-    install|login|configure|opencode|start|doctor|logout|kernel) select_bootstrap || exit 1; exec /bin/bash "$SAPLING_BOOTSTRAP" "$@" ;;
+    install|login|configure|opencode|start|doctor|logout|kernel) select_bootstrap "$1" || exit $?; exec /bin/bash "$SAPLING_BOOTSTRAP" "$@" ;;
     *) usage >&2; exit 2 ;;
   esac
 fi
@@ -88,7 +105,7 @@ choose_language() {
   done
 }
 run_action() {
-  if ! select_bootstrap; then return 0; fi
+  select_bootstrap "$1" || exit $?
   if [ "${1:-}" = install ]; then sapling_message installer_004; fi
   local result
   if [ "$SAPLING_BOOTSTRAP" = "$SAPLING_ROOT/kernel/scripts/windows/bootstrap.sh" ]; then

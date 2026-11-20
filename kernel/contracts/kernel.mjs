@@ -186,6 +186,7 @@ export async function assertKernelOffline(root) {
 	}
 	for (const name of [
 		"macos-install.lock",
+		"linux-install.lock",
 		"windows-install.lock",
 		"node-install.lock",
 		"windows-node.lock"

@@ -1,3 +1,4 @@
+import {nodeRuntimeName} from './device.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -43,7 +44,7 @@ export function runtimeHome(root,env=process.env,platform=process.platform) {
   const custom=saved?.mode==='shared'&&saved.homeKind!=='default'?saved.home:saved?.sharedHome;
   if(path.isAbsolute(custom||''))return custom;
   return platform==='win32'?path.join(env.LOCALAPPDATA||path.join(os.homedir(),'AppData/Local'),'Saplingagent')
-    :path.join(os.homedir(),'Library/Application Support/Saplingagent');
+    :platform==='linux'?path.join(os.homedir(),'.local/share/Saplingagent'):path.join(os.homedir(),'Library/Application Support/Saplingagent');
 }
 // Evaluate actual executable/module targets, including symlinks and Windows junctions.
 export function containsPath(directory,file) {
@@ -72,5 +73,5 @@ export function sdkModules(root,fallback,engine) {
   return dir&&toolLocationAllowed(root,dir,saved.mode)&&containsPath(realLocation(saved.home),realLocation(dir))?dir:fallback;
 }
 export function nodeDirectory(root,settings,platform=process.platform,arch=process.arch) {
-  return path.join(root,'.runtime',`node-v${settings.nodeVersion}-${platform==='win32'?'win':'darwin'}-${arch}`);
+  return path.join(root,'.runtime',nodeRuntimeName(settings.nodeVersion,platform,arch));
 }
