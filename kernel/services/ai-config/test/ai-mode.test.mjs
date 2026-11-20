@@ -10,7 +10,7 @@ const source=fileURLToPath(new URL('../../../../',import.meta.url));
 const profile={label:'Synthetic AI settings',engine:'opencode',kind:'api',protocol:'chat',baseUrl:'https://provider.example/v1',model:'synthetic-model',apiKey:'synthetic-only-key'};
 const credentials={tokens:{id_token:'synthetic-id',access_token:'synthetic-access',refresh_token:'synthetic-refresh'}};
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
-async function fixture(t,{prepare,finish,beforeClose,mode='ai'}={}){
+async function fixture(t,{prepare,finish,beforeClose,mode='ai',importOptions}={}){
  const cache=path.join(source,'.cache/ai-only-config-tests');await fs.mkdir(cache,{recursive:true});const root=await fs.mkdtemp(path.join(cache,'app-'));
  const calls=[],clients=[];let prepared=false;
  await fs.mkdir(path.join(root,'config'));await fs.writeFile(path.join(root,'config/project.json'),'preserve-existing-identity');await fs.writeFile(path.join(root,'Existing.app'),'preserve-existing-launcher');
@@ -27,7 +27,7 @@ async function fixture(t,{prepare,finish,beforeClose,mode='ai'}={}){
   send(){} async close(){this.closed=true;calls.push('auth-close');}
   async call(method,p){if(method==='account/login/start')return {loginId:'synthetic-login',authUrl:'https://auth.openai.com/synthetic',verificationUrl:'https://auth.openai.com/device',userCode:'SYNTHETIC'};return {};}
  }
- const server=createConfigurationServer({root,configurationMode:mode,projectController:controller,token:'synthetic-config-token',authOptions:{Client:FakeClient,command:'synthetic'},beforeClose:async()=>{calls.push('handback');await beforeClose?.();}});
+ const server=createConfigurationServer({root,configurationMode:mode,projectController:controller,token:'synthetic-config-token',authOptions:{Client:FakeClient,command:'synthetic'},importOptions:importOptions?.(root),beforeClose:async()=>{calls.push('handback');await beforeClose?.();}});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}`;
  const headers={Origin:base,'Content-Type':'application/json','X-Sapling-Config':'synthetic-config-token'};
  const post=(route,body={})=>fetch(base+'/api/config/'+route,{method:'POST',headers,body:JSON.stringify(body)});
@@ -55,6 +55,32 @@ test('AI-only imports and repeat Codex sign-in use the prepared account writer w
   assert.equal(f.server.accountSetup.snapshot().phase,'completed');assert.equal(f.clients[i].closed,true);
  }
  assert.equal(f.clients.length,2);assert.equal((await(await f.get('state')).json()).activeId,'codex-account');await f.preserved();
+});
+
+test('AI-only local Codex replacement skips the running project home and imports the user login', async t => {
+  const f = await fixture(t, { importOptions: root => ({
+    home: path.join(root, 'fixture-user'),
+    env: { CODEX_HOME: path.join(root, 'local-secrets/codex') }
+  }) });
+  const projectAuth = path.join(f.root, 'local-secrets/codex/auth.json');
+  const localAuth = path.join(f.root, 'fixture-user/.codex/auth.json');
+  const newLogin = { tokens: { ...credentials.tokens, refresh_token: 'synthetic-new-refresh' } };
+  const localBytes = JSON.stringify(newLogin);
+  await fs.mkdir(path.dirname(localAuth), { recursive: true });
+  await fs.writeFile(localAuth, localBytes);
+  const initial = await f.post('credentials/import', { engine: 'codex', source: 'upload', revision: 0, json: JSON.stringify(credentials) });
+  assert.equal(initial.status, 200);
+  const input = { engine: 'codex', source: 'local', revision: 1 };
+  const denied = await f.post('credentials/import', input);
+  assert.equal(denied.status, 409);
+  assert.equal((await denied.json()).error.code, 'CREDENTIAL_EXISTS');
+  assert.deepEqual(JSON.parse(await fs.readFile(projectAuth)).tokens, credentials.tokens);
+  const saved = await f.post('credentials/import', { ...input, replace: true });
+  assert.equal(saved.status, 200);
+  assert.equal((await saved.json()).revision, 2);
+  assert.deepEqual(JSON.parse(await fs.readFile(projectAuth)).tokens, newLogin.tokens);
+  assert.equal(await fs.readFile(localAuth, 'utf8'), localBytes);
+  await f.preserved();
 });
 
 test('AI-only rejects every forged project operation before accessing identity or stopping services',async t=>{

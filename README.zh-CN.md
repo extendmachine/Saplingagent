@@ -205,7 +205,7 @@ bash Saplingagent.sh logout
 
 ## 导入已有的本地凭据
 
-在 **配置 AI → ChatGPT 账号**选择**使用本机已登录的 Codex（Use local Codex login）**或**上传 auth.json（Upload auth.json）**。本地文件来自调用者的 `CODEX_HOME`，否则使用 `~/.codex/auth.json`；Windows 对应 `%USERPROFILE%\.codex\auth.json`。所选登录复制到此应用的 `local-secrets/codex/auth.json` 并启用；已有项目账号需要显式勾选**替换当前账号／方案已有的凭据（Replace existing credentials for this account / scheme）**才会替换。只有系统钥匙串或桌面端登录时，可能没有可导入的文件，此时使用官方登录按钮。不会修改全局登录或配置。
+在 **配置 AI → ChatGPT 账号**选择**使用本机已登录的 Codex（Use local Codex login）**或**上传 auth.json（Upload auth.json）**。本地导入优先读取外部的 `CODEX_HOME/auth.json`。如果未设置 `CODEX_HOME`，或它指向项目自身凭据，则读取 `~/.codex/auth.json`（Windows 对应 `%USERPROFILE%\.codex\auth.json`）。所选登录复制到此应用的 `local-secrets/codex/auth.json` 并启用；已有项目账号需要显式勾选**替换当前账号／方案已有的凭据（Replace existing credentials for this account / scheme）**才会替换。只有系统钥匙串或桌面端登录时，可能没有可导入的文件，此时使用官方登录按钮。不会修改全局登录或配置。
 
 Claude 使用 **Claude → API 密钥**，填写服务地址与模型，再选择**导入本机 Claude API 凭据（Import local Claude API credentials）**或**上传 API 凭据 JSON（Upload API credential JSON）**。本地导入读取启动终端继承的 `ANTHROPIC_API_KEY`，或 `CLAUDE_CONFIG_DIR` / `~/.claude/settings.json` 中的 API 环境字段。JSON 支持 `apiKey`、`ANTHROPIC_API_KEY`、`env.ANTHROPIC_API_KEY`，可附带 `baseUrl` / `model`；非空表单优先。替换已有方案密钥也需要明确选择。
 
@@ -396,7 +396,7 @@ Windows 内部借助系统 PowerShell 做检测 / 下载 / 解压，但用户仍
 
 当前统一称为 **内核版本 1.0.0**，唯一依据为 `kernel/manifest.json`，不再区分产品版本。页面、配置、安装和更新均读取内核版本；数据不可用时如实显示不可用。旧 `config/release.json` 与 `releaseVersion` 字段仅为兼容别名，不作为运行时版本依据。
 
-源码 ZIP 的 `delivery.json` 记录 `kernelVersion` 和精确的 `sourceCommit`，`releaseVersion` 是同值兼容别名。固定下载 **1.0.0** 请使用 [v1.0.0 发布页面](https://github.com/extendmachine/Saplingagent/releases/tag/v1.0.0) 中的 macOS、Linux、Windows 源码 ZIP 和 SHA-256 校验文件；一行安装命令下载当前 release 分支。不可移动的标签、发布页面和包内回执必须对应同一份已核对源码，旧标签保持不变。参见[发布检查表](docs/release-checklist.html)。源码包不是已签名的原生安装器；真机和真实模型验收单独记录。
+源码 ZIP 的 `delivery.json` 记录 `kernelVersion` 和精确的 `sourceCommit`，`releaseVersion` 是同值兼容别名。下载当前 **1.0.0** 修订版，请使用 [最新发布页面](https://github.com/extendmachine/Saplingagent/releases/latest) 中的 macOS、Linux、Windows 源码 ZIP 和 SHA-256 校验文件；一行安装命令下载当前 release 分支。不可移动的标签、发布页面和包内回执必须对应同一份已核对源码，旧标签保持不变。参见[发布检查表](docs/release-checklist.html)。源码包不是已签名的原生安装器；真机和真实模型验收单独记录。
 
 ## 旧内核编号的一次性升级
 

@@ -30,6 +30,28 @@ test('missing/keychain local credentials do not create or claim project auth',as
  const target=await fixture(t),store=new ConfigurationStore(target),imports=new CredentialImport(store,{home:target,env:{}});
  await assert.rejects(imports.run({engine:'codex',source:'local',revision:0}),e=>e.code==='LOCAL_AUTH_NOT_FOUND'&&/Keychain/.test(e.message));assert.equal((await store.state()).activeId,null);
 });
+test('Codex local import refuses project aliases and keeps the current revision when no separate login exists', async t => {
+  const target = await fixture(t);
+  const home = path.join(target, 'user');
+  const fallback = path.join(home, '.codex');
+  const external = path.join(home, 'custom');
+  const store = new ConfigurationStore(target);
+  const authFile = path.join(target, 'local-secrets/codex/auth.json');
+  await new CredentialImport(store).run(upload(auth));
+  const before = await fs.readFile(authFile, 'utf8');
+  await fs.mkdir(external, { recursive: true });
+  await fs.mkdir(fallback);
+  await fs.link(authFile, path.join(external, 'auth.json'));
+  const imports = new CredentialImport(store, { home, env: { CODEX_HOME: external } });
+  const input = { engine: 'codex', source: 'local', revision: 1, replace: true };
+  await assert.rejects(imports.run(input), { code: 'LOCAL_AUTH_NOT_FOUND' });
+  if (process.platform !== 'win32') {
+    await fs.symlink(authFile, path.join(fallback, 'auth.json'));
+    await assert.rejects(imports.run(input), { code: 'LOCAL_AUTH_NOT_FOUND' });
+  }
+  assert.equal((await store.state()).revision, 1);
+  assert.equal(await fs.readFile(authFile, 'utf8'), before);
+});
 test('replacement is explicit; stale requests and writer locks preserve credentials',async t=>{
  const target=await fixture(t),store=new ConfigurationStore(target),imports=new CredentialImport(store);await imports.run(upload(auth));const file=path.join(target,'local-secrets/codex/auth.json'),before=await fs.readFile(file,'utf8');
  const next={...auth,tokens:{...auth.tokens,refresh_token:'synthetic-next'}};

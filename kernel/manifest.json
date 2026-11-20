@@ -1208,8 +1208,8 @@
     },
     {
       "path": "kernel/scripts/verify-release.mjs",
-      "sha256": "85b2daf8bac5cdce185e542138b5410cb8ebf2c9ac150b6138b9b398223b4510",
-      "bytes": 4562,
+      "sha256": "6a2a955e906c55735e992815e37e1f1b24a04a6352451df4ef91ba18ce470a60",
+      "bytes": 4789,
       "executable": false
     },
     {
@@ -1244,20 +1244,20 @@
     },
     {
       "path": "kernel/services/ai-config/CONTRACT.md",
-      "sha256": "bd88dacfaa1d1a6d71a0c7b6663b3108cdaef067a2f3730ac5d5533f75d22d28",
-      "bytes": 27439,
+      "sha256": "bb5cd0429ee6274bf5910a7bb7f266caea2c7b08461e6e27e318179b840d088b",
+      "bytes": 27697,
       "executable": false
     },
     {
       "path": "kernel/services/ai-config/credentials.mjs",
-      "sha256": "6b0e958bf59290c6e718ac28aca69da771cf76dd1d76b5856953a8864db95e33",
-      "bytes": 5800,
+      "sha256": "e08ce9455f3c55c2d1157da4309d763c8b1aec90c307e64184ef0e773bb6a55e",
+      "bytes": 6996,
       "executable": false
     },
     {
       "path": "kernel/services/ai-config/DEPLOY.md",
-      "sha256": "bc3ae17d3124298e2f41b5e02f1ecb573c648fdf92df4d0e6e1f6d73c5f36a43",
-      "bytes": 14972,
+      "sha256": "63becf2322a8a65ca621ed62c4c73a0f4a36aa88b67d763dc79f0f2f5d304ca5",
+      "bytes": 15046,
       "executable": false
     },
     {
@@ -1292,8 +1292,8 @@
     },
     {
       "path": "kernel/services/ai-config/test/ai-mode.test.mjs",
-      "sha256": "17480f20543b91c5c1f1626675a15f015c59e115a05243a07eac59c0214af0a3",
-      "bytes": 11244,
+      "sha256": "cd9ee21121b7f5a5247c2ea38ce345c989b7e19786ddb341d15357c11587ba57",
+      "bytes": 12829,
       "executable": false
     },
     {
@@ -1310,8 +1310,8 @@
     },
     {
       "path": "kernel/services/ai-config/test/credentials.test.mjs",
-      "sha256": "02fddf9099ad08cabccf691c3102a37d982c2f72f71d895240bb8292c8e08adb",
-      "bytes": 12610,
+      "sha256": "1a7fac8836c9549034ece4433ab47ff599f8daa5d6815cfce961788dbfbca068",
+      "bytes": 13822,
       "executable": false
     },
     {

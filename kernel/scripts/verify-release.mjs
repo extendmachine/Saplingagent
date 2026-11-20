@@ -36,8 +36,13 @@ export function verifyRelease({ sourceRoot, ref = 'release', main = 'main', vers
     if (bytes.length !== file.bytes || createHash('sha256').update(bytes).digest('hex') !== file.sha256
       || (entry.mode === '100755') !== file.executable) throw new Error('Stale kernel source hash: ' + file.path);
   }
-  if (tag && (tag !== `v${release.version}` || resolve(`refs/tags/${tag}`) !== commit)) {
-    throw new Error('Release tag/version does not identify the checked source commit.');
+  if (tag) {
+    const base = `v${release.version}`;
+    const revisionPrefix = `${base}+rev.`;
+    const revisionTag = tag.startsWith(revisionPrefix) && /^[1-9][0-9]*$/.test(tag.slice(revisionPrefix.length));
+    if ((tag !== base && !revisionTag) || resolve(`refs/tags/${tag}`) !== commit) {
+      throw new Error('Release tag/version does not identify the checked source commit.');
+    }
   }
   return { version: release.version, commit, mainCommit, kernelVersion: manifest.version, kernelFiles: owned.length, tag: tag || null };
 }
@@ -48,7 +53,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const args = process.argv.slice(2);
     while (args.length) {
       const flag = args.shift(), name = { '--ref': 'ref', '--main': 'main', '--version': 'version', '--tag': 'tag' }[flag];
-      if (!name || !args.length || args[0].startsWith('--')) throw new Error('Usage: node scripts/verify-release.mjs --ref release --main MAIN_SHA --version X.Y.Z [--tag vX.Y.Z]');
+      if (!name || !args.length || args[0].startsWith('--')) throw new Error('Usage: node kernel/scripts/verify-release.mjs --ref release --main MAIN_SHA --version X.Y.Z [--tag vX.Y.Z[+rev.N]]');
       options[name] = args.shift();
     }
     console.log(JSON.stringify(verifyRelease(options), null, 2));
