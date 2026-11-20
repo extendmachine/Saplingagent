@@ -109,3 +109,12 @@ metadata. After verification update the group's entry in
 `resolved + space + integrity` lines, joined with newlines and no final newline.
 The test in `test/npm-cache.test.mjs` checks the fingerprints and exercises two
 independent projects with the actual npm CLI offline.
+
+## GNU/Linux
+
+On GNU/Linux supply the official pinned Node distribution with npm on PATH or
+under the user library’s runtimes/node-vVERSION-linux-ARCH directory. A
+project-local alias points to it in shared mode; portable mode copies the Node
+executable and npm tree under .runtime/tool-store and uses a relative alias.
+The default shared AI tool library is ~/.local/share/Saplingagent. Linux
+terminal startup uses no Go compiler or native desktop launcher.

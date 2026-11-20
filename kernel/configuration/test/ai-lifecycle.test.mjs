@@ -44,8 +44,8 @@ test('AI state and read-only close do not create project identity, stop services
  assert.equal((await manager.state()).configurationMode,'ai');assert.deepEqual(await manager.prepareAIFinish(),{restartAfterClose:'none'});
  assert.equal(await exists(path.join(root,'config/project.json')),false);assert.equal(await exists(path.join(root,'.runtime/kernel-operation.lock')),false);
 });
-test('AI changes made while initially stopped still request application startup',async t=>{
- const {manager}=await fixture(t);await manager.prepareAIChange();assert.equal(manager.session.restartAfterClose,'runtime');await manager.prepareAIFinish();
+test('AI changes made while initially stopped preserve the headless foreground startup workflow',async t=>{
+ const {manager}=await fixture(t);await manager.prepareAIChange();assert.equal(manager.session.restartAfterClose,process.platform==='linux'?'none':'runtime');await manager.prepareAIFinish();
 });
 test('busy shutdown refuses credential preparation and preserves a foreign operation receipt',async t=>{
  const {root,manager}=await fixture(t);manager.stop=async()=>{throw Object.assign(Error('Task active'),{code:'RUNTIME_BUSY'});};

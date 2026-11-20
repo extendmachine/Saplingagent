@@ -159,6 +159,7 @@ export async function restoreKernel(root, id) {
 		}
 		for (const name of [
 			"macos-install.lock",
+			"linux-install.lock",
 			"windows-install.lock",
 			"node-install.lock",
 			"windows-node.lock"

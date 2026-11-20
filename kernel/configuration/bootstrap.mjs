@@ -63,7 +63,7 @@ export async function openConfiguration(root,{noOpen=false,configurationMode:req
       if(await json(path.join(root,'.runtime/project-finalization.json')))throw issue('CONFIGURATION_INTERRUPTED','An interrupted configuration operation needs inspection. Saved files remain at this folder.');
       await removeSessionDirectory(owned);await fs.rm(sessionFile(root));
     }
-    for(const name of ['macos-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])
+    for(const name of ['macos-install.lock','linux-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])
       if(await fs.access(path.join(root,'.runtime',name)).then(()=>true,()=>false))throw issue('CONFIGURATION_BUSY','Wait for dependency installation to finish before opening configuration.');
     const bundle=await prepare(root);
     const copied=await copy(root,bundle);directory=copied.directory;directoryIdentity=await realDirectory(directory);

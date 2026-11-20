@@ -1,3 +1,4 @@
+import {deviceName,nodeRuntimeName} from '../tooling/device.mjs';
 import { launcherMessages } from '../localization/launcher-messages.mjs';
 import { formatMessage } from '../localization/public.mjs';
 import { readLanguage } from '../localization/store.mjs';
@@ -18,9 +19,9 @@ const originalRoot = path.resolve(
 );
 export const nodeForRoot = (root) => {
   if(process.env.SAPLING_CONFIGURATION_DIR){
-    const platform=process.platform==='win32'?'windows':'macos';
+    const platform=deviceName();
     const config=JSON.parse(readFileSync(path.join(root,`kernel/config/${platform}.json`),'utf8'));
-    const directory=`node-v${config.nodeVersion}-${process.platform==='win32'?'win':'darwin'}-${process.arch}`;
+    const directory=nodeRuntimeName(config.nodeVersion);
     const node=path.join(root,'.runtime',directory,...(process.platform==='win32'?['node.exe']:['bin','node']));
     if(!existsSync(node))throw issue('PROJECT_LOCAL_NODE_REQUIRED','The project Node runtime is missing. Run Saplingagent.sh to repair it.');
     return node;
@@ -596,7 +597,7 @@ export async function compileLauncher(root,project,options={}) {
     // Recheck after claiming the operation lease: a reopen may have raced the
     // first close, but no new startup can now register against this project.
     await closeDockForMaintenance(root);
-    for(const name of ['macos-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])if(await exists(path.join(runtime,name)))throw issue('LAUNCHER_BUILD_BUSY','Dependency installation is active. Wait before compiling.');
+    for(const name of ['macos-install.lock','linux-install.lock','windows-install.lock','node-install.lock','windows-node.lock'])if(await exists(path.join(runtime,name)))throw issue('LAUNCHER_BUILD_BUSY','Dependency installation is active. Wait before compiling.');
     await prepareBuildStorage(root);
     return await compileLauncherUnlocked(root,project,options);
   }catch(error){failure=error;throw error;}

@@ -46,6 +46,7 @@ usage() {
 
 select_bootstrap() {
   case "$(uname -s)" in
+    Linux) SAPLING_BOOTSTRAP="$SAPLING_ROOT/kernel/scripts/linux/bootstrap.sh" ;;
     Darwin) SAPLING_BOOTSTRAP="$SAPLING_ROOT/kernel/scripts/macos/bootstrap.sh" ;;
     MINGW*|MSYS*|CYGWIN*) SAPLING_BOOTSTRAP="$SAPLING_ROOT/kernel/scripts/windows/bootstrap.sh" ;;
     *) sapling_message installer_003 >&2; return 1 ;;

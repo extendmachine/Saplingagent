@@ -1,6 +1,7 @@
 // Shared source for Node, generated Go data and macOS applet resources.
 export const launcherMessages = {
   "en": {
+    "AI configuration: http://127.0.0.1:{p0}/. Save and finish; for a first setup run bash Saplingagent.sh start.": "AI configuration: http://127.0.0.1:{p0}/. Save and finish. After first setup, run bash Saplingagent.sh start.",
     "Opening the project folder…": "Opening the project folder…",
     "If macOS asks for access to the folder containing this project, choose Allow to continue.": "If macOS asks for access to the folder containing this project, choose Allow to continue.",
     "Cannot read the project folder.": "Cannot read the project folder.",
@@ -146,6 +147,7 @@ export const launcherMessages = {
     "Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--ai-only] [--no-open] / opencode / kernel.": "Available actions: install [--repair] / login [--device-auth] / start [--no-open] / doctor / logout / configure [--ai-only] [--no-open] / opencode / kernel."
   },
   "zh": {
+    "AI configuration: http://127.0.0.1:{p0}/. Save and finish; for a first setup run bash Saplingagent.sh start.": "AI 配置：http://127.0.0.1:{p0}/。请保存并完成配置。首次配置后，运行 bash Saplingagent.sh start。",
     "Opening the project folder…": "正在打开项目文件夹…",
     "If macOS asks for access to the folder containing this project, choose Allow to continue.": "如果 macOS 请求访问此项目所在的文件夹，选择“允许”即可继续。",
     "Cannot read the project folder.": "无法读取项目文件夹。",

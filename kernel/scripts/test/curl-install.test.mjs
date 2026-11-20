@@ -11,7 +11,7 @@ const exec=promisify(execFile),project=fileURLToPath(new URL('../../../',import.
 async function fixture(t,{bad=false,link=false,os='Darwin',invalidVersion=false}={}){
   const base=path.join(project,'.cache/curl-tests');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,"客户 app's "));t.after(()=>fs.rm(root,{recursive:true,force:true}));
   const bin=path.join(root,'bin'),source=path.join(root,'source',`Saplingagent-${sha}`);await fs.mkdir(bin);await fs.mkdir(source,{recursive:true});
-  for(const f of ['install.sh','AGENTS.md','FINAL_GOAL.md','TODO.md','AI_TASKS.md','rules/README.md','kernel/scripts/launcher/recipient-records.mjs','kernel/scripts/macos/bootstrap.sh','kernel/scripts/windows/bootstrap.sh']){await fs.mkdir(path.dirname(path.join(source,f)),{recursive:true});await fs.writeFile(path.join(source,f),'Synthetic '+f+'\n');}
+  for(const f of ['install.sh','AGENTS.md','FINAL_GOAL.md','TODO.md','AI_TASKS.md','rules/README.md','kernel/scripts/launcher/recipient-records.mjs','kernel/scripts/macos/bootstrap.sh','kernel/scripts/windows/bootstrap.sh','kernel/scripts/linux/bootstrap.sh']){await fs.mkdir(path.dirname(path.join(source,f)),{recursive:true});await fs.writeFile(path.join(source,f),'Synthetic '+f+'\n');}
   await fs.writeFile(path.join(source,'Saplingagent.sh'),`#!/bin/bash\nprintf '%s\\n' "$*" >> "${root}/actions.txt"\nif [ "\${3:-}" = install ]; then printf SYNTHETIC_CHOICE; read -r answer; printf '%s\\n' "$answer" >> "${root}/actions.txt"; fi\n`);
   await fs.mkdir(path.join(source,'config'),{recursive:true}); await fs.copyFile(path.join(project,'config/release.json'),path.join(source,'config/release.json'));
   await fs.copyFile(path.join(project,'kernel/manifest.json'),path.join(source,'kernel/manifest.json'));
@@ -36,7 +36,7 @@ test('existing destination including customer files is preserved without any dow
 test('invalid archive fails without publishing a destination or leaving staging files',async t=>{const f=await fixture(t,{bad:true});await assert.rejects(f.run(['--download-only']));await assert.rejects(fs.access(path.join(f.root,'Saplingagent')));assert.ok((await fs.readdir(f.root)).every(n=>!n.startsWith('.saplingagent-install.')));});
 test('archive links are rejected before extraction',async t=>{const f=await fixture(t,{link:true});await assert.rejects(f.run(['--download-only']),/must not contain links/);await assert.rejects(fs.access(path.join(f.root,'Saplingagent')));});
 test('Windows Git Bash uses the same downloader and records Windows source without PS/global setup',async t=>{const f=await fixture(t,{os:'MINGW64_NT-10.0-19045'});await f.run(['--download-only','--lang','zh']);const data=JSON.parse(await fs.readFile(path.join(f.root,'Saplingagent/delivery.json'),'utf8'));assert.equal(data.platform,'Windows');});
-test('unsupported OS and unsupported branch options fail before download',async t=>{const f=await fixture(t,{os:'Linux'});await assert.rejects(f.run(['--download-only']),/WSL/);await assert.rejects(f.run(['--ref','main']),/Usage/);await assert.rejects(fs.access(path.join(f.root,'curl.log')));});
+test('unsupported OS and unsupported branch options fail before download',async t=>{const f=await fixture(t,{os:'FreeBSD'});await assert.rejects(f.run(['--download-only']),/GNU\/Linux/);await assert.rejects(f.run(['--ref','main']),/Usage/);await assert.rejects(fs.access(path.join(f.root,'curl.log')));});
 test('no terminal in piped/noninteractive install gives a clear download-only recovery',async t=>{const f=await fixture(t);await assert.rejects(f.run([]),/download-only/);await assert.rejects(fs.access(path.join(f.root,'curl.log')));});
 
 test('fresh recipient documents are initialized once, keeping source provenance and unchanged rules/code',async t=>{
@@ -76,4 +76,13 @@ finally:os.close(fd)
 test('invalid distribution version is refused before reserving the customer destination',async t=>{
  const f=await fixture(t,{invalidVersion:true});await assert.rejects(f.run(['--download-only']),/Kernel version metadata/);
  await assert.rejects(fs.access(path.join(f.root,'Saplingagent')));
+});
+
+test('GNU/Linux recipients use the headless guide and keep their own Git policy',async t=>{
+  const f=await fixture(t,{os:'Linux'});await f.run(['--download-only']);
+  const root=path.join(f.root,'Saplingagent');
+  assert.equal(JSON.parse(await fs.readFile(path.join(root,'delivery.json'))).platform,'Linux');
+  assert.equal(await initializeDownloadedRecords(root),true);
+  assert.match(await fs.readFile(path.join(root,'TODO.md'),'utf8'),/headless|linux-install/);
+  assert.match(await fs.readFile(path.join(root,'AGENTS.md'),'utf8'),/docs\/linux-install.html/);
 });

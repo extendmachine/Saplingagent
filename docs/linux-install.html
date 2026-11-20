@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Saplingagent on GNU/Linux</title>
+<main>
+<h1>Run Saplingagent on GNU/Linux</h1>
+<p>The Linux launcher runs in a terminal on glibc x64 or ARM64. Install Bash, util-linux (flock), and the official Node.js distribution with bundled npm. Use the exact Node version in <code>kernel/config/linux.json</code> and put its <code>bin</code> on PATH. All projects can use that same installation. Alternatively, extract the official tarball under <code>~/.local/share/Saplingagent/runtimes/</code>, retaining its <code>node-vVERSION-linux-ARCH/bin/node</code> layout. The launcher checks this library when PATH has no matching Node. The first Linux install requires you to provide Node. Debian 12 is the reference environment. Native desktop launcher export is available on macOS and Windows.</p>
+<ol>
+<li>Extract the release into a new folder. Give it your project name before setup. The current user needs write access to the folder and its parent for the temporary configuration page.</li>
+<li>In that folder, run <code>bash Saplingagent.sh --lang en install</code>. Visit the printed loopback URL. Choose a model account/provider or enable external-only MCP, save, and finish configuration.</li>
+<li>Run <code>bash Saplingagent.sh start</code>. Visit the URL printed by this project and keep the terminal open. Press Control+C to stop it. To change AI settings later, run <code>bash Saplingagent.sh configure</code>. Inspect <code>logs/</code> for diagnostics.</li>
+</ol>
+<p>When connecting via SSH, forward <em>each printed port</em> to that same local port, for example <code>ssh -N -L 127.0.0.1:5173:127.0.0.1:5173 user@server</code>. Open <code>http://127.0.0.1:5173/</code> locally in this example. Setup and application ports can differ.</p>
+<p>Selected AI tools and SDKs reuse the per-user <code>~/.local/share/Saplingagent</code> library. To keep private copies of tools, set <code>SAPLING_RUNTIME_MODE=portable</code> on the first install. Application dependencies, credentials, configuration, sessions and running services remain per project. Account-backed conversations require the selected provider’s access.</p>
+<section lang="zh"><h2>在 GNU/Linux 运行</h2>
+<p>支持 glibc 的 x64 和 ARM64。先准备 Bash、util-linux（含 flock），并将 <code>kernel/config/linux.json</code> 指定版本的官方 Node.js（含 npm）加入 PATH。多个项目可以复用该 Node 安装。也可将官方压缩包原样解压到 <code>~/.local/share/Saplingagent/runtimes/</code>，保留其 <code>node-v版本-linux-架构/bin/node</code> 结构，启动器会自动检测。Linux 使用终端启动，macOS 和 Windows 可导出桌面启动器。</p>
+<ol><li>解压到新的项目目录，先起好文件夹名称。当前用户需要有权写入此目录及其上级目录，以便创建临时配置网页。</li>
+<li>在项目目录执行 <code>bash Saplingagent.sh --lang zh install</code>，打开显示的网址，设置 AI 账号、服务商或仅外部 MCP，保存并完成配置。</li>
+<li>执行 <code>bash Saplingagent.sh start</code>，访问终端实际报告的网址。保持终端开启，按 Control+C 停止。以后用 <code>bash Saplingagent.sh configure</code> 修改 AI 配置，日志见 <code>logs/</code>。</li></ol>
+<p>远程设备请使用 SSH 将配置页和应用各自显示的端口转发到本机同一端口，命令示例见上文。AI 工具与 SDK 默认复用当前用户的共享目录。需要项目独立副本时，在首次安装时指定 <code>SAPLING_RUNTIME_MODE=portable</code>。</p></section>
+</main></html>

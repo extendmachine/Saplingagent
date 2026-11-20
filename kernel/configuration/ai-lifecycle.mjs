@@ -43,7 +43,10 @@ export async function prepareAIChange(controller) {
     const runtime=await controller.runtime();
     const artifact=await controller.nativeRestartArtifact(controller.root);
     const previous=controller.session.restartAfterClose||'none';
-    controller.session={...controller.session,restartAfterClose:artifact?'native':previous==='native'?previous:'runtime',...(artifact?{restartArtifact:artifact}:{})};
+    // On a headless first install the foreground start command owns the first run.
+    const restart = artifact || previous === 'native' ? 'native'
+      : process.platform === 'linux' && runtime.phase === 'stopped' && previous === 'none' ? 'none' : 'runtime';
+    controller.session={...controller.session,restartAfterClose:restart,...(artifact?{restartArtifact:artifact}:{})};
     // Persist the restart intention before stopping anything. A later failure
     // can still be closed normally and resume the project that was stopped.
     await saveSession(controller.session);

@@ -1,3 +1,4 @@
+import {deviceName,nodeRuntimeName} from '../tooling/device.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
@@ -48,11 +49,11 @@ export async function saveMcpAccess(root,input) {
 
 export async function getMcpAccess(root) {
   const base=await fs.realpath(root),state=await readMcpAccess(base),warnings=[];
-  const os=process.platform==='win32'?'windows':'macos';
+  const os=deviceName();
   let version;
   try {version=JSON.parse(await fs.readFile(path.join(base,`kernel/config/${os}.json`),'utf8')).nodeVersion;}catch{}
-  if(!/^\d+\.\d+\.\d+$/.test(version||'')||!['darwin','win32'].includes(process.platform)||!['arm64','x64'].includes(process.arch))version=null;
-  const command=version?path.join(base,'.runtime',`node-v${version}-${process.platform==='win32'?'win':'darwin'}-${process.arch}`,...(process.platform==='win32'?['node.exe']:['bin','node'])):null;
+  if(!/^\d+\.\d+\.\d+$/.test(version||'')||!os||!['arm64','x64'].includes(process.arch))version=null;
+  const command=version?path.join(base,'.runtime',nodeRuntimeName(version),...(process.platform==='win32'?['node.exe']:['bin','node'])):null;
   const entry=path.join(base,'kernel/services/mcp-access/server.mjs');
   const exists=async file=>!!file&&await fs.stat(file).then(s=>s.isFile(),()=>false);
   if(!await exists(command))warnings.push({code:'PROJECT_LOCAL_NODE_REQUIRED',message:'Install or repair this project to prepare its local Node runtime.'});
@@ -80,7 +81,7 @@ export async function registerMcpClient(root) {
   const {acquireKernelLock}=await import('./kernel.mjs');
   const release=await acquireKernelLock(base,'mcp-connect');
   try {
-    for(const relative of ['.runtime/macos-install.lock','.runtime/windows-install.lock','.runtime/node-install.lock','.runtime/windows-node.lock','.runtime/project-finalization.json','.runtime/kernel/active-job.json']) {
+    for(const relative of ['.runtime/macos-install.lock','.runtime/linux-install.lock','.runtime/windows-install.lock','.runtime/node-install.lock','.runtime/windows-node.lock','.runtime/project-finalization.json','.runtime/kernel/active-job.json']) {
       if(await fs.lstat(path.join(base,relative)).then(()=>true,error=>{if(error.code==='ENOENT')return false;throw error;}))throw failure('KERNEL_BUSY','Project installation, configuration or kernel maintenance is active. Finish it before connecting MCP.');
     }
     if(!(await readMcpAccess(base)).enabled)throw failure('MCP_DISABLED','Enable External AI / MCP in this project’s configuration page before connecting.');

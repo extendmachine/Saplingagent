@@ -1,4 +1,5 @@
 import {withPublicNpmCache} from '../tooling/npm-cache.mjs';
+import {deviceName} from '../tooling/device.mjs';
 import { launcherMessages } from '../localization/launcher-messages.mjs';
 import { formatMessage } from '../localization/public.mjs';
 import { readLanguage } from '../localization/store.mjs';
@@ -19,7 +20,6 @@ import {toolProgress} from '../tooling/progress.mjs';
 
 const alive=pid=>{if(!Number.isSafeInteger(pid)||pid<=0)return false;try{process.kill(pid,0);return true;}catch(e){return e.code!=='ESRCH';}};
 const digest=(...values)=>{const h=createHash('sha256');for(const value of values)h.update(value);return h.digest('hex');};
-const platformName=()=>process.platform==='win32'?'windows':'macos';
 const requiredEntries={kernel:['node_modules/vite/bin/vite.js'],front:['node_modules/vite/bin/vite.js','node_modules/typescript/bin/tsc']};
 
 const regularFile=file=>fs.stat(file).then(value=>value.isFile(),()=>false);
@@ -76,11 +76,11 @@ async function packages(root){
 
 export async function applicationDependencyStatus(root){
   root=path.resolve(root);
-  const settings=await json(path.join(root,`kernel/config/${platformName()}.json`));
+  const settings=await json(path.join(root,`kernel/config/${deviceName()}.json`));
   if(!settings?.codexVersion)throw issue('DEPENDENCY_CONFIG_MISSING','The complete kernel device configuration is required.',400);
   const groups=await packages(root),receipt=await json(path.join(root,'.runtime/dependencies.json'));
   const coreLegacy=await json(path.join(root,'.runtime/core-install.json'));
-  const appLegacy=await json(path.join(root,`.runtime/${platformName()}-install.json`));
+  const appLegacy=await json(path.join(root,`.runtime/${deviceName()}-install.json`));
   const historicalApps=['front','backend/app-builder','backend/mcp-runtime','backend/agent-runtime'];
   const appLegacySignature=digest(JSON.stringify(settings),...historicalApps.map(name=>groups.find(g=>g.name===name)?.lockBytes||''));
   for(const group of groups){
@@ -125,7 +125,7 @@ export async function ensureApplicationDependencies(root,{onProgress=()=>{},inst
   const initial=await applicationDependencyStatus(root);
   if(initial.ready)return {changed:false,signature:initial.signature};
   await fs.mkdir(path.join(root,'.runtime'),{recursive:true});
-  const lock=path.join(root,`.runtime/${platformName()}-install.lock`),id=randomUUID(),deadline=Date.now()+waitMs;
+  const lock=path.join(root,`.runtime/${deviceName()}-install.lock`),id=randomUUID(),deadline=Date.now()+waitMs;
   while(true){
     signal?.throwIfAborted();
     try{await fs.mkdir(lock);break;}catch(e){if(e.code!=='EEXIST')throw e;}

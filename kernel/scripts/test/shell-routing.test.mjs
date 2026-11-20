@@ -57,9 +57,9 @@ test('Windows routing respects independent storage and retains configure/diagnos
   assert.match(result.output, /\[0-4, 6, 9\]/);
   assert.deepEqual((await records(f.root)).map(x => x.action), ['install', 'configure', 'doctor']);
 });
-test('Linux/WSL installation refuses without invoking Windows tools; help/menu quit remain available', async t => {
-  const f = await fixture(t, 'Linux');
-  const result = await run(f, ['install']); assert.equal(result.code, 1); assert.match(result.output, /WSL\/Linux/);
+test('Unsupported Unix installation refuses without invoking Windows tools; help/menu quit remain available', async t => {
+  const f = await fixture(t, 'FreeBSD');
+  const result = await run(f, ['install']); assert.equal(result.code, 1); assert.match(result.output, /Unsupported OS/);
   assert.equal((await run(f, ['--help'])).code, 0); assert.equal((await run(f, ['--lang', 'en'], '0\n')).code, 0);
   await assert.rejects(fs.access(path.join(f.root, 'capture.jsonl')));
 });

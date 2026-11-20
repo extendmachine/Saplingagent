@@ -24,9 +24,10 @@ while [ "$#" -gt 0 ]; do
 done
 case "$sapling_lang" in en|zh) ;; *) usage >&2; exit 2 ;; esac
 case "$(uname -s)" in
+  Linux) sapling_platform='Linux' ;;
   Darwin) sapling_platform='macOS' ;;
   MINGW*|MSYS*|CYGWIN*) sapling_platform='Windows' ;;
-  *) fail 'Use macOS Terminal or Windows Git Bash. Linux/WSL is not supported.' '请使用 macOS 终端或 Windows Git Bash；暂不支持 Linux / WSL。' ;;
+  *) fail 'Use GNU/Linux Bash, macOS Terminal or Windows Git Bash.' '请使用 GNU/Linux Bash、macOS 终端或 Windows Git Bash。' ;;
 esac
 for sapling_command in curl tar mktemp; do
   command -v "$sapling_command" >/dev/null || fail "Missing command: $sapling_command" "缺少命令：$sapling_command"
@@ -76,7 +77,7 @@ while IFS= read -r sapling_entry; do
 done < "$sapling_stage/types.txt"
 mkdir "$sapling_stage/app"
 tar -xzf "$sapling_stage/source.tar.gz" --strip-components=1 -C "$sapling_stage/app"
-for sapling_file in kernel/manifest.json config/release.json install.sh Saplingagent.sh AGENTS.md FINAL_GOAL.md TODO.md AI_TASKS.md rules/README.md kernel/scripts/launcher/recipient-records.mjs kernel/scripts/macos/bootstrap.sh kernel/scripts/windows/bootstrap.sh; do
+for sapling_file in kernel/manifest.json config/release.json install.sh Saplingagent.sh AGENTS.md FINAL_GOAL.md TODO.md AI_TASKS.md rules/README.md kernel/scripts/launcher/recipient-records.mjs kernel/scripts/macos/bootstrap.sh kernel/scripts/windows/bootstrap.sh kernel/scripts/linux/bootstrap.sh; do
   [ -f "$sapling_stage/app/$sapling_file" ] && [ ! -L "$sapling_stage/app/$sapling_file" ] || fail "Incomplete source: $sapling_file" "源码不完整：$sapling_file"
 done
 sapling_release_json="$(cat "$sapling_stage/app/kernel/manifest.json")"
@@ -111,4 +112,8 @@ export SAPLING_LANG="$sapling_lang"
 cd "$sapling_destination"
 # Keep native Windows interactive bootstrap in the foreground (no background bridge).
 bash ./Saplingagent.sh --lang "$sapling_lang" install <&3
+if [ "$sapling_platform" = Linux ]; then
+  say 'Finish AI configuration at the printed URL, then run bash Saplingagent.sh start.' '在显示的网址完成 AI 配置后，运行 bash Saplingagent.sh start。'
+  exit 0
+fi
 say 'Continue project setup and launcher compilation in your browser.' '请在浏览器继续项目配置并编译启动器。'

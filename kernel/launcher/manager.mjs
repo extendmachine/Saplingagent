@@ -111,6 +111,7 @@ export async function saveProject(root, input) {
   return project;
 }
 export async function openExternal(target) {
+  if (process.platform === 'linux') return; // The headless CLI prints the verified loopback URL.
   const command =
     process.platform === "win32" ? "powershell.exe" : "/usr/bin/open";
   const args =
@@ -448,6 +449,7 @@ export class ProjectLauncher {
         ".runtime/kernel-operation.lock",
         ".runtime/launcher-compile.lock",
         ".runtime/macos-install.lock",
+        ".runtime/linux-install.lock",
         ".runtime/windows-install.lock",
         ".runtime/kernel/active-job.json",
       ])
@@ -565,7 +567,7 @@ export class ProjectLauncher {
               SEED_IMPORT_EXISTING_AUTH: "0",
               CODEX_HOME: path.join(this.root, "local-secrets/codex"),
               SEED_CODEX_BIN:
-                process.platform === "win32"
+                process.platform !== "darwin"
                   ? codexBinary(this.root)
                   : path.join(this.root, "kernel/scripts/macos/codex.sh"),
             },
