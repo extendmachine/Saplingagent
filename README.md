@@ -110,7 +110,9 @@ Or [download release source](https://github.com/extendmachine/Saplingagent/archi
 
 ### 2. Install through the launcher
 
-Use the same **Saplingagent.sh** entry from the application folder on both platforms:
+From the application folder, run `bash Saplingagent.sh install`. In a terminal, press Enter to accept the detected platform or choose macOS (MacBook), GNU/Linux or Windows. Failed detection defaults to Linux. For automation, use `bash Saplingagent.sh install --platform auto` to skip the prompt or replace `auto` with `macos`, `linux` or `windows` to select an installer explicitly. Each installer prepares the package for that OS and CPU. For a headless device see the [Linux guide](docs/linux-install.html).
+
+Desktop prerequisites:
 
 - **macOS:** open Terminal in the complete project folder.
 - **Windows10/11 x64 or ARM64:** install/use [Git for Windows](https://gitforwindows.org/), then open **Git Bash** in the complete project folder. Windows CMD/PowerShell do not run Bash scripts directly. Git Bash is required; WSL/Linux is not this native Windows installation path.
@@ -213,7 +215,7 @@ Claude can also run through the official **Claude Agent SDK** as its own local a
 
 Run `bash Saplingagent.sh` to open web setup, then choose **API / custom provider** → **Anthropic · Messages**. The preset selects **Claude Agent**. Enter your own API key, exact model ID and API Base URL (`https://api.anthropic.com/v1`, or your compatible gateway URL). **Save & use** → **Save & build app** → wait for completion → **Finish setup** → open the generated app. Change providers with Apply in an idle conversation, or create a new conversation. Model discovery is optional; gateways must support Anthropic Messages streaming and tool calls. Claude schemes do not require Codex login.
 
-The SDK is pinned to `0.3.296` and installs its native binary inside the application folder; a separate global Claude Code installation is unnecessary. API keys stay in `local-secrets/api-keys/`, and SDK state/transcripts in `local-secrets/claude/`. Project `CLAUDE.md` imports `AGENTS.md`; `.agents/` loads the existing Skills as the `saplingagent` local plugin. Full Access remains enabled as the current OS user. There is no default whole-turn deadline, automatic fallback, automatic resend or silent replacement of missing sessions.
+The SDK is pinned to `0.3.296`. Shared mode reuses the matching Claude Code executable or installs the build for this OS and CPU in the user’s tool library. Portable mode stores it with this project. API keys stay in `local-secrets/api-keys/`, and SDK state/transcripts in `local-secrets/claude/`. Project `CLAUDE.md` imports `AGENTS.md`; `.agents/` loads the existing Skills as the `saplingagent` local plugin. Full Access remains enabled as the current OS user. There is no default whole-turn deadline, automatic fallback, automatic resend or silent replacement of missing sessions.
 
 Claude API usage uses the customer's own account and provider billing. A separate personal/local option accepts a manually generated `claude setup-token` credential; it does not import a global subscription login or claim approval for third-party subscription access. Anthropic's account, usage and integration conditions still apply. See the [personal token guide](docs/claude-subscription.html). SDK components follow Anthropic's terms, separately from this project's license. See [SDK overview](https://code.claude.com/docs/en/agent-sdk/overview) and [quickstart / authentication](https://code.claude.com/docs/en/agent-sdk/quickstart).
 
@@ -239,7 +241,7 @@ flowchart LR
     Codex --> Skills[Project Skills and rules]
 ```
 
-1. [kernel/scripts/macos/codex.sh](kernel/scripts/macos/codex.sh) selects project-local Node and Codex, sets project `CODEX_HOME`, and uses file credential storage.
+1. [kernel/scripts/macos/codex.sh](kernel/scripts/macos/codex.sh) resolves this project’s Node and Codex bindings, sets project `CODEX_HOME`, and uses file credential storage.
 2. [kernel/engines/rpc.mjs](kernel/engines/rpc.mjs) launches `codex app-server --listen stdio://` and exchanges newline-delimited JSON through stdin/stdout.
 3. [server.mjs](backend/agent-runtime/server.mjs) sends `initialize`, then `initialized`; checks `account/read` and `model/list`; creates/resumes threads; starts turns; and forwards incremental text/tool events to the browser through SSE.
 4. Startup arguments configure `mcp_servers.seedagent` to launch [the project MCP server](backend/mcp-runtime/server.mjs) with local service endpoints. It exposes **15 tools** for project context, files, commands, change records, preferences and Skills.

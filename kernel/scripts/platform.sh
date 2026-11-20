@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bash 3.2+, also sourced from the verified source archive by install.sh.
+# Bash 3.2+ selection shared by local and downloaded project launchers.
 # The selected target is inherited by the bootstrap and its children.
 sapling_select_platform() {
   local request="${1-}" system

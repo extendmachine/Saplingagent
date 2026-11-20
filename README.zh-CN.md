@@ -116,6 +116,8 @@ cd Saplingagent
 
 ### 2. 通过统一入口安装
 
+在终端运行 `bash Saplingagent.sh install`，按回车采用检测结果，也可手动选择 macOS（MacBook）、GNU/Linux 或 Windows。系统识别失败时默认 Linux。无人值守安装可使用 `bash Saplingagent.sh install --platform auto`；明确指定系统时，把 `auto` 换成 `macos`、`linux` 或 `windows`。每个安装器仅准备对应系统和 CPU 的运行包。[Linux 安装指南](docs/linux-install.html)
+
 进入完整应用文件夹，运行：
 
 ```bash
@@ -234,7 +236,7 @@ Claude Agent 通过官方 **Claude Agent SDK**作为独立的本地引擎运行�
 
 安装后进入 **配置 AI → API / 自定义服务商 → Anthropic · Messages**，预设会选择 **Claude Agent**。填写自己的 API key、准确模型 ID，以及 `https://api.anthropic.com/v1` 或兼容网关地址。保存并使用，再保存并构建应用，完成配置后打开 App；更换服务商时可在空闲对话中选择 AI 并点击“应用”，保留当前历史，也可按需新建对话。网关需支持 Anthropic Messages 流式输出与工具调用，模型发现可选，Claude 方案无需 Codex 登录。
 
-SDK 固定为 `0.3.296`，原生二进制安装在应用文件夹内，无需全局安装 Claude Code。共享 API key 位于 `local-secrets/api-keys/`，Claude 状态和会话位于 `local-secrets/claude/`。项目 `CLAUDE.md` 引入 `AGENTS.md`，`.agents/` 作为本地 `saplingagent` 插件加载现有 Skills。
+SDK 固定为 `0.3.296`。共享模式复用匹配的 Claude Code，缺少时将当前系统和 CPU 对应的程序安装到用户工具库。便携模式将它保存在项目中。共享 API key 位于 `local-secrets/api-keys/`，Claude 状态和会话位于 `local-secrets/claude/`。项目 `CLAUDE.md` 引入 `AGENTS.md`，`.agents/` 作为本地 `saplingagent` 插件加载现有 Skills。
 
 本项目支持客户自己的 API 方案，以及本人手动提供 `claude setup-token` 的本机订阅方案；不自动登录或导入订阅 OAuth 文件。第三方产品使用订阅认证需遵循 Anthropic 的集成条件和适用批准要求；SDK 组件遵循其自身条款。参见 [SDK 概览](https://code.claude.com/docs/en/agent-sdk/overview)和[快速开始与认证](https://code.claude.com/docs/en/agent-sdk/quickstart)。
 

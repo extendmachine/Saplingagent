@@ -186,7 +186,7 @@ async function menuPty(root,{storageChoice=false,independent=false}={}) {
 pid,fd=pty.fork()
 if pid==0:
  os.chdir(sys.argv[1]);os.execv('/bin/bash',['/bin/bash','Saplingagent.sh','--lang','zh'])
-text=b'';end=time.time()+15;menu=False;storage=False;quit=False;status=None
+text=b'';end=time.time()+15;menu=False;platform=False;storage=False;quit=False;status=None
 try:
  while time.time()<end:
   if select.select([fd],[],[],0.1)[0]:
@@ -195,6 +195,7 @@ try:
    decoded=text.decode('utf8',errors='replace')
    if sys.argv[3]=='yes' and '请选择 [0, 2-6, 9]' in decoded and not quit:os.write(fd,b'0\\n');quit=True
    if '请选择 [0-4, 6, 9]' in decoded and not menu:os.write(fd,b'1\\n');menu=True
+   if '[1-3, 0]:' in decoded and not platform:os.write(fd,b'\\n');platform=True
    if sys.argv[2]=='yes' and '请选择 [1-3]' in decoded and not storage:os.write(fd,b'1\\n');storage=True
    if '安装 / 修复执行完成' in decoded and not quit:os.write(fd,b'0\\n');quit=True
   done,value=os.waitpid(pid,os.WNOHANG)
