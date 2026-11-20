@@ -31,13 +31,21 @@ export function recipientAgentInstructions(agents, commit, platform) {
   return agents + `\n- This ${platform} source package comes from commit ${commit}. Task records are initialized for this application. See docs/${platform === 'Linux' ? 'linux-install.html' : platform === 'Windows' ? 'windows-install.html' : 'macos-install.html'}; developer approvals do not transfer.\n- This release snapshot has no Git metadata. Installation does not initialize Git or connect remotes. Existing customer Git survives reinstall and kernel maintenance. Publication always needs explicit customer authorization.\n`;
 }
 
-export async function initializeDownloadedRecords(root, output = console.log) {
+export async function initializeDownloadedRecords(root, output = console.log, runtimePlatform = process.platform) {
   const file = path.join(root, 'delivery.json');
   let delivery;
   try { delivery = JSON.parse(await fs.readFile(file, 'utf8')); }
   catch (error) { if (error.code === 'ENOENT') return false; throw error; }
   if (delivery.initializeRecords !== true) return false;
-  if (!/^[a-f0-9]{40}$/.test(delivery.sourceCommit) || delivery.sourceRef !== 'release' || !['macOS','Windows','Linux'].includes(delivery.platform)) throw new Error('Invalid release download receipt. Preserve delivery.json and retry the download in a new folder.');
+  if (!/^[a-f0-9]{40}$/.test(delivery.sourceCommit) || delivery.sourceRef !== 'release' || !['macOS','Windows','Linux','universal'].includes(delivery.platform)) throw new Error('Invalid release download receipt. Preserve delivery.json and retry the download in a new folder.');
+  // ZIP/legacy receipts already identify their target. A release source snapshot
+  // may be downloaded on one OS and first installed on another. Its Node here
+  // belongs to the running, device-checked platform installer.
+  if (delivery.platform === 'universal') {
+    const platform = {darwin:'macOS',win32:'Windows',linux:'Linux'}[runtimePlatform];
+    if (!platform) throw new Error('Could not identify the running installer platform.');
+    delivery.platform = platform;
+  }
   const records = await recordsForSource(root, delivery.sourceCommit, delivery.platform);
   const agents = await fs.readFile(path.join(root,'AGENTS.md'),'utf8');
   const content = { ...records, 'AGENTS.md': recipientAgentInstructions(agents, delivery.sourceCommit, delivery.platform) };
