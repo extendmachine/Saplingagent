@@ -21,7 +21,7 @@ export const send = (res, status, value) => {
   if (res.destroyed || res.headersSent) return;
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(value));
 };
-async function instanceRequest(req, manager) {
+async function instanceRequest(req, manager, {allowLegacy = false} = {}) {
   let bytes = 0; const chunks = [];
   for await (const chunk of req) {
     bytes += chunk.length;
@@ -30,6 +30,7 @@ async function instanceRequest(req, manager) {
   }
   let input;
   try { input = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch {}
+  if (allowLegacy && (!bytes || (input && typeof input === 'object' && !Array.isArray(input) && !Object.keys(input).length))) return;
   if (new URL(req.url, 'http://127.0.0.1').search || !input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).length !== 1 || typeof input.instanceId !== 'string') {
     throw Object.assign(new Error('Use only the observed runtime instance identifier.'), { code: 'INVALID_REQUEST', status: 400 });
   }
@@ -97,6 +98,7 @@ export function createControlHandler(options) {
         return;
       }
       if (req.method === 'POST' && route === '/api/runtime/stop') {
+        await instanceRequest(req, manager, {allowLegacy:true});
         if(!options.onMaintenance)return send(res,503,{error:{code:'STOP_UNAVAILABLE',message:'Stop this legacy runtime from its launcher.'}});
         // Failed close has already drained and closed the mutation gate. Retry its
         // owned children before the owner callback can close the recovery listeners.

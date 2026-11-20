@@ -52,6 +52,7 @@ export function useSeedRuntime() {
   const titleWrites = useRef(new Map<string, Promise<Session>>());
   const titleVersions = useRef(new Map<string, number>());
   const epoch = useRef(0);
+  const unsavedOutput = useRef<{ epoch: number; requestId: string | undefined } | null>(null);
   const pending = useRef(new Map<string, string>());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -104,6 +105,7 @@ export function useSeedRuntime() {
     flush();
     const revision = Number.isSafeInteger(saved.engineRevision) && (saved.engineRevision ?? -1) >= 0 ? saved.engineRevision! : 0;
     if (session.current === saved.id && bindingRevision.current !== revision) {
+      unsavedOutput.current = null;
       lastRequest.current = null; setTools([]); setApprovalBusy(false); setRetryable(false); setError('');
     }
     const boundary = saved.handoff ? saved.messages.findIndex(message => message.id === saved.handoff?.throughMessageId) : -1;
@@ -123,7 +125,12 @@ export function useSeedRuntime() {
     setSessions(current => sortSessionSummaries(current.some(item => item.id === saved.id)
       ? current.map(item => item.id === saved.id ? { ...item, title: saved.title ?? item.title, updatedAt: saved.updatedAt ?? item.updatedAt, engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null } : item)
       : [...current, { id: saved.id, title: saved.title, updatedAt: saved.updatedAt, engine: saved.engine || 'codex', providerId: saved.providerId, modelId: saved.modelId }]));
-    setMessages(cleanMessages(saved.messages));
+    const preserved = unsavedOutput.current;
+    const latestRequestId = saved.requests?.at(-1)?.id ?? requestId;
+    if (!preserved || preserved.epoch !== epoch.current || (latestRequestId && preserved.requestId && latestRequestId !== preserved.requestId)) {
+      unsavedOutput.current = null;
+      setMessages(cleanMessages(saved.messages));
+    }
     setApprovals(Array.isArray(saved.pendingApprovals) ? saved.pendingApprovals : []);
     setContextUsage(saved.contextUsage && Number.isSafeInteger(saved.contextUsage.usedTokens) && saved.contextUsage.usedTokens >= 0 && Number.isSafeInteger(saved.contextUsage.contextWindow) && saved.contextUsage.contextWindow > 0 ? saved.contextUsage : null);
     setModelUsage(saved.modelUsage && typeof saved.modelUsage.requestedModel === 'string' && typeof saved.modelUsage.requestId === 'string' && typeof saved.modelUsage.updatedAt === 'string' && ['thread/start', 'thread/resume', 'model/rerouted', 'unreported'].includes(saved.modelUsage.source) ? saved.modelUsage : null);
@@ -132,11 +139,18 @@ export function useSeedRuntime() {
     bindingRevision.current = revision;
     setEngineRevision(bindingRevision.current);
     setHandoff(saved.handoff ?? null);
+    if (saved.recoveryError?.code === 'SESSION_RECOVERY_REQUIRED') {
+      setError(Object.assign(new Error(saved.recoveryError.message), {code:saved.recoveryError.code}));
+      setRetryable(false);
+      lastRequest.current = null;
+      return;
+    }
     if (!lastRequest.current && retryBelongsToBinding) {
       const user = [...saved.messages].reverse().find(message => message.role === 'user');
       if (user) lastRequest.current = { sessionId: saved.id, text: user.text, requestId: user.requestId || user.id, engineRevision: bindingRevision.current, engine: saved.engine || 'codex', providerId: saved.providerId || null, modelId: saved.modelId || null, ...(user.attachments?.length ? { attachmentIds: user.attachments.map(value => value.id) } : {}) };
     }
-    if (retryBelongsToBinding && !saved.running && saved.messages.at(-1)?.status === 'failed') {
+    const failed = (recordedRequest?.status ?? saved.messages.at(-1)?.status) === 'failed';
+    if (retryBelongsToBinding && !saved.running && failed) {
       setError(current => current || message('runtime.previousFailed'));
       setRetryable(Boolean(lastRequest.current));
     }
@@ -170,15 +184,21 @@ export function useSeedRuntime() {
     }
   }, []);
 
-  const refreshEngines = useCallback(async (signal?: AbortSignal, refreshCodex = false) => {
+  const refreshEngines = useCallback(async (signal?: AbortSignal, refreshCodex = false, prepareEngine?: EngineSelection['engine']) => {
     const request = ++enginesEpoch.current;
     setEnginesLoading(true);
     try {
-      const response = await checkedFetch(refreshCodex ? '/api/engines?refresh=codex' : '/api/engines', { signal });
+      const response = prepareEngine
+        ? await checkedFetch('/api/engines/prepare', { method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({engine:prepareEngine}) }, 600000)
+        : await checkedFetch(refreshCodex ? '/api/engines?refresh=codex' : '/api/engines', { signal });
       const value = await response.json() as { engines?: EngineOption[]; defaultSelection?: EngineSelection };
       if (!Array.isArray(value.engines)) throw new Error('Invalid engine catalog format.');
       if (!signal?.aborted && request === enginesEpoch.current) {
         setEngines(value.engines);
+        if(prepareEngine==='codex'){
+          const codexReady=value.engines.find(item=>item.id==='codex')?.ready===true;
+          setStatus(current=>current?{...current,codexReady}:current);
+        }
         setEnginesError('');
         if(!session.current && !running.current && !selectionChosen.current && value.defaultSelection)setSelectionState(value.defaultSelection);
       }
@@ -192,6 +212,14 @@ export function useSeedRuntime() {
     }
   }, []);
 
+  const restoreOptionalEngine=engines.find(item=>item.id===selection.engine)?.needsPreparation;
+  useEffect(()=>{
+    if(!activeSessionId||isLoading||isRestarting||!restoreOptionalEngine)return;
+    const controller=new AbortController();
+    void refreshEngines(controller.signal,false,selection.engine);
+    return ()=>controller.abort();
+  },[activeSessionId,isLoading,isRestarting,restoreOptionalEngine,refreshEngines,selection.engine]);
+
   const receive = useCallback((event: ServerEvent) => {
     switch (event.type) {
       case 'session': {
@@ -199,7 +227,7 @@ export function useSeedRuntime() {
           session.current = event.sessionId;
           setActiveSessionId(event.sessionId);
           const id = event.sessionId;
-          setSessions(current => current.some(item => item.id === id) ? current : sortSessionSummaries([...current, { id, title: lastRequest.current?.text.slice(0, 60) || 'Untitled conversation', engine: lastRequest.current?.engine || 'codex' }]));
+          setSessions(current => current.some(item => item.id === id) ? current : sortSessionSummaries([...current, { id, title: lastRequest.current?.text.slice(0, 60) || '', engine: lastRequest.current?.engine || 'codex' }]));
           rememberSession(event.sessionId);
           if (lastRequest.current) lastRequest.current.sessionId = event.sessionId;
         }
@@ -235,6 +263,9 @@ export function useSeedRuntime() {
         break;
       }
       case 'error': {
+        if (event.code === 'SESSION_TOO_LARGE' || event.code === 'SESSION_SAVE_REJECTED') {
+          unsavedOutput.current = { epoch: epoch.current, requestId: lastRequest.current?.requestId };
+        }
         flush();
         setError(Object.assign(new Error(typeof event.message === 'string' ? event.message : 'Agent execution failed.'), { code: typeof event.code === 'string' ? event.code : undefined }));
         break;
@@ -242,6 +273,7 @@ export function useSeedRuntime() {
       case 'done': {
         flush();
         setRunning(false);
+        setError(current => current instanceof Error && 'code' in current && current.code === 'STOP_UNCONFIRMED' ? '' : current);
         setApprovals([]);
         setMessages(current => current.map(message => message.status === 'streaming' ? { ...message, status: String(event.status) } : message));
         setActivity(event.status === 'interrupted' ? message('runtime.stopped') : event.status === 'failed' ? message('runtime.failed') : '');
@@ -275,10 +307,6 @@ export function useSeedRuntime() {
     if (!saved.running) {
       setRunning(false);
       setActivity('');
-      if (saved.messages.at(-1)?.status === 'failed') {
-        setError(current => current || message('runtime.agentFailed'));
-        setRetryable(Boolean(lastRequest.current));
-      }
       return;
     }
     setRunning(true);
@@ -333,15 +361,20 @@ export function useSeedRuntime() {
           snapshot(saved);
           if (saved.running) {
             setRunning(true);
-            stream.current = bootstrap;
+            const recovery = new AbortController();
+            stream.current = recovery;
             setIsLoading(false);
-            await recover(bootstrap.signal, expectedEpoch);
+            await recover(AbortSignal.any([bootstrap.signal, recovery.signal]), expectedEpoch);
             if (!bootstrap.signal.aborted && epoch.current === expectedEpoch) id = session.current;
           }
         }
       } catch (failure) {
         if (fetchingSavedSession && detachMissingSession(failure, id, bootstrap.signal, expectedEpoch)) id = null;
-        else if (currentTarget(bootstrap.signal, expectedEpoch, id) && !isAborted(failure) && id) setError(message('runtime.restoreFailed', undefined, failure));
+        else if (currentTarget(bootstrap.signal, expectedEpoch, id) && !isAborted(failure) && id) {
+          setRunning(false);
+          setRetryable(Boolean(lastRequest.current));
+          setError(message('runtime.restoreFailed', undefined, failure));
+        }
       } finally {
         if (currentTarget(bootstrap.signal, expectedEpoch, id)) {
           setIsLoading(false);
@@ -401,7 +434,7 @@ export function useSeedRuntime() {
       const response = await checkedFetch('/api/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify(request), signal: controller.signal,
-      });
+      }, 120000);
       if (!currentTarget(controller.signal, expectedEpoch, id)) return;
       const responseId = response.headers.get('X-Session-Id');
       if (responseId) { id = responseId; session.current = id; request.sessionId = id; rememberSession(id); }
@@ -414,7 +447,7 @@ export function useSeedRuntime() {
       });
       if (!currentTarget(controller.signal, expectedEpoch, id)) return;
       if (!ended) await recover(controller.signal, expectedEpoch);
-      if (id && !running.current && currentTarget(controller.signal, expectedEpoch, id)) {
+      if (id && unsavedOutput.current?.epoch !== expectedEpoch && !running.current && currentTarget(controller.signal, expectedEpoch, id)) {
         const saved = await getSession(id, controller.signal);
         if (currentTarget(controller.signal, expectedEpoch, id)) snapshot(saved);
       }
@@ -422,6 +455,14 @@ export function useSeedRuntime() {
     } catch (failure) {
       if (!currentTarget(controller.signal, expectedEpoch, id) || isAborted(failure)) return;
       if (detachMissingSession(failure, request.sessionId || id, controller.signal, expectedEpoch)) return;
+      if (failure instanceof Error && 'code' in failure && ['REQUEST_HISTORY_EXPIRED', 'SESSION_RECOVERY_REQUIRED'].includes(String(failure.code))) {
+        setRunning(false);
+        setActivity('');
+        setError(failure);
+        setRetryable(false);
+        lastRequest.current = null;
+        return;
+      }
       flush();
       try {
         await recover(controller.signal, expectedEpoch, request.requestId);
@@ -521,7 +562,11 @@ export function useSeedRuntime() {
       }
     } catch (failure) {
       if (!currentTarget(controller.signal, expectedEpoch, id) || isAborted(failure)) return;
-      if (!detachMissingSession(failure, id, controller.signal, expectedEpoch)) setError(message('runtime.openFailed', undefined, failure));
+      if (!detachMissingSession(failure, id, controller.signal, expectedEpoch)) {
+        setRunning(false);
+        setRetryable(Boolean(lastRequest.current));
+        setError(message('runtime.openFailed', undefined, failure));
+      }
       void refreshSessions();
     } finally {
       if (currentTarget(controller.signal, expectedEpoch, session.current)) {

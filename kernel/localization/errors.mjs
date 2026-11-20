@@ -13,6 +13,7 @@ export const errorMessages = {
     busy: ['Another task is still using this project.', 'Wait for the current operation to finish, or stop the active conversation before trying again.'],
     changed: ['The project or conversation changed while this action was pending.', 'Refresh its status and try again. Your current draft has not been sent again.'],
     credentials: ['The selected credential file could not be imported.', 'Choose a complete supported JSON file, check its size and read permission, or use the official sign-in option.'],
+    originChanged: ['The provider address has changed.', 'Enter the key for the new address, or select an endpoint without authentication.'],
     credentialExists: ['Credentials are already saved for this scheme.', 'Use the saved account, or explicitly select Replace existing credentials before importing again.'],
     missingAuth: ['No supported local login was found.', 'Use official sign-in, upload your own supported credential file, or configure an API scheme.'],
     input: ['Some settings are missing or invalid.', 'Check the highlighted fields, provider URL, model and credentials, then save again.'],
@@ -22,8 +23,14 @@ export const errorMessages = {
     conflict: ['The update overlaps with locally modified kernel files.', 'Review and merge the listed files before retrying. Keep your source backup; application files are preserved.'],
     kernel: ['This kernel package cannot be applied to the current installation.', 'Check the installed version and update source. Use an explicitly selected compatible backup if recovery is needed.'],
     session: ['This saved conversation is no longer available.', 'Keep your draft and select an existing conversation or start a new one. Nothing will be sent automatically.'],
+    runtimeUnknown: ['The launcher could not verify the project runtime.', 'Wait briefly and retry. Check Project status and logs/project-launcher if the problem persists.'],
     stopped: ['The project has not confirmed that all its services stopped.', 'Wait briefly, then choose Stop app again. If it still fails, inspect logs/project-launcher and Project status.'],
     attachment: ['The file could not be attached.', 'Check its size and type, then select the file again. Wait for uploads to finish before sending.'],
+    sessionTooLarge: ['The response exceeded conversation storage limits and was not saved.', 'Copy any unsaved output before leaving this page, then start a new conversation. Completed requests will not run again when retried.'],
+    saveRejected: ['The response body could not be stored because its data was rejected.', 'Copy unsaved output before leaving this page and inspect local session data. The actual request result is retained when final-state saving succeeds.'],
+    damagedSave: ['A pending save for this conversation is damaged.', 'Keep its files and check data/agent-runtime/pending-saves. Other conversations remain available.'],
+    expiredReplay: ['This request is already in the conversation, but its retry record has expired.', 'Your saved messages are available. Send a new message to continue.'],
+    stopUnconfirmed: ['This conversation has not confirmed stopping and may still be running.', 'Wait or choose Stop again. Other conversations remain available; this one stays reserved until its engine confirms completion.'],
     storage: ['The project could not save or read a local file.', 'Check available disk space and folder access. Keep this window open and retry saving before closing.']
   },
   zh: {
@@ -39,6 +46,7 @@ export const errorMessages = {
     busy: ['其他任务仍在使用这个项目。', '请等待当前操作完成，或停止正在运行的对话后重试。'],
     changed: ['等待期间项目或对话已发生变化。', '刷新状态后重试。当前草稿不会被自动重新发送。'],
     credentials: ['无法导入所选凭据文件。', '请选择完整且受支持的 JSON 文件，检查大小和读取权限，或使用官方登录。'],
+    originChanged: ['服务商地址已更换。', '请填写新地址的 API 密钥，或选择此接口无需密钥。'],
     credentialExists: ['当前方案已保存凭据。', '使用已保存账号；如需重新导入，请先明确勾选“替换已有凭据”。'],
     missingAuth: ['未找到受支持的本机登录。', '请使用官方登录、上传自己的受支持凭据文件，或配置 API 方案。'],
     input: ['部分设置缺失或无效。', '检查提示的字段、服务商网址、模型及凭据，然后重新保存。'],
@@ -48,8 +56,14 @@ export const errorMessages = {
     conflict: ['此次更新与本地修改的内核文件冲突。', '先检查并合并列出的文件，再重试。保留源码备份；应用文件会保留。'],
     kernel: ['此内核包无法应用到当前安装。', '检查已安装版本和更新来源；需要恢复时，请明确选择兼容的备份。'],
     session: ['这个已保存的对话已不可用。', '保留草稿，选择已有对话或新建对话。系统不会自动发送内容。'],
+    runtimeUnknown: ['启动器无法确认项目服务的状态。', '请稍候再试。如果仍然失败，请查看项目状态和 logs/project-launcher。'],
     stopped: ['项目尚未确认全部服务已停止。', '稍候再点击“停止应用”；仍然失败时，请检查 logs/project-launcher 和“项目状态”。'],
     attachment: ['文件未能添加为附件。', '检查文件大小和类型，重新选择文件，并等待上传完成后再发送。'],
+    sessionTooLarge: ['回复超过会话存储上限，正文未保存。', '离开页面前复制未保存的内容，然后新建对话。已完成的请求在重试时不会重新执行。'],
+    saveRejected: ['回复数据被存储服务拒绝，正文未保存。', '离开页面前复制未保存内容，并检查本地会话数据；最终状态保存成功时，真实请求结果会保留。'],
+    damagedSave: ['此对话的待保存记录已损坏。', '请保留原文件，检查 data/agent-runtime/pending-saves。其他对话仍可使用。'],
+    expiredReplay: ['这条请求已在对话中，其重试记录已过期。', '已保存的消息仍可查看。请发送一条新消息继续对话。'],
+    stopUnconfirmed: ['此对话尚未确认停止，可能仍在执行。', '请等待或再次点击停止。其他对话可继续使用；此对话会保留占用，直到引擎确认结束。'],
     storage: ['项目无法保存或读取本地文件。', '检查磁盘空间和文件夹权限；关闭窗口前，请保留当前内容并重试保存。']
   }
 };
@@ -59,12 +73,15 @@ const groups = {
   auth: ['UNAUTHENTICATED','AUTH_REQUIRED','LOGIN_REQUIRED','LOGIN_FAILED','INVALID_API_KEY','TOKEN_EXPIRED','AUTHENTICATION_ERROR'],
   network: ['SERVICE_UNAVAILABLE','MANAGER_UNAVAILABLE','ECONNREFUSED','ENOTFOUND','ETIMEDOUT','NETWORK_ERROR','FETCH_FAILED','ENGINE_UNAVAILABLE','RUNTIME_RESTARTING'],
   credentials: ['INVALID_CREDENTIALS','UNSUPPORTED_AUTH','CREDENTIALS_TOO_LARGE','LOCAL_AUTH_UNREADABLE'],
-  credentialExists: ['CREDENTIAL_EXISTS'], missingAuth: ['LOCAL_AUTH_NOT_FOUND','LOCAL_API_NOT_FOUND'],
+  originChanged: ['KEY_ORIGIN_CHANGED'], credentialExists: ['CREDENTIAL_EXISTS'], missingAuth: ['LOCAL_AUTH_NOT_FOUND','LOCAL_API_NOT_FOUND'],
   setup: ['PROJECT_SETTINGS_REQUIRED','PROJECT_RESTART_REQUIRED','PROJECT_FINALIZATION_REQUIRED','PROJECT_DIRECTORY_REQUIRED'],
-  dependency: ['UI_NOT_BUILT','UI_BUILD_FAILED','UI_BUILD_INTERRUPTED','DEPENDENCIES_MISSING','SPAWN_FAILED','ENOENT'],
+  dependency: ['TOOL_UNAVAILABLE','TOOL_INSTALL_FAILED','TOOL_INTERRUPTED','SHARED_RUNTIME_INTERRUPTED','SHARED_RUNTIME_BUSY','SHARED_RUNTIME_INVALID','TOOL_NODE_REQUIRED','TOOL_TIMEOUT','UI_NOT_BUILT','UI_BUILD_FAILED','UI_BUILD_INTERRUPTED','DEPENDENCIES_MISSING','SPAWN_FAILED','ENOENT'],
   permission: ['INVALID_HOST','INVALID_ORIGIN','UNAUTHORIZED','FORBIDDEN','EACCES','EPERM','PROJECT_STORAGE_LOCATION'],
   conflict: ['KERNEL_CONFLICT'], kernel: ['KERNEL_INCOMPATIBLE','INVALID_KERNEL','KERNEL_INTEGRITY'],
+  input: ['INVALID_RUNTIME_HOME','INVALID_RUNTIME_MODE'],
+  damagedSave: ['SESSION_RECOVERY_REQUIRED'], expiredReplay: ['REQUEST_HISTORY_EXPIRED'], sessionTooLarge: ['SESSION_TOO_LARGE'], saveRejected: ['SESSION_SAVE_REJECTED'], stopUnconfirmed: ['STOP_UNCONFIRMED'],
   session: ['SESSION_NOT_FOUND'], stopped: ['SERVICE_STOP_FAILED','STOP_UNAVAILABLE'],
+  runtimeUnknown: ['RUNTIME_UNVERIFIED','DOCK_RUNTIME_UNVERIFIED'],
   storage: ['ENOSPC','EROFS','SESSION_SAVE_FAILED','WORKSPACE_UNAVAILABLE','LANGUAGE_SAVE_FAILED']
 };
 export function describeError(error, language = 'en') {

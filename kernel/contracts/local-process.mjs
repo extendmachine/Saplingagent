@@ -1,20 +1,23 @@
 // Shared OS process contract; callers supply only their own ChildProcess.
 import path from 'node:path';
+import {boundTool} from '../tooling/bindings.mjs';
+import {npmFor} from '../tooling/tools.mjs';
 import { engineModules } from './engine-dependencies.mjs';
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 
 export function openCodeBinary(root, platform = process.platform) {
-  return path.join(engineModules(root), platform === 'win32' ? 'opencode-ai/bin/opencode.exe' : '.bin/opencode');
+  return (platform===process.platform?boundTool(root,'opencode',null):null)||(path.join(engineModules(root), platform === 'win32' ? 'opencode-ai/bin/opencode.exe' : '.bin/opencode'));
 }
 export function codexBinary(root, platform = process.platform, arch = process.arch, runtime = '.runtime/codex') {
+  if(runtime==='.runtime/codex'&&platform===process.platform&&arch===process.arch){const bound=boundTool(root,'codex',null);if(bound)return bound;}
   if (platform !== 'win32') return path.join(root, runtime, 'node_modules/.bin/codex');
   if (!['x64', 'arm64'].includes(arch)) throw new Error('Unsupported Codex Windows architecture');
   const triple = arch === 'x64' ? 'x86_64-pc-windows-msvc' : 'aarch64-pc-windows-msvc';
   return path.join(root, runtime, `node_modules/@openai/codex-win32-${arch}/vendor/${triple}/bin/codex.exe`);
 }
 export function npmCommand(node = process.execPath, platform = process.platform) {
-  return platform === 'win32' ? { command: node, args: [path.join(path.dirname(node), 'node_modules/npm/bin/npm-cli.js')] } : { command: 'npm', args: [] };
+  return npmFor(node,platform);
 }
 export function commandShell(command, platform = process.platform, env = process.env) {
   return platform === 'win32' ? { command: env.ComSpec || env.COMSPEC || 'cmd.exe', args: ['/d', '/s', '/c', `"${command}"`], windowsVerbatimArguments: true }
@@ -66,5 +69,5 @@ async function terminate(child, { platform = process.platform, graceMs = 750, ki
 
 export function claudeBinary(root, platform = process.platform, arch = process.arch) {
   if (!['darwin','win32','linux'].includes(platform) || !['x64','arm64'].includes(arch)) throw new Error('Unsupported Claude Agent platform');
-  return path.join(engineModules(root), '@anthropic-ai', `claude-agent-sdk-${platform}-${arch}`, platform === 'win32' ? 'claude.exe' : 'claude');
+  return (platform===process.platform&&arch===process.arch?boundTool(root,'claude',null):null)||(path.join(engineModules(root), '@anthropic-ai', `claude-agent-sdk-${platform}-${arch}`, platform === 'win32' ? 'claude.exe' : 'claude'));
 }

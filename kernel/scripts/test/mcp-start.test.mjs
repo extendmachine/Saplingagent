@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {createHash} from 'node:crypto';
-import {spawn} from 'node:child_process';
-import {codexBinary,openCodeBinary,claudeBinary} from '../../contracts/local-process.mjs';
+import {ensureApplicationDependencies} from '../../launcher/dependencies.mjs';
+import {promisify} from 'node:util';
+import {execFile,spawn} from 'node:child_process';
+import {npmCommand} from '../../contracts/local-process.mjs';
+import {prepareFixtureBindings} from '../../tooling/test/fixture-bindings.mjs';
 
 const source=fileURLToPath(new URL('../../../',import.meta.url));
 const platforms=['darwin','win32'];
@@ -15,23 +17,27 @@ async function fixture(t,externalOnly,{subscription=false}={}){
   const parent=path.join(source,'.cache/mcp-cli-start-tests');await fs.mkdir(parent,{recursive:true});
   const root=await fs.mkdtemp(path.join(parent,'app-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
   await fs.cp(path.join(source,'kernel'),path.join(root,'kernel'),{recursive:true,filter:file=>!file.split(path.sep).some(part=>['node_modules','.cache'].includes(part))});
-  const platformName=process.platform==='win32'?'windows':'macos';
-  const settings=JSON.parse(await fs.readFile(path.join(root,`kernel/config/${platformName}.json`),'utf8'));
-  const hash=createHash('sha256').update(JSON.stringify(settings)),lock='{"lockfileVersion":3,"packages":{}}\n';
-  for(const service of ['front','backend/app-builder','backend/mcp-runtime','backend/agent-runtime']){await write(root,service+'/package-lock.json',lock);hash.update(lock);}
-  await write(root,`.runtime/${platformName}-install.json`,JSON.stringify({signature:hash.digest('hex'),arch:process.arch}));
-  // Installation sentinels are never executed. Any accidental login/tool launch
-  // fails, so the test cannot fall through to a real model or machine account.
-  for(const file of [codexBinary(root),openCodeBinary(root),claudeBinary(root),path.join(root,'front/node_modules/vite/bin/vite.js'),path.join(root,'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json')]){
-    await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,'synthetic installation sentinel');
+  // Exercise the grouped receipts produced by first native launch. There is no
+  // platform-install.json or network dependency in this project.
+  await prepareFixtureBindings(root,process.execPath,externalOnly?[]:[subscription?'claude':'opencode']);
+  const dependencies={example:'1.0.0'};
+  for(const service of ['kernel','front']){
+    await write(root,service+'/package.json',JSON.stringify({private:true,dependencies}));
+    await write(root,service+'/package-lock.json',JSON.stringify({lockfileVersion:3,packages:{'':{dependencies},'node_modules/example':{version:'1.0.0'}}}));
   }
-  await write(root,'config/runtime.json',JSON.stringify({frontPort:5173,agentPort:4310}));
+  await write(root,'config/runtime.json',JSON.stringify({frontPort:5173,agentPort:0}));
   await write(root,'config/mcp-access.json',JSON.stringify({schemaVersion:1,revision:1,enabled:externalOnly,externalOnly}));
   if(!externalOnly)await write(root,'local-secrets/ai-config/connections.json',JSON.stringify({schemaVersion:1,revision:1,activeId:'synthetic',profiles:[{id:'synthetic',label:'Synthetic endpoint',engine:'opencode',kind:'api',protocol:'chat',baseUrl:'https://provider.example/v1',model:'synthetic',noAuth:true,contextWindow:128000,maxOutput:16384}]}));
   if(subscription){
     await write(root,'local-secrets/ai-config/connections.json',JSON.stringify({schemaVersion:1,revision:1,activeId:'personal',profiles:[{id:'personal',label:'Personal Claude',engine:'claude',kind:'subscription',model:'fixture-model'}]}));
     await write(root,'local-secrets/api-keys/ai-personal.json',JSON.stringify({oauthToken:'synthetic-subscription-token'}));
   }
+  await ensureApplicationDependencies(root,{install:async(_root,group)=>{
+    assert.ok(['kernel','front'].includes(group.name),'Only synthetic npm groups may be installed');
+    await write(root,group.name+'/node_modules/example/package.json',JSON.stringify({version:'1.0.0'}));
+    await write(root,group.name+'/node_modules/vite/bin/vite.js','');
+    if(group.name==='front')await write(root,'front/node_modules/typescript/bin/tsc','');
+  }});
   await write(root,'scripts/dev.mjs',`import http from 'node:http';import fs from 'node:fs';
 fs.writeFileSync('runtime.pid',String(process.pid));
 let checks=0,closing=false;
@@ -93,4 +99,30 @@ test('real CLI start accepts a Claude subscription without Codex login',{skip:!p
   assert.ok(result.requests.includes('/api/status'));assert.ok(result.requests.includes('/'));
   assert.equal(await fs.access(path.join(root,'local-secrets/codex/auth.json')).then(()=>true,()=>false),false);
   assert.doesNotMatch(result.output,/synthetic-subscription-token/);
+});
+
+test('doctor recognizes native group receipts with no legacy installation stamp',{skip:!platforms.includes(process.platform)},async t=>{
+  const root=await fixture(t,true);
+  const cli=path.join(root,'kernel/scripts/launcher/cli.mjs');
+  const {stdout}=await promisify(execFile)(process.execPath,[cli,'doctor'],{cwd:root,env:{...process.env,SAPLING_LANG:'en'}});
+  assert.match(stdout,/Project dependencies:\s*installed/);
+  assert.doesNotMatch(stdout,/not installed|install --repair/);
+});
+
+test('shell start installs an optional local package added after native preparation',{skip:!platforms.includes(process.platform),timeout:25000},async t=>{
+  const root=await fixture(t,true);
+  const service='backend/local-feature';
+  const vendor=service+'/vendor/feature-support';
+  await write(root,vendor+'/package.json',JSON.stringify({name:'feature-support',version:'1.0.0'}));
+  await write(root,service+'/package.json',JSON.stringify({name:'local-feature',optionalDependencies:{'feature-support':'file:vendor/feature-support'}}));
+  const npm=npmCommand();
+  await promisify(execFile)(npm.command,[...npm.args,'install','--package-lock-only','--offline','--ignore-scripts','--no-audit','--no-fund'],{
+    cwd:path.join(root,service),env:{...process.env,npm_config_cache:path.join(root,'.cache/npm')},
+  });
+  const {output}=await execute(t,root);
+  assert.match(output,/Preparing dependencies: backend\/local-feature/);
+  const installed=JSON.parse(await fs.readFile(path.join(root,service,'node_modules/feature-support/package.json'),'utf8'));
+  assert.equal(installed.version,'1.0.0');
+  const receipt=JSON.parse(await fs.readFile(path.join(root,'.runtime/dependencies.json'),'utf8'));
+  assert.ok(receipt.groups[service]);
 });

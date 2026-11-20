@@ -1,11 +1,9 @@
 import { engineDependency } from '../../contracts/engine-dependencies.mjs';
-import { fileURLToPath as engineURL } from 'node:url';
-const { query } = await engineDependency(engineURL(new URL('../../../', import.meta.url)), '@anthropic-ai/claude-agent-sdk');
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { claudeConnections, readConnections } from '../../contracts/ai-configuration.mjs';
-import { terminateOwned } from '../../contracts/local-process.mjs';
+import { claudeBinary,terminateOwned } from '../../contracts/local-process.mjs';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const authVariable = name => /^(ANTHROPIC_|CLAUDE_CODE_(OAUTH|SESSION_ACCESS_TOKEN|HOST_CREDS_FILE|HOST_AUTH|SDK_HAS_(HOST_AUTH|OAUTH)_REFRESH|PROVIDER_MANAGED_BY_HOST|(?:GATEWAY_TOKEN|API_KEY|WEBSOCKET_AUTH)_FILE_DESCRIPTOR|USE_)|CLAUDE_BRIDGE_OAUTH_TOKEN|AWS_|GOOGLE_(APPLICATION_CREDENTIALS|CLOUD_|API_KEY)|GCLOUD_)/i.test(name);
@@ -47,7 +45,7 @@ export function claudeEnvironment(root, profile, inherited = process.env) {
 }
 
 export class ClaudeProvider {
-  constructor({ root, mcpEnv, instructions, onEvent, queryFactory = query, spawnProcess = spawn }) {
+  constructor({ root, mcpEnv, instructions, onEvent, queryFactory, spawnProcess = spawn }) {
     Object.assign(this, { root, mcpEnv, instructions, onEvent, queryFactory, spawnProcess });
     this.runs = new Map(); this.ready = false;
   }
@@ -57,6 +55,7 @@ export class ClaudeProvider {
       return {};
     };
     return {
+      pathToClaudeCodeExecutable:claudeBinary(this.root),
       cwd: this.root, model: profile.model, env: claudeEnvironment(this.root, profile),
       permissionMode: 'bypassPermissions', allowDangerouslySkipPermissions: true, sandbox: { enabled: false },
       settingSources: ['project'], plugins: [{ type: 'local', path: path.join(this.root, '.agents') }],
@@ -94,6 +93,7 @@ export class ClaudeProvider {
     const profiles = await claudeConnections(this.root, await readConnections(this.root));
     if (!profiles.length) return { id: 'claude', label: 'Claude Agent', ready: false, authenticated: false, providers: [], mcp: { ready: false, tools: [] }, error: 'Configure a Claude Agent scheme in AI setup first.' };
     await Promise.all(['local-secrets/claude','local-secrets/claude/config','local-secrets/claude/data','local-secrets/claude/state','.cache/claude/tmp'].map(directory => fs.mkdir(path.join(this.root, directory), { recursive: true, mode: 0o700 })));
+    this.queryFactory ||= (await engineDependency(this.root,'@anthropic-ai/claude-agent-sdk')).query;
     this.profiles = profiles;
     const state = {}; this.probe = state;
     const idle = new Promise(resolve => { state.release = resolve; });

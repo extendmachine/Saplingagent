@@ -20,7 +20,8 @@ export async function processIdentity(pid){
     // Fix both path encoding and the timestamp locale only for this child.
     const {stdout}=await run('/bin/ps',['-ww','-p',String(pid),'-o','lstart=','-o','comm='],{timeout:2000,env:{...process.env,LANG:'en_US.UTF-8',LC_ALL:'en_US.UTF-8'}});
     const match=stdout.trim().match(/^(.{24})\s+(.+)$/);
-    return match?{stamp:match[1],executable:match[2]}:null;
+    if (!match) throw fail('DOCK_PROCESS_UNKNOWN','Cannot read the project process identity.');
+    return {stamp:match[1],executable:match[2]};
   }catch(error){if(error.code===1)return null;throw fail('DOCK_PROCESS_UNKNOWN','Cannot verify the project launcher process. Retry after checking local processes.');}
 }
 export function createDockController(projectRoot,overrides={}){
@@ -52,11 +53,35 @@ export function createDockController(projectRoot,overrides={}){
     try{await handle.writeFile(JSON.stringify({pid:process.pid})+'\n');await handle.close();return await action();}
     finally{await handle.close().catch(()=>{});const now=await fs.lstat(lock).catch(()=>null);if(now?.isFile()&&now.ino===stat.ino&&now.dev===stat.dev)await fs.rm(lock);}
   }
-  async function owner(){
-    const record=await read('native-app.json');if(!record)return null;
-    const project=await readProject(root),stat=await fs.stat(root);
-    if(record.schemaVersion!==1||record.root!==root||record.projectId!==project.projectId||record.dev!==stat.dev||record.ino!==stat.ino||!validNonce(record.nonce)||!Number.isSafeInteger(record.pid)||!record.process?.stamp||typeof record.process?.executable!=='string')throw fail('DOCK_RECORD_INVALID','The native app ownership record does not match this project. Preserve it for inspection.');
-    return record;
+  async function owner({recoverRemount = false} = {}) {
+    const record = await read('native-app.json');
+    if (!record) return null;
+    const project = await readProject(root), stat = await fs.stat(root);
+    const invalid = () => fail('DOCK_RECORD_INVALID', 'The native app ownership record does not match this project. Preserve it for inspection.');
+    if (record.schemaVersion !== 1 || record.root !== root || record.projectId !== project.projectId ||
+        !Number.isSafeInteger(record.dev) || record.ino !== stat.ino || !validNonce(record.nonce) ||
+        !Number.isSafeInteger(record.pid) || record.pid < 2 || !record.process?.stamp || !record.process?.executable) throw invalid();
+    if (record.dev === stat.dev) return record;
+    if (!recoverRemount || !project.projectId) throw invalid();
+
+    // Only register/maintenance may reconcile a remount, under the control lock.
+    const state = await scoped(record, 'native-app-state.json');
+    const request = await scoped(record, 'native-app-request.json');
+    if (await matchesProcess(record.pid, record.process)) throw invalid();
+    if (state && (!Number.isSafeInteger(state.workerPid) || state.workerPid < 2 ||
+        !state.workerProcess?.stamp || !state.workerProcess?.executable || await workerAlive(state))) throw invalid();
+    const runtime = await controller.runtime();
+    if (runtime.phase !== 'stopped' || runtime.unverified) throw invalid();
+    // Preserve the ownership evidence before removing stale markers. Removing
+    // the primary record last lets another launch resume after interruption.
+    const archive = await fs.mkdtemp(file('dock-archive-'));
+    await writeJSON(path.join(archive, 'native-app.json'), record);
+    if (state) await writeJSON(path.join(archive, 'native-app-state.json'), state);
+    if (request) await writeJSON(path.join(archive, 'native-app-request.json'), request);
+    if (request) await fs.unlink(file('native-app-request.json'));
+    if (state) await fs.unlink(file('native-app-state.json'));
+    await fs.unlink(file('native-app.json'));
+    return null;
   }
   const same=(a,b)=>a&&b&&a.pid===b.pid&&a.nonce===b.nonce;
   async function matchesProcess(pid,expected){const current=await identity(pid);return !!current&&current.stamp===expected?.stamp&&current.executable===expected?.executable;}
@@ -81,7 +106,7 @@ export function createDockController(projectRoot,overrides={}){
     if(!artifact||path.basename(artifact)!==artifact||!artifact.endsWith('.app')||receipt.projectId!==project.projectId)throw fail('DOCK_OWNER_INVALID','Rebuild this project’s native app before opening it.');
     const expected=await fs.realpath(path.join(root,artifact,'Contents/MacOS/applet'));
     if(!native||await fs.realpath(native.executable).catch(()=>null)!==expected)throw fail('DOCK_OWNER_INVALID','The Dock application belongs to a different project.');
-    const previous=await owner();
+    const previous=await owner({recoverRemount:true});
     if(previous){
       if(same(previous,input)&&await matchesProcess(previous.pid,previous.process))return previous;
       if(await matchesProcess(previous.pid,previous.process)||await workerAlive(await scoped(previous,'native-app-state.json')))throw fail('DOCK_ALREADY_RUNNING','This project already has a Dock application. Use its existing icon.');
@@ -175,7 +200,9 @@ export function createDockController(projectRoot,overrides={}){
     if(await workerAlive(state))return 'starting';
     if(state?.phase==='failed')return 'failed';
     if(state?.mode==='configuration')return await configuration(root)?'ready':'stopped';
-    const runtime=await controller.runtime();return runtime.phase==='ready'?'ready':runtime.phase==='stopped'?'stopped':runtime.phase==='failed'?'failed':'starting';
+    const runtime=await controller.runtime();
+    if(runtime.phase==='unverified')throw fail('DOCK_RUNTIME_UNVERIFIED','Could not verify the project runtime. Retry after checking its status.');
+    return runtime.phase==='ready'?'ready':runtime.phase==='stopped'?'stopped':runtime.phase==='failed'?'failed':'starting';
   }
   async function stop(input,{timeoutMs=15000}={}){
     await initialize();const record=await owner();
@@ -192,7 +219,7 @@ export function createDockController(projectRoot,overrides={}){
   }
   async function close({timeoutMs=15000}={}){
     await initialize();let record;
-    await control(async()=>{record=await owner();if(record)await request(record,'handoff');});
+    await control(async()=>{record=await owner({recoverRemount:true});if(record)await request(record,'handoff');});
     if(!record)return {closed:true};
     await waitWorker(record,timeoutMs);
     const deadline=Date.now()+timeoutMs;

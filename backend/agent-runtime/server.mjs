@@ -1,3 +1,7 @@
+import {prepareProviderTools} from '../../kernel/tooling/providers.mjs';
+import {hasTooling} from '../../kernel/tooling/tools.mjs';
+import {readMcpAccess} from '../../kernel/contracts/mcp-access.mjs';
+import {codexBinary} from '../../kernel/contracts/local-process.mjs';
 import { readReleaseMetadata } from '../../kernel/contracts/release.mjs';
 import { kernelStatus } from '../../kernel/contracts/kernel.mjs';
 import { readConnections,defaultSelection,codexConnection,codexCredentialStatus } from '../../kernel/contracts/ai-configuration.mjs';
@@ -10,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { AppServer } from '../../kernel/engines/rpc.mjs';
+import { terminalRecovery } from './terminal-recovery.mjs';
 import { createTaskRegistry } from './tasks.mjs';
 import { handoffInput } from './session-handoff.mjs';
 import { confirmationContent } from '../../kernel/engines/approval.mjs';
@@ -62,15 +67,17 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   const workspaceBase = `http://127.0.0.1:${process.env.SEED_WORKSPACE_PORT || config.workspacePort}`;
   const builderBase = `http://127.0.0.1:${process.env.SEED_BUILDER_PORT || config.builderPort}`;
   const workspaceAbort = new AbortController();
-  const logDir = path.join(root, 'logs/agent-runtime'); await fs.mkdir(logDir, { recursive: true });
+  const logDir = path.join(root, 'logs/agent-runtime'); await fs.mkdir(logDir, { recursive: true }).catch(() => {});
   let logDay = '';
   const log = async (event, fields = {}) => {
+    try {
     const day = new Date().toISOString().slice(0, 10);
     if (day !== logDay) {
       logDay = day;
       for (const entry of await fs.readdir(logDir)) if (/^agent-runtime-\d{4}-\d{2}-\d{2}\.log$/.test(entry) && (await fs.stat(path.join(logDir, entry))).mtimeMs < Date.now() - 30 * 86400000) await fs.unlink(path.join(logDir, entry));
     }
     await fs.appendFile(path.join(logDir, `agent-runtime-${day}.log`), JSON.stringify({ time: new Date().toISOString(), event, ...fields }) + '\n', { mode: 0o600 });
+    } catch { /* Operational logging must not change an already completed result. */ }
   };
   async function ws(route, method = 'GET', data) {
     const response = await fetch(workspaceBase + route, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: data === undefined ? undefined : JSON.stringify(data), signal: AbortSignal.any([AbortSignal.timeout(15000), workspaceAbort.signal]) });
@@ -90,11 +97,18 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   const connections = await readConnections(root);
   const selectedConnection = connections.profiles.find(p => p.id === connections.activeId);
   const configuredSelection = defaultSelection(connections);
-  const canStartOptionalCodex = configuredSelection.engine !== 'codex' && (await codexCredentialStatus(root)).saved;
+  const externalOnly=(await readMcpAccess(root)).externalOnly;
+  const preparing=new AbortController();
+  const prepareEngine=engine=>prepareProviderTools(root,[engine],{signal:preparing.signal});
+  const managedTools=hasTooling(root);
+  const probeDefault=engine=>!managedTools||engine===configuredSelection.engine;
+  const canStartOptionalCodex = !externalOnly && configuredSelection.engine !== 'codex' && (await codexCredentialStatus(root).catch(()=>({saved:false}))).saved;
   let status = { ready: false, authenticated: false, provider: 'Codex App Server', model: '', skills: [], mcp: { ready: false, tools: [] }, permissions };
   let openCodeStatus = { id: 'opencode', label: 'OpenCode', ready: false, authenticated: false, providers: [], error: null };
   let claudeStatus = { id: 'claude', label: 'Claude Agent', ready: false, authenticated: false, providers: [], error: null };
   const active = new Map(), threads = new Map(), resumed = new Map(), subscribers = new Map(), approvals = new Map(), requestSessions = new Map(), dirtySessions = new Map(), titleWrites = new Map(), switchingSessions = new Set();
+  const recovery = await terminalRecovery(root);
+  const repairs = new Map();
   const codexProfile = connections.profiles.find(profile => profile.id === connections.activeId && profile.engine === 'codex');
   const apiModel = codexProfile?.kind === 'api' ? codexProfile.model : null;
   let codexModels = [], modelCatalogLoading;
@@ -103,7 +117,9 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   const taskModel = run => run.codexChoice?.model || run.session.modelId || status.model;
   const publicSession = session => {
     const run = active.get(session.id);
-    return { ...session, ...(run && !run.finished && run.progress ? { progress: run.progress.snapshot() } : {}), pendingApprovals: [...approvals.values()].filter(a => a.sessionId === session.id).map(a => a.event) };
+    const damaged = recovery.damaged.has(session.id) ? { running:false, activeRequestId:null,
+      recoveryError:{ code:'SESSION_RECOVERY_REQUIRED', message:'Inspect the pending save for this conversation before sending another request.' } } : {};
+    return { ...session, ...damaged, ...(run && !run.finished && run.progress ? { progress: run.progress.snapshot() } : {}), pendingApprovals: [...approvals.values()].filter(a => a.sessionId === session.id).map(a => a.event) };
   };
   const emitProgressStatus = (run, emit) => { const label = run && !run.finished && run.progress?.statusLabel(); if (label) emit({ type: 'status', label }); };
   function broadcast(sessionId, event) {
@@ -128,7 +144,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         try {
           const value = await ws(`/sessions/${sessionId}`), saved = value.session;
           if ((saved.engineRevision || 0) === snapshot.expectedEngineRevision && !saved.running && saved.activeRequestId === null && saved.threadId === snapshot.threadId &&
-              isDeepStrictEqual(saved.requests, snapshot.requests) && isDeepStrictEqual(storedMessages(saved.messages), storedMessages(snapshot.messages)) &&
+              isDeepStrictEqual(saved.requests, snapshot.requests) && (!Object.hasOwn(snapshot, 'messages') || isDeepStrictEqual(storedMessages(saved.messages), storedMessages(snapshot.messages))) &&
               (!Object.hasOwn(snapshot, 'contextUsage') || isDeepStrictEqual(saved.contextUsage, snapshot.contextUsage)) &&
               (!Object.hasOwn(snapshot, 'modelUsage') || isDeepStrictEqual(saved.modelUsage, snapshot.modelUsage)) &&
               (!snapshot.handoffDeliveredRequestId || saved.handoff?.status === 'delivered' && saved.handoff.deliveredRequestId === snapshot.handoffDeliveredRequestId)) return value;
@@ -137,10 +153,55 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       throw error;
     }
   }
-  function save(run) {
+  const permanentRejection = error => (error.status === 400 && ['INVALID_INPUT', 'SESSION_TOO_LARGE'].includes(error.code)) ||
+    (error.status === 413 && error.code === 'PAYLOAD_TOO_LARGE');
+  const terminalMetadata = patch => {
+    const { messages, modelUsage, contextUsage, ...metadata } = patch;
+    return metadata;
+  };
+
+  async function retryPendingSave(id) {
+    if (recovery.damaged.has(id)) throw new ApiError('SESSION_RECOVERY_REQUIRED', 'Inspect the pending save for this conversation before sending another request.', 409);
+    if (repairs.has(id)) return repairs.get(id);
+    if (!recovery.entries.has(id)) return;
+    const repair = (async () => {
+      const { requestId, initialRevision, patch } = recovery.entries.get(id);
+      const { session } = await ws(`/sessions/${id}`);
+      const savedLedger = session.requests || [];
+      const terminal = patch.requests.at(-1);
+      const prior = savedLedger.at(-1);
+      // Some initial user-message writes fail before the request itself reaches
+      // Workspace. A metadata-only patch may append that failure to its original
+      // ledger. Never restore a journal over a later turn or engine binding.
+      const sameAttempt = prior?.id === requestId && prior.startedAt === terminal.startedAt;
+      const beforeAttempt = !session.activeRequestId && (
+        Number.isInteger(initialRevision) && session.revision === initialRevision ||
+        !savedLedger.some(item => item.id === requestId) && isDeepStrictEqual(savedLedger.slice(-499), patch.requests.slice(0, -1)));
+      if ((session.engineRevision || 0) === patch.expectedEngineRevision &&
+          (!session.activeRequestId || session.activeRequestId === requestId) && (sameAttempt || beforeAttempt)) {
+        const guarded = { ...patch, expectedRevision:session.revision };
+        try { await persistSnapshot(id, guarded); }
+        catch (error) {
+          if (!Object.hasOwn(patch, 'messages') || !permanentRejection(error)) throw error;
+          const metadata = terminalMetadata(patch);
+          await recovery.remember(id, { requestId, initialRevision, patch:metadata });
+          await persistSnapshot(id, { ...metadata, expectedRevision:session.revision });
+        }
+      }
+      await recovery.forget(id);
+      dirtySessions.delete(id);
+    })();
+    repairs.set(id, repair);
+    try { await repair; } finally { repairs.delete(id); }
+  }
+
+  function sessionSnapshot(run) {
     const delivery = run.finished ? deliveredPatch(run.session, run.requestId) : {};
-    const snapshot = { expectedEngineRevision: run.session.engineRevision || 0, ...delivery, messages: structuredClone(run.session.messages), requests: structuredClone(run.session.requests), running: !run.finished, activeRequestId: run.finished ? null : run.requestId, threadId: run.session.threadId, ...usagePatch(run.session) };
-    run.saving = run.saving.catch(() => {}).then(() => persistSnapshot(run.session.id, snapshot)).then(value => { run.session.updatedAt = value.session.updatedAt; run.session.revision = value.session.revision; if (delivery.handoffDeliveredRequestId) run.session.handoff = value.session.handoff; });
+    return { expectedEngineRevision: run.session.engineRevision || 0, ...delivery, messages: structuredClone(run.session.messages), requests: structuredClone(run.session.requests), running: !run.finished, activeRequestId: run.finished ? null : run.requestId, threadId: run.session.threadId, ...usagePatch(run.session) };
+  }
+  function save(run) {
+    const snapshot = sessionSnapshot(run);
+    run.saving = run.saving.catch(() => {}).then(() => persistSnapshot(run.session.id, snapshot)).then(value => { run.session.updatedAt = value.session.updatedAt; run.session.revision = value.session.revision; if (snapshot.handoffDeliveredRequestId) run.session.handoff = value.session.handoff; });
     return run.saving;
   }
   function scheduleSave(run) { if (run.saveTimer || run.finished) return; run.saveTimer = setTimeout(() => { run.saveTimer = null; save(run).catch(() => abortRun(run, new Error('Unable to save the session. Check local storage'))); }, 1000); }
@@ -172,10 +233,20 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     }
     try { await save(run); }
     catch (persistError) {
-      result = 'failed'; error = new Error('Response has not been fully saved. Check local storage');
-      // Retain the actual model outcome for persistence retry. Downgrading it
-      // could contradict a committed handoff or rerun already completed tools.
+      result = 'failed';
+      const permanent = permanentRejection(persistError);
+      const size = persistError.status === 413 || persistError.code === 'SESSION_TOO_LARGE' || persistError.code === 'INVALID_INPUT' && /Session messages exceed 4 MiB/.test(persistError.message);
+      error = new ApiError(permanent ? size ? 'SESSION_TOO_LARGE' : 'SESSION_SAVE_REJECTED' : 'SESSION_SAVE_FAILED',
+        permanent ? 'The response body was not saved. Copy it before leaving this page. Start a new conversation or review local session storage.' : 'Response has not been fully saved. Check local storage', 400);
+      const snapshot = sessionSnapshot(run);
+      const patch = permanent ? terminalMetadata(snapshot) : snapshot;
       dirtySessions.set(run.session.id, run.session);
+      try {
+        await recovery.remember(run.session.id, { requestId: run.requestId, initialRevision:run.initialRevision, patch });
+        if (permanent) await retryPendingSave(run.session.id);
+      } catch {
+        error = new ApiError('SESSION_SAVE_FAILED', 'The final request state could not be confirmed. Keep this page open and check local storage.', 503);
+      }
     }
     broadcast(run.session.id, { type: 'snapshot', session: publicSession(run.session) });
     if (error) broadcast(run.session.id, { type: 'error', code: error.code || 'AGENT_ERROR', message: safeError(error) });
@@ -189,12 +260,43 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     if (!item) { item = { id, role: 'assistant', text: '', status: 'inProgress', requestId: run.requestId }; run.session.messages.push(item); }
     return item;
   }
+  async function reconcileCodexStart(run) {
+    if (!run.startUnknown || !currentRun(run)) return;
+    if (run.reconciling) return run.reconciling;
+    const connection = rpc, threadId = run.session.threadId;
+    run.reconciling = (async () => {
+      const result = await connection.call('thread/read', { threadId, includeTurns:true }, 5000);
+      if (!currentRun(run) || rpc !== connection || result.thread?.id !== threadId) return;
+      const matches = result.thread.turns?.filter(turn => turn.items?.some(item =>
+        item.type === 'userMessage' && item.clientId === run.nativeRequestId));
+      if (matches?.length !== 1) return;
+      const turn = matches[0];
+      if (typeof turn.id !== 'string' || !turn.id) return;
+      run.turnId = turn.id;
+      run.startUnknown = false;
+      for (const item of turn.items) {
+        if (item.type === 'agentMessage' && typeof item.id === 'string' && typeof item.text === 'string') {
+          assistant(run, item.id).text = item.text;
+        }
+      }
+      if (['completed', 'failed', 'interrupted'].includes(turn.status)) {
+        await finish(run, turn.status, turn.status === 'failed' ? Error(turn.error?.message || 'Model execution failed') : undefined);
+      } else {
+        broadcast(run.session.id, { type:'snapshot', session:publicSession(run.session) });
+      }
+    })().catch(() => {}).finally(() => { run.reconciling = null; });
+    return run.reconciling;
+  }
   async function notification(message) {
     const p = message.params || {}, run = threads.get(p.threadId);
     if (!run || run.finished) return;
     // Start notifications can arrive before the RPC response. Bind to its confirmed
     // turn ID before processing them; a late old turn/started must not bind a new run.
     if (!run.turnId && run.turnReady) await run.turnReady;
+    if (run.startUnknown && (message.method === 'turn/completed' ||
+        message.params?.item?.type === 'userMessage' && message.params.item.clientId === run.nativeRequestId)) {
+      await reconcileCodexStart(run);
+    }
     if (run.finished || threads.get(p.threadId) !== run || !run.turnId) return;
     if (message.method === 'serverRequest/resolved') {
       if (run.progress?.isWaiting(p.requestId)) run.progress.answered(p.requestId);
@@ -303,13 +405,13 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   async function startClaude() {
     if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
     if (claudeStartup) return claudeStartup;
-    claudeStartup = claude.start().then(catalog => (claudeStatus = { ...catalog, error: catalog.error || null })).catch(error => (claudeStatus = { ...claudeStatus, ready: false, error: safeError(error) })).finally(() => { claudeStartup = null; });
+    claudeStartup = prepareEngine('claude').then(()=>claude.start()).then(catalog => (claudeStatus = { ...catalog, error: catalog.error || null })).catch(error => (claudeStatus = { ...claudeStatus, ready: false, error: safeError(error) })).finally(() => { claudeStartup = null; });
     return claudeStartup;
   }
   async function startOpenCode() {
     if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
     if (openCodeStartup) return openCodeStartup;
-    openCodeStartup = openCode.start().then(catalog => { openCodeStatus = { ...catalog, error: null }; return openCodeStatus; }).catch(error => {
+    openCodeStartup = prepareEngine('opencode').then(()=>openCode.start()).then(catalog => { openCodeStatus = { ...catalog, error: null }; return openCodeStatus; }).catch(error => {
       openCodeStatus = { ...openCodeStatus, ready: false, error: safeError(error) };
       return openCodeStatus;
     }).finally(() => { openCodeStartup = null; });
@@ -318,8 +420,14 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   async function startCodex() {
     if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
     if (startup) return startup;
+    if (rpc && !rpc.closed && [...active.values()].some(run => !run.finished && run.session && (run.session.engine || 'codex') === 'codex')) return;
     lastStart = Date.now();
+    const previous = rpc; rpc = null;
+    let client;
     startup = (async () => {
+      await previous?.close();
+      await prepareEngine('codex');
+      if (closing) throw new ApiError('SHUTTING_DOWN', 'Service is shutting down', 503);
       const connection = await codexConnection(root, connections);
       const args = ['-c', 'cli_auth_credentials_store="file"', '-c', 'web_search="live"', ...permissionConfigArgs()];
       for (const feature of ['browser_use', 'browser_use_external', 'computer_use', 'plugins', 'remote_plugin', 'apps', 'multi_agent', 'skill_mcp_dependency_install']) args.push('-c', `features.${feature}=false`);
@@ -328,22 +436,22 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       for (const [name, value] of Object.entries(sharedMcpEnv)) args.push('-c', `mcp_servers.seedagent.env.${name}=${JSON.stringify(value)}`);
       args.push(...connection.args);
       if(connection.profile?.kind === 'api')args.push('-c','web_search="disabled"');
-      rpc = new AppServerClass({ cwd: root, env: { ...process.env, ...connection.env, CODEX_HOME: path.join(root, 'local-secrets/codex'), SEED_ROOT: root, SEED_AGENT_MANAGED: '1', SEED_AGENT_PORT: String(process.env.SEED_AGENT_PORT || config.agentPort), SEEDAGENT_PROJECT_ROOT: root, SEEDAGENT_WORKSPACE_PORT: String(process.env.SEED_WORKSPACE_PORT || config.workspacePort), SEEDAGENT_BUILDER_PORT: String(process.env.SEED_BUILDER_PORT || config.builderPort) }, args });
-      rpc.on('notification', message => notification(message).catch(error => log('notification_error', { code: error.code || 'INTERNAL' }).catch(() => {})));
-      rpc.on('request', serverRequest);
-      rpc.on('disconnect', error => { status.ready = false; status.error = safeError(error); resumed.clear(); if (!closing) for (const run of active.values()) if (run.session && (run.session.engine || 'codex') === 'codex') finish(run, 'failed', error).catch(() => {}); });
-      await rpc.call('initialize', { clientInfo: { name: 'seedagent', title: 'Saplingagent', version: '0.1.0' }, capabilities: { experimentalApi: true } });
-      rpc.send({ method: 'initialized', params: {} });
-      const account = await rpc.call('account/read', { refreshToken: false }); status.authenticated = !!account.account || account.requiresOpenaiAuth === false;
+      rpc = client = new AppServerClass({ cwd: root, ...(hasTooling(root)?{command:codexBinary(root)}:{}), env: { ...process.env, ...connection.env, CODEX_HOME: path.join(root, 'local-secrets/codex'), SEED_ROOT: root, SEED_AGENT_MANAGED: '1', SEED_AGENT_PORT: String(process.env.SEED_AGENT_PORT || config.agentPort), SEEDAGENT_PROJECT_ROOT: root, SEEDAGENT_WORKSPACE_PORT: String(process.env.SEED_WORKSPACE_PORT || config.workspacePort), SEEDAGENT_BUILDER_PORT: String(process.env.SEED_BUILDER_PORT || config.builderPort) }, args });
+      client.on('notification', message => { if (rpc === client) notification(message).catch(error => log('notification_error', { code: error.code || 'INTERNAL' })); });
+      client.on('request', message => { if (rpc === client) Promise.resolve(serverRequest(message)).catch(() => log('server_request_error')); });
+      client.on('disconnect', error => { if (rpc !== client) return; status.ready = false; status.error = safeError(error); resumed.clear(); if (!closing) for (const run of active.values()) if (run.session && (run.session.engine || 'codex') === 'codex') finish(run, 'failed', error).catch(() => {}); });
+      await client.call('initialize', { clientInfo: { name: 'seedagent', title: 'Saplingagent', version: '0.1.0' }, capabilities: { experimentalApi: true } });
+      client.send({ method: 'initialized', params: {} });
+      const account = await client.call('account/read', { refreshToken: false }); status.authenticated = !!account.account || account.requiresOpenaiAuth === false;
       await refreshCodexModels();
-      const initialThread = await rpc.call('thread/start', { cwd: root, model: status.model, ...threadPermissions, developerInstructions: instructions, ephemeral: true });
+      const initialThread = await client.call('thread/start', { cwd: root, model: status.model, ...threadPermissions, developerInstructions: instructions, ephemeral: true });
       if (initialThread.sandbox?.type !== 'dangerFullAccess' || initialThread.approvalPolicy !== 'never') throw new Error('Codex did not enable the requested Full Access permissions. Check runtime configuration');
       await catalog();
       if (!status.authenticated) status.error = 'This project is not logged in. Run codex login using the project CODEX_HOME first.';
       else if (!status.mcp.ready) status.error = 'Saplingagent MCP tools are not ready';
       else delete status.error;
       await log('agent_ready', { model: status.model, authenticated: status.authenticated, tools: status.mcp.tools.length, sandbox: initialThread.sandbox.type, approvalPolicy: initialThread.approvalPolicy });
-    })().catch(error => { status.ready = false; status.error = safeError(error); if (rpc && !rpc.closed) rpc.close(); throw error; }).finally(() => { startup = null; });
+    })().catch(async error => { if (!client || rpc === client) { status.ready = false; status.error = safeError(error); if (client && !client.closed) await client.close(); } throw error; }).finally(() => { startup = null; });
     return startup;
   }
   async function refreshCodexModels() {
@@ -377,8 +485,12 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     return {ready:Boolean(ready),authenticated:engineStatus.authenticated,provider:engineStatus.label,model:selectedConnection?.model||'',skills:engineStatus.skills||[],mcp:engineStatus.mcp||{ready:false,tools:[]},permissions,error:engineStatus.error||undefined};
   }
   async function recoverSavedRuns() {
+      for (const id of recovery.entries.keys()) {
+        if (!active.has(id)) await retryPendingSave(id).catch(() => {});
+      }
       // A stopped process cannot leave a saved session permanently running.
       for (const summary of (await ws('/sessions')).sessions) {
+        if (summary.running === false || recovery.entries.has(summary.id) || recovery.damaged.has(summary.id)) continue;
         const { session } = await ws(`/sessions/${summary.id}`);
         if (session.running && !active.has(session.id)) {
           for (const request of session.requests || []) if (request.status === 'inProgress') { request.status = 'interrupted'; request.completedAt = new Date().toISOString(); }
@@ -387,17 +499,34 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         }
       }
   }
-  async function start() {
-    lastStart=Date.now();
-    if(configuredSelection.engine==='claude'){
+  let startupSessionRecovery, lastRecoveryAttempt = 0;
+  function recoverStartupSessions() {
+    if (!startupSessionRecovery) {
+      lastRecoveryAttempt = Date.now();
+      startupSessionRecovery = recoverSavedRuns().catch(error => {
+        startupSessionRecovery = undefined;
+        throw error;
+      });
+    }
+    return startupSessionRecovery;
+  }
+  async function startDefaultEngine() {
+    lastStart = Date.now();
+    if (externalOnly) return;
+    if (configuredSelection.engine === 'claude') {
       await startClaude();
-      if (!runtimeStatus().ready) throw new ApiError('AGENT_NOT_READY',claudeStatus.error || 'Claude Agent is not ready. Check AI configuration.',503);
-      await recoverSavedRuns();
-    }else if(configuredSelection.engine==='opencode'){
+      if (!runtimeStatus().ready) throw new ApiError('AGENT_NOT_READY', claudeStatus.error || 'Claude Agent is not ready. Check AI configuration.', 503);
+    } else if (configuredSelection.engine === 'opencode') {
       await startOpenCode();
-      if(!openCodeStatus.ready||!openCodeStatus.authenticated||!openCodeStatus.mcp?.ready||!openCodeStatus.providers.some(p=>p.id===configuredSelection.providerId&&p.models.some(m=>m.id===configuredSelection.modelId)))throw new ApiError('AGENT_NOT_READY',openCodeStatus.error||'OpenCode provider or MCP is not ready. Check AI configuration.',503);
-      await recoverSavedRuns();
-    }else{await startCodex();await recoverSavedRuns();}
+      const { ready, authenticated, mcp, providers } = openCodeStatus;
+      if (!ready || !authenticated || !mcp?.ready || !providers.some(p => p.id === configuredSelection.providerId && p.models.some(m => m.id === configuredSelection.modelId))) {
+        throw new ApiError('AGENT_NOT_READY', openCodeStatus.error || 'OpenCode provider or MCP is not ready. Check AI configuration.', 503);
+      }
+    } else await startCodex();
+  }
+  async function start() {
+    const results = await Promise.allSettled([recoverStartupSessions(), startDefaultEngine()]);
+    for (const result of results) if (result.status === 'rejected') throw result.reason;
   }
   async function interrupt(run) {
     run.cancelRequested = true;
@@ -406,6 +535,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
     if (run.session?.engine === 'claude') return claude.interrupt(run);
     // A relocated native resume can still be pending before a turn ID exists.
     rpc?.cancelResume?.(run.session?.threadId);
+    if (run.startUnknown) await reconcileCodexStart(run);
     if (run.turnId && !run.interruptSent && !run.finished) {
       run.interruptSent = true;
       try { await rpc.call('turn/interrupt', { threadId: run.session.threadId, turnId: run.turnId }, 5000); }
@@ -415,19 +545,30 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   async function abortRun(run, error) {
     // Do not release a session while an unacknowledged old turn can still use MCP.
     if (run.finished) return;
-    run.abortError = error;
+    if (error) run.abortError = error;
+    if (run.aborting) return run.aborting;
+    const aborting = (async () => {
     try {
       await interrupt(run);
-      await new Promise(resolve => {
+      if (!run.finished) await new Promise(resolve => {
         const started = Date.now();
         const timer = setInterval(() => { if (run.finished || Date.now() - started > 3000) { clearInterval(timer); resolve(); } }, 50);
       });
     } catch {}
     if (!run.finished) {
-      if ((run.session?.engine || 'codex') === 'codex') rpc?.close();
-      if (run.session?.engine === 'claude') await claude.interrupt(run);
-      await finish(run, 'failed', error);
+      if ((run.session?.engine || 'codex') === 'codex') {
+        // The old turn may still edit files. Keep its slot and MCP ownership;
+        // do not fail unrelated conversations by closing their shared transport.
+        run.interruptSent = false;
+        broadcast(run.session.id, { type: 'error', code: 'STOP_UNCONFIRMED', message: 'This turn has not confirmed stopping. It may still be running. Retry Stop; other conversations are unaffected.' });
+      } else {
+        if (run.session?.engine === 'claude') await claude.interrupt(run);
+        await finish(run, error ? 'failed' : 'interrupted', error);
+      }
     }
+    })();
+    run.aborting = aborting;
+    try { await aborting; } finally { if (run.aborting === aborting) run.aborting = null; }
   }
   async function executeCodex(run, text) {
     const finishStopped = () => finish(run, run.abortError ? 'failed' : 'interrupted', run.abortError);
@@ -460,17 +601,27 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       if (closing || run.cancelRequested) { await finishStopped(); return; }
       const context = runtimeContext(preferences, run, 'Codex App Server');
       broadcast(run.session.id, { type: 'status', label: 'Thinking…' });
-      run.startAttempted = true;
       let turnReady;
       run.turnReady = new Promise(resolve => { turnReady = resolve; });
       try {
         const input = [{ type: 'text', text: text + context, text_elements: [] }, ...(run.attachments || []).filter(value => value.kind === 'image').map(value => ({ type: 'localImage', path: path.resolve(root, value.path) }))];
-        const result = await rpc.call('turn/start', { threadId: run.session.threadId, input, clientUserMessageId: run.requestId, model, effort, summary: 'auto' });
+        run.startAttempted = true;
+        const result = await rpc.call('turn/start', { threadId: run.session.threadId, input, clientUserMessageId: run.nativeRequestId, model, effort, summary: 'auto' });
         run.turnId = result.turn.id;
+      } catch (error) {
+        // A JSON-RPC error response explicitly rejects this call. A transport
+        // timeout can lose the acknowledgement of an already running turn.
+        run.startUnknown = run.startAttempted && !Number.isInteger(error.code);
+        if (run.startUnknown) {
+          await reconcileCodexStart(run);
+          if (!currentRun(run)) return;
+          if (run.turnId && !run.cancelRequested) return;
+        }
+        throw error;
       } finally { turnReady(); }
       if (!currentRun(run)) return;
       if (run.cancelRequested) await interrupt(run);
-    } catch (error) { if (!currentRun(run)) return; if (run.turnId || run.startAttempted) await abortRun(run, error); else if (run.cancelRequested) await finishStopped(); else await finish(run, 'failed', error); }
+    } catch (error) { if (!currentRun(run)) return; if (run.turnId || run.startUnknown) await abortRun(run, run.startUnknown ? undefined : error); else if (run.cancelRequested) await finishStopped(); else await finish(run, 'failed', error); }
   }
   function runtimeContext(preferences, run, engineLabel) {
     const files = (run.attachments || []).map(value => ({ name: value.name, contentType: value.contentType, size: value.size, path: path.resolve(root, value.path) }));
@@ -487,7 +638,6 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       const { preferences } = await ws('/preferences');
       if (!currentRun(run)) return;
       broadcast(run.session.id, { type: 'status', label: 'Thinking…' });
-      run.startAttempted = true;
       run.save = () => save(run);
       await openCode.execute(run, text, { context: runtimeContext(preferences, run, `OpenCode (${run.session.providerId}/${run.session.modelId})`), images: await imageInputs(run) });
     } catch (error) {
@@ -541,7 +691,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       if (header.length !== expected.length || !timingSafeEqual(header, expected)) throw new ApiError('UNAUTHORIZED', 'Local script operations require a service token', 401);
     }
   }
-  const drain = createDrainGate(() => active.size || pendingChats || gitSwitching || dirtySessions.size || switchingSessions.size);
+  const drain = createDrainGate(() => active.size || pendingChats || gitSwitching || recovery.entries.size || switchingSessions.size);
   const server = http.createServer(async (req, res) => {
     let leave;
     try {
@@ -550,7 +700,11 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
       if (req.method === 'POST' && ['/internal/runtime/prepare', '/internal/runtime/release'].includes(url.pathname)) {
         const given = Buffer.from(req.headers.authorization || ''), expected = Buffer.from(`Bearer ${token}`);
         if (given.length !== expected.length || !timingSafeEqual(given, expected)) throw new ApiError('UNAUTHORIZED', 'Internal authentication required', 401);
-        return send(res, 200, url.pathname.endsWith('/prepare') ? drain.prepare() : drain.release());
+        if (url.pathname.endsWith('/prepare')) {
+          for (const id of recovery.entries.keys()) if (!active.has(id)) await retryPendingSave(id).catch(() => {});
+          return send(res, 200, drain.prepare());
+        }
+        return send(res, 200, drain.release());
       }
       if (req.method !== 'GET') leave = drain.enter();
       if (req.method === 'POST' && url.pathname === '/api/attachments') {
@@ -594,25 +748,41 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         return send(res, 200, { taskId: `RUN-${run.requestId}` });
       }
       if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ready: true, service: 'agent-runtime', agentReady: runtimeStatus().ready });
-      if (req.method === 'GET' && url.pathname === '/api/status') { if (!runtimeStatus().ready && !startup && !openCodeStartup && !claudeStartup && Date.now() - lastStart > 15000) start().catch(() => {}); return send(res, 200, { ...runtimeStatus(), codexReady: status.ready && !startup && !drain.prepared, defaultEngine: configuredSelection.engine, restarting: drain.prepared, activeRuns: active.size + pendingChats }); }
-      if (req.method === 'GET' && url.pathname === '/api/engines') {
-        if (!openCode.ready && !openCodeStartup) await startOpenCode();
-        if (connections.profiles.some(p=>p.engine==='claude') && !claude.ready && !claudeStartup) await startClaude();
-        if(canStartOptionalCodex && !rpc && !startup)startCodex().catch(()=>{});
-        if (url.searchParams.get('refresh') === 'codex') {
+      if (req.method === 'GET' && url.pathname === '/api/status') {
+        const now = Date.now();
+        if (!startupSessionRecovery && now - lastRecoveryAttempt > 15000) recoverStartupSessions().catch(() => {});
+        if (!externalOnly && !runtimeStatus().ready && !startup && !openCodeStartup && !claudeStartup && now - lastStart > 15000) startDefaultEngine().catch(() => {});
+        return send(res, 200, { ...runtimeStatus(), codexReady: status.ready && !startup && !drain.prepared, defaultEngine: configuredSelection.engine, restarting: drain.prepared, activeRuns: active.size + pendingChats });
+      }
+      const prepareCatalog=req.method==='POST'&&url.pathname==='/api/engines/prepare';
+      if (prepareCatalog || req.method === 'GET' && url.pathname === '/api/engines') {
+        if(prepareCatalog){
+          const {engine}=await readBody(req);
+          if(!['codex','opencode','claude'].includes(engine))throw new ApiError('INVALID_INPUT','Choose a supported AI engine.');
+          if(externalOnly)throw new ApiError('AGENT_NOT_READY','Open AI configuration to select a built-in engine.',409);
+          if(engine==='opencode')await startOpenCode();
+          if(engine==='claude')await startClaude();
+          if(engine==='codex'&&(!rpc||rpc.closed))await startCodex();
+        }else if(!externalOnly){
+          if (!openCode.ready && probeDefault('opencode')) await startOpenCode();
+          if (connections.profiles.some(p=>p.engine==='claude') && !claude.ready && probeDefault('claude')) await startClaude();
+          if(canStartOptionalCodex && !rpc && !startup && probeDefault('codex'))startCodex().catch(()=>{});
+        }
+        if (!externalOnly && url.searchParams.get('refresh') === 'codex') {
           try {
             if (startup) await startup;
-            else if ((!rpc || rpc.closed) && !drain.prepared && (configuredSelection.engine === 'codex' || canStartOptionalCodex)) await startCodex();
+            else if ((!rpc || rpc.closed) && !drain.prepared && probeDefault('codex') && (configuredSelection.engine === 'codex' || canStartOptionalCodex)) await startCodex();
             await refreshCodexModels();
           } catch { if (!apiModel) modelState.modelCatalogError = modelCatalogFailure; }
         }
         const codex = { id: 'codex', label: 'Codex', ready: status.ready && !startup, authenticated: status.authenticated, model: status.model, ...modelState, models: codexModels, error: status.error || null };
-        return send(res, 200, { defaultEngine: configuredSelection.engine, defaultSelection: configuredSelection, engines: [codex, openCodeStatus, claudeStatus] });
+        const engines=[codex,openCodeStatus,claudeStatus].map(engine=>({...engine,needsPreparation:managedTools&&!externalOnly&&engine.id!==configuredSelection.engine&&!engine.ready}));
+        return send(res, 200, { defaultEngine: configuredSelection.engine, defaultSelection: configuredSelection, engines });
       }
       if (req.method === 'GET' && url.pathname === '/api/git') return send(res, 200, { git: await readGitVersion(root, { limit: url.searchParams.has('limit') ? Number(url.searchParams.get('limit')) : 25 }) });
       if (req.method === 'POST' && ['/api/git/commit', '/api/git/switch', '/api/git/checkout', '/api/git/label'].includes(url.pathname)) {
         if (gitSwitching) throw new ApiError('GIT_SWITCH_BUSY', 'Another Git operation is in progress', 409);
-        if (active.size || pendingChats || dirtySessions.size || switchingSessions.size) throw new ApiError('GIT_AGENT_BUSY', 'AI work is running or not yet saved. Wait or stop before changing versions', 409);
+        if (active.size || pendingChats || recovery.entries.size || switchingSessions.size) throw new ApiError('GIT_AGENT_BUSY', 'AI work is running or not yet saved. Wait or stop before changing versions', 409);
         // Reserve before reading the request body; no new chat may enter mid-switch.
         gitSwitching = true;
         try {
@@ -637,7 +807,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         const input = await readBody(req, 16 * 1024);
         if (!validId(engineSessionId) || !Number.isSafeInteger(input.expectedEngineRevision) || input.expectedEngineRevision < 0 || !Object.hasOwn(input, 'engine') || !Object.hasOwn(input, 'providerId') || !Object.hasOwn(input, 'modelId')) throw new ApiError('INVALID_SELECTION', 'Provide a complete AI selection and its expected engine revision.');
         const selection = validateEngineSelection(input);
-        if (gitSwitching || active.has(engineSessionId) || dirtySessions.has(engineSessionId) || switchingSessions.has(engineSessionId) || [...approvals.values()].some(a => a.sessionId === engineSessionId)) throw new ApiError('SESSION_BUSY', 'Wait for this conversation to finish and save before switching AI.', 409);
+        if (gitSwitching || active.has(engineSessionId) || recovery.entries.has(engineSessionId) || recovery.damaged.has(engineSessionId) || switchingSessions.has(engineSessionId) || [...approvals.values()].some(a => a.sessionId === engineSessionId)) throw new ApiError('SESSION_BUSY', 'Wait for this conversation to finish and save before switching AI.', 409);
         // Reserve synchronously before catalog/storage awaits; chat uses this same gate.
         switchingSessions.add(engineSessionId);
         try {
@@ -685,7 +855,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         if (!run || run.finished) { const savedStatus = session.requests?.at(-1)?.status; emit({ type: 'done', status: ['completed', 'failed', 'interrupted'].includes(savedStatus) ? savedStatus : 'interrupted' }); res.end(); } return;
       }
       const cancelId = url.pathname.match(/^\/api\/sessions\/([a-zA-Z0-9_-]+)\/cancel$/)?.[1];
-      if (req.method === 'POST' && cancelId) { const run = active.get(cancelId); if (run) await interrupt(run); return send(res, 200, { ok: true }); }
+      if (req.method === 'POST' && cancelId) { const run = active.get(cancelId); if (run) await abortRun(run); return send(res, run && !run.finished ? 202 : 200, { ok: true, ...(run && !run.finished ? { pending: true } : {}) }); }
       const approvalId = url.pathname.match(/^\/api\/approvals\/([a-zA-Z0-9_-]+)$/)?.[1];
       if (req.method === 'POST' && approvalId) {
         const approval = approvals.get(approvalId); if (!approval) throw new ApiError('NOT_FOUND', 'Approval has ended', 404);
@@ -714,12 +884,8 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         if (!id) {
           if (!requestSessions.has(requestId)) {
             requestSessions.set(requestId, (async () => {
-              for (const summary of (await ws('/sessions')).sessions) {
-                const { session } = await ws(`/sessions/${summary.id}`);
-                if (session.messages.some(m => m.id === requestId || m.requestId === requestId)) return session.id;
-              }
               if (requestedSelection?.engine === 'codex') await validateAvailableSelection(requestedSelection);
-              return (await ws('/sessions', 'POST', { title: (input.text.trim() || resolvedAttachments[0]?.name || 'Attachments').slice(0, 60), ...requestedSelection })).session.id;
+              return (await ws('/sessions', 'POST', { firstRequestId:requestId, title: (input.text.trim() || resolvedAttachments[0]?.name || 'Attachments').slice(0, 60), ...requestedSelection })).session.id;
             })());
             if (requestSessions.size > 1000) requestSessions.delete(requestSessions.keys().next().value);
           }
@@ -742,8 +908,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
         let loaded;
         const run = { requestId, attachments: resolvedAttachments, session: null, saving: Promise.resolve(), finished: false, cancelRequested: false, loaded: new Promise(resolve => { loaded = resolve; }) }; active.set(id, run);
         try {
-          const dirty = dirtySessions.get(id);
-          if (dirty) { await persistSnapshot(id, { expectedEngineRevision: dirty.engineRevision || 0, ...deliveredPatch(dirty, dirty.requests.at(-1)?.id), messages: dirty.messages, requests: dirty.requests, threadId: dirty.threadId, running: false, activeRequestId: null, ...usagePatch(dirty) }); dirtySessions.delete(id); }
+          await retryPendingSave(id);
           run.session = (await ws(`/sessions/${id}`)).session;
           assertSessionSelection(run.session, requestedSelection);
           assertBindingRevision(run.session, input.engineRevision);
@@ -751,6 +916,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           run.session.requests ||= [];
           const prior = run.session.requests.find(r => r.id === requestId);
           const priorUser = run.session.messages.find(m => m.id === requestId);
+          if (priorUser && !prior) throw new ApiError('REQUEST_HISTORY_EXPIRED', 'The request is already in this conversation, but its retry record has expired. Send a new message to continue.', 409);
           if ((prior || priorUser) && (prior?.engineRevision || 0) !== (run.session.engineRevision || 0)) throw new ApiError('SESSION_ENGINE_CHANGED', 'This request belongs to a previous AI. Send a new message to continue the conversation.', 409);
           if (priorUser && (priorUser.text !== input.text || JSON.stringify((priorUser.attachments || []).map(value => value.id)) !== JSON.stringify(ids))) throw new ApiError('IDEMPOTENCY_CONFLICT', 'The same request ID cannot be used for different text or attachments', 409);
           if (prior?.status !== 'completed' && (run.session.engine || 'codex') === 'codex') run.codexChoice = await validateAvailableSelection(validateEngineSelection(run.session));
@@ -758,6 +924,8 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
           if (prior?.status === 'completed') { run.finished = true; emit({ type: 'snapshot', session: publicSession(run.session) }); emit({ type: 'done', status: 'completed' }); res.end(); active.delete(id); return; }
           if (!priorUser) run.session.messages.push({ id: requestId, role: 'user', text: input.text, requestId, ...(resolvedAttachments.length ? { attachments: resolvedAttachments.map(publicAttachment) } : {}) });
           else run.session.messages = run.session.messages.filter(m => m.role !== 'assistant' || m.requestId !== requestId);
+          run.nativeRequestId = prior ? randomUUID() : requestId;
+          run.initialRevision = run.session.revision;
           const entry = { id: requestId, engineRevision: run.session.engineRevision || 0, status: 'inProgress', startedAt: new Date().toISOString() };
           run.session.requests = [...run.session.requests.filter(r => r.id !== requestId), entry].slice(-500);
           run.pendingEntryAdded = true;
@@ -789,7 +957,7 @@ export async function createAgentServer({ root = process.env.SEED_ROOT || defaul
   server.startAgent = start;
   server.shutdown = () => {
     if (shutdown) return shutdown;
-    closing = true; status.ready = false;
+    closing = true; preparing.abort(); status.ready = false;
     for (const run of active.values()) run.progress?.stop();
     // Close our detached App Server group first, before any RPC/storage wait.
     // Waiting for turn/interrupt here can exceed the supervisor's stop deadline.

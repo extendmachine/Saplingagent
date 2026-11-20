@@ -157,13 +157,16 @@ async function atomicJson(root, relative, data) {
   } finally { await handle?.close(); await fs.rm(temporary, { force: true }); }
 }
 function messages(value) {
-  if (!Array.isArray(value) || value.length > 10000) fail('messages must be an array of at most 10000 items');
+  if (!Array.isArray(value)) fail('messages must be an array');
+  const tooLarge = () => { throw new WorkspaceError('SESSION_TOO_LARGE', 'Session messages exceed the supported storage size'); };
+  if (value.length > 10000) tooLarge();
   const ids = new Set();
   const result = value.map((item) => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) fail('Invalid message');
     const id = validId(item.id);
     if (ids.has(id)) fail('Duplicate message id'); ids.add(id);
     if (!['user', 'assistant', 'system', 'tool'].includes(item.role)) fail('Invalid message role');
+    if (typeof item.text === 'string' && item.text.length > 500000) tooLarge();
     const output = { id, role: item.role, text: text(item.text, 'message.text', 500000, true) };
     if (item.status !== undefined) output.status = text(item.status, 'message.status', 40);
     if (item.requestId !== undefined) output.requestId = text(item.requestId, 'message.requestId', 160);
@@ -173,8 +176,33 @@ function messages(value) {
     }
     return output;
   });
-  if (Buffer.byteLength(JSON.stringify(result)) > 4 * 1024 * 1024) fail('Session messages exceed 4 MiB');
+  if (Buffer.byteLength(JSON.stringify(result)) > 4 * 1024 * 1024) tooLarge();
   return result;
+}
+function requestLedger(value, engineRevision, previous = []) {
+  const prior = new Map(previous.map(entry => [entry.id, entry]));
+  if (!Array.isArray(value) || value.length > 500) fail('requests must contain at most 500 items');
+  const requestIds = new Set();
+  return value.map((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) fail('Invalid request ledger item');
+    const requestId = text(item.id, 'request.id', 160);
+    if (requestIds.has(requestId)) fail('Duplicate request id'); requestIds.add(requestId);
+    if (!['inProgress', 'completed', 'failed', 'interrupted'].includes(item.status)) fail('Invalid request status');
+    const startedAt = text(item.startedAt, 'request.startedAt', 80);
+    if (!Number.isFinite(Date.parse(startedAt))) fail('Invalid request timestamp');
+    const entry = { id: requestId, status: item.status, startedAt };
+    if (item.engineRevision !== undefined) entry.engineRevision = tokenCount(item.engineRevision, 'request.engineRevision');
+    const binding = entry.engineRevision ?? 0;
+    const previous = prior.get(requestId);
+    if (binding > engineRevision) fail('A request cannot belong to a future engine binding');
+    if (previous && binding !== (previous.engineRevision ?? 0)) fail('A request engine binding cannot be changed');
+    if (item.completedAt !== undefined) {
+      entry.completedAt = text(item.completedAt, 'request.completedAt', 80);
+      if (!Number.isFinite(Date.parse(entry.completedAt))) fail('Invalid completion timestamp');
+    }
+    if (item.error !== undefined) entry.error = text(item.error, 'request.error', 1000, true);
+    return entry;
+  });
 }
 export async function createStore(applicationRoot) {
   const root = await fs.realpath(applicationRoot);
@@ -189,31 +217,110 @@ export async function createStore(applicationRoot) {
     const session = await readJson(root, `data/workspace/sessions/${validId(id)}.json`, null);
     if (!session) throw new WorkspaceError('NOT_FOUND', 'Session does not exist', 404);
     if (typeof session !== 'object' || Array.isArray(session) || session.id !== id || typeof session.title !== 'string' || !Array.isArray(session.messages) || !Number.isInteger(session.revision) || session.revision < 1 || typeof session.createdAt !== 'string' || typeof session.updatedAt !== 'string') throw new WorkspaceError('CORRUPT_STORAGE', 'Stored session schema requires recovery', 500);
-    return normalizeSession(session);
+    try {
+      const normalized = normalizeSession(session);
+      messages(session.messages);
+      if (session.requests !== undefined) requestLedger(session.requests, normalized.engineRevision);
+      if (session.firstRequestId !== undefined) validId(session.firstRequestId);
+      return normalized;
+    } catch (error) {
+      if (error instanceof WorkspaceError) throw new WorkspaceError('CORRUPT_STORAGE', 'Stored session content requires recovery', 500);
+      throw error;
+    }
   };
-  return {
-    async listSessions() {
-      await queue;
-      const directory = await safePath(root, 'data/workspace/sessions', true);
-      const entries = await fs.readdir(directory, { withFileTypes: true });
-      const sessions = [];
-      for (const entry of entries) {
-        if (!entry.name.endsWith('.json')) continue;
-        if (entry.isSymbolicLink() || !entry.isFile()) throw new WorkspaceError('UNSAFE_STORAGE', 'Session storage contains an unsupported file', 409);
-        const session = await get(entry.name.slice(0, -5));
-        sessions.push({ id: session.id, title: session.title, updatedAt: session.updatedAt, engine: session.engine, providerId: session.providerId, modelId: session.modelId, engineRevision: session.engineRevision });
+  // Cache metadata only. Reopening a sidebar should not deserialize every chat.
+  // The on-disk files remain authoritative across restarts and outside edits.
+  const metadata = new Map();
+  async function* records() {
+    const directory = await safePath(root, 'data/workspace/sessions', true);
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+    const seen = new Set();
+    for (const entry of entries) {
+      if (!entry.name.endsWith('.json') || !entry.isFile() || entry.isSymbolicLink()) continue;
+      const id = entry.name.slice(0, -5);
+      try {
+        validId(id);
+        const stat = await fs.lstat(path.join(directory, entry.name), {bigint:true});
+        const stamp = [stat.ino, stat.size, stat.mtimeNs, stat.ctimeNs].join(':');
+        const cached = metadata.get(id);
+        if (cached?.stamp === stamp) { seen.add(id); yield cached.record; continue; }
+        const record = summarize(await get(id));
+        metadata.set(id, {stamp, record});
+        if (owners) indexSession(owners, record);
+        seen.add(id);
+        yield record;
+      } catch (error) {
+        if (error.code === 'ENOENT') continue;
+        if (!(error instanceof WorkspaceError) || !['INVALID_INPUT', 'CORRUPT_STORAGE', 'UNSAFE_STORAGE', 'NOT_FOUND'].includes(error.code)) throw error;
       }
-      return sessions.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    }
+    for (const id of metadata.keys()) if (!seen.has(id)) metadata.delete(id);
+    if (owners) for (const id of owners.bySession.keys()) {
+      if (seen.has(id)) continue;
+      indexSession(owners, {summary:{id}, keys:new Set()});
+      owners.bySession.delete(id);
+    }
+  }
+  function summarize(session) {
+    const first = session.messages.find(item => item.role === 'user');
+    return {
+      summary: { id:session.id, title:session.title, updatedAt:session.updatedAt, engine:session.engine,
+        providerId:session.providerId, modelId:session.modelId, engineRevision:session.engineRevision, running:session.running === true },
+      keys: new Set([session.firstRequestId, first?.requestId, first?.id].filter(Boolean)),
+    };
+  }
+  let owners;
+  function indexSession(index, {summary, keys}) {
+    const id = summary.id;
+    const previous = index.bySession.get(id) || [];
+    for (const key of previous) {
+      if (keys.has(key)) continue;
+      const claims = index.byRequest.get(key);
+      claims.delete(id);
+      if (!claims.size) index.byRequest.delete(key);
+    }
+    for (const key of keys) {
+      if (!index.byRequest.has(key)) index.byRequest.set(key, new Set());
+      index.byRequest.get(key).add(id);
+    }
+    index.bySession.set(id, keys);
+  }
+
+  async function ownerOf(requestId) {
+    if (!owners) {
+      const loaded = { byRequest:new Map(), bySession:new Map() };
+      for await (const session of records()) indexSession(loaded, session);
+      owners = loaded;
+    }
+    const claims = owners.byRequest.get(requestId);
+    if (claims?.size > 1) throw new WorkspaceError('IDEMPOTENCY_CONFLICT', 'Multiple conversations claim this first request', 409);
+    return claims?.values().next().value;
+  }
+
+  return {
+    listSessions() {
+      return serialize(async () => {
+        const sessions = [];
+        for await (const record of records()) sessions.push({...record.summary});
+        return sessions.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      });
     },
     getSession: async (id) => { await queue; return get(id); },
     createSession(input = {}) {
       return serialize(async () => {
         if (!input || typeof input !== 'object' || Array.isArray(input)) fail('Invalid session input');
         const now = new Date().toISOString();
+        const firstRequestId = input.firstRequestId === undefined ? null : validId(input.firstRequestId);
+        if (firstRequestId) {
+          const existingId = await ownerOf(firstRequestId);
+          if (existingId) return get(existingId);
+        }
         const selectedEngine = input.engine === undefined ? 'codex' : engine(input.engine);
         const session = { id: randomUUID(), title: input.title === undefined ? 'New conversation' : text(input.title, 'title', 200), engine: selectedEngine, providerId: input.providerId === undefined ? null : providerId(input.providerId), modelId: input.modelId === undefined ? null : modelId(input.modelId), threadId: null, messages: [], running: false, activeRequestId: null, createdAt: now, updatedAt: now, revision: 1, engineRevision: 0, engineHistory: [], handoff: null };
         selection(session);
+        if (firstRequestId) session.firstRequestId = firstRequestId;
         await atomicJson(root, `data/workspace/sessions/${session.id}.json`, session);
+        if (owners) indexSession(owners, summarize(session));
         return session;
       });
     },
@@ -245,6 +352,7 @@ export async function createStore(applicationRoot) {
         }
         session.updatedAt = now; session.revision++;
         await atomicJson(root, `data/workspace/sessions/${validId(id)}.json`, session);
+        if (owners) indexSession(owners, summarize(session));
         return session;
       });
     },
@@ -269,28 +377,7 @@ export async function createStore(applicationRoot) {
         if (input.contextUsage !== undefined) session.contextUsage = contextUsage(input.contextUsage);
         if (input.modelUsage !== undefined) session.modelUsage = modelUsage(input.modelUsage);
         if (input.requests !== undefined) {
-          if (!Array.isArray(input.requests) || input.requests.length > 500) fail('requests must contain at most 500 items');
-          const requestIds = new Set();
-          session.requests = input.requests.map((item) => {
-            if (!item || typeof item !== 'object' || Array.isArray(item)) fail('Invalid request ledger item');
-            const requestId = text(item.id, 'request.id', 160);
-            if (requestIds.has(requestId)) fail('Duplicate request id'); requestIds.add(requestId);
-            if (!['inProgress', 'completed', 'failed', 'interrupted'].includes(item.status)) fail('Invalid request status');
-            const startedAt = text(item.startedAt, 'request.startedAt', 80);
-            if (!Number.isFinite(Date.parse(startedAt))) fail('Invalid request timestamp');
-            const entry = { id: requestId, status: item.status, startedAt };
-            if (item.engineRevision !== undefined) entry.engineRevision = tokenCount(item.engineRevision, 'request.engineRevision');
-            const binding = entry.engineRevision ?? 0;
-            const previous = session.requests?.find(saved => saved.id === requestId);
-            if (binding > session.engineRevision) fail('A request cannot belong to a future engine binding');
-            if (previous && binding !== (previous.engineRevision ?? 0)) fail('A request engine binding cannot be changed');
-            if (item.completedAt !== undefined) {
-              entry.completedAt = text(item.completedAt, 'request.completedAt', 80);
-              if (!Number.isFinite(Date.parse(entry.completedAt))) fail('Invalid completion timestamp');
-            }
-            if (item.error !== undefined) entry.error = text(item.error, 'request.error', 1000, true);
-            return entry;
-          });
+          session.requests = requestLedger(input.requests, session.engineRevision, session.requests);
         }
         if (input.handoffDeliveredRequestId !== undefined) {
           const requestId = validId(input.handoffDeliveredRequestId);
@@ -300,6 +387,7 @@ export async function createStore(applicationRoot) {
         }
         session.updatedAt = new Date().toISOString(); session.revision++;
         await atomicJson(root, `data/workspace/sessions/${validId(id)}.json`, session);
+        if (owners) indexSession(owners, summarize(session));
         return session;
       });
     },

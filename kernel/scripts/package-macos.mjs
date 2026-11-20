@@ -30,7 +30,7 @@ export async function packageSource({ ref = 'release', outputDir = path.join(roo
   const release = parseReleaseMetadata({schemaVersion:1,version:declaredKernel.version});
   const mirror = parseReleaseMetadata(JSON.parse(git(['show', `${commit}:config/release.json`])));
   if(mirror.version!==release.version)throw new Error('Kernel version and compatibility mirror disagree.');
-  if(declaredKernel.layoutVersion===1)for(const name of ['kernel/package.json','kernel/package-lock.json']){const pkg=JSON.parse(git(['show', `${commit}:${name}`]));if(pkg.version!==release.version||(name.endsWith('lock.json')&&pkg.packages?.['']?.version!==release.version))throw new Error('Kernel package version mirror disagrees: '+name);}
+  if(declaredKernel.layoutVersion===1)for(const name of ['kernel/package.json','kernel/package-lock.json',...(git(['ls-tree','--name-only',commit,'kernel/tooling/sdk/package.json']).toString().trim()?['kernel/tooling/sdk/package.json','kernel/tooling/sdk/package-lock.json']:[])]){const pkg=JSON.parse(git(['show', `${commit}:${name}`]));if(pkg.version!==release.version||(name.endsWith('lock.json')&&pkg.packages?.['']?.version!==release.version))throw new Error('Kernel package version mirror disagrees: '+name);}
   const symbolic = git(['rev-parse', '--symbolic-full-name', ref]).toString().trim();
   const initialBranch = symbolic.startsWith('refs/heads/') ? symbolic.slice(11) : symbolic.startsWith('refs/remotes/') ? symbolic.split('/').slice(3).join('/') : 'release';
   const entries = git(['ls-tree', '-r', '-z', commit]).toString().split('\0').filter(Boolean).map(line => {

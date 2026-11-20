@@ -12,6 +12,19 @@ import {assertMcpClientsStopped} from '../contracts/mcp-access.mjs';
 const source = path.dirname(fileURLToPath(import.meta.url));
 const isInside = (root, file) => { const relative = path.relative(root, file); return relative && relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative); };
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+// Only an owned helper known to have exited (or never spawned) may be removed
+// by its parent. The helper itself uses the same path/device/inode checks.
+export async function cleanupExitedHelper(directory, job, child) {
+  if (child?.pid && !Number.isInteger(child.exitCode) && !child.signalCode) return false;
+  if (!job.helper || !/^sapling-setup-[A-Za-z0-9]+$/.test(job.helper.name) ||
+      path.resolve(directory) !== path.join(path.dirname(job.previousRoot), job.helper.name) ||
+      path.dirname(job.targetRoot) !== path.dirname(job.previousRoot)) return false;
+  const stat = await fs.lstat(directory).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+  if (!stat) return true;
+  if (!stat.isDirectory() || stat.isSymbolicLink() || String(stat.dev) !== job.helper.device || String(stat.ino) !== job.helper.inode || await fs.realpath(directory) !== directory) return false;
+  await fs.rm(directory, { recursive: true, force: true });
+  return true;
+}
 // Compatibility export: callers must supply a project. There is no OS-temp fallback.
 export function systemTemporaryParent(root) {
   if(typeof root!=='string'||!path.isAbsolute(root))throw issue('PROJECT_HELPER_LOCATION','A project folder is required for sibling setup storage.');
@@ -91,13 +104,13 @@ export async function beginFinalization(root, {project, management, language, fi
     await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',()=>reject(issue('PROJECT_HELPER_START_FAILED','The system helper could not start. Settings are saved; retry after inspecting the local status.')));});
     child.unref();
     // Acknowledgement proves the external script is executing, before management exits.
-    for(let i=0;i<350;i++) {if(await exists(path.join(temp,'waiting')))break;if(child.exitCode!==null)throw issue('PROJECT_HELPER_START_FAILED','The system helper exited before accepting the restart.');await pause(30);}
+    for(let i=0;i<350;i++) {if(await exists(path.join(temp,'waiting')))break;if(Number.isInteger(child.exitCode)||child.signalCode)throw issue('PROJECT_HELPER_START_FAILED','The system helper exited before accepting the restart.');await pause(30);}
     if(!await exists(path.join(temp,'waiting'))) throw issue('PROJECT_HELPER_START_FAILED','The system helper did not acknowledge the restart.');
     return {id,phase:'restarting',previousRoot:root,targetRoot,readyUrl:`http://127.0.0.1:${management.port}/`,message:'Settings saved. Wait for the restart, then export the app.'};
   } catch(error) {
     await previous.close().catch(()=>{});
     // A helper that has acknowledged may already be waiting. Cancel only through its own flag.
-    if(temp) {await fs.writeFile(path.join(temp,'cancel'),'1').catch(()=>{});if(!child?.pid)await fs.rm(temp,{recursive:true,force:true});}
+    if(temp) {await fs.writeFile(path.join(temp,'cancel'),'1').catch(()=>{});await cleanupExitedHelper(temp,job,child).catch(()=>{});}
     const current=await json(lease).catch(()=>null),now=await fs.lstat(lease).catch(()=>null);
     if(current?.id===id||(now?.isFile()&&now.ino===leaseIdentity.ino&&now.dev===leaseIdentity.dev))await fs.rm(lease,{force:true});
     const operation=path.join(root,'.runtime/kernel-operation.lock');if((await json(operation).catch(()=>null))?.id===id)await fs.rm(operation,{force:true});

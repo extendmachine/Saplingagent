@@ -1,3 +1,4 @@
+import {linkNativeProvider} from './native-provider-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -35,7 +36,7 @@ test('pinned native OpenCode reads a saved custom scheme and connects its local 
  const root=await fixture(t);const probe=http.createServer((req,res)=>{probe.requests++;res.end('{}');});probe.requests=0;await new Promise(resolve=>probe.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>probe.close(resolve)));
  const reserve=http.createServer();await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve));const port=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));
  await new ConfigurationStore(root).save({...profile,baseUrl:`http://127.0.0.1:${probe.address().port}/v1`});
- await fs.mkdir(path.join(root,'backend/agent-runtime/node_modules/.bin'),{recursive:true});await fs.symlink(path.join(project,'kernel/node_modules/.bin/opencode'),path.join(root,'backend/agent-runtime/node_modules/.bin/opencode'));
+ await linkNativeProvider(project,root,'opencode');
  await fs.mkdir(path.join(root,'backend/mcp-runtime'),{recursive:true});await fs.writeFile(path.join(root,'backend/mcp-runtime/server.mjs'),`import readline from 'node:readline';for await(const line of readline.createInterface({input:process.stdin})){const m=JSON.parse(line);if(m.id===undefined)continue;let result={};if(m.method==='initialize')result={protocolVersion:'2024-11-05',capabilities:{tools:{}},serverInfo:{name:'synthetic-mcp',version:'1'}};if(m.method==='tools/list')result={tools:[{name:'synthetic_tool',description:'Synthetic test tool',inputSchema:{type:'object',properties:{}}}]};process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');}`);
  const provider=new OpenCodeProvider({root,port,mcpEnv:{},instructions:'Synthetic test only',onEvent(){}});t.after(()=>provider.close());const catalog=await provider.start();const saved=catalog.providers.find(p=>p.label===profile.label);
  assert.ok(saved,'saved custom provider should be discoverable');assert.ok(saved.models.some(m=>m.id===profile.model));assert.equal(catalog.authenticated,true);assert.equal(catalog.mcp.ready,true);assert.equal(probe.requests,0);
@@ -48,4 +49,40 @@ test('saved Claude default starts and exposes its selection without Codex login'
  const server=await agentFixture(t,root,{ClaudeProviderClass:FakeClaude,OpenCodeProviderClass:FakeOpenCode,AppServerClass:class{constructor(){throw Error('Codex must not start');}}});await server.startAgent();
  const url=`http://127.0.0.1:${server.address().port}`;const status=await fetch(url+'/api/status').then(r=>r.json());assert.equal(status.ready,true);assert.equal(status.defaultEngine,'claude');assert.equal(status.codexReady,false);assert.equal(status.skills[0].name,'saplingagent:synthetic');
  const catalog=await fetch(url+'/api/engines').then(r=>r.json());assert.deepEqual(catalog.defaultSelection,{engine:'claude',providerId:`sapling-${saved.activeId}`,modelId:profile.model});assert.equal(catalog.engines.find(e=>e.id==='claude').ready,true);assert.doesNotMatch(JSON.stringify(catalog),/synthetic-only-key/);
+});
+
+test('external-only MCP makes no provider start or download on health, catalog or default startup',async t=>{
+  const root=await fixture(t);
+  await fs.mkdir(path.join(root,'config'),{recursive:true});
+  await fs.writeFile(path.join(root,'config/mcp-access.json'),JSON.stringify({schemaVersion:1,revision:1,enabled:true,externalOnly:true}));
+  let started=0;
+  class UnusedProvider extends FakeOpenCode{async start(){started++;throw Error('unexpected provider');}}
+  class UnusedCodex{constructor(){started++;throw Error('unexpected Codex');}}
+  const server=await agentFixture(t,root,{OpenCodeProviderClass:UnusedProvider,ClaudeProviderClass:UnusedProvider,AppServerClass:UnusedCodex});
+  await server.startAgent();
+  const base=`http://127.0.0.1:${server.address().port}`;
+  for(const route of ['/api/status','/api/engines','/api/engines?refresh=codex'])
+    assert.equal((await fetch(base+route)).status,200);
+  const denied=await fetch(base+'/api/engines/prepare',{method:'POST',headers:{'Content-Type':'application/json','Sec-Fetch-Site':'same-origin'},body:JSON.stringify({engine:'claude'})});
+  assert.equal(denied.status,409);
+  assert.equal(started,0);
+});
+
+test('a managed catalog remains available when unselected providers have no SDK or CLI',async t=>{
+  const root=await fixture(t);
+  await fs.mkdir(path.join(root,'kernel/tooling/sdk'),{recursive:true});
+  await fs.writeFile(path.join(root,'kernel/tooling/sdk/package-lock.json'),'{}');
+  let starts=0;
+  class Uninstalled extends FakeOpenCode{async start(){starts++;throw Error('Uninstalled provider');}}
+  const server=await agentFixture(t,root,{OpenCodeProviderClass:Uninstalled,ClaudeProviderClass:Uninstalled});
+  const base=`http://127.0.0.1:${server.address().port}`;
+  const response=await fetch(base+'/api/engines');
+  assert.equal(response.status,200);
+  const catalog=await response.json();
+  assert.ok(catalog.engines.find(item=>item.id==='opencode').needsPreparation);
+  assert.ok(catalog.engines.find(item=>item.id==='claude').needsPreparation);
+  assert.equal(starts,0);
+  const prepared=await fetch(base+'/api/engines/prepare',{method:'POST',headers:{'Content-Type':'application/json','Sec-Fetch-Site':'same-origin'},body:JSON.stringify({engine:'opencode'})}).then(r=>r.json());
+  assert.ok(prepared.engines.find(item=>item.id==='opencode').error);
+  assert.equal(prepared.engines.find(item=>item.id==='claude').error,null);
 });

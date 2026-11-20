@@ -148,6 +148,15 @@ cluster; it exits only after shutdown succeeds. A busy/refusing/unverifiable
 backend keeps the Dock app available with an error. Closing a browser is not Quit.
 Force Quit, crashes and power loss cannot execute this graceful lifecycle.
 
+On a fresh macOS launch, the app uses its bundle and the system language to
+show progress before checking project folder access. It opens the platform
+configuration for reading, including its legacy location, so macOS can ask
+the user about the folder. After access is available, the app uses the saved
+project language and starts its usual helper. A denied read shows recovery
+instructions and a Dock click retries the check. If access was denied before
+any helper started, the app can quit without sending stop to another process.
+An app that already started a helper still requires confirmed shutdown.
+
 `entry.mjs --dock-start|--dock-open|--dock-status|--dock-stop --dock-pid PID
 --dock-nonce UUID` is the local native-helper protocol. Start/open may prepare
 dependencies and return after readiness; native UI runs this asynchronously.
@@ -213,3 +222,29 @@ uses ordinary runtime startup when no native app exists. It never compiles as pa
 of AI configuration. Completion and startup failure are separately recorded;
 user conversations, source, identity and launcher remain intact. See
 `kernel/configuration/CONTRACT.md`.
+
+
+## Current shared tool runtime (2026-11-03)
+
+TASK-20261103-001 supersedes historical project-local-tool-only statements for third-party Node/npm, Codex/Claude/OpenCode programs, engine SDKs, Go and their download cache. Installation detects compatible local programs, otherwise uses a per-user versioned shared library. Native launch, repair and full app/backend restart resolve the same bindings. Project credentials/sessions/config/data/logs/build output remain local. Portable mode is available. See kernel/tooling/CONTRACT.md (from the project root), rule11 and docs/shared-runtime.html. Kernel remains0.9.9; release promotion and native Windows acceptance are separate.
+
+
+## Failure cleanup (2026-11-03)
+
+Management startup cancellation terminates only the child created by that startup;
+failed initialization may retain the recovery gateway intentionally. Transient
+native compilation stages are removed on failure as well as success, while
+explicitly retained failed-publication output remains available for recovery.
+Never remove active/shared tool generations automatically. Helper cleanup verifies
+the direct sibling, ownership metadata, directory identity and helper exit before
+deleting it; an unknown/live helper is retained with its cancellation flag.
+Signal shutdown retries a failed owned-service stop once and exits nonzero if it
+still fails, reporting the failure without an unhandled Promise rejection.
+
+Maintenance handoff includes the complete builtin shared-tool resolver import
+closure used by the copied worker's process contract, so it remains independent
+of the kernel source being replaced. Worker tests execute the detached copy.
+
+## Native owner recovery and runtime discovery (2026-11-17)
+
+The registered Dock app may recover a stale owner after a volume remount. Under the control lock it verifies the project path, ID, directory inode, matching record nonces, terminated owner and worker identities and absence of a live project runtime before archiving the old records in the local runtime folder. A copied folder, an active owner or unreadable identity requires inspection. A failed status probe with a possibly live controller reports an unverified runtime. Launch, restart and stop retry status before acting. A successful stop requires the previously verified controller PID to exit. A failed partial stop keeps the remaining service names available for retry.

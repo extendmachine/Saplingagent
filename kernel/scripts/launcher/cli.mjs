@@ -7,13 +7,19 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
-import { readConnections,defaultSelection,codexConnection,claudeConnections,openCodeConnections } from '../../contracts/ai-configuration.mjs';
+import { readConnections,readCredential } from '../../contracts/ai-configuration.mjs';
 import { initializeDownloadedRecords } from './recipient-records.mjs';
 import { setup } from '../setup.mjs';
 import {prepareManagedEnvironment} from '../../contracts/local-storage.mjs';
+import {ensureNativeConfigurationCommitted} from '../../contracts/configuration-write.mjs';
 import {assertSetupAvailable} from '../../contracts/kernel.mjs';
 import {readMcpAccess,assertMcpClientsStopped} from '../../contracts/mcp-access.mjs';
 import { codexBinary, claudeBinary, openCodeBinary, npmCommand, terminateOwned } from '../../contracts/local-process.mjs';
+
+import {hasTooling,ensureTools,toolSetStatus} from '../../tooling/tools.mjs';
+import {runtimeEngines,prepareProviderTools} from '../../tooling/providers.mjs';
+import {toolProgress} from '../../tooling/progress.mjs';
+import {readBindings} from '../../tooling/bindings.mjs';
 
 const t = (key, params) => {
   const text = formatMessage(launcherMessages,process.env.SAPLING_LANG,key,params);
@@ -30,9 +36,9 @@ const windows = process.platform === 'win32';
 const platformName = windows ? 'windows' : 'macos';
 const launcher = 'Saplingagent.sh';
 const settings = JSON.parse(await fs.readFile(path.join(root, `kernel/config/${platformName}.json`), 'utf8'));
-const cli = codexBinary(root);
-const npm = npmCommand();
-const opencode = openCodeBinary(root);
+let cli = codexBinary(root);
+const npm = hasTooling(root)||windows?npmCommand():{command:'npm',args:[]};
+let opencode = openCodeBinary(root);
 const stampFile = path.join(root, `.runtime/${platformName}-install.json`);
 const services = [...(await fs.access(path.join(root,'kernel/package.json')).then(()=>['kernel'],()=>[])), 'front', 'backend/app-builder', 'backend/mcp-runtime', 'backend/agent-runtime'];
 const authArgs = ['-c', 'cli_auth_credentials_store="file"'];
@@ -68,17 +74,22 @@ async function signature() {
   return hash.digest('hex');
 }
 async function installed() {
+  if (services.includes('kernel')) {
+    const {applicationDependencyStatus} = await import('../../launcher/dependencies.mjs');
+    return (await applicationDependencyStatus(root)).ready;
+  }
+  // Older complete-folder layouts predate the kernel and per-group receipts.
   try {
     const stamp = JSON.parse(await fs.readFile(stampFile, 'utf8'));
-    return stamp.signature === await signature() && stamp.arch === process.arch && await exists(cli)
+    return stamp.signature === await signature() && stamp.arch === process.arch
       && await exists(path.join(root, 'front/node_modules/vite/bin/vite.js'))
       && await exists(path.join(root, 'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json'))
-      && await exists(opencode) && await exists(claudeBinary(root));
+      && (hasTooling(root)?(await toolSetStatus(root,await runtimeEngines(root))).ready:await exists(cli)&&await exists(opencode)&&await exists(claudeBinary(root)));
   } catch { return false; }
 }
 async function coreInstalled() {
   if (!await exists(path.join(root,'kernel/package.json'))) return installed();
-  return await exists(cli) && await exists(opencode) && await exists(claudeBinary(root)) && await exists(path.join(root,'kernel/node_modules/vite/bin/vite.js'));
+  return await exists(path.join(root,'kernel/node_modules/vite/bin/vite.js')) && (hasTooling(root)?(await toolSetStatus(root,[])).ready:await exists(cli)&&await exists(opencode)&&await exists(claudeBinary(root)));
 }
 async function localSetup() {
   await setup({ importExistingAuth: false, projectRoot: root });
@@ -87,6 +98,7 @@ async function localSetup() {
   catch (error) { if (error.code !== 'EEXIST') throw error; }
 }
 async function loggedIn() {
+  await ensureNativeConfigurationCommitted(root);
   const result = await run(cli, [...authArgs, 'login', 'status'], { capture: true });
   if (result.code === 0) return true;
   if (/not logged in/i.test(result.output + result.errorOutput)) return false;
@@ -114,6 +126,11 @@ async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
       console.log(t("Dependency check complete: installed versions match this local source. See the source result above. Configure AI or start; use install --repair for damaged dependencies."));
       return;
     }
+    const engines=coreOnly?[]:await runtimeEngines(root);
+    if(hasTooling(root)){
+    await ensureTools(root,{engines,onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
+    cli=codexBinary(root);opencode=openCodeBinary(root);env.SEED_CODEX_BIN=windows?cli:path.join(root,'kernel/scripts/macos/codex.sh');
+    }else{
     if(!appOnly){
     const packageFile = path.join(stage, 'package.json');
     await fs.mkdir(path.dirname(packageFile), { recursive: true });
@@ -131,23 +148,35 @@ async function install(repair = false, {coreOnly=false,appOnly=false} = {}) {
     catch (error) { if (hasPrevious) await fs.rename(previous, destination); throw error; }
     if (hasPrevious) await fs.rm(previous, { recursive: true, force: true });
     }
+    }
     // A failed staging download leaves a previously complete installation usable.
     // Once npm ci can replace business dependencies, the old marker is no longer valid.
-    await fs.rm(stampFile, { force: true });
+    if (!coreOnly) await fs.rm(stampFile, { force: true });
     for (const service of coreOnly?['kernel']:appOnly?services.filter(s=>s!=='kernel'):services) {
       console.log(t("Installing locked dependencies for {p0}…",{p0:(service)}));
       const installArgs = ['ci', '--include=optional', ...(['kernel', 'backend/agent-runtime'].includes(service) ? [] : ['--ignore-scripts']), '--no-audit', '--no-fund'];
       await required(npm.command, [...npm.args, ...installArgs], { cwd: path.join(root, service) });
     }
-    await required(opencode, ['--version'], { capture: true });
-    await required(claudeBinary(root), ['--version'], { capture: true });
+    // A CLI discovered in an old kernel dependency tree can be removed by npm ci.
+    if(hasTooling(root)&&!(await toolSetStatus(root,engines)).ready){
+      await ensureTools(root,{engines,onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
+      cli=codexBinary(root);opencode=openCodeBinary(root);env.SEED_CODEX_BIN=windows?cli:path.join(root,'kernel/scripts/macos/codex.sh');
+    }
+    if(!hasTooling(root)){
+      await required(opencode, ['--version'], { capture: true });
+      await required(claudeBinary(root), ['--version'], { capture: true });
+    }
     await localSetup();
     if(!coreOnly)await fs.writeFile(stampFile, JSON.stringify({ schemaVersion: 1, nodeVersion: process.versions.node, codexVersion: settings.codexVersion, arch: process.arch, signature: await signature(), installedAt: new Date().toISOString() }, null, 2) + '\n');
     console.log(coreOnly?t("Local kernel installed. Continuing to browser setup."):appOnly?t("Application dependencies are ready. Continuing the build."):t("Installation complete. Choose Configure AI to connect your account or API provider, then Start app."));
   } finally { await fs.rm(stage, { recursive: true, force: true }); if(ownsLock)await fs.rm(lock, { recursive: true, force: true }); }
 }
 async function login(deviceAuth) {
-  if (!await installed()) throw new Error(t("Install project dependencies first: bash Saplingagent.sh install --repair"));
+  if(hasTooling(root)){
+    if(!await coreInstalled())throw new Error(t("Install the local kernel first: bash Saplingagent.sh install"));
+    await prepareProviderTools(root,['codex'],{onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
+    cli=codexBinary(root);
+  }else if (!await installed()) throw new Error(t("Install project dependencies first: bash Saplingagent.sh install --repair"));
   await localSetup();
   if (await loggedIn()) { console.log(t("Project login credentials are saved. Choose Start app in Saplingagent.sh; if requests fail authentication, log out of this project as documented and log in again.")); return; }
   console.log(t("Official Codex will open your browser. Log in with your own ChatGPT/Codex account."));
@@ -158,12 +187,17 @@ async function login(deviceAuth) {
   console.log(t("Project login complete. Choose Start app in Saplingagent.sh."));
 }
 async function logout() {
+  await ensureNativeConfigurationCommitted(root);
   if (!await exists(cli)) throw new Error(t("Install project dependencies first: bash Saplingagent.sh install --repair"));
   await required(cli, [...authArgs, 'logout'], { capture: true });
   console.log(t("Logged out of the Codex account for this project; application files and sessions are retained. Choose Configure AI in Saplingagent.sh to sign in again."));
 }
 async function configureOpenCode() {
-  if (!await installed()) throw new Error(t("Install project dependencies first: bash Saplingagent.sh install --repair"));
+  if(hasTooling(root)){
+    if(!await coreInstalled())throw new Error(t("Install the local kernel first: bash Saplingagent.sh install"));
+    await prepareProviderTools(root,['opencode'],{onProgress:event=>console.log(toolProgress(event,process.env.SAPLING_LANG))});
+    opencode=openCodeBinary(root);
+  }else if (!await installed()) throw new Error(t("Install project dependencies first: bash Saplingagent.sh install --repair"));
   const data = path.join(root, 'local-secrets/opencode/data');
   const config = path.join(root, 'local-secrets/opencode/config');
   await Promise.all([fs.mkdir(data, { recursive: true, mode: 0o700 }), fs.mkdir(config, { recursive: true, mode: 0o700 })]);
@@ -203,18 +237,31 @@ async function configuredAccess() {
   const mcp = await readMcpAccess(root);
   if (mcp.enabled && mcp.externalOnly) return true;
   const connections = await readConnections(root);
-  const selection = defaultSelection(connections);
   const profile = connections.profiles.find(p=>p.id===connections.activeId);
   if(profile?.kind === 'api' || profile?.kind === 'subscription'){
-    if(selection.engine === 'codex')await codexConnection(root,connections);
-    else if(selection.engine === 'claude')await claudeConnections(root,connections);
-    else await openCodeConnections(root,connections);
+    await readCredential(root,profile);
     return true;
   }
-  return loggedIn();
+  return await exists(cli)&&loggedIn();
 }
 async function start(noOpen) {
-  if (!await installed()) throw new Error(t("Installation is incomplete or dependency lockfiles have changed. Run: bash Saplingagent.sh install --repair"));
+  if (services.includes('kernel')) {
+    const {ensureApplicationDependencies} = await import('../../launcher/dependencies.mjs');
+    const controller = new AbortController();
+    const cancel = () => controller.abort();
+    const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+    for (const signal of signals) process.on(signal, cancel);
+    try {
+      await ensureApplicationDependencies(root, {signal:controller.signal, onProgress:line=>console.log(line)});
+      controller.signal.throwIfAborted();
+    } finally {
+      for (const signal of signals) process.off(signal, cancel);
+    }
+    cli = codexBinary(root);
+    env.SEED_CODEX_BIN = windows ? cli : path.join(root, 'kernel/scripts/macos/codex.sh');
+  } else if (!await installed()) {
+    throw new Error(t("Installation is incomplete or dependency lockfiles have changed. Run: bash Saplingagent.sh install --repair"));
+  }
   await localSetup();
   if (!await configuredAccess()) throw new Error(t("Choose Configure AI in Saplingagent.sh and save an account/API/subscription scheme or enable external-only MCP access."));
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
@@ -274,18 +321,22 @@ async function start(noOpen) {
   }
 }
 async function doctor() {
+  for(const [name,item]of Object.entries(readBindings(root)?.tools||{}))console.log(t('Tool {name}: {source}, {version}; {path}',{name,source:t(item.source==='shared'?'shared tool library':'local installation'),version:item.version,path:item.path}));
   console.log(t("{p0} {p1}; Node {p2}; folder: {p3}",{p0:(windows ? 'Windows' : 'macOS'),p1:(process.arch),p2:(process.versions.node),p3:(root)}));
   const local = await installed();
-  console.log(t("Project dependencies:{p0}",{p0:(local ?t("installed"):t("not installed or changed; run bash Saplingagent.sh install --repair"))}));
+  const repairHelp = services.includes('kernel')
+    ? "missing or changed; start the app to prepare dependencies"
+    : "not installed or changed; run bash Saplingagent.sh install --repair";
+  console.log(t("Project dependencies:{p0}", {p0:local ? t("installed") : t(repairHelp)}));
   let authenticated = false;
   if (await exists(cli)) {
     const version = await run(cli, ['--version'], { capture: true });
     const versionLabel = version.output.trim().match(/^codex-cli (\d+\.\d+\.\d+(?:[-.a-z0-9]+)?)$/i)?.[1];
     if (version.code !== 0 || !versionLabel) throw new Error(t("Codex executable check failed. Reinstall; login status was not checked."));
     console.log(`Codex：${versionLabel}`);
-    authenticated = await configuredAccess();
-    console.log(t("Project AI access:{p0}",{p0:(authenticated ?t("configured (does not verify current network or quota)"):t("not configured; choose Configure AI in Saplingagent.sh"))}));
   }
+  authenticated = await configuredAccess();
+  console.log(t("Project AI access:{p0}",{p0:(authenticated ?t("configured (does not verify current network or quota)"):t("not configured; choose Configure AI in Saplingagent.sh"))}));
   const config = JSON.parse(await fs.readFile(path.join(root, 'config/runtime.json'), 'utf8'));
   let online = false;
   try {

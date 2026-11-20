@@ -180,3 +180,40 @@ test('standalone kernel dependency repair also refuses connected MCP clients',as
  assert.deepEqual(await fs.readFile(path.join(f.root,'kernel/package-lock.json')),before);
  assert.equal(await fs.access(path.join(f.root,'.runtime/kernel-operation.lock')).then(()=>true,()=>false),false);
 });
+
+test('owned shutdown cancels a running group and releases the project installer lock',async t=>{
+  const {root}=await fixture(t),controller=new AbortController();
+  let entered;
+  const started=new Promise(resolve=>{entered=resolve;});
+  const pending=ensureApplicationDependencies(root,{
+    signal:controller.signal,
+    install:async (_root,_group,_settings,_progress,signal)=>{
+      assert.equal(signal,controller.signal);
+      entered();
+      await delay(10000,undefined,{signal});
+    },
+  });
+  await Promise.race([started,pending]);
+  controller.abort();
+  await assert.rejects(pending,error=>error.name==='AbortError');
+  await assert.rejects(fs.access(path.join(root,`.runtime/${platform}-install.lock`)),{code:'ENOENT'});
+});
+
+test('optional-only services require a lock and a successful install per revision, including platform omissions',async t=>{
+  const f=await fixture(t);
+  await ensureApplicationDependencies(f.root,{install:f.install});
+  const dir=path.join(f.root,'backend/optional');
+  const manifest={name:'optional',optionalDependencies:{'fixture-native':'1.0.0'}};
+  const lock={lockfileVersion:3,packages:{'':{optionalDependencies:manifest.optionalDependencies},'node_modules/fixture-native':{version:'1.0.0',optional:true,os:['fixture-only']}}};
+  await write(path.join(dir,'package.json'),manifest);
+  await assert.rejects(applicationDependencyStatus(f.root),{code:'DEPENDENCY_LOCK_MISSING'});
+  await write(path.join(dir,'package-lock.json'),lock);
+  let installs=0;
+  const options={install:async(_root,group)=>{assert.equal(group.name,'backend/optional');installs++;}};
+  assert.equal((await ensureApplicationDependencies(f.root,options)).changed,true);
+  assert.equal((await ensureApplicationDependencies(f.root,options)).changed,false);
+  lock.packages['node_modules/fixture-native'].cpu=['x64'];
+  await write(path.join(dir,'package-lock.json'),lock);
+  assert.equal((await ensureApplicationDependencies(f.root,options)).changed,true);
+  assert.equal(installs,2);
+});

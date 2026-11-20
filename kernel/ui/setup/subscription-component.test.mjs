@@ -61,3 +61,15 @@ test('existing error and success messages rerender in the selected language with
 test('failed preference save is explicit, retryable and never clears a credential draft',async()=>{
  const h=await fixture();await subscription(h);await h.change('Subscription token','synthetic-language-retry-token');h.failLanguage('CONFIG_BUSY');await h.language('zh');assert.match(h.text(),/尚未成功保存到项目/);assert.equal(h.password().props.value,'synthetic-language-retry-token');assert.ok(h.button('重新保存语言'));h.failLanguage(null);await h.click('重新保存语言');assert.equal(h.button('重新保存语言'),undefined);assert.equal(h.password().props.value,'synthetic-language-retry-token');assert.equal(writes(h).length,0);
 });
+
+test('saved API key stays available only at its original origin',async()=>{
+ const h=await fixture({profiles:[savedApi]});
+ await h.click(savedApi.label); await h.change('API Base URL','https://PROVIDER.example:443/other');
+ assert.equal(h.password().props.required,false);
+ await h.change('API Base URL','https://another.example/v1');
+ assert.equal(h.password().props.required,true);assert.equal(h.button('Fetch models').props.disabled,true);
+ assert.match(h.text(),/new provider address/);
+ await h.change('API key','synthetic-new-key');assert.equal(h.button('Fetch models').props.disabled,false);
+ await h.change('API Base URL',savedApi.baseUrl);
+ assert.equal(h.password().props.value,'');assert.equal(h.password().props.required,false);
+});

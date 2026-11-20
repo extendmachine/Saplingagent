@@ -29,7 +29,15 @@ export function changeProfileEngine(profile: Profile, engine: Profile['engine'])
   };
 }
 
-export const canKeepCredential = (profile: Profile) => Boolean(profile.id && profile.hasKey && profile.kind !== 'chatgpt');
+export function sameProviderOrigin(left: string, right: string) {
+  try { return new URL(left).origin === new URL(right).origin; }
+  catch { return false; }
+}
+
+export function canKeepCredential(profile: Profile, saved?: Profile) {
+  if (!profile.id || !profile.hasKey || !saved?.hasKey || saved.kind !== profile.kind) return false;
+  return profile.kind === 'subscription' || (profile.kind === 'api' && sameProviderOrigin(profile.baseUrl, saved.baseUrl));
+}
 
 // Public profile metadata includes hasKey and API defaults; neither belongs to
 // the subscription wire format. Credentials never move between auth modes.

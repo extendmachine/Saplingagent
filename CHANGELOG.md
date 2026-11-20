@@ -1,5 +1,14 @@
 # Saplingagent changelog
 
+## Unreleased reliability fixes on main — kernel0.9.9 (2026-11-03)
+
+- Recover failed chat restores without leaving the UI running; isolate event cancellation from status polling and give chat headers a120-second transport budget.
+- Skip individually invalid session files unchanged. Save terminal metadata after permanent response rejection, retain true request outcomes, and keep visible unsaved output available to copy.
+- Close replaced Codex transports and ignore stale events. An unconfirmed Stop keeps only its own task reserved, without terminating other conversations.
+- Correct Windows environment syntax, clean cancelled startup/transient build/early-exit helpers by ownership, and observe/retry shutdown failures.
+- Keep logging best-effort, Git optional locking disabled, and recover only proven-dead version-label owners. Preserve unknown locks and shared tool generations.
+- These are main development changes, not a release/tag promotion. Deploy application-owned chat/Agent/Workspace together; kernel-only updates cannot replace custom application code.
+
 ## 0.9.9 — AI settings without rebuilding your project (2026-10-29)
 
 - Settings → Configure AI now opens a dedicated account/provider/model/MCP page. Project name, folder, icon, existing app and conversation history are retained.

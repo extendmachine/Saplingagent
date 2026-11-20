@@ -82,3 +82,20 @@ settings. `locale -a` confirms `en_US.UTF-8` and `fr_FR.UTF-8` on the test Mac.
 Actual child-process regression verifies Unicode executable paths and stable
 timestamps in unset, C and French environments. Only the `ps` child receives the
 fixed locale; no system setting or parent environment is changed.
+
+
+Checked2026-11-03: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_Environment_Variables
+(Microsoft, public, no sign-in required to read) defines $Env:NAME environment
+syntax. Launcher browser open, verified Go extraction and directory rename use
+that syntax; source checks do not replace native Windows acceptance.
+
+## First-launch folder access on macOS
+
+Checked 2026-11-18 for TASK-20261118-001. These Apple bundle resource keys
+supply the reason shown when macOS requests the corresponding folder access.
+The owner chooses whether to allow the request. The public documentation covers
+macOS 10.15 and later and is accessible without signing in.
+
+- [Desktop folder](https://developer.apple.com/documentation/bundleresources/information-property-list/nsdesktopfolderusagedescription)
+- [Documents folder](https://developer.apple.com/documentation/bundleresources/information-property-list/nsdocumentsfolderusagedescription)
+- [Downloads folder](https://developer.apple.com/documentation/bundleresources/information-property-list/nsdownloadsfolderusagedescription)

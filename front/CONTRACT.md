@@ -180,3 +180,18 @@ Structured error causes retain code/message. UI displays a localized explanation
 ## Project browser tab title (TASK-20261027-002)
 
 The application tab displays the configured project folder name from read-only GET /api/runtime/status.projectFolderName, not the native app display name. An older runtime falls back to the basename of applicationRoot (macOS/Windows paths); unavailable metadata retains the localized Saplingagent title. The name is plain text, remains unchanged when switching English/Chinese and is not stored in browser storage. Read once on mount and refresh on window focus with cancellation and a five-second deadline; temporary failures keep the last known name. No chat remount, model request, configuration write or new dependency/service. Frontend source/build deployment is required; kernel-only upgrades do not replace application UI. A cold controller restart enables the new explicit field.
+
+
+## Recovery and request boundaries (2026-11-03)
+
+Restore failures clear only the current view's running flag, retain its conversation
+and show an actionable error. Event subscriptions have their own cancellation
+controller; changing them does not stop the component-lifetime status polling.
+Chat response headers have a120-second transport budget; other HTTP requests keep
+10seconds. This is not a whole-turn inference deadline and does not cancel server
+work; request IDs and snapshot recovery remain required. Empty fallback titles
+are rendered using the current interface language.
+
+When the active conversation's last request failed before the engine produced an assistant message, reopening it restores the failed state from the request ledger. Retry requires a user action and uses the original request ID, attachment IDs and engine binding. For older snapshots without a recorded outcome, a failed assistant message still identifies a failed turn.
+
+A permanent response-storage error on the chat stream or its recovery subscription leaves the received answer visible for copying in the current view. A background session read for the same request cannot replace that answer with an older saved body.

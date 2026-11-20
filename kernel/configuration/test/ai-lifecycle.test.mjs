@@ -66,11 +66,12 @@ test('mode defaults remain compatible while mismatched or unknown session modes 
  await saveSession(session);const record=await read(files[0]);record.configurationMode='setup';await fs.writeFile(files[0],JSON.stringify(record));await assert.rejects(readSession(directory,root),{code:'CONFIGURATION_OWNERSHIP'});
  await assert.rejects(saveSession({...session,configurationMode:'other'}),{code:'CONFIGURATION_MODE_INVALID'});
 });
-async function realReturningA(t,{fail=false}={}){
+async function realReturningA(t,{fail=false,unwritableLog=false}={}){
  const f=await fixture(t);const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});await once(child,'spawn');t.after(async()=>{if(child.exitCode===null&&child.signalCode===null){child.kill();await once(child,'exit');}});
  f.session.pid=child.pid;f.session.restartAfterClose='runtime';await saveSession(f.session);
  await fs.writeFile(path.join(f.directory,'process.json'),JSON.stringify({id:f.session.id,nonce:f.session.nonce,pid:child.pid}));
  await fs.writeFile(path.join(f.root,'.runtime/management-address.json'),JSON.stringify({pid:child.pid}));
+ if(unwritableLog){await fs.mkdir(path.join(f.root,'logs'),{recursive:true});await fs.writeFile(path.join(f.root,'logs/project-launcher'),'synthetic obstacle');}
  let resumed=0;
  const done=finishConfiguration(f.root,f.directory,{timeout:10000,resume:async(root,session)=>{resumed++;assert.equal(root,f.root);assert.equal(session.restartAfterClose,'runtime');assert.equal(await exists(f.directory),false);assert.equal(await exists(path.join(root,'.runtime/kernel-operation.lock')),false);assert.equal(await exists(path.join(root,'.runtime/management-address.json')),false);if(fail)throw Object.assign(Error('Synthetic startup failure'),{code:'CONFIGURATION_RESTART_FAILED'});return {restarted:true,url:'http://127.0.0.1:61234/'};}});
  const outcome=done.then(value=>({value}),error=>({error}));
@@ -95,4 +96,15 @@ test('native restart reuses a validated existing app even when it is initially s
  const result=await resumeAIConfiguration(root,{...session,restartAfterClose:'native',restartArtifact:'Application.app'},{open:async file=>opened.push(file),launcher:{runtime:async()=>({phase:'ready',url:'http://127.0.0.1:61235/'})}});
  assert.equal(result.restarted,true);assert.deepEqual(opened,[path.join(root,'Application.app')]);
  await assert.rejects(resumeAIConfiguration(root,{...session,restartAfterClose:'native',restartArtifact:'../Other.app'}),{code:'CONFIGURATION_RESTART_FAILED'});
+});
+
+test('unwritable diagnostic logs preserve cleanup and the actual AI restart outcome',async t=>{
+ for(const fail of [false,true]){
+   const {root,result}=await realReturningA(t,{fail,unwritableLog:true});
+   if(fail)assert.equal(result.error.code,'CONFIGURATION_RESTART_FAILED');
+   else assert.equal(result.value.restarted,true);
+   for(const name of ['configuration-complete','ai-configuration']){
+     assert.equal((await read(path.join(root,'.runtime',name+'.json'))).phase,fail?'restart-failed':'complete');
+   }
+ }
 });

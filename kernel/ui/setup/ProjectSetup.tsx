@@ -73,6 +73,7 @@ export function ProjectSetup({
     [notice, setNotice] = useState<Message|null>(null);
   const initialized = useRef(false),
     localOperation = useRef(false),
+    pollError = useRef<unknown>(null),
     previousRevision = useRef(configurationRevision),
     picker = useRef<HTMLInputElement>(null);
   const running = state?.job?.phase === "running";
@@ -101,9 +102,20 @@ export function ProjectSetup({
     let timer: ReturnType<typeof setTimeout>;
     async function poll() {
       try {
-        if (!stopped && !localOperation.current && !handoff) await refresh();
+        if (!stopped && !localOperation.current && !handoff) {
+          await refresh();
+          if (!stopped) {
+            const previous = pollError.current;
+            pollError.current = null;
+            if (previous) setError((current: unknown) => current === previous ? null : current);
+          }
+        }
       } catch (e) {
-        if (!stopped && !localOperation.current && !handoff) setError(e);
+        if (!stopped && !localOperation.current && !handoff) {
+          const previous = pollError.current;
+          pollError.current = e;
+          setError((current: unknown) => current === null || current === previous ? e : current);
+        }
       }
       if (!stopped) timer = setTimeout(poll, 1500);
     }

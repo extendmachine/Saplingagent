@@ -1,6 +1,6 @@
 # AI Project Control Specification and Rule Index
 
-Specification version: `2026-10-15.1`
+Specification version: `2026-11-03.1`
 
 This document is the only source of project public control specifications and rule indexes. Codex, Claude Code and other AI enter this file from the root directory entrance file, and then read the relevant details according to the current task.
 
@@ -175,3 +175,8 @@ Version2026-10-12.1 records the Saplingagent owner's explicit instruction to syn
 ## Main-first development and release-only presentation (2026-10-15)
 
 Version2026-10-15.1 records the owner's updated maintainer workflow in rule04: main is for personal development/testing; release is the public default/distribution branch. Shared changes enter main first, then an authorized release synchronization. Explicit main-only work does not update release. Demo/showcase media and presentation blocks live only on release, while main links to the release introduction. Preserve release presentation during code promotion; the existing direct-main authorization and customer Git ownership remain unchanged.
+
+
+## Saplingagent shared tool runtime (2026-11-03)
+
+Version2026-11-03.1 records the owner's explicit approval to reuse compatible local programs and share a per-user third-party tool library. Rule11 defines this narrow exception for Node/npm, AI CLI/SDK dependencies, Go and their download cache. Application source, credentials, sessions, data, configuration and process state remain project-local. Portable mode remains available; Full Access and main-first/release authorization are unchanged.

@@ -93,3 +93,15 @@ test('language writes block maintenance until completion and release their count
  assert.equal(await readLanguage(root),'zh');
  manager.closed=true;const closed=await fetch(`http://127.0.0.1:${options.frontPort}/api/runtime/language`,{method:'POST',headers:{origin:`http://127.0.0.1:${options.frontPort}`},body:'{"language":"en"}'});assert.equal(closed.status,409);assert.equal(manager.gatewayWrites,0);
 });
+
+test('storage rejection and unconfirmed stop have actionable bilingual explanations', () => {
+  for (const language of ['en', 'zh']) {
+    for (const code of ['SESSION_TOO_LARGE', 'SESSION_SAVE_REJECTED', 'STOP_UNCONFIRMED', 'INVALID_RUNTIME_HOME']) {
+      const result = describeError({ code, message: 'Synthetic details' }, language);
+      assert.ok(result.summary && result.action); assert.notEqual(result.summary, 'INVALID_RUNTIME_HOME');
+      assert.notEqual(result.summary, 'The operation could not finish.'); assert.notEqual(result.summary, '操作未能完成。');
+    }
+  }
+  assert.match(describeError({ code: 'SESSION_TOO_LARGE' }, 'zh').action, /复制/);
+  assert.match(describeError({ code: 'STOP_UNCONFIRMED' }, 'en').action, /Other conversations/);
+});

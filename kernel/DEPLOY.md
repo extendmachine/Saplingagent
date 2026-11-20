@@ -23,6 +23,8 @@ Product distribution versions are declared separately in config/release.json and
 
 Fresh0.9.2 installer installs kernel/package-lock.json into kernel/node_modules, independently from application dependency declarations. AI setup builds with kernel's Vite/React. No global install or customer Git change. Direct control URL /__saplingagent/kernel works while app Vite is down. Upgrade stages before shutdown, then a copied temporary worker survives runtime exit, repairs only kernel dependencies with project Node/npm and starts scripts/dev.mjs. Check actual runtime readiness and new selected URL. Source apply does not imply account/model readiness. Worker failures remain visible with manual restore/retry; no automatic rollback. A crashed worker lease must be inspected before manual cleanup.
 
+If the connection closes before the 202 handoff finishes, reopen the running app and retry. If the standalone recovery helper cannot write its operation lock, free disk space or correct access permissions and retry. The helper cleans up its own incomplete lock and preserves a lock belonging to another operation.
+
 Schema2/0.9.1 cannot auto-transition: use a new complete0.9.2 folder and deliberate customer app/data/config migration; preserve the old folder. Do not regenerate its baseline. Native Windows process survival, install/login/restart still requires hardware acceptance; macOS tests are not Windows acceptance.
 
 ## Customer-local launcher / product0.9.3
@@ -126,3 +128,8 @@ Keep locale catalogs and their public helpers with the kernel source. Shared-cat
 ## AI-only settings for existing projects (2026-10-29)
 
 Existing projects have a separate AI-only configuration entry from runtime Settings (or `configure --ai-only`). It retains project identity/folder/icon/native launcher and existing data; its first AI configuration write pauses owned services, and Finish resumes the existing application after the external host exits and is cleaned. Installation and plain configure retain the full project setup workflow. The server mode, not only hidden UI, separates these operations. Kernel remains0.9.9.
+
+
+## Current shared tool runtime (2026-11-03)
+
+TASK-20261103-001 supersedes historical project-local-tool-only statements for third-party Node/npm, Codex/Claude/OpenCode programs, engine SDKs, Go and their download cache. Installation detects compatible local programs, otherwise uses a per-user versioned shared library. Native launch, repair and full app/backend restart resolve the same bindings. Project credentials/sessions/config/data/logs/build output remain local. Portable mode is available. See kernel/tooling/CONTRACT.md (from the project root), rule11 and docs/shared-runtime.html. Kernel remains0.9.9; release promotion and native Windows acceptance are separate.

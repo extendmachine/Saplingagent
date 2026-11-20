@@ -78,11 +78,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
 
  const version = previous.version;
  if (!/^\d+\.\d+\.\d+$/.test(version || '')) throw Error("Declare the owner-selected three-part kernel version in kernel/manifest.json first.");
- for (const name of ['kernel/package.json','kernel/package-lock.json','config/release.json']) {
+ for (const name of ['kernel/package.json','kernel/package-lock.json','config/release.json',...((await fs.access(path.join(root,'kernel/tooling/sdk/package.json')).then(()=>true,()=>false))?['kernel/tooling/sdk/package.json','kernel/tooling/sdk/package-lock.json']:[])]) {
   const target=path.join(root,name), current=JSON.parse(await fs.readFile(target,'utf8'));
-  const valid=current.version===version && (name!=='kernel/package-lock.json'||current.packages?.['']?.version===version);
+  const valid=current.version===version && (!name.endsWith('package-lock.json')||current.packages?.['']?.version===version);
   if (check && !valid) throw Error('Kernel version mirror is stale: '+name);
-  if (!check) { current.version=version;if(name==='kernel/package-lock.json')current.packages[''].version=version;await fs.writeFile(target,JSON.stringify(current,null,2)+'\n'); }
+  if (!check) { current.version=version;if(name.endsWith('package-lock.json'))current.packages[''].version=version;await fs.writeFile(target,JSON.stringify(current,null,2)+'\n'); }
  }
 	const files = await scanKernelFiles(root);
 	const manifest = validateKernelManifest({

@@ -1,3 +1,4 @@
+import {prepareFixtureBindings} from '../../tooling/test/fixture-bindings.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -22,6 +23,7 @@ async function copyRuntimeFixture(root) {
     await fs.copyFile(path.join(project, file), target);
   }
 }
+
 
 
 test('real launcher skips foreign ports, routes actual addresses, retains them across restart and cleans discovery', { timeout: 20000 }, async t => {
@@ -49,6 +51,7 @@ const s=http.createServer((req,res)=>{res.setHeader('Content-Type','application/
     await fs.writeFile(path.join(root, file), envKey ? code.replace('process.env.SEED_WORKSPACE_PORT || process.env.SEED_BUILDER_PORT || process.env.SEED_AGENT_PORT', `process.env.${envKey}`) : code);
   }
   const sdk = path.join(root, 'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json'); await fs.mkdir(path.dirname(sdk), { recursive: true }); await fs.writeFile(sdk, '{}');
+  await prepareFixtureBindings(root);
   child = spawn(process.execPath, [path.join(root, 'scripts/dev.mjs')], { cwd: root, env: { ...process.env, SEED_ROOT: root, SEED_IMPORT_EXISTING_AUTH: '0' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = ''; child.stdout.on('data', chunk => output += chunk); child.stderr.on('data', chunk => output += chunk);
   const file = path.join(root, '.runtime/runtime-address.json'); let address;
@@ -95,6 +98,7 @@ test('startup publishes recovery controls even when the application frontend is 
  const parent=path.join(project,'.cache/runtime-core-only');await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,'app-'));
  await copyRuntimeFixture(root);
  const control=http.createServer();const start=await listenAscending(control,35000);await new Promise(r=>control.close(r));await fs.mkdir(path.join(root,'config'), {recursive:true});await fs.writeFile(path.join(root,'config/runtime.json'),JSON.stringify(Object.fromEntries(portKeys.map((k,i)=>[k,start+i]))));
+ await prepareFixtureBindings(root);
  const child=spawn(process.execPath,[path.join(root,'scripts/dev.mjs')],{cwd:root,env:{...process.env,SEED_ROOT:root,SEED_IMPORT_EXISTING_AUTH:'0'},stdio:'ignore'});
  t.after(async()=>{if(child.exitCode===null){child.kill('SIGTERM');await until(()=>child.exitCode!==null);}await fs.rm(root,{recursive:true,force:true});});
  let address;await until(async()=>{try{address=JSON.parse(await fs.readFile(path.join(root,'.runtime/runtime-address.json'),'utf8'));return true;}catch{return false;}});

@@ -23,12 +23,40 @@ export async function kernelRequest(req,res,{manager,onMaintenance},route,send){
   if(!onMaintenance)throw Object.assign(Error('This runtime does not support maintenance handoff.'),{code:'KERNEL_UNAVAILABLE',status:503});
   if(action==='apply')await inspectKernelPlan(manager.root,input[key]);
   else if(!(await kernelBackups(manager.root)).some(b=>b.id===input[key]&&b.phase!=='invalid'))throw Object.assign(Error('Source backup was not found.'),{code:'INVALID_BACKUP',status:400});
-  const undo=await manager.prepareMaintenance();let worker;
-  try{worker=await startMaintenance(manager.root,action,input[key]);}
-  catch(error){await undo();throw error;}
-  let committed=false;
-  res.once('finish',()=>{committed=true;worker.commit();void onMaintenance();});
-  res.once('close',()=>{if(!committed){worker.abort();void undo();}});
-  send(res,202,{jobId:worker.jobId,url:worker.url});return true;
+  if (res.destroyed) return true;
+  const undo = await manager.prepareMaintenance();
+  let worker, committed = false;
+  try {
+    if (res.destroyed) return true;
+    worker = await startMaintenance(manager.root, action, input[key]);
+    if (res.destroyed) return true;
+    const delivered = await new Promise((resolve, reject) => {
+      const cleanup = () => {
+        res.off('finish', finish);
+        res.off('close', close);
+      };
+      const finish = () => { cleanup(); resolve(true); };
+      const close = () => { cleanup(); resolve(false); };
+      res.once('finish', finish);
+      res.once('close', close);
+      try {
+        send(res, 202, {jobId:worker.jobId, url:worker.url});
+      } catch (error) {
+        cleanup();
+        reject(error);
+      }
+    });
+    if (delivered) {
+      await worker.commit();
+      committed = true;
+      await onMaintenance();
+    }
+  } finally {
+    if (!committed) {
+      try { await worker?.abort(); }
+      finally { await undo(); }
+    }
+  }
+  return true;
  }catch(error){send(res,error.status||500,{error:{code:error.code||'KERNEL_FAILED',message:error.code?error.message:'Kernel operation failed. Inspect local diagnostics; no success is assumed.'}});return true;}
 }

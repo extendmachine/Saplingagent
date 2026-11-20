@@ -14,7 +14,7 @@ async function fixture({ language = 'en', activeSessionId = 'same', ...overrides
   const schedule=()=>{if(!scheduled){scheduled=true;queueMicrotask(()=>{scheduled=false;render()})}};
   const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]={value:typeof initial==='function'?initial():initial};return[slots[i].value,value=>{slots[i].value=typeof value==='function'?value(slots[i].value):value;schedule()}]},useEffect(effect,deps){const i=cursor++;if(!same(slots[i]?.deps,deps)){const old=slots[i];slots[i]={deps};effects.push(()=>{old?.cleanup?.();slots[i].cleanup=effect()})}}};
   const composer={text:'Retain my draft',attachments:[{id:'retained-file',status:{type:'running'},file:{name:'pending.txt'}}],getState(){return{text:this.text,attachments:this.attachments,submission:this.submission}},reset(){throw new Error('Changing AI must never reset composer')}};
-  const agent={activeSessionId,selection:{engine:'codex',providerId:null,modelId:null},engineRevision:0,canSelectEngine:true,isChangingEngine:false,status:{ready:true,codexReady:true},engines:[{id:'codex',ready:true,authenticated:true},...['claude','opencode'].map(id=>({id,ready:true,authenticated:true,providers:[{id:`${id}-provider`,label:id,defaultModelId:'model-a',models:[{id:'model-a',label:'Model A'},{id:'model-b',label:'Model B'}]}]}))],setSelection(selection){calls.push({type:'selection',selection});this.selection=selection;render();return true},async changeEngine(selection){calls.push({type:'apply',selection});this.selection=selection;this.engineRevision++;this.handoff={status:'pending'};render();return true},...overrides};
+  const agent={activeSessionId,selection:{engine:'codex',providerId:null,modelId:null},engineRevision:0,canSelectEngine:true,isChangingEngine:false,status:{ready:true,codexReady:true},engines:[{id:'codex',ready:true,authenticated:true},...['claude','opencode'].map(id=>({id,ready:true,authenticated:true,providers:[{id:`${id}-provider`,label:id,defaultModelId:'model-a',models:[{id:'model-a',label:'Model A'},{id:'model-b',label:'Model B'}]}]}))],async refreshEngines(...args){calls.push({type:'refresh',args})},setSelection(selection){calls.push({type:'selection',selection});this.selection=selection;render();return true},async changeEngine(selection){calls.push({type:'apply',selection});this.selection=selection;this.engineRevision++;this.handoff={status:'pending'};render();return true},...overrides};
   const jsx=(type,props)=>typeof type==='function'?type(props):({type,props}),context=vm.createContext({Error,Promise});
   const mocks={'./runtime-api':{codexModelSelectable},'../localization/LanguageProvider':{useLanguage:()=>({language, locale: uiMessages.localeFor(language), t:(key,params)=>uiMessages.translate(language,key,params), text:value=>uiMessages.resolveText(value,language)})},'../localization/messages':uiMessages,'../localization/ErrorNotice':{ErrorNotice:({error})=>jsx('div',{children:uiMessages.resolveText(error,language)})},react,'react/jsx-runtime':{jsx,jsxs:jsx,Fragment:'fragment'}};
   const mod=new vm.SourceTextModule(transformSync('EngineControls.tsx',await readFile(new URL('./EngineControls.tsx',import.meta.url),'utf8'),{jsx:{runtime:'automatic'}}).code,{context});
@@ -92,4 +92,33 @@ test('a former account choice in fixed API mode changes only after an explicit r
  assert.equal(h.agent.selection.modelId,'old-account-choice');assert.equal(h.node('Agent model'),undefined);assert.equal(h.node('Apply AI to this conversation').props.disabled,true);
  const control=nodes(h.render()).find(node=>node.type==='button'&&text(node)==='Use API profile model');assert.ok(control);control.props.onClick();await h.settle();assert.equal(h.agent.selection.modelId,'old-account-choice');assert.equal(h.calls.length,0);assert.equal(h.node('Apply AI to this conversation').props.disabled,false);
  h.node('Apply AI to this conversation').props.onClick();await h.settle();assert.equal(h.agent.selection.modelId,null);assert.equal(h.composer.text,'Retain my draft');assert.equal(h.composer.attachments[0].id,'retained-file');
+});
+
+test('only advertised lazy engines are prepared; staging never submits the composer or changes the existing binding', async () => {
+  const h = await fixture();
+  const claude = h.agent.engines.find(engine => engine.id === 'claude');
+  claude.ready = false;
+  h.node('Agent engine').props.onChange({target:{value:'claude'}});
+  await h.settle();
+  assert.equal(h.calls.length, 0);
+  claude.needsPreparation = true;
+  h.node('Agent engine').props.onChange({target:{value:'claude'}});
+  await h.settle();
+  assert.deepEqual(h.calls, [{type:'refresh',args:[undefined,false,'claude']}]);
+  assert.equal(h.node('Apply AI to this conversation').props.disabled,true);
+  assert.equal(h.agent.selection.engine,'codex');
+  assert.equal(h.composer.text,'Retain my draft');
+  claude.needsPreparation = false; claude.ready = true; h.render();
+  assert.equal(h.node('Apply AI to this conversation').props.disabled,false);
+  h.node('Apply AI to this conversation').props.onClick(); await h.settle();
+  assert.equal(h.calls.at(-1).type, 'apply');
+});
+
+test('refreshing a deferred Codex account prepares only Codex before later catalog refreshes', async () => {
+  const h = await fixture({engines:[{...accountEngine(),ready:false,needsPreparation:true}]});
+  h.node('Refresh models').props.onClick(); await h.settle();
+  assert.deepEqual(h.calls[0].args,[undefined,false,'codex']);
+  h.agent.engines[0].needsPreparation=false; h.agent.engines[0].ready=true; h.render();
+  h.node('Refresh models').props.onClick(); await h.settle();
+  assert.deepEqual(h.calls[1].args,[undefined,true]);
 });

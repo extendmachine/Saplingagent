@@ -51,54 +51,58 @@ if ! [[ "${SEED_NODE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   sapling_message installer_023 >&2
   exit 1
 fi
-SEED_NODE_DIR="$SEED_PROJECT_DIR/.runtime/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}"
+source "$SEED_PROJECT_DIR/kernel/tooling/node-bootstrap.sh"
+sapling_node_location
+SEED_NODE_DIR="$SAPLING_NODE_SOURCE"
 SEED_NODE_BIN="$SEED_NODE_DIR/bin/node"
 
-if [ ! -x "$SEED_NODE_BIN" ] || [ "$("$SEED_NODE_BIN" --version)" != "v${SEED_NODE_VERSION}" ] || [ "$("$SEED_NODE_BIN" -p 'process.arch')" != "$SEED_MAC_ARCH" ]; then
+if ! sapling_node_valid "$SEED_NODE_DIR"; then
   if [ "$1" != "install" ] && [ "$1" != "runtime-only" ]; then
     sapling_message installer_024 >&2
     exit 1
   fi
   mkdir -p "$SEED_PROJECT_DIR/.runtime"
-  SEED_BOOTSTRAP_LOCK="$SEED_PROJECT_DIR/.runtime/node-install.lock"
-  if ! mkdir "$SEED_BOOTSTRAP_LOCK" 2>/dev/null; then
-    sapling_message installer_025 >&2
-    exit 1
+  mkdir -p "$SAPLING_NODE_HOME/locks" "$SAPLING_NODE_HOME/staging"
+  SEED_BOOTSTRAP_LOCK="$SAPLING_NODE_HOME/locks/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}.lock"
+  exec 9>>"$SEED_BOOTSTRAP_LOCK"
+  sapling_acquire_node_lock
+  # A concurrent project may have finished while this installer was waiting.
+  sapling_node_location
+  if ! sapling_node_valid "$SAPLING_NODE_SOURCE"; then
+    if [ -e "$SEED_PROJECT_DIR/.runtime/kernel-operation.lock" ] || [ -e "$SEED_PROJECT_DIR/.runtime/launcher-compile.lock" ] || [ -e "$SEED_PROJECT_DIR/.runtime/project-finalization.json" ]; then
+      sapling_message installer_026 >&2
+      exit 1
+    fi
+    SEED_BOOTSTRAP_STAGE="$(/usr/bin/mktemp -d "$SAPLING_NODE_HOME/staging/node-install.XXXXXX")"
+    trap 'rm -rf -- "$SEED_BOOTSTRAP_STAGE"' EXIT
+    SEED_NODE_ARCHIVE="node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}.tar.gz"
+    SEED_NODE_URL="https://nodejs.org/dist/v${SEED_NODE_VERSION}"
+    sapling_message installer_027
+    /usr/bin/curl --fail --show-error --location --proto '=https' --tlsv1.2 --connect-timeout 20 --max-time 600 --retry 2 "$SEED_NODE_URL/$SEED_NODE_ARCHIVE" -o "$SEED_BOOTSTRAP_STAGE/$SEED_NODE_ARCHIVE"
+    /usr/bin/curl --fail --show-error --location --proto '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 --retry 2 "$SEED_NODE_URL/SHASUMS256.txt" -o "$SEED_BOOTSTRAP_STAGE/SHASUMS256.txt"
+    /usr/bin/awk -v name="$SEED_NODE_ARCHIVE" '$2 == name {print}' "$SEED_BOOTSTRAP_STAGE/SHASUMS256.txt" > "$SEED_BOOTSTRAP_STAGE/checksum.txt"
+    if [ "$(/usr/bin/wc -l < "$SEED_BOOTSTRAP_STAGE/checksum.txt" | /usr/bin/tr -d ' ')" != "1" ]; then
+      sapling_message installer_028 >&2
+      exit 1
+    fi
+    (cd "$SEED_BOOTSTRAP_STAGE" && /usr/bin/shasum -a 256 -c checksum.txt)
+    /usr/bin/tar -xzf "$SEED_BOOTSTRAP_STAGE/$SEED_NODE_ARCHIVE" -C "$SEED_BOOTSTRAP_STAGE"
+    SEED_STAGED_NODE="$SEED_BOOTSTRAP_STAGE/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}"
+    if ! sapling_node_valid "$SEED_STAGED_NODE"; then
+      sapling_message installer_029 >&2
+      exit 1
+    fi
+    # Publish on the same volume. Older installers use a different lock and a
+    # different destination; neither can move a generation in use by a project.
+    mkdir -p "$SAPLING_NODE_HOME/runtimes"
+    SAPLING_NODE_SOURCE="$SAPLING_NODE_HOME/runtimes/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}-gen-${SEED_BOOTSTRAP_STAGE##*/}"
+    /usr/bin/perl -e 'rename($ARGV[0], $ARGV[1]) or die "Node runtime publication: $!"' "$SEED_STAGED_NODE" "$SAPLING_NODE_SOURCE"
+    rm -rf -- "$SEED_BOOTSTRAP_STAGE"
+    trap - EXIT
   fi
-  if [ -e "$SEED_PROJECT_DIR/.runtime/kernel-operation.lock" ] || [ -e "$SEED_PROJECT_DIR/.runtime/launcher-compile.lock" ] || [ -e "$SEED_PROJECT_DIR/.runtime/project-finalization.json" ]; then
-    rmdir "$SEED_BOOTSTRAP_LOCK"
-    sapling_message installer_026 >&2
-    exit 1
-  fi
-  SEED_BOOTSTRAP_STAGE=""
-  trap 'rm -rf "$SEED_BOOTSTRAP_STAGE"; rmdir "$SEED_BOOTSTRAP_LOCK"' EXIT
-  SEED_BOOTSTRAP_STAGE="$(/usr/bin/mktemp -d "$SEED_PROJECT_DIR/.runtime/node-install.XXXXXX")"
-  SEED_NODE_ARCHIVE="node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}.tar.gz"
-  SEED_NODE_URL="https://nodejs.org/dist/v${SEED_NODE_VERSION}"
-  sapling_message installer_027
-  /usr/bin/curl --fail --show-error --location --proto '=https' --tlsv1.2 --connect-timeout 20 --max-time 600 --retry 2 "$SEED_NODE_URL/$SEED_NODE_ARCHIVE" -o "$SEED_BOOTSTRAP_STAGE/$SEED_NODE_ARCHIVE"
-  /usr/bin/curl --fail --show-error --location --proto '=https' --tlsv1.2 --connect-timeout 20 --max-time 60 --retry 2 "$SEED_NODE_URL/SHASUMS256.txt" -o "$SEED_BOOTSTRAP_STAGE/SHASUMS256.txt"
-  /usr/bin/awk -v name="$SEED_NODE_ARCHIVE" '$2 == name {print}' "$SEED_BOOTSTRAP_STAGE/SHASUMS256.txt" > "$SEED_BOOTSTRAP_STAGE/checksum.txt"
-  if [ "$(/usr/bin/wc -l < "$SEED_BOOTSTRAP_STAGE/checksum.txt" | /usr/bin/tr -d ' ')" != "1" ]; then
-    sapling_message installer_028 >&2
-    exit 1
-  fi
-  (cd "$SEED_BOOTSTRAP_STAGE" && /usr/bin/shasum -a 256 -c checksum.txt)
-  /usr/bin/tar -xzf "$SEED_BOOTSTRAP_STAGE/$SEED_NODE_ARCHIVE" -C "$SEED_BOOTSTRAP_STAGE"
-  "$SEED_BOOTSTRAP_STAGE/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}/bin/node" --version
-  if [ "$("$SEED_BOOTSTRAP_STAGE/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}/bin/node" -p 'process.arch')" != "$SEED_MAC_ARCH" ]; then
-    sapling_message installer_029 >&2
-    exit 1
-  fi
-  # Keep the existing runtime until the replacement has downloaded and verified.
-  if [ -e "$SEED_NODE_DIR" ]; then
-    mv "$SEED_NODE_DIR" "$SEED_PROJECT_DIR/.runtime/node-replaced-$(date +%s)-$$"
-  fi
-  mv "$SEED_BOOTSTRAP_STAGE/node-v${SEED_NODE_VERSION}-darwin-${SEED_MAC_ARCH}" "$SEED_NODE_DIR"
-  trap - EXIT
-  rm -rf "$SEED_BOOTSTRAP_STAGE"
-  rmdir "$SEED_BOOTSTRAP_LOCK"
+  exec 9>&-
 fi
+sapling_link_node
 
 if [ "$1" = "runtime-only" ]; then exit 0; fi
 

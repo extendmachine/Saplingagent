@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -25,6 +25,7 @@ async function git(root, args, { allowUnborn = false } = {}) {
   try {
     const env = { ...process.env };
     for (const key of Object.keys(env)) if (key.startsWith('GIT_')) delete env[key];
+    env.GIT_OPTIONAL_LOCKS = '0';
     const { stdout } = await execFileAsync('git', ['-C', root, ...args], {
       env, encoding: 'utf8',
       maxBuffer: 4 * 1024 * 1024,
@@ -168,26 +169,51 @@ export async function readGitVersion(root, { limit = 25 } = {}) {
   };
 }
 
+async function labelLease(directory) {
+  const busy = () => new GitVersionError('GIT_LABEL_BUSY', 'Another version name is being saved or its lock owner is unknown. Inspect the label lock before retrying', 409);
+  const readOwner = async () => { try { return JSON.parse(await fs.readFile(path.join(directory, 'owner.json'), 'utf8')); } catch { return null; } };
+  const same = (a, b) => a && b && a.ino !== 0 && a.ino === b.ino && a.dev === b.dev;
+  const stat = () => fs.lstat(directory).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+  try { await fs.mkdir(directory, { mode: 0o700 }); }
+  catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    const recovering = directory + '.recover'; let gate;
+    try { gate = await fs.open(recovering, 'wx', 0o600); }
+    catch (error) { if (error.code === 'EEXIST') throw busy(); throw error; }
+    try {
+      const before = await stat(), owner = await readOwner();
+      if (!before?.isDirectory() || before.isSymbolicLink() || !Number.isSafeInteger(owner?.pid) || owner.pid <= 0 || typeof owner.id !== 'string') throw busy();
+      try { process.kill(owner.pid, 0); throw busy(); }
+      catch (error) { if (error.code !== 'ESRCH') throw busy(); }
+      if (!same(before, await stat()) || (await readOwner())?.id !== owner.id) throw busy();
+      const retired = directory + '.retired-' + randomUUID();
+      await fs.rename(directory, retired);
+      await fs.rm(retired, { recursive: true, force: true });
+    } finally { await gate.close(); await fs.rm(recovering, { force: true }); }
+    return labelLease(directory);
+  }
+  const identity = await stat(), id = randomUUID();
+  try { await fs.writeFile(path.join(directory, 'owner.json'), JSON.stringify({ id, pid: process.pid }), { flag: 'wx', mode: 0o600 }); }
+  catch (error) { if (same(identity, await stat())) await fs.rm(directory, { recursive: true, force: true }); throw error; }
+  return async () => {
+    if (same(identity, await stat()) && (await readOwner())?.id === id) await fs.rm(directory, { recursive: true, force: true });
+  };
+}
 export async function nameGitVersion(root, sha, name) {
   await validateCommit(root, sha);
   if (typeof name !== 'string' || name.trim().length > 80 || /[\x00-\x1f\x7f]/.test(name)) throw new GitVersionError('GIT_INVALID_LABEL', 'Enter a version name of up to 80 characters without control characters');
   const file = await labelsPath(root);
   await fs.mkdir(path.dirname(file), { recursive: true });
-  let lock;
-  try { lock = await fs.open(`${file}.lock`, 'wx', 0o600); }
-  catch (error) { if (error.code === 'EEXIST') throw new GitVersionError('GIT_LABEL_BUSY', 'Another version name is being saved. Retry shortly', 409); throw error; }
-  let renamed = false;
+  const release = await labelLease(`${file}.lock`);
   try {
     const labels = await readLabels(root);
     if (name.trim()) labels[sha] = name.trim(); else delete labels[sha];
-    await lock.writeFile(JSON.stringify(labels, null, 2) + '\n');
-    await lock.sync();
-    await lock.close();
-    await fs.rename(`${file}.lock`, file);
-    renamed = true;
+    const next = path.join(`${file}.lock`, 'labels.json');
+    const handle = await fs.open(next, 'wx', 0o600);
+    try { await handle.writeFile(JSON.stringify(labels, null, 2) + '\n'); await handle.sync(); } finally { await handle.close(); }
+    await fs.rename(next, file);
   } finally {
-    await lock.close().catch(() => {});
-    if (!renamed) await fs.rm(`${file}.lock`, { force: true });
+    await release();
   }
   return readGitVersion(root);
 }

@@ -120,16 +120,23 @@ export async function restoreKernel(root, id) {
  if(lease&&process.env.SAPLING_MAINTENANCE_JOB!==lease.jobId)throw Error('Maintenance is active. Use its explicit recovery page or inspect the exited worker first.');
 	await fs.mkdir(path.join(root, ".runtime"), { recursive: true });
 	const lock = path.join(root, ".runtime/kernel-operation.lock"), lockId = randomUUID();
-	let handle;
+	let handle, identity;
 	try {
 		handle = await fs.open(lock, "wx", 0o600);
+		identity = await handle.stat({ bigint: true });
 		await handle.writeFile(JSON.stringify({
 			id: lockId,
 			pid: process.pid,
 			purpose: "kernel-restore"
 		}));
 	} catch (error) {
-		await handle?.close();
+		// Compare while the descriptor is held so its inode cannot be recycled.
+		try {
+			const current = identity && await fs.lstat(lock, { bigint: true }).catch(lookupError => {
+				if (lookupError.code !== "ENOENT") throw lookupError;
+			});
+			if (current?.isFile() && current.dev === identity.dev && current.ino === identity.ino) await fs.unlink(lock);
+		} finally { await handle?.close(); }
 		throw Error(error.code === "EEXIST" ? "An app/kernel operation lock exists. Verify its owner before manual recovery." : error.message);
 	}
 	try {

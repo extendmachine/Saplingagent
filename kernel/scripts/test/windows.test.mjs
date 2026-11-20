@@ -54,7 +54,7 @@ test('single Bash entry shares a private Windows bootstrap with native launch, w
   assert.match(shell, /kernel\/scripts\/windows\/bootstrap\.ps1/);
   assert.match(powershell, /runtime-only/);
   assert.match(source, /Get-FileHash -LiteralPath \$archive -Algorithm SHA256/);
-  assert.match(source, /FileMode\]::CreateNew/);
+  assert.match(source, /FileMode\]::OpenOrCreate/);assert.match(source, /FileShare\]::None/);
   assert.match(source, /UTF-16LE/); assert.match(source, /-EncodedCommand/);
   assert.doesNotMatch(source, /Set-ExecutionPolicy|npm\s+.*--global|SetEnvironmentVariable\([^\n]*'(Machine|User)'/i);
   assert.match(source, /\.runtime/); assert.match(source, /SAPLING_BOOTSTRAP_ROOT/);

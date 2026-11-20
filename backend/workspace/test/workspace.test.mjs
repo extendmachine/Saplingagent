@@ -96,3 +96,71 @@ test('Claude native thread and model binding survive reload and cannot be switch
  await store.patchSession(selected.id,{threadId:'claude-thread'});const restored=await (await createStore(root)).getSession(selected.id);assert.equal(restored.engine,'claude');assert.equal(restored.threadId,'claude-thread');
  await assert.rejects(store.patchSession(selected.id,{engine:'opencode'}));await assert.rejects(store.patchSession(selected.id,{providerId:'other'}));await assert.rejects(store.createSession({engine:'claude'}));
 });
+
+test('one bad session never hides valid history or rewrites offending bytes', async t => {
+  const root = await fixture(t), store = await createStore(root), good = await store.createSession({ title: 'Retained' });
+  const directory = path.join(root, 'data/workspace/sessions');
+  const broken = new Map([['broken.json', '{invalid'], ['bad name.json', '{}'], ['schema.json', '[]'], ['wrong-engine.json', JSON.stringify({ ...good, id: 'wrong-engine', engine: 'invalid' })]]);
+  for (const [name, content] of broken) await fs.writeFile(path.join(directory, name), content);
+  await fs.mkdir(path.join(directory, 'folder.json'));
+  const outside = path.join(root, 'do-not-change'); await fs.writeFile(outside, 'unchanged');
+  if (process.platform !== 'win32') await fs.symlink(outside, path.join(directory, 'symlink.json'));
+  assert.deepEqual((await store.listSessions()).map(value => value.id), [good.id]);
+  for (const [name, content] of broken) assert.equal(await fs.readFile(path.join(directory, name), 'utf8'), content);
+  assert.equal(await fs.readFile(outside, 'utf8'), 'unchanged');
+  await assert.rejects(store.getSession('broken'), { code: 'CORRUPT_STORAGE' });
+  const next = await store.createSession(); assert.equal((await store.listSessions()).length, 2); assert.ok(next.id);
+});
+
+test('session listing still propagates directory IO errors', { skip: process.platform === 'win32' || process.getuid?.() === 0 }, async t => {
+  const root = await fixture(t), store = await createStore(root), directory = path.join(root, 'data/workspace/sessions');
+  await store.createSession(); await fs.chmod(directory, 0);
+  try { await assert.rejects(store.listSessions(), error => error.code === 'EACCES' || error.code === 'EPERM'); }
+  finally { await fs.chmod(directory, 0o700); }
+});
+
+test('size rejection is distinct from malformed data and leaves metadata writes available', async t => {
+  const store = await createStore(await fixture(t)), original = await store.createSession();
+  for (const messages of [Array.from({ length: 10001 }, (_, index) => ({ id: `m${index}`, role: 'user', text: '' })), [{ id: 'large', role: 'assistant', text: 'x'.repeat(500001) }], Array.from({ length: 9 }, (_, index) => ({ id: `m${index}`, role: 'assistant', text: 'x'.repeat(490000) }))]) {
+    await assert.rejects(store.patchSession(original.id, { messages }), { code: 'SESSION_TOO_LARGE', status: 400 });
+    assert.equal((await store.getSession(original.id)).revision, original.revision);
+  }
+  await assert.rejects(store.patchSession(original.id, { messages: [{ id: 'bad', role: 'assistant', text: null }] }), { code: 'INVALID_INPUT' });
+  const saved = await store.patchSession(original.id, { running: false, activeRequestId: null });
+  assert.deepEqual(saved.messages, []);
+});
+
+test('lookup is atomic across creates and restarts, handles legacy first user messages, and isolates malformed records', async t => {
+  const root = await fixture(t);
+  let store = await createStore(root);
+  const legacy = await store.createSession();
+  await store.patchSession(legacy.id, {messages:[{role:'system',id:'system',text:'s'},{role:'user',id:'legacy-first',text:'hello'}]});
+  const directory = path.join(root, 'data/workspace/sessions');
+  for (const [id, fields] of [['bad-message',{messages:[null]}], ['bad-ledger',{requests:[null]}]]) {
+    await fs.writeFile(path.join(directory, id + '.json'), JSON.stringify({...legacy, id, ...fields}));
+  }
+  store = await createStore(root);
+  assert.equal((await store.createSession({firstRequestId:'legacy-first'})).id, legacy.id);
+  const created = await Promise.all(Array.from({length:8}, () => store.createSession({firstRequestId:'same'})));
+  assert.equal(new Set(created.map(s => s.id)).size, 1);
+  store = await createStore(root);
+  assert.equal((await store.createSession({firstRequestId:'same'})).id, created[0].id);
+  assert.equal((await store.listSessions()).length, 2);
+  await store.patchSession(legacy.id, {messages:[{role:'user',id:'updated',text:'again'}]});
+  assert.equal((await store.createSession({firstRequestId:'updated'})).id, legacy.id);
+  assert.notEqual((await store.createSession({firstRequestId:'legacy-first'})).id, legacy.id);
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(directory, 'bad-message.json'), 'utf8')).messages,[null]);
+});
+
+test('wire-size rejection returns readable 413 responses for both length and chunked bodies', async t => {
+  const token = 'synthetic-workspace-service-token';
+  const server = await createWorkspaceServer({root:await fixture(t), token});
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const payload = 'x'.repeat(6 * 1024 * 1024);
+  const url = 'http://127.0.0.1:' + server.address().port + '/sessions/oversize';
+  for (const body of [payload, (async function* () { for (let offset=0; offset<payload.length; offset+=65536) yield payload.slice(offset, offset+65536); })()]) {
+    const response = await fetch(url, {method:'PATCH', headers:{Authorization:'Bearer ' + token}, duplex:'half', body});
+    assert.equal(response.status, 413); assert.equal((await response.json()).error.code, 'PAYLOAD_TOO_LARGE');
+  }
+});

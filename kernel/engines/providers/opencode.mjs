@@ -5,8 +5,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { engineDependency } from '../../contracts/engine-dependencies.mjs';
-import { fileURLToPath as engineURL } from 'node:url';
-const { createOpencodeClient } = await engineDependency(engineURL(new URL('../../../', import.meta.url)), '@opencode-ai/sdk');
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const sdkData = async (request, message) => {
@@ -38,6 +36,7 @@ export class OpenCodeProvider {
 
   async #start() {
     this.closing = false;
+    const {createOpencodeClient}=await engineDependency(this.root,'@opencode-ai/sdk');
     const secretRoot = path.join(this.root, 'local-secrets/opencode');
     const dataRoot = path.join(secretRoot, 'data');
     const configRoot = path.join(secretRoot, 'config');

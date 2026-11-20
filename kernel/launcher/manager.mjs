@@ -1,3 +1,4 @@
+import {connectionsFile, readConfigurationFiles} from "../contracts/configuration-transaction.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID, createHash } from "node:crypto";
@@ -24,6 +25,11 @@ import {
   buildContext,
 } from "./build.mjs";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function processExited(pid) {
+  if (!Number.isSafeInteger(pid) || pid < 2) return false;
+  try { process.kill(pid, 0); return false; }
+  catch (error) { return error.code === 'ESRCH'; }
+}
 export function validateProjectName(value) {
   if (
     typeof value !== "string" ||
@@ -114,7 +120,7 @@ export async function openExternal(target) {
           "-NoProfile",
           "-NonInteractive",
           "-Command",
-          "Start-Process -FilePath $env.SAPLING_OPEN_TARGET",
+          "Start-Process -FilePath $env:SAPLING_OPEN_TARGET",
         ]
       : [target];
   await new Promise((resolve, reject) => {
@@ -207,21 +213,29 @@ export class ProjectLauncher {
     if (record.root && path.resolve(record.root) !== this.root)
       return { phase: "stopped", stale: true };
     const port = record.ports?.runtimeManagerPort;
-    if (!Number.isInteger(port) || port < 1024 || port > 65535)
-      return { phase: "stopped", stale: true };
+    const unavailable = () => processExited(record.pid)
+      ? { phase: 'stopped', stale: true }
+      : { phase: 'unverified', unverified: true, error: { code: 'RUNTIME_UNVERIFIED', message: 'Cannot confirm the project runtime. Wait briefly and retry.' } };
+    if (!Number.isInteger(port) || port < 1024 || port > 65535 || !record.instanceId ||
+        !Number.isSafeInteger(record.pid) || record.pid < 2) return unavailable();
     try {
-      const state = await fetch(`http://127.0.0.1:${port}/api/runtime/status`, {
-        signal: AbortSignal.timeout(1500),
-      }).then((r) => r.json());
-      if (
-        state.instanceId !== record.instanceId ||
-        state.applicationRoot !== this.root
-      )
-        return { phase: "stopped", stale: true, unverified: true };
-      return { ...state, url: record.url, controlPort: port, pid: record.pid };
-    } catch {
-      return { phase: "stopped", stale: true };
+      const response = await fetch(`http://127.0.0.1:${port}/api/runtime/status`, {signal: AbortSignal.timeout(1500)});
+      if (!response.ok) { await response.body?.cancel(); return unavailable(); }
+      const state = await response.json();
+      if (state.instanceId !== record.instanceId || state.applicationRoot !== this.root) return unavailable();
+      // A reachable controller may have stopped its children and still be exiting.
+      return { ...state, phase: state.phase === 'stopped' ? 'stopping' : state.phase,
+        url: record.url, controlPort: port, pid: record.pid };
+    } catch { return unavailable(); }
+  }
+  async verifiedRuntime() {
+    let state = await this.runtime();
+    if (state.phase === 'unverified') {
+      await sleep(200);
+      state = await this.runtime();
+      if (state.phase === 'unverified') throw issue('RUNTIME_UNVERIFIED','Cannot confirm the project runtime. Wait briefly and retry.');
     }
+    return state;
   }
   assertIdle() {
     if (this.busy)
@@ -257,10 +271,8 @@ export class ProjectLauncher {
     return status.connectionsFingerprint === await this.connectionsFingerprint();
   }
   async connectionsFingerprint() {
-    const bytes = await fs.readFile(path.join(this.root, 'local-secrets/ai-config/connections.json')).catch(e => {
-      if (e.code === 'ENOENT') return Buffer.from(''); throw e;
-    });
-    const hash = createHash('sha256').update(bytes);
+    const [connections] = await readConfigurationFiles(this.root,[connectionsFile]);
+    const hash = createHash('sha256').update(connections ?? '');
     const mcp = await fs.readFile(path.join(this.root, 'config/mcp-access.json')).catch(e => {
       if (e.code === 'ENOENT') return null; throw e;
     });
@@ -518,10 +530,11 @@ export class ProjectLauncher {
     });
   }
   async startConfiguredProject({requireLauncher = false,ignoreCancellation = false,onRuntime} = {}) {
-      let state = await this.runtime();
+      let state = await this.verifiedRuntime();
       if (!ignoreCancellation) this.abortController?.signal.throwIfAborted();
       if (state.phase !== 'stopped') await onRuntime?.(state);
       let child;
+      try {
       if (state.phase === "stopped") {
         if (requireLauncher && !(await exists(path.join(this.root, ".runtime/launcher.json"))))
           throw issue(
@@ -599,11 +612,15 @@ export class ProjectLauncher {
           );
       }
       return state;
+      } catch (error) {
+        if (child && !ignoreCancellation && this.abortController?.signal.aborted)
+          await this.cancelOwnedStartup(child);
+        throw error;
+      }
   }
-  async cancelOwnedStartup() {
+  async cancelOwnedStartup(child = this.appChild) {
     // The ChildProcess handle was created by this controller. Never signal a
     // PID obtained from a stale runtime discovery record.
-    const child=this.appChild;
     if(child && child.exitCode===null && child.signalCode===null)
       await terminateOwned(child,{graceMs:15000,killMs:2000});
   }
@@ -616,7 +633,7 @@ export class ProjectLauncher {
   }
   async restart() {
     this.assertIdle();
-    const state = await this.runtime();
+    const state = await this.verifiedRuntime();
     if (state.phase === "stopped") return this.openProject();
     const token = (
       await fs.readFile(
@@ -632,7 +649,7 @@ export class ProjectLauncher {
           Authorization: "Bearer " + token,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ scope: "all" }),
+        body: JSON.stringify({ scope: "all", instanceId: state.instanceId }),
         signal: AbortSignal.timeout(5000),
       },
     );
@@ -646,7 +663,7 @@ export class ProjectLauncher {
   }
   async stop({reserved = false} = {}) {
     if(!reserved)this.assertIdle();
-    const state = await this.runtime();
+    const state = await this.verifiedRuntime();
     if (state.phase === "stopped") return { stopped: true };
     const token = (
       await fs.readFile(
@@ -662,7 +679,7 @@ export class ProjectLauncher {
           Authorization: "Bearer " + token,
           "Content-Type": "application/json",
         },
-        body: "{}",
+        body: JSON.stringify({instanceId: state.instanceId}),
         signal: AbortSignal.timeout(10000),
       },
     );
@@ -674,7 +691,11 @@ export class ProjectLauncher {
       );
     }
     for (let i = 0; i < 40; i++) {
-      if ((await this.runtime()).phase === "stopped") return { stopped: true };
+      if (processExited(state.pid)) return { stopped: true };
+      const next = await this.runtime();
+      if (next.instanceId === state.instanceId && next.error?.code === 'SERVICE_STOP_FAILED')
+        throw issue('SERVICE_STOP_FAILED', next.error.message);
+
       await sleep(250);
     }
     throw issue(

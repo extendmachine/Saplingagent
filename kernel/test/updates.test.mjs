@@ -417,3 +417,35 @@ test('live external MCP prevents source upgrade and standalone recovery without 
  assert.equal(await fs.access(path.join(root,'.runtime/kernel-operation.lock')).then(()=>true,()=>false),false);
  await fs.unlink(file);await restoreKernel(root,applied.backupId);await preserved(root);
 });
+
+test('failed recovery lock writes allow a retry and preserve unrelated lock files', async t => {
+  const {root,source} = await fixture(t);
+  const plan = await prepareKernel(root,{source});
+  const {backupId} = await applyKernel(root,plan.id,{acceptRisk:true});
+  const lock = path.join(root,'.runtime/kernel-operation.lock');
+  const open = fs.open;
+  let replace = false;
+  const fault = t.mock.method(fs,'open',async (file,flags,...args) => {
+    const handle = await open(file,flags,...args);
+    if (file === lock && flags === 'wx') {
+      handle.writeFile = async () => {
+        if (replace) {
+          await fs.rename(lock,lock+'.original');
+          await fs.writeFile(lock,'peer owns this replacement');
+        }
+        throw Object.assign(Error('out of disk space'),{code:'ENOSPC'});
+      };
+    }
+    return handle;
+  });
+  await assert.rejects(restoreKernel(root,backupId), /out of disk space/);
+  await assert.rejects(fs.access(lock),{code:'ENOENT'});
+  replace = true;
+  await assert.rejects(restoreKernel(root,backupId), /out of disk space/);
+  assert.equal(await fs.readFile(lock,'utf8'),'peer owns this replacement');
+  await assert.rejects(restoreKernel(root,backupId), /operation lock exists/);
+  assert.equal(await fs.readFile(lock,'utf8'),'peer owns this replacement');
+  await fs.unlink(lock);
+  fault.mock.restore();
+  assert.equal((await restoreKernel(root,backupId)).restored,true);
+});

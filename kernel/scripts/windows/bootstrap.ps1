@@ -45,6 +45,7 @@ function Get-WindowsDevice {
     $architecture = Resolve-WindowsArchitecture $native $env:PROCESSOR_ARCHITEW6432 $env:PROCESSOR_ARCHITECTURE
     return @{ Platform = 'Windows'; Architecture = $architecture; Version = "10.0.$build" }
 }
+. (Join-Path $SaplingRoot 'kernel/tooling/node-bootstrap.ps1')
 function Ensure-Node([bool]$Install) {
     $device = Get-WindowsDevice
     $architecture = $device.Architecture
@@ -54,24 +55,38 @@ function Ensure-Node([bool]$Install) {
     if ($settings.nodeVersion -notmatch '^\d+\.\d+\.\d+$' -or $expectedHash -notmatch '^[a-f0-9]{64}$') { throw (Message 'windows_007') }
     $runtime = Join-Path $SaplingRoot '.runtime'
     $folderName = "node-v$($settings.nodeVersion)-win-$architecture"
-    $target = Join-Path $runtime $folderName
-    $node = Join-Path $target 'node.exe'
-    if (Test-Path -LiteralPath $node) {
-        $version = & $node --version
-        $versionPassed = $LASTEXITCODE -eq 0 -and $version -eq "v$($settings.nodeVersion)"
-        $nodeArchitecture = & $node -p 'process.arch'
-        if ($versionPassed -and $LASTEXITCODE -eq 0 -and $nodeArchitecture -eq $architecture) { return $node }
-        throw (Message 'windows_008')
+    $alias = Join-Path $runtime $folderName
+    $tool = Get-SaplingToolHome
+    if (($tool.Mode -ne 'shared' -or $tool.PreviousMode -ne 'portable') -and (Test-SaplingNode $alias $settings.nodeVersion $architecture)) {
+        return (Set-SaplingNodeAlias $alias $alias $tool.Mode)
+    }
+    if ($tool.Mode -ne 'portable') {
+        foreach ($candidate in @(Get-Command node.exe -All -ErrorAction SilentlyContinue)) {
+            $directory = Split-Path -Parent $candidate.Source
+            if (($directory -ne $alias) -and (Test-SaplingNode $directory $settings.nodeVersion $architecture)) { return (Set-SaplingNodeAlias $directory $alias $tool.Mode) }
+        }
+    }
+    $target = Join-Path $tool.HomePath ('runtimes/' + $folderName)
+    if (Test-SaplingNode $target $settings.nodeVersion $architecture) { return (Set-SaplingNodeAlias $target $alias $tool.Mode) }
+    foreach ($repaired in @(Get-ChildItem -LiteralPath (Join-Path $tool.HomePath 'runtimes') -Filter ($folderName + '-repair-*') -Directory -ErrorAction SilentlyContinue)) {
+        if (Test-SaplingNode $repaired.FullName $settings.nodeVersion $architecture) { return (Set-SaplingNodeAlias $repaired.FullName $alias $tool.Mode) }
     }
     if (!$Install) { throw (Message 'windows_009') }
     New-Item -ItemType Directory -Path $runtime -Force | Out-Null
-    $lock = Join-Path $runtime 'windows-node.lock'
-    # FileMode.CreateNew is exclusive, unlike New-Item -Force.
-    try { $lockHandle = [IO.File]::Open($lock, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None) }
-    catch { throw (Message 'windows_010') }
-    $stage = Join-Path $runtime ('windows-node-' + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path (Join-Path $tool.HomePath 'locks') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $tool.HomePath 'staging') -Force | Out-Null
+    $lock = Join-Path $tool.HomePath ('locks/' + $folderName + '.lock')
+    $deadline = [DateTime]::UtcNow.AddMinutes(10)
+    for (;;) {
+        try { $lockHandle = [IO.File]::Open($lock, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::Write, [IO.FileShare]::None); break }
+        catch { if ([DateTime]::UtcNow -ge $deadline) { throw (Message 'windows_010') }; Start-Sleep -Milliseconds 500 }
+    }
+    $stage = Join-Path $tool.HomePath ('staging/node-' + [Guid]::NewGuid().ToString('N'))
     $oldTls = [Net.ServicePointManager]::SecurityProtocol
     try {
+        if (Test-SaplingNode $target $settings.nodeVersion $architecture) { return (Set-SaplingNodeAlias $target $alias $tool.Mode) }
+        if (Test-Path -LiteralPath $target) { $target += '-repair-' + [Guid]::NewGuid().ToString('N') }
+        New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
         foreach ($lease in @('kernel-operation.lock', 'launcher-compile.lock', 'project-finalization.json')) {
             if (Test-Path -LiteralPath (Join-Path $runtime $lease)) { throw (Message 'windows_011') }
         }
@@ -88,12 +103,12 @@ function Ensure-Node([bool]$Install) {
         $nodeArchitecture = & (Join-Path $staged 'node.exe') -p 'process.arch'
         if ($LASTEXITCODE -ne 0 -or $nodeArchitecture -ne $architecture) { throw (Message 'windows_015') }
         Move-Item -LiteralPath $staged -Destination $target
-        return $node
+        return (Set-SaplingNodeAlias $target $alias $tool.Mode)
     } finally {
         [Net.ServicePointManager]::SecurityProtocol = $oldTls
         Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
         $lockHandle.Dispose()
-        Remove-Item -LiteralPath $lock -Force -ErrorAction SilentlyContinue
+        # The released lock file is retained for race-free reuse.
     }
 }
 function Invoke-Sapling([string]$Command, [string[]]$Extra = @()) {

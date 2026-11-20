@@ -6,6 +6,7 @@ import { terminateOwned } from '../../contracts/local-process.mjs';
 import { randomUUID } from 'node:crypto';
 import { portKeys,selectRuntimePorts } from './ports.mjs';
 import { loadProjectServices, assignProjectPorts, serviceCommand, servicePortEnv } from './services.mjs';
+import {prepareProviderTools,runtimeEngines} from '../../tooling/providers.mjs';
 import { readMcpAccess } from '../../contracts/mcp-access.mjs';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -111,7 +112,17 @@ export class RuntimeManager {
     catch { throw failure('SERVICE_STOP_FAILED', `${name} did not stop. Check local diagnostics and retry Restart app.`, name); }
     this.children.delete(name);
   }
-  async stopBackends() { for (const name of [...this.children.keys()].reverse()) if (name !== 'front') await this.stopChild(name); }
+  async stopOwnedServices({includeFront = false} = {}) {
+    const names = [...this.children.keys()].reverse().filter(name => name !== 'front');
+    if (includeFront && this.children.has('front')) names.push('front');
+    const pending = [];
+    for (const name of names) {
+      try { await this.stopChild(name); }
+      catch { pending.push(name); }
+    }
+    if (pending.length) throw failure('SERVICE_STOP_FAILED', `Could not confirm shutdown of: ${pending.join(', ')}. Retry Stop app.`, pending.join(', '));
+  }
+  async stopBackends() { await this.stopOwnedServices(); }
   async loadConfig() {
     let config;
     try { config = JSON.parse(await fs.readFile(path.join(this.root, 'config/runtime.json'), 'utf8')); }
@@ -176,6 +187,7 @@ export class RuntimeManager {
     this.startOperation(() => this.startServices(config, 'all', 'startup_port_retry'));
   }
   async startServices(config, scope, retryEvent = 'restart_port_retry') {
+    await prepareProviderTools(this.root,await runtimeEngines(this.root),{signal:this.controlAbort.signal});
     // Both startup and restart use the same allocation and bounded race recovery.
     // Call only after the backends have stopped; never probe our own listeners
     // as if they belonged to a competing project.
@@ -327,12 +339,12 @@ export class RuntimeManager {
     this.closed = true; this.phase = 'stopping'; this.controlAbort.abort();
     this.closing = (async () => {
       await this.operation;
-      await this.stopBackends(); await this.stopChild('front');
+      await this.stopOwnedServices({includeFront:true});
       this.phase = 'stopped'; this.error = null;
       await this.log('stop');
     })().catch(error => {
       // Keep failed shutdown observable and retryable; never claim a live child stopped.
-      this.phase = 'failed'; this.error = { code: 'SERVICE_STOP_FAILED', message: 'An owned service could not stop. Retry Stop app or inspect local logs.' };
+      this.phase = 'failed'; this.error = { code: 'SERVICE_STOP_FAILED', message: 'An owned service could not stop. Retry Stop app or inspect local logs.', services: [...this.children.keys()] };
       this.closing = null;
       throw error;
     });

@@ -178,3 +178,7 @@ existing app. Identity, folder, icon and native launcher are retained. Another
 live full-setup capsule is reported as a mode conflict instead of reusing it. Invalid request400, stale instance/busy409, startup errors
 are reported by the job. Logs remain logs/project-launcher. Older runtimes need
 one normal cold launch; no native rebuild or version increment is required.
+
+## Partial service shutdown (2026-11-17)
+
+Stop attempts every owned service in reverse dependency order and includes the frontend. A second attempt targets retained failures. The control and status listeners stay available while a child may still be alive. Status reports SERVICE_STOP_FAILED and the services still owned. After all children exit the controller closes its listeners, cleans its discovery record and exits. A legacy asynchronous stop request can include the observed instanceId and returns 409 if the instance changed.

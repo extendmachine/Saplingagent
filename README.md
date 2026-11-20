@@ -94,6 +94,11 @@ Office editing covers basic changes. Word controls format whole paragraphs; Powe
 
 </details>
 
+## Shared local tools
+
+Installation prepares Node and opens setup. Choosing a built-in engine prepares its compatible CLI and required SDK on demand. External MCP access needs no built-in engine. Projects can reuse installed tools and one per-user library. Go is prepared when exporting the native launcher. Initial reuse requires the exact tested release pins; incompatible programs are retained and a supported version is installed alongside them. Credentials, conversations, data and application dependencies stay separate. Use `SAPLING_RUNTIME_MODE=portable bash Saplingagent.sh install` for a project-contained tool store. See [shared tools and repair](docs/shared-runtime.html).
+
+
 ## Kernel 0.9.9 update
 
 Open **Settings → Configure AI** from the main page to launch or reuse the independent setup website. Progress, English/Chinese errors and a copyable local address keep setup usable when the default browser cannot open. Opening setup alone does not stop your application.
@@ -111,6 +116,8 @@ The right-hand chat supports saved-conversation switching and renaming, per-conv
 Run `bash Saplingagent.sh`. The script installs the minimal local kernel and opens configuration in a temporary process outside the project. Save the project name, folder, icon and AI connection, then choose **Save & build app**. Wait for completion and choose **Finish setup**. The returning launcher removes the external configuration files after that process exits.
 
 Open the generated `.app` or `.exe` inside the complete project folder. It checks and installs missing/changed project dependencies, displays startup progress, then opens the **Project status** page at the runtime's actual selected address. This page shows your project, kernel version, service processes and ports; choose **Open app** to enter the application. It stays a small bootstrap; your editable source and data remain in the folder. Choose **Settings → Configure AI**, or run `bash Saplingagent.sh configure`, to change settings or rebuild the launcher. Normal app startup does not reopen configuration. See the [project status guide](docs/project-status.html) and [A/B lifecycle and recovery guide](docs/project-launcher.html).
+
+If your project is on the Desktop or in Documents or Downloads, macOS may ask the newly built app for access on first launch. Check that the prompt names your project app, then allow access to its folder to continue. If you previously denied access, enable that folder for the app in **System Settings → Privacy & Security → Files & Folders** and reopen the app.
 
 On macOS, the app stays in the Dock while the existing project services run. Click its Dock icon to reopen project status; choose **Quit** or press **Command-Q** to stop this project's backend and exit. On both systems, **Stop app** on the status page waits for owned application services to exit before confirming; reopening the compiled app starts them again. Closing the browser or hiding startup progress leaves services running. A disconnected page is not proof of shutdown. If shutdown fails, inspect `logs/project-launcher/` and retry. Configuration waits for the native app and startup helper to exit before renaming or replacing the launcher. After updating an existing installation, use **Save & build app** once to rebuild an older exported `.app`/`.exe` with the new progress display. Application source and the service cluster remain unchanged.
 
@@ -182,7 +189,7 @@ Runtimes stay in `.runtime/`, dependencies in their modules' `node_modules/`, an
 - **Fetch models** is optional and performs a catalog GET only. If discovery is unavailable, enter the model ID manually. Use a model with streaming/tool-calling support for application development; saving a scheme does not validate compatibility or quota.
 - Keep multiple schemes and select **Use** to change the default. Choose **Save & build app**, wait for completion and then **Finish setup**. Open the generated native entry; **Stop app** stops owned application services. Closing a browser tab does not stop the service. If browser opening fails, use the loopback URL printed in the terminal.
 
-Scheme metadata stays in `local-secrets/ai-config/connections.json`, API keys in `local-secrets/api-keys/`, and Codex sign-in credentials in `local-secrets/codex/`. The credential ledger stores file references. The page never reads saved keys back into fields; leave a key blank when editing to retain it. No global credentials are imported. OpenCode's legacy native provider selector remains available as an explicit recovery command and stores its credentials in `local-secrets/opencode/`.
+Scheme metadata stays in `local-secrets/ai-config/connections.json`, API keys in `local-secrets/api-keys/`, and Codex sign-in credentials in `local-secrets/codex/`. The credential ledger stores file references. The page keeps saved keys private. Leave the key blank to reuse it on the same provider origin. Changing the protocol, host or port requires a new key before fetching models or saving. No global credentials are imported. OpenCode's legacy native provider selector remains available as an explicit recovery command and stores its credentials in `local-secrets/opencode/`.
 
 Startup uses the saved default scheme. **An OpenCode-only or custom Codex API scheme does not require ChatGPT login.** After reconfiguration, restart to load available schemes. In an idle conversation, choose the desired AI/provider/model and Apply: its messages and draft stay in the same conversation, and the next Send hands history to the new AI. Native sessions remain engine-specific. See [AI configuration guide](docs/ai-configuration.html) and [configuration service contract](kernel/services/ai-config/CONTRACT.md).
 
@@ -475,6 +482,8 @@ See [storage and process locks](docs/configuration-storage.html).
 Choose English or 中文 in the installer, AI setup or chat language selector. The explicit choice is saved in the application’s `config/ui-language.json`; it follows this project across ports and restarts, and is excluded from source packages. `--lang en` / `--lang zh` selects a language explicitly. Without a saved choice, supported device/browser language is used with English fallback.
 
 Open **Settings → Help** from the chat page to reach the independent bilingual quick guide. It covers installation, AI configuration, conversations, files, restart/stop, updates and common errors. Errors show a readable explanation and next action; expand Technical details for the original code/message. User messages, AI replies, filenames, model names and API identifiers are not translated. Changing interface language never sends a model request. Ask your AI to answer in your preferred language separately. See [the bilingual guide](docs/language-help.html).
+
+Operational failures and recovery: [Conversation and launcher guide](docs/reliability.html). Copy unsaved output before refreshing; an unconfirmed stop can still be executing.
 
 <a id="license"></a>
 

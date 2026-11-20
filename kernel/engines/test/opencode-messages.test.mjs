@@ -1,3 +1,4 @@
+import {linkNativeProvider} from './native-provider-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -92,7 +93,7 @@ test('native pinned OpenCode streams an actual reply, MCP call and resumed turn 
     emit({...base,choices:[{index:0,delta,finish_reason:null}]});emit({...base,choices:[{index:0,delta:{},finish_reason:invoke?'tool_calls':'stop'}],usage:{prompt_tokens:10,completion_tokens:3,total_tokens:13}});res.end('data: [DONE]\n\n');
   });const apiPort=await listen(api);t.after(()=>new Promise(resolve=>{api.closeAllConnections();api.close(resolve);}));
   const saved=await new ConfigurationStore(root).save({label:'Synthetic MiniMax',engine:'opencode',kind:'api',protocol:'chat',baseUrl:`http://127.0.0.1:${apiPort}/v1`,model:'MiniMax-M3',apiKey:'synthetic-only-key'});
-  await fs.mkdir(path.join(root,'backend/agent-runtime/node_modules/.bin'),{recursive:true});await fs.symlink(path.join(project,'kernel/node_modules/.bin/opencode'),path.join(root,'backend/agent-runtime/node_modules/.bin/opencode'));
+  await linkNativeProvider(project,root,'opencode');
   await fs.mkdir(path.join(root,'backend/mcp-runtime'),{recursive:true});await fs.writeFile(path.join(root,'backend/mcp-runtime/server.mjs'),`import readline from 'node:readline';for await(const line of readline.createInterface({input:process.stdin})){const m=JSON.parse(line);if(m.id===undefined)continue;let result={};if(m.method==='initialize')result={protocolVersion:'2024-11-05',capabilities:{tools:{}},serverInfo:{name:'synthetic-mcp',version:'1'}};if(m.method==='tools/list')result={tools:[{name:'synthetic_tool',description:'Synthetic tool',inputSchema:{type:'object',properties:{value:{type:'string'}}}}]};if(m.method==='tools/call')result={content:[{type:'text',text:'Synthetic tool completed'}]};process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');}`);
   const reserve=http.createServer();const port=await listen(reserve);await new Promise(resolve=>reserve.close(resolve));
   let finish;const terminals=[];p=new OpenCodeProvider({root,port,mcpEnv:{},instructions:'Synthetic only',onEvent:(r,e)=>{received.push(e);if(e.type==='done'||e.type==='error'){terminals.push(e);finish?.();}}});

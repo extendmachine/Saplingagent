@@ -197,3 +197,42 @@ HTTP/SSE error still reports persistence uncertainty until storage is confirmed.
 Account selections accept `{engine:codex,providerId:null,modelId:string|null}`. Null preserves automatic project default; explicit IDs are validated before a new user message is appended and never silently downgraded. Existing `/api/sessions/:id/engine` changes are idle/revision guarded; a same-Codex model-only change retains the native thread and history, clears context/model usage, and resumes with the new model next turn. Other-engine handoff remains unchanged. The per-run selected model and supported effort are sent to thread/start, thread/resume and turn/start without cross-session global mutation.
 
 Sessions and SSE snapshots add optional nullable `modelUsage:{requestedModel,actualModel,requestId,updatedAt,source}`. Sources are `thread/start`, `thread/resume`, `model/rerouted` or `unreported`. Actual model comes only from an authoritative RPC model field or a current-thread/current-turn reroute; absent evidence is null. A subsequent turn with the same requested model and no new report retains the last confirmed record and its original requestId/time; label it as the most recent server report, not proof of the current inference. Binding or requested-model changes clear stale evidence. Stale notifications cannot alter later turns. Configuration/authentication changes still require restart.
+
+
+## Failure isolation (2026-11-03)
+
+Permanent400 snapshot validation/size rejection is not an indefinitely retryable
+dirty save. Finish first persists running:false, activeRequestId:null and the true
+request ledger without rejected messages; confirmed metadata persistence releases
+busy gates. SSE reports SESSION_TOO_LARGE or SESSION_SAVE_REJECTED and discloses
+that the response body was not saved. Completed request IDs must not execute again.
+Unknown metadata-write outcomes still retain dirty recovery and block unsafe
+switching. Storage-only errors do not change an actual completed model outcome.
+
+Codex replacement closes its previous owned RPC, ignores stale connection events
+and never replaces a live connection with an active Codex turn. Aborting a single
+turn does not close the shared RPC. A stop not confirmed within the bounded wait
+reports STOP_UNCONFIRMED while the turn remains running/reserved; normal status
+and later native completion remain authoritative. Further Stop retries only the
+turn interruption. Active terminal/error notifications may finish a turn; pending
+turn/start or resume work must acknowledge cancellation before releasing its slot.
+Service shutdown still stops the shared owned engine explicitly.
+
+Operational log writes/retention are best-effort and do not change a successful
+business result. Git subprocesses disable optional index locking; required Git
+mutation locks remain effective. Version label locks record process ownership;
+recovery requires a dead owner, exclusive recovery coordination and unchanged
+file identity. Live/unknown owners and legacy locks are kept for inspection.
+
+
+## Request recovery and replay
+
+A rejected Codex turn/start with a definitive protocol refusal ends the run. After an unknown submission outcome, the Agent reads the original thread and accepts only the turn containing the matching user-message clientId. Stop can retry that scoped check. Permanent size rejections (including HTTP 413) retry terminal metadata alone. A project-local pending terminal record supports recovery after an Agent restart. Replaying a message whose request ledger entry has already expired returns HTTP 409 and preserves the saved reply.
+
+At startup, the Agent repairs saved terminal writes and marks abandoned running sessions interrupted independently of starting the default engine. Status polling retries failed session recovery without restarting a ready engine or repeatedly scanning sessions after successful recovery. A provider outage therefore permits switching an interrupted conversation to an available engine. Recovery uses the existing revision checks and preserves the message history.
+
+Retries get distinct native Codex client IDs. The Agent can recover an ambiguous native turn only from its original thread, with exact attempt ownership. While a terminal write lacks acknowledgement, a journal under `data/agent-runtime/pending-saves` records its intended patch. A damaged entry is retained and affected sends report `SESSION_RECOVERY_REQUIRED`; the rest of the project can continue.
+
+## Preparing a chat engine
+
+POST /api/engines/prepare accepts a JSON object containing engine (codex, claude or opencode) and returns the current engine catalog. An explicit engine choice can install the selected engine's missing programs. GET /api/engines reads available engine state without installing unselected providers. External-only MCP does not start a built-in engine in the background.

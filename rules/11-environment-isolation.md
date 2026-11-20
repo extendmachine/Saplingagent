@@ -94,3 +94,10 @@ AI must delete the inapplicable items or clearly state "not applicable", and mus
 ## Saplingagent customer scope
 
 For this project, rule18 distinguishes maintainer development/delivery inside the project folder from a customer's explicit request to work on external code. The default isolation guidance is not a technical path permission restriction; keep Full Access and follow the actual user-authorized scope.
+
+
+## Saplingagent approved shared tools (2026-11-03)
+
+The owner approved automatic local-tool reuse plus a per-user shared tool library. For Saplingagent only, this exception supersedes the project-local-only requirements above for Node/npm, compatible Codex/Claude/OpenCode executables, the locked engine SDK group, Go and tool download caches. Prefer verified existing programs; detection failure installs the tested version without overwriting existing installations. Default locations are Windows LOCALAPPDATA/Saplingagent and macOS Library/Application Support/Saplingagent; an explicit SAPLING_RUNTIME_HOME is supported.
+
+Shared versions coexist and install under cross-project locks. Projects reference them through tool aliases/receipts, without editing machine PATH. Program reuse does not share application processes, accounts or history. Source, business dependencies/virtual environments, configuration, credentials, conversations, logs, runtime ownership and build output remain inside each project. SAPLING_RUNTIME_MODE=portable keeps the tool store inside the project. Missing/moved references must be detected and repaired; native Windows link/copy fallback needs actual device acceptance. This does not add Agent permissions or authorize unrelated external code edits.

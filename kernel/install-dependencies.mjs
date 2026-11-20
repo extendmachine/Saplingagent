@@ -3,7 +3,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { randomUUID } from 'node:crypto';
+import {prepareProviderTools,runtimeEngines} from './tooling/providers.mjs';
+import {toolProgress} from './tooling/progress.mjs';
+import {readLanguage} from './localization/store.mjs';
 import { prepareManagedEnvironment } from './contracts/local-storage.mjs';
 import { npmCommand, codexBinary } from './contracts/local-process.mjs';
 import { acquireKernelLock, assertKernelOffline } from './contracts/kernel.mjs';
@@ -19,15 +21,6 @@ try {
  await assertKernelOffline(root);
  await assertMcpClientsStopped(root);
  await run(npm.command,[...npm.args,'ci','--include=optional','--no-audit','--no-fund'],path.join(root,'kernel'));
- const config=JSON.parse(await fs.readFile(path.join(root,`kernel/config/${process.platform==='win32'?'windows':'macos'}.json`),'utf8'));
- const stage=`.runtime/codex-maintenance-${randomUUID()}`;const directory=path.join(root,stage);
- try {
-  await fs.mkdir(directory,{recursive:true});await fs.writeFile(path.join(directory,'package.json'),JSON.stringify({private:true,dependencies:{'@openai/codex':config.codexVersion}}));
-  await run(npm.command,[...npm.args,'install','--include=optional','--ignore-scripts','--no-audit','--no-fund'],directory);
-  await run(codexBinary(root,process.platform,process.arch,stage),['--version'],root);
-  const destination=path.join(root,'.runtime/codex'),previous=path.join(root,`.runtime/codex-before-${randomUUID()}`);
-  let moved=false;try{await fs.rename(destination,previous);moved=true;}catch(error){if(error.code!=='ENOENT')throw error;}
-  try{await fs.rename(directory,destination);}catch(error){if(moved)await fs.rename(previous,destination);throw error;}
-  if(moved)await fs.rm(previous,{recursive:true,force:true});
- }finally{await fs.rm(directory,{recursive:true,force:true});}
+ const language=await readLanguage(root);
+ await prepareProviderTools(root,await runtimeEngines(root),{onProgress:event=>console.log(toolProgress(event,language))});
 }finally{await release();}

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
-import os from 'node:os';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import test from 'node:test';
 import { promisify } from 'node:util';
@@ -11,7 +11,9 @@ const exec = promisify(execFile);
 const run = (cwd, ...args) => exec('git', ['-C', cwd, ...args]);
 
 async function repository() {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'saplingagent-git-'));
+  const base = fileURLToPath(new URL('../../../.cache/git-version-tests/', import.meta.url));
+  await fs.mkdir(base, { recursive: true });
+  const root = await fs.mkdtemp(path.join(base, 'repository-'));
   await run(root, 'init', '-b', 'main');
   await run(root, 'config', 'user.name', 'Saplingagent Test');
   await run(root, 'config', 'user.email', 'test@example.invalid');
@@ -185,7 +187,9 @@ test('application without its own repo cannot read or mutate the parent repo', a
 
 
 test('empty main reads without writing history, switches to itself, and first explicit save creates safe source history', async t => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'saplingagent-empty-git-'));
+  const base = fileURLToPath(new URL('../../../.cache/git-version-tests/', import.meta.url));
+  await fs.mkdir(base, { recursive: true });
+  const root = await fs.mkdtemp(path.join(base, 'empty-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   await run(root, 'init', '-b', 'main'); await run(root, 'config', 'user.name', 'Fixture'); await run(root, 'config', 'user.email', 'fixture@example.invalid');
   const clean = await readGitVersion(root);
@@ -203,4 +207,36 @@ test('empty main reads without writing history, switches to itself, and first ex
   assert.equal(saved.unborn, false); assert.ok(saved.head.sha); assert.equal(saved.branch, 'main'); assert.equal(saved.recentCommits.length, 1);
   assert.equal((await run(root, 'ls-tree', '-r', '--name-only', 'HEAD')).stdout.trim(), 'note.txt');
   assert.equal((await run(root, 'remote')).stdout.trim(), '');
+});
+
+test('background Git status does not refresh the index or request optional locks', async t => {
+  const root = await repository(); t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const index = path.join(root, '.git/index'), before = await fs.readFile(index);
+  const future = new Date(Date.now() + 60000); await fs.utimes(path.join(root, 'note.txt'), future, future);
+  const previous = process.env.GIT_OPTIONAL_LOCKS; process.env.GIT_OPTIONAL_LOCKS = '1';
+  try { assert.equal((await readGitVersion(root)).clean, true); }
+  finally { if (previous === undefined) delete process.env.GIT_OPTIONAL_LOCKS; else process.env.GIT_OPTIONAL_LOCKS = previous; }
+  assert.deepEqual(await fs.readFile(index), before);
+});
+
+test('version naming recovers a proven dead owner while preserving old live, unknown and symlink locks', async t => {
+  const root = await repository(); t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const state = await readGitVersion(root), directory = path.join(root, '.git/saplingagent/version-labels.json.lock');
+  const { spawn } = await import('node:child_process'); const child = spawn(process.execPath, ['-e', 'process.exit(0)']);
+  await new Promise((resolve, reject) => { child.once('exit', resolve); child.once('error', reject); });
+  await fs.mkdir(directory, { recursive: true }); await fs.writeFile(path.join(directory, 'owner.json'), JSON.stringify({ id: 'dead-owner', pid: child.pid }));
+  assert.equal((await nameGitVersion(root, state.head.sha, 'Recovered')).head.displayName, 'Recovered');
+  await assert.rejects(fs.access(directory));
+  await fs.mkdir(directory); const live = JSON.stringify({ id: 'live-owner', pid: process.pid });
+  await fs.writeFile(path.join(directory, 'owner.json'), live); const old = new Date(0); await fs.utimes(directory, old, old);
+  await assert.rejects(nameGitVersion(root, state.head.sha, 'Wrong'), { code: 'GIT_LABEL_BUSY' });
+  assert.equal(await fs.readFile(path.join(directory, 'owner.json'), 'utf8'), live);
+  await fs.rm(directory, { recursive: true }); await fs.mkdir(directory); await fs.utimes(directory, old, old);
+  await assert.rejects(nameGitVersion(root, state.head.sha, 'Unknown'), { code: 'GIT_LABEL_BUSY' });
+  await fs.rm(directory, { recursive: true });
+  if (process.platform !== 'win32') {
+    const outside = path.join(root, 'outside-lock'); await fs.mkdir(outside); await fs.writeFile(path.join(outside, 'owner.json'), JSON.stringify({ id: 'dead', pid: child.pid }));
+    await fs.symlink(outside, directory, 'dir'); await assert.rejects(nameGitVersion(root, state.head.sha, 'Symlink'), { code: 'GIT_LABEL_BUSY' });
+    assert.equal((await fs.lstat(directory)).isSymbolicLink(), true); assert.equal((await fs.readdir(outside)).length, 1);
+  }
 });

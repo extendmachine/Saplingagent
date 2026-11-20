@@ -96,8 +96,11 @@ test('Quit terminates the owned startup child before runtime discovery exists',a
  const f=await fixture(t);
  const {ProjectLauncher}=await import('../manager.mjs');
  f.options.launcher=new ProjectLauncher(f.root);
- const localNode=path.join(f.root,path.relative(fileURLToPath(new URL('../../../',import.meta.url)),process.execPath));
- await fs.mkdir(path.dirname(localNode),{recursive:true});await fs.copyFile(process.execPath,localNode);
+ const relativeNode=path.relative(fileURLToPath(new URL('../../../',import.meta.url)),process.execPath);
+ if(relativeNode && relativeNode!=='..' && !relativeNode.startsWith('..'+path.sep) && !path.isAbsolute(relativeNode)){
+   const localNode=path.join(f.root,relativeNode);
+   await fs.mkdir(path.dirname(localNode),{recursive:true});await fs.copyFile(process.execPath,localNode);
+ }
  await f.write('scripts/dev.mjs',`import fs from 'node:fs';process.on('SIGTERM',()=>{fs.writeFileSync('startup-cleaned','yes');process.exit(0);});fs.writeFileSync('startup-pid',String(process.pid));setTimeout(()=>fs.writeFileSync('late-start','bad'),2500);setInterval(()=>{},500);`);
  const work=f.dock().start(f.input);
  const marker=path.join(f.root,'startup-pid');while(!await fs.access(marker).then(()=>true,()=>false))await delay(10);
@@ -110,4 +113,40 @@ test('Quit terminates the owned startup child before runtime discovery exists',a
 test('existing external configuration opens without starting another application cluster',async t=>{
  const f=await fixture(t);f.options.configuration=async()=>({configurationHost:'external',port:12345});
  assert.equal(await f.dock().start(f.input),'ready');assert.equal(f.calls.prepare,0);assert.equal(f.calls.start,0);assert.equal(f.calls.open,1);
+});
+
+test('a remount archives a verified dead Dock owner and its stopped worker before cold launch', async t => {
+  const f = await fixture(t);
+  await f.dock().start(f.input);
+  await f.dock().stop(f.input);
+  const owner = JSON.parse(await fs.readFile(path.join(f.root,'.runtime/native-app.json')));
+  const old = {...owner, dev: owner.dev + 1};
+  await f.write('.runtime/native-app.json',old);
+  const next = {pid:91003, nonce:randomUUID()};
+  f.identities.set(next.pid,{...owner.process,stamp:'next app'});
+  await assert.rejects(f.dock().start(next),{code:'DOCK_RECORD_INVALID'});
+  f.identities.delete(owner.pid);
+  const stateFile = '.runtime/native-app-state.json';
+  const state = JSON.parse(await fs.readFile(path.join(f.root,stateFile)));
+  await f.write(stateFile,{...state,workerFinished:false});
+  await assert.rejects(f.dock().start(next),{code:'DOCK_RECORD_INVALID'});
+  await f.write(stateFile,state);
+  f.setState({phase:'unverified',unverified:true});
+  await assert.rejects(f.dock().start(next),{code:'DOCK_RECORD_INVALID'});
+  f.setState({phase:'stopped'});
+  for (const different of [{ino:old.ino+1},{projectId:randomUUID()},{root:f.root+'-copy'}]) {
+    await f.write('.runtime/native-app.json',{...old,...different});
+    await assert.rejects(f.dock().start(next),{code:'DOCK_RECORD_INVALID'});
+  }
+  await f.write('.runtime/native-app.json',old);
+  f.identities.set(owner.pid,{stamp:'unrelated reused pid',executable:'/another/app'});
+  assert.equal(await f.dock().start(next),'ready');
+  const [archive] = (await fs.readdir(path.join(f.root,'.runtime'))).filter(file=>file.startsWith('dock-archive-'));
+  for(const file of ['native-app.json','native-app-state.json','native-app-request.json']){
+    const saved=JSON.parse(await fs.readFile(path.join(f.root,'.runtime',archive,file)));
+    assert.equal(saved.nonce,owner.nonce);
+  }
+  const current=JSON.parse(await fs.readFile(path.join(f.root,'.runtime/native-app.json')));
+  assert.equal(current.pid,next.pid);
+  assert.equal(current.dev,owner.dev);
 });

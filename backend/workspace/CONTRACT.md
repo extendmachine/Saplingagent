@@ -5,7 +5,7 @@
 |Method/Address|Input|Successful output|
 | --- | --- | --- |
 | GET /health |Nothing| {ready:true,service:'workspace',version} |
-| GET /sessions |Nothing|{sessions:[{id,title,updatedAt,engine,providerId,modelId,engineRevision}]}, update time in reverse order|
+| GET /sessions |Nothing|{sessions:[{id,title,updatedAt,engine,providerId,modelId,engineRevision,running}]}, update time in reverse order|
 | POST /sessions | {title?,engine?,providerId?,modelId?} | 201 {session} |
 | GET /sessions/:id |UUID/Security ID| {session} |
 | PATCH /sessions/:id | {threadId?,messages?,title?,running?,activeRequestId?,requests?,contextUsage?,modelUsage?,expectedRevision?,expectedEngineRevision?,handoffDeliveredRequestId?} | {session} |
@@ -145,3 +145,21 @@ advance. Malformed stored modelUsage returns500 CORRUPT_STORAGE and leaves bytes
 intact for recovery. The standard expectedEngineRevision guard rejects old-model
 snapshots after a model change. Storage is additive, local and atomic; no schema
 rewrite, account request, dependency or new endpoint is required.
+
+
+## Storage resilience (2026-11-03)
+
+Session listing skips non-file/symlink entries, invalid identifiers and individually
+corrupt/invalid session records without changing their bytes. Missing entries
+removed concurrently are skipped; directory failures and system IO errors still
+propagate. Direct reads/writes continue reporting the original storage errors.
+Messages exceeding10000 items,500000 characters per message or4MiB serialized
+return400 SESSION_TOO_LARGE before any write. Other validation errors remain
+INVALID_INPUT; metadata-only PATCH retains existing messages.
+
+
+## Request recovery and replay
+
+POST /sessions accepts an optional firstRequestId. The store atomically resolves an existing first request or creates its session and records firstRequestId in the same atomic session write. A process-local lookup index is rebuilt from validated session files on first use, including legacy first user messages. A damaged record remains on disk and is omitted from lookup and listing. Ambiguous legacy ownership returns a conflict.
+
+Full histories stay in storage. Listing returns lightweight summaries including `running`. A file identity and change-time cache lets unchanged records reuse previously validated metadata. The store updates first-request claims on its writes and refreshes external changes when listing.

@@ -583,3 +583,152 @@ test('restoring a model-only Codex change never retries an old binding without a
  saved={...saved,messages:[...failed,message('new-request','New task'),{...message('new-failure','New failure','assistant'),status:'failed'}],requests:[...saved.requests,{id:'new-request',engineRevision:1,status:'failed'}]};
  const current=await harness({savedId:'changed',engineCatalog:codexCatalog(),route:r=>r.url==='/api/chat'?json({error:{message:'fixture failed'}},503):json({session:saved})});t.after(()=>current.close());assert.equal(current.current.retryable,true);await current.current.retry();assert.equal(current.requests.find(r=>r.url==='/api/chat').input.requestId,'new-request');assert.equal(current.requests.find(r=>r.url==='/api/chat').input.engineRevision,1);
 });
+
+test('startup and switched running-session restore failures release only the current view', async t => {
+  for (const startup of [true, false]) {
+    let reads = 0;
+    const h = await harness({ savedId: startup ? 'recovering' : null, route: request => {
+      if (request.url === '/api/sessions/recovering') return ++reads === 1
+        ? json({ session: session('recovering', [message('prior', 'saved input')], true) })
+        : json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Synthetic restart' } }, 503);
+    } }); t.after(() => h.close());
+    if (!startup) { h.current.switchSession('recovering'); await h.settle(); }
+    assert.equal(h.current.activeSessionId, 'recovering');
+    assert.equal(h.current.isRunning, false); assert.equal(h.current.isLoading, false);
+    assert.ok(h.current.error); assert.equal(h.current.retryable, true);
+    assert.equal(h.current.startNew(), true);
+  }
+});
+
+test('switching a recovery stream leaves component status polling alive', async t => {
+  const h = await harness({ savedId: 'recovering', route: request => {
+    if (request.url === '/api/sessions/recovering') return json({ session: session('recovering', [], true) });
+    if (request.url === '/api/events?sessionId=recovering') return new Response('');
+    if (request.url === '/api/sessions/idle') return json({ session: session('idle') });
+  } }); t.after(() => h.close());
+  h.current.switchSession('idle'); await h.settle(); h.tick(10000); await h.settle();
+  const requests = h.requests.filter(request => request.url === '/api/status');
+  assert.ok(requests.length >= 2); assert.equal(requests.at(-1).signal.aborted, false);
+  h.close(); assert.equal(requests.at(-1).signal.aborted, true);
+});
+
+test('late restore failure cannot clear a different currently running conversation', async t => {
+  const failure = deferred(); let reads = 0;
+  const h = await harness({ savedId: 'old', route: request => {
+    if (request.url === '/api/sessions/old') return ++reads === 1 ? json({ session: session('old', [], true) }) : failure.promise;
+    if (request.url === '/api/sessions/current') return json({ session: session('current', [], true) });
+    if (request.url === '/api/events?sessionId=current') return new Response('');
+  } }); t.after(() => h.close());
+  h.current.switchSession('current'); await h.settle();
+  failure.resolve(json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'old error' } }, 503)); await h.settle();
+  assert.equal(h.current.activeSessionId, 'current'); assert.equal(h.current.isRunning, true); assert.equal(h.current.error, '');
+});
+
+test('slow chat headers survive ten seconds but retain a bounded transport deadline', async t => {
+  const h = await harness({ route: request => {
+    if (request.url === '/api/chat') return new Promise((resolve, reject) => request.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true }));
+  } }); t.after(() => h.close());
+  const sending = h.send(); await h.settle(); h.tick(10000); await h.settle();
+  assert.equal(h.requests.find(request => request.url === '/api/chat').signal.aborted, false);
+  h.tick(120000); await sending;
+  assert.equal(h.current.isRunning, false); assert.match(h.current.error, /timed out/i);
+});
+
+test('rejected response storage leaves visible output available to copy instead of replacing it with an older snapshot', async t => {
+  const h = await harness({ route: request => {
+    if (request.url === '/api/chat') return new Response([
+      { type: 'session', sessionId: 'large' },
+      { type: 'snapshot', session: session('large', [message(request.input.requestId, request.input.text), message('answer', 'unsaved output', 'assistant')]) },
+      { type: 'error', code: 'SESSION_TOO_LARGE', message: 'Copy this unsaved response.' },
+      { type: 'done', status: 'failed' },
+    ].map(event => `data: ${JSON.stringify(event)}\n\n`).join(''));
+  } }); t.after(() => h.close());
+  await h.send(); assert.equal(h.current.messages.at(-1).text, 'unsaved output');
+  assert.equal(h.requests.filter(request => request.url === '/api/sessions/large').length, 0);
+  assert.equal(h.current.errorIssue.code, 'SESSION_TOO_LARGE');
+});
+
+for (const code of ['SESSION_TOO_LARGE', 'SESSION_SAVE_REJECTED']) {
+  test(`a storage rejection on the reconnected stream retains the live answer (${code})`, async t => {
+    const user = message('fixture-request-1', 'Question');
+    const older = session('large', [user]);
+    const full = session('large', [user, message('answer', 'Only live copy', 'assistant')]);
+    const stream = events => new Response(events.map(event => 'data: ' + JSON.stringify(event) + '\n\n').join(''));
+    let reads = 0;
+    const h = await harness({ route: request => {
+      if (request.url === '/api/chat') return stream([{ type: 'session', sessionId: 'large' }]);
+      if (request.url === '/api/sessions/large') return json({ session: { ...older, running: ++reads === 1 } });
+      if (request.url === '/api/events?sessionId=large') return stream([
+        { type: 'snapshot', session: full }, { type: 'error', code, message: 'Copy this answer.' }, { type: 'done', status: 'failed' },
+      ]);
+    } });
+    t.after(() => h.close());
+    await h.send('Question');
+    assert.equal(reads, 1);
+    assert.equal(h.current.messages.at(-1).text, 'Only live copy');
+    assert.equal(h.current.errorIssue.code, code);
+    assert.equal(h.current.isRunning, false);
+    h.runtime({ busy: false, phase: 'ready', instanceId: 'fixture', generation: 2 });
+    await h.settle();
+    assert.equal(reads, 2);
+    assert.equal(h.current.messages.at(-1).text, 'Only live copy');
+    assert.equal(h.current.startNew(), true);
+    await h.settle();
+    assert.equal(h.current.messages.length, 0);
+  });
+}
+
+test('reopening a first-token failure restores manual retry using its original request identity', async t => {
+  const user = { ...message('first', 'Question'), attachments: [{ id: 'file-1', kind: 'file', name: 'notes.txt' }] };
+  let stored = { ...session('conversation', [user]), engine: 'codex', engineRevision: 1,
+    requests: [{ id: 'first', status: 'failed', engineRevision: 1 }] };
+  const h = await harness({ savedId: 'conversation', route: request => {
+    if (request.url === '/api/sessions/conversation') return json({ session: stored });
+    if (request.url === '/api/chat') {
+      stored = { ...stored, messages: [user, message('answer', 'Success', 'assistant')], requests: [{ id: 'first', status: 'completed', engineRevision: 1 }] };
+      return sse('conversation', stored.messages);
+    }
+  } });
+  t.after(() => h.close());
+  assert.ok(h.current.error);
+  assert.equal(h.current.retryable, true);
+  assert.equal(h.requests.filter(r => r.url === '/api/chat').length, 0);
+  await h.current.retry();
+  const sent = h.requests.filter(r => r.url === '/api/chat');
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0].input, { sessionId: 'conversation', text: 'Question', requestId: 'first', engineRevision: 1, engine: 'codex', providerId: null, modelId: null, attachmentIds: ['file-1'] });
+  assert.equal(h.current.messages.filter(item => item.role === 'user').length, 1);
+  assert.equal(h.current.retryable, false);
+});
+
+test('native completion clears an earlier unconfirmed-stop warning', async t => {
+  const h = await harness({ route: request => {
+    if (request.url === '/api/chat') return new Response([
+      { type: 'session', sessionId: 'stopping' },
+      { type: 'snapshot', session: session('stopping', [], true) },
+      { type: 'error', code: 'STOP_UNCONFIRMED', message: 'Still stopping' },
+      { type: 'done', status: 'interrupted' },
+    ].map(event => `data: ${JSON.stringify(event)}\n\n`).join(''));
+    if (request.url === '/api/sessions/stopping') return json({ session: session('stopping') });
+  } }); t.after(() => h.close());
+  await h.send(); assert.equal(h.current.isRunning, false); assert.equal(h.current.error, '');
+});
+
+test('expired retry history and a damaged pending save show a terminal actionable error', async t => {
+  for (const code of ['REQUEST_HISTORY_EXPIRED', 'SESSION_RECOVERY_REQUIRED']) {
+    const h = await harness({ route: request => {
+      if (request.url === '/api/chat') return json({error:{code, message:'Review the saved conversation'}}, 409);
+    } }); t.after(() => h.close());
+    await h.send(); await h.settle();
+    assert.equal(h.current.errorIssue.code, code);
+    assert.equal(h.current.isRunning, false); assert.equal(h.current.retryable, false);
+    await h.current.retry(); assert.equal(h.requests.filter(request => request.url === '/api/chat').length, 1);
+  }
+});
+
+test('restoring a conversation with a damaged pending save keeps history readable and shows recovery instructions', async t => {
+  const saved = {...session('damaged', [message('msg','Retain this')]), recoveryError:{code:'SESSION_RECOVERY_REQUIRED',message:'Inspect recovery record'}};
+  const h = await harness({savedId:'damaged', route:() => json({session:saved})}); t.after(() => h.close());
+  assert.equal(h.current.errorIssue.code, 'SESSION_RECOVERY_REQUIRED'); assert.equal(h.current.messages[0].text,'Retain this');
+  assert.equal(h.current.isRunning, false); assert.equal(h.current.retryable, false); assert.equal(h.current.startNew(),true);
+});

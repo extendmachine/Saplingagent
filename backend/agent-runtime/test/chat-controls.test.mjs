@@ -12,27 +12,28 @@ async function until(check) {
   for (let i = 0; i < 200; i++) { if (await check()) return; await new Promise(resolve => setTimeout(resolve, 5)); }
   throw new Error('Synthetic runtime condition not reached');
 }
-async function fixture(config = {}) {
+async function fixture(config = {}, faults = {}) {
   await fs.mkdir(cache, { recursive: true });
   const root = await fs.mkdtemp(path.join(cache, 'progress-')), sessions = new Map();
   let nextSession = 0, nextThread = 0, nextTurn = 0, rpc;
-  const patches = []; let failWrites = false;
+  const patches = [], rpcs = [], workspaceRequests = []; let failWrites = false;
   const prompts = [], threadSetups = [], starts = [], interrupts = [], replies = [], channels = [];
   let beforeAck, nextPatchGate, nextPreferencesGate, nextThreadGate, cancellableResume;
   const gates = [];
   function gate() { let release; const value = { entered: false, ready: new Promise(resolve => { release = resolve; }), release: () => release() }; gates.push(value); return value; }
   class FakeAppServer extends EventEmitter {
-    constructor() { super(); rpc = this; this.closed = false; }
+    constructor() { super(); rpc = this; this.closed = false; rpcs.push(this); }
     async call(method, p = {}) {
       if (method === 'initialize') return {};
       if (method === 'account/read') return { account: { type: 'chatgpt' } };
       if (method === 'model/list') return { data: [{ model: 'synthetic-model', isDefault: true, supportedReasoningEfforts: [{ reasoningEffort: 'medium' }], defaultReasoningEffort: 'medium' }] };
       if (method === 'skills/list') return { data: [] };
-      if (method === 'mcpServerStatus/list') return { data: [{ name: 'seedagent', tools: { fake: {} } }] };
+      if (method === 'mcpServerStatus/list') return { data: [{ name: 'seedagent', tools: faults.mcpUnavailable ? {} : { fake: {} } }] };
       if (['thread/start', 'thread/resume'].includes(method)) threadSetups.push(p);
       if (['thread/start', 'thread/resume'].includes(method) && !p.ephemeral && nextThreadGate) { const hold = nextThreadGate; nextThreadGate = undefined; hold.entered = true; await hold.ready; }
       if (method === 'thread/start') return { thread: { id: `thread-${++nextThread}` }, sandbox: { type: 'dangerFullAccess' }, approvalPolicy: 'never' };
       if (method === 'thread/resume') { if (cancellableResume) { cancellableResume.entered = true; await cancellableResume.ready; if(cancellableResume.cancelled)throw Object.assign(Error('Conversation resume was cancelled.'),{code:'CODEX_RESUME_CANCELLED'}); } return {}; }
+      if (method === 'thread/read' && faults.threadRead) return faults.threadRead(p);
       if (method === 'turn/start') {
         prompts.push(p);
         const turnId = `turn-${++nextTurn}`, turn = { threadId: p.threadId, turnId };
@@ -41,7 +42,7 @@ async function fixture(config = {}) {
         return { turn: { id: turnId } };
       }
       if (method === 'turn/interrupt') {
-        interrupts.push(p); queueMicrotask(() => this.emit('notification', { method: 'turn/completed', params: { threadId: p.threadId, turn: { id: p.turnId, status: 'interrupted' } } })); return {};
+        interrupts.push(p); if (!faults.ignoreInterrupt) queueMicrotask(() => this.emit('notification', { method: 'turn/completed', params: { threadId: p.threadId, turn: { id: p.turnId, status: 'interrupted' } } })); return {};
       }
       throw new Error(`Unexpected synthetic RPC ${method}`);
     }
@@ -49,19 +50,21 @@ async function fixture(config = {}) {
     send() {}
     reply(id, result) { replies.push({ id, result }); }
     reject() {}
-    close() { this.closed = true; return Promise.resolve(); }
+    close() { if (!this.closed) { this.closed = true; this.emit('disconnect', new Error('Synthetic RPC closed')); } return Promise.resolve(); }
   }
   const workspace = http.createServer(async (req, res) => {
+    workspaceRequests.push(req.method + ' ' + req.url);
     const parts = []; for await (const part of req) parts.push(part);
     const input = parts.length ? JSON.parse(Buffer.concat(parts)) : {};
     let output;
     if (req.url === '/preferences') { if (nextPreferencesGate) { const hold = nextPreferencesGate; nextPreferencesGate = undefined; hold.entered = true; await hold.ready; } output = { preferences: [] }; }
     else if (req.url === '/sessions' && req.method === 'GET') output = { sessions: [...sessions.values()].map(s => ({ id: s.id })) };
     else if (req.url === '/sessions' && req.method === 'POST') {
-      const session = { id: `session-${++nextSession}`, messages: [], requests: [], running: false, title: 'Synthetic test' }; sessions.set(session.id, session); output = { session };
+      const owner = input.firstRequestId && [...sessions.values()].find(session => session.firstRequestId === input.firstRequestId);
+      const session = owner || { id: `session-${++nextSession}`, firstRequestId:input.firstRequestId, messages: [], requests: [], running: false, title: 'Synthetic test' }; sessions.set(session.id, session); output = { session };
     } else if (sessions.has(req.url.slice('/sessions/'.length))) {
       const session = sessions.get(req.url.slice('/sessions/'.length));
-      if (req.method === 'PATCH') { patches.push(structuredClone(input)); if (failWrites) { res.writeHead(500); res.end(JSON.stringify({error:{code:'STORAGE_ERROR',message:'Synthetic storage failure'}})); return; } if (nextPatchGate) { const hold = nextPatchGate; nextPatchGate = undefined; hold.entered = true; await hold.ready; } Object.assign(session, input, {updatedAt: new Date().toISOString()}); }
+      if (req.method === 'PATCH') { patches.push(structuredClone(input)); if (faults.rejectMessages && Object.hasOwn(input, 'messages')) { res.writeHead(faults.rejectMessages === 'PAYLOAD_TOO_LARGE' ? 413 : 400); res.end(JSON.stringify({error:{code:faults.rejectMessages,message:'Synthetic rejected snapshot'}})); return; } if (faults.rejectMetadata && input.running === false && !Object.hasOwn(input, 'messages')) { res.writeHead(500); res.end(JSON.stringify({error:{code:'STORAGE_ERROR',message:'Metadata unavailable'}})); return; } if (failWrites) { res.writeHead(500); res.end(JSON.stringify({error:{code:'STORAGE_ERROR',message:'Synthetic storage failure'}})); return; } if (nextPatchGate) { const hold = nextPatchGate; nextPatchGate = undefined; hold.entered = true; await hold.ready; } Object.assign(session, input, {updatedAt: new Date().toISOString()}); if (faults.loseMetadataAck && !Object.hasOwn(input, 'messages')) { res.writeHead(500); res.end(JSON.stringify({error:{code:'STORAGE_ERROR',message:'Lost acknowledgement'}})); return; } }
       output = { session };
     } else { res.writeHead(404); res.end(JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Session does not exist' } })); return; }
     res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(output));
@@ -93,13 +96,20 @@ async function fixture(config = {}) {
     await until(() => events.some(e => e.type === 'snapshot')); return channel;
   }
   return {
-    server, base, prompts, patches, threadSetups, starts, interrupts, replies, sessions,
+    server, root, base, prompts, patches, workspaceRequests, threadSetups, starts, interrupts, replies, sessions, rpcs, faults,
     set failWrites(value) { failWrites = value; },
     get rpc() { return rpc; }, set beforeAck(value) { beforeAck = value; },
     delayNextSave() { return nextPatchGate = gate(); },
     delayPreferences() { return nextPreferencesGate = gate(); },
     delayThreadSetup() { return nextThreadGate = gate(); },
     delayCancellableResume() { return cancellableResume = gate(); },
+    async restartAgent() {
+      const port = server.address().port;
+      await server.shutdown();
+      server = await createAgentServer({ root, AppServerClass: FakeAppServer });
+      await new Promise(resolve => server.listen(port, '127.0.0.1', resolve));
+      await server.startAgent();
+    },
     stream, request,
     async chat(requestId, sessionId) { const previous = starts.length; const ch = await stream('/api/chat', { requestId, sessionId, text: 'Synthetic test' }); await until(() => starts.length > previous && sessions.get(ch.sessionId)?.threadId); return ch; },
     async session(id) { return (await (await request(`/api/sessions/${id}`)).json()).session; },
@@ -264,4 +274,192 @@ test('a delayed rename updates the replacement active turn instead of its comple
   await f.complete(newTurn); await until(() => second.ended);
   assert.equal(f.sessions.get(first.sessionId).title, 'Across turns');
   assert.equal(f.prompts.length, 2); assert.equal(f.interrupts.length, 0);
+});
+
+test('permanent snapshot rejection saves true terminal ledger and releases busy gates without repeating completed inference', async t => {
+  for (const rejectMessages of ['SESSION_TOO_LARGE', 'INVALID_INPUT', 'PAYLOAD_TOO_LARGE']) {
+    const faults = {}, f = await fixture({}, faults); t.after(() => f.cleanup());
+    const ch = await f.chat('permanent'), turn = f.starts[0]; faults.rejectMessages = rejectMessages;
+    f.notify(turn, 'item/agentMessage/delta', { itemId: 'answer', delta: 'Unsaved synthetic answer' });
+    await f.complete(turn); await until(() => ch.ended);
+    assert.equal(f.sessions.get(ch.sessionId).running, false);
+    assert.equal(f.sessions.get(ch.sessionId).activeRequestId, null);
+    assert.equal(f.sessions.get(ch.sessionId).requests.at(-1).status, 'completed');
+    assert.ok(ch.events.some(e => e.type === 'error' && e.code === (rejectMessages === 'INVALID_INPUT' ? 'SESSION_SAVE_REJECTED' : 'SESSION_TOO_LARGE')));
+    assert.ok(ch.events.some(e => e.type === 'snapshot' && e.session.messages.some(m => m.text === 'Unsaved synthetic answer')));
+    const replay = await f.stream('/api/chat', { requestId: 'permanent', sessionId: ch.sessionId, text: 'Synthetic test' });
+    await until(() => replay.ended); assert.equal(f.prompts.length, 1);
+    assert.equal((await f.request('/internal/runtime/prepare', {})).status, 200);
+  }
+});
+
+test('lost metadata acknowledgement is reconciled; unknown final-state storage still retains the busy gate', async t => {
+  for (const fail of [false, true]) {
+    const faults = {}, f = await fixture({}, faults); t.after(() => f.cleanup());
+    const ch = await f.chat('metadata'), turn = f.starts[0];
+    Object.assign(faults, { rejectMessages: 'SESSION_TOO_LARGE', loseMetadataAck: !fail, rejectMetadata: fail });
+    f.notify(turn, 'turn/completed', { turnId: undefined, turn: { id: turn.turnId, status: 'completed' } });
+    await until(() => ch.ended);
+    assert.equal(ch.events.some(e => e.code === 'SESSION_SAVE_FAILED'), fail);
+    assert.equal((await f.request('/internal/runtime/prepare', {})).status, fail ? 409 : 200);
+  }
+});
+
+test('RPC replacement closes old transport, ignores stale events and preserves live Codex work', async t => {
+  const f = await fixture(); t.after(() => f.cleanup());
+  const first = f.rpc; await f.server.startAgent();
+  assert.equal(first.closed, true); assert.equal(f.rpcs.length, 2);
+  const ch = await f.chat('rpc-owner'), turn = f.starts[0], current = f.rpc;
+  await f.server.startAgent(); assert.equal(f.rpc, current); assert.equal(f.rpcs.length, 2);
+  first.emit('disconnect', new Error('Stale transport failed'));
+  first.emit('notification', { method: 'turn/completed', params: { threadId: turn.threadId, turn: { id: turn.turnId, status: 'failed' } } });
+  await new Promise(resolve => setTimeout(resolve, 30));
+  assert.equal((await f.session(ch.sessionId)).running, true);
+  assert.equal((await (await f.request('/api/status')).json()).ready, true);
+  await f.complete(turn); await until(() => ch.ended);
+});
+
+test('not-ready retries retain one owned App Server and reuse successful session recovery', async t => {
+  const f = await fixture({}, { mcpUnavailable: true }); t.after(() => f.cleanup());
+  for (let index = 0; index < 3; index++) await f.server.startAgent();
+  assert.equal(f.rpcs.filter(rpc => !rpc.closed).length, 1);
+  assert.equal(f.workspaceRequests.filter(entry => entry === 'GET /sessions').length, 1);
+});
+
+test('unconfirmed Stop reserves its own turn without closing or failing another conversation', { timeout: 15000 }, async t => {
+  const f = await fixture({}, { ignoreInterrupt: true }); t.after(() => f.cleanup());
+  const a = await f.chat('stop-a'), b = await f.chat('stop-b'), [turnA, turnB] = f.starts;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await f.request(`/api/sessions/${a.sessionId}/cancel`, {});
+    assert.equal(response.status, 202); assert.equal((await response.json()).pending, true);
+    assert.equal((await f.session(a.sessionId)).running, true);
+    assert.equal((await f.session(b.sessionId)).running, true); assert.equal(f.rpc.closed, false);
+  }
+  assert.equal(f.interrupts.length, 2);
+  assert.ok(a.events.some(e => e.code === 'STOP_UNCONFIRMED'));
+  await f.complete(turnB); await until(() => b.ended); assert.equal(a.ended, false);
+  await f.complete(turnA, 'interrupted'); await until(() => a.ended);
+  assert.equal(f.sessions.get(a.sessionId).requests.at(-1).status, 'interrupted');
+});
+
+test('unavailable log directory cannot fail initialization or a successful Git operation', async t => {
+  const f = await fixture(); t.after(() => f.cleanup());
+  const logs = path.join(f.root, 'logs/agent-runtime'); await fs.rm(logs, { recursive: true }); await fs.writeFile(logs, 'blocked logs');
+  await f.server.startAgent(); assert.equal((await (await f.request('/api/status')).json()).ready, true);
+  const { execFileSync } = await import('node:child_process');
+  const git = (...args) => execFileSync('git', ['-C', f.root, ...args], { encoding: 'utf8' }).trim();
+  git('init', '-b', 'main'); git('config', 'user.name', 'Synthetic Test'); git('config', 'user.email', 'test@example.invalid');
+  await fs.writeFile(path.join(f.root, 'public.txt'), 'public fixture'); git('add', 'public.txt'); git('commit', '-m', 'fixture');
+  const response = await f.request('/api/git/label', { sha: git('rev-parse', 'HEAD'), name: 'Saved despite unavailable logs' });
+  assert.equal(response.status, 200); assert.equal((await response.json()).git.head.displayName, 'Saved despite unavailable logs');
+});
+
+test('explicit Codex rejection finishes immediately without disturbing a peer turn', async t => {
+  const f = await fixture(); t.after(() => f.cleanup());
+  const peer = await f.chat('peer'), peerTurn = f.starts[0];
+  f.beforeAck = () => { throw Object.assign(Error('Synthetic invalid model'), { code:-32602 }); };
+  const rejected = await f.chat('reject-model');
+  await until(() => rejected.ended);
+  assert.equal(f.sessions.get(rejected.sessionId).requests.at(-1).status, 'failed');
+  assert.equal(f.sessions.get(rejected.sessionId).running, false);
+  assert.equal((await f.session(peer.sessionId)).running, true);
+  assert.equal(f.interrupts.length, 0);
+  await f.complete(peerTurn);
+  assert.equal((await f.request('/internal/runtime/prepare', {})).status, 200);
+});
+
+test('a retry with a lost acknowledgement recovers only its own native turn and exact response', async t => {
+  const faults = {}, f = await fixture({}, faults); t.after(() => f.cleanup());
+  const first = await f.chat('same-request');
+  await f.complete(f.starts[0], 'failed'); await until(() => first.ended);
+  let reads = 0;
+  faults.threadRead = ({ threadId, includeTurns }) => {
+    reads++; assert.equal(includeTurns, true);
+    return { thread:{ id:threadId, turns:f.starts.map((turn,index) => ({
+      id:turn.turnId, status:index === 0 ? 'failed' : 'completed',
+      items:[{type:'userMessage', clientId:f.prompts[index].clientUserMessageId},
+        {type:'agentMessage', id:'answer-' + index, text:'answer ' + index}],
+    })) }};
+  };
+  f.beforeAck = () => { throw Error('Synthetic response lost'); };
+  const second = await f.chat('same-request', first.sessionId); await until(() => second.ended);
+  assert.ok(reads > 0);
+  assert.notEqual(f.prompts[0].clientUserMessageId, f.prompts[1].clientUserMessageId);
+  const saved = await f.session(first.sessionId);
+  assert.equal(saved.requests.at(-1).status, 'completed');
+  assert.deepEqual(saved.messages.filter(m => m.role === 'assistant').map(m => m.text), ['answer 1']);
+  assert.equal(f.interrupts.length, 0);
+});
+
+test('metadata-only 413 recovery survives an Agent restart and a replay without rerunning tools', async t => {
+  const faults = {}, f = await fixture({}, faults); t.after(() => f.cleanup());
+  const ch = await f.chat('replay'), turn = f.starts[0];
+  Object.assign(faults, { rejectMessages:'PAYLOAD_TOO_LARGE', rejectMetadata:true });
+  f.notify(turn, 'turn/completed', { turn:{id:turn.turnId, status:'completed'} });
+  await until(() => ch.ended);
+  const directory = path.join(f.root, 'data/agent-runtime/pending-saves');
+  const entry = JSON.parse(await fs.readFile(path.join(directory, ch.sessionId + '.json'), 'utf8'));
+  assert.equal(Object.hasOwn(entry.patch, 'messages'), false);
+  assert.equal(entry.patch.requests.at(-1).status, 'completed');
+  faults.rejectMetadata = false;
+  await f.restartAgent();
+  assert.equal((await f.session(ch.sessionId)).running, false);
+  assert.deepEqual(await fs.readdir(directory), []);
+  const replay = await f.stream('/api/chat', { requestId:'replay', sessionId:ch.sessionId, text:'Synthetic test' });
+  await until(() => replay.ended);
+  assert.equal(f.prompts.length, 1);
+});
+
+test('one damaged pending save blocks edits only in its own conversation', async t => {
+  const f = await fixture(); t.after(() => f.cleanup());
+  const ch = await f.chat('damaged'); await f.complete(f.starts[0]); await until(() => ch.ended);
+  const file = path.join(f.root, 'data/agent-runtime/pending-saves', ch.sessionId + '.json');
+  await fs.writeFile(file, '{');
+  f.sessions.get(ch.sessionId).running = true;
+  await f.restartAgent();
+  const damaged = await f.session(ch.sessionId);
+  assert.equal(damaged.recoveryError.code, 'SESSION_RECOVERY_REQUIRED');
+  assert.equal(damaged.running, false);
+  assert.equal(f.sessions.get(ch.sessionId).running, true);
+  const denied = await f.request('/api/chat', { requestId:'later', sessionId:ch.sessionId, text:'Synthetic test' });
+  assert.equal(denied.status, 409); assert.equal((await denied.json()).error.code, 'SESSION_RECOVERY_REQUIRED');
+  const healthy = await f.chat('healthy'); await f.complete(f.starts.at(-1)); await until(() => healthy.ended);
+  assert.equal(await fs.readFile(file, 'utf8'), '{'); assert.equal(f.prompts.length, 2);
+  assert.equal((await f.request('/internal/runtime/prepare', {})).status, 200);
+});
+
+test('request 501 evicts record 1; replay preserves the first response without new inference', async t => {
+  const f = await fixture(); t.after(() => f.cleanup());
+  const first = await f.chat('first'), turn = f.starts[0];
+  f.notify(turn, 'item/agentMessage/delta', {itemId:'original-answer', delta:'First reply'});
+  await f.complete(turn); await until(() => first.ended);
+  const stored = f.sessions.get(first.sessionId);
+  for (let n = 2; n <= 500; n++) stored.requests.push({...stored.requests[0], id:'middle-' + n});
+  const last = await f.chat('last', first.sessionId); await f.complete(f.starts.at(-1)); await until(() => last.ended);
+  assert.equal(stored.requests.length, 500);
+  assert.equal(stored.requests.some(entry => entry.id === 'first'), false);
+  const replay = await f.request('/api/chat', {sessionId:first.sessionId, requestId:'first', text:'Synthetic test'});
+  assert.equal(replay.status, 409);
+  assert.equal((await replay.json()).error.code, 'REQUEST_HISTORY_EXPIRED');
+  assert.equal(stored.messages.find(m => m.id === 'original-answer').text, 'First reply');
+  assert.equal(f.prompts.length, 2);
+});
+
+test('fresh sends and first-request replay after restart have no history-list or peer-session HTTP reads', async t => {
+  const f = await fixture(); t.after(() => f.cleanup());
+  const peer = await f.chat('older-conversation'); await f.complete(f.starts[0]); await until(() => peer.ended);
+  const firstOffset = f.workspaceRequests.length;
+  const current = await f.chat('request-without-session'); await f.complete(f.starts.at(-1)); await until(() => current.ended);
+  await f.restartAgent();
+  const replayOffset = f.workspaceRequests.length;
+  const replay = await f.stream('/api/chat', {requestId:'request-without-session', text:'Synthetic test'}); await until(() => replay.ended);
+  assert.equal(replay.sessionId, current.sessionId); assert.equal(f.prompts.length, 2);
+  // Startup recovery can list sessions independently; new sends and replays cannot.
+  const start = f.workspaceRequests.indexOf('GET /sessions', firstOffset);
+  assert.ok(start > firstOffset);
+  for (const group of [f.workspaceRequests.slice(firstOffset, start), f.workspaceRequests.slice(replayOffset)]) {
+    assert.equal(group.includes('GET /sessions'), false);
+    assert.equal(group.includes('GET /sessions/' + peer.sessionId), false);
+    assert.ok(group.includes('POST /sessions'));
+  }
 });

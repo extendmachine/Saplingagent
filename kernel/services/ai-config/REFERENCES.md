@@ -48,3 +48,9 @@ Public documentation and npm metadata need no login; real inference/model catalo
 - https://code.claude.com/docs/en/agent-sdk/quickstart — API/environment authentication and requirement for prior Anthropic approval before a third-party product offers claude.ai subscription login/rate limits. No approval supplied; only API credential import is implemented with pinned SDK0.3.296.
 - https://code.claude.com/docs/en/authentication — ANTHROPIC_API_KEY; keychain/.credentials.json and CLAUDE_CONFIG_DIR distinctions. Import does not read subscription stores, run apiKeyHelper or acquire hosted permissions.
 - https://code.claude.com/docs/en/settings — user settings.json and custom CLAUDE_CONFIG_DIR on macOS/Windows; only explicit API env fields are extracted, never settings/hook execution. Public documentation accessible without login; actual API access requires a user credential/quota.
+
+## Process-exit recovery of configuration writes (2026-11-18, TASK-20261118-002)
+
+The bundled Node 24 runtime supplies DatabaseSync for the short recovery reservation. No account, extra package or external service is required. [Node.js SQLite API](https://nodejs.org/api/sqlite.html#class-databasesync)
+
+SQLite documents single-writer transactions and how separate file descriptors can invalidate POSIX locks. Only SQLite opens the recovery database. [SQLite transactions](https://www.sqlite.org/lang_transaction.html) and [SQLite file locking](https://www.sqlite.org/howtocorrupt.html#posix_advisory_locks_canceled_by_a_separate_thread_doing_close)

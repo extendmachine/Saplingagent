@@ -1,6 +1,9 @@
 import { launcherMessages } from '../localization/launcher-messages.mjs';
 import { formatMessage } from '../localization/public.mjs';
 import { readLanguage } from '../localization/store.mjs';
+import {ensureShared,atomicJSON} from '../tooling/store.mjs';
+import {runtimeHome,runtimeMode,readBindings,toolLocationAllowed} from '../tooling/bindings.mjs';
+import {systemCandidates,bindAlias,withToolSetupLock} from '../tooling/tools.mjs';
 import fs from "node:fs/promises";
 import {readFileSync,existsSync} from "node:fs";
 import path from "node:path";
@@ -197,36 +200,29 @@ export function toolchainForDevice(
   return file;
 }
 export async function ensureGo(root, onProgress = () => {}) {
-  root=await fs.realpath(root);await prepareBuildStorage(root);
-  const pin = await json(path.join(root, "kernel/launcher/toolchain.json"));
-  const file = toolchainForDevice(pin),
-    arch = file.arch;
-  const destination = path.join(
-      root,
-      ".runtime",
-      pin.version + "-" + file.os + "-" + arch,
-    ),
-    go = path.join(
-      destination,
-      "go/bin",
-      process.platform === "win32" ? "go.exe" : "go",
-    );
-  if (await exists(go)) {
-    if (
-      (await command(root, go, ["version"], { timeout: 15000 })).includes(
-        pin.version,
-      )
-    )
-      return go;
-    throw issue(
-      "TOOLCHAIN_INVALID",
-      "The project-local Go toolchain is damaged. Remove its version directory after stopping builds and retry.",
-    );
+  return withToolSetupLock(root,buildContext.getStore()?.signal,project=>prepareGo(project,onProgress));
+}
+async function prepareGo(root,onProgress) {
+  await prepareBuildStorage(root);
+  const pin=await json(path.join(root,'kernel/launcher/toolchain.json'));
+  const file=toolchainForDevice(pin),exe=process.platform==='win32'?'go.exe':'go';
+  const home=runtimeHome(root),saved=readBindings(root),language=await readLanguage(root);
+  const progress=key=>onProgress(formatMessage(launcherMessages,language,key));
+  const compatible=async go=>{try{const version=await command(root,go,['version'],{timeout:5000});return version.includes(pin.version+' ')&&version.includes(file.os+'/'+file.arch);}catch{return false;}};
+  const mode=runtimeMode(root),portable=mode==='portable',same=saved?.mode===mode&&saved.home===home;
+  if(portable)await fs.mkdir(home,{recursive:true});
+  if(portable&&!toolLocationAllowed(root,home,mode))throw issue('INVALID_RUNTIME_HOME','The portable tool store must resolve inside this project.');
+  let go;
+  for(const candidate of [same&&saved.tools?.go?.path,path.join(root,'.runtime',pin.version+'-'+file.os+'-'+file.arch,'go/bin',exe),...(portable?[]:systemCandidates('go'))].filter(Boolean)){
+    const real=await fs.realpath(candidate).catch(()=>null);
+    if(real&&toolLocationAllowed(root,real,mode)&&await compatible(real)){go=real;break;}
   }
-  const stage = path.join(root, ".runtime", "go-download-" + randomUUID());
-  await fs.mkdir(stage, { recursive: true });
-  try {
-    onProgress("Downloading verified project-local Go compiler…");
+  if(!go){
+    const directory=await ensureShared(home,`go-${pin.version}-${file.os}-${file.arch}`,{
+      signal:buildContext.getStore()?.signal,
+      validate:stage=>toolLocationAllowed(root,path.join(stage,'go/bin',exe),mode)&&compatible(path.join(stage,'go/bin',exe)),
+      create:async stage=>{
+    progress("Downloading verified shared Go compiler…");
     const response = await fetch("https://go.dev/dl/" + file.filename, {
       signal: AbortSignal.any([
         AbortSignal.timeout(600000),
@@ -270,7 +266,7 @@ export async function ensureGo(root, onProgress = () => {}) {
           "-NoProfile",
           "-NonInteractive",
           "-Command",
-          "Expand-Archive -LiteralPath $env.SAPLING_ARCHIVE -DestinationPath $env.SAPLING_STAGE",
+          "Expand-Archive -LiteralPath $env:SAPLING_ARCHIVE -DestinationPath $env:SAPLING_STAGE",
         ],
         {
           env: {
@@ -282,12 +278,19 @@ export async function ensureGo(root, onProgress = () => {}) {
       );
     else await command(root, "/usr/bin/tar", ["-xzf", archive, "-C", stage]);
     await fs.rm(archive);
-    await fs.rename(stage, destination);
-    return go;
-  } finally {
-    await fs.rm(stage, { recursive: true, force: true });
+
+      },onWait:()=>progress('Waiting for the shared Go compiler…')});
+    go=path.join(directory,'go/bin',exe);
   }
+  const alias=await bindAlias(root,'go',go);
+  const receipt=same?saved:{schemaVersion:1,root,mode,home,tools:{}};
+  if(!same&&portable&&saved?.mode==='shared'&&saved.homeKind!=='default')receipt.sharedHome=saved.home;
+  if(!same&&!portable)receipt.homeKind=process.env.SAPLING_RUNTIME_HOME||saved?.sharedHome?'custom':'default';
+  receipt.tools||={};receipt.tools.go={path:go,version:pin.version,source:go.startsWith(home+path.sep)?'shared':'local',alias};
+  await atomicJSON(path.join(root,'.runtime/tool-bindings.json'),receipt);
+  return go;
 }
+
 export async function publishArtifact(
   root,
   stage,
@@ -412,6 +415,8 @@ async function compileLauncherUnlocked(
   const go = await ensureGo(root, onProgress);
   const base = path.join(root, ".runtime/launcher-build", randomUUID());
   await fs.mkdir(base, { recursive: true });
+  let failure;
+  try {
   for (const f of sources)
     await fs.copyFile(path.join(sourceDir, f), path.join(base, f));
   await fs.writeFile(path.join(base,"localization_generated.go"),"package main\nfunc init() { launcherMessagesJSON = "+JSON.stringify(JSON.stringify(launcherMessages))+" }\n");
@@ -443,6 +448,17 @@ async function compileLauncherUnlocked(
     // This app only runs its own helper and never controls another application.
     for (const key of Object.keys(plist))
       if (key.endsWith("UsageDescription")) delete plist[key];
+    const folderPurpose = "This app reads the project configuration and saves runtime files in the project folder.";
+    const folderKeys = ["NSDesktopFolderUsageDescription", "NSDocumentsFolderUsageDescription", "NSDownloadsFolderUsageDescription"];
+    for (const key of folderKeys) plist[key] = launcherMessages.en[folderPurpose];
+    plist.CFBundleDevelopmentRegion = "en";
+    for (const [locale, language] of [["en", "en"], ["zh-Hans", "zh"]]) {
+      const directory = path.join(artifact, "Contents/Resources", locale + ".lproj");
+      await fs.mkdir(directory, {recursive: true});
+      const explanation = JSON.stringify(launcherMessages[language][folderPurpose]);
+      const strings = folderKeys.map(key => `"${key}" = ${explanation};\n`).join("");
+      await fs.writeFile(path.join(directory, "InfoPlist.strings"), strings);
+    }
     if (icon.length) {
       plist.CFBundleIconFile = "project.icns";
       delete plist.CFBundleIconName;
@@ -536,8 +552,15 @@ async function compileLauncherUnlocked(
     compiledAt: new Date().toISOString(),
   };
   await writeJSON(path.join(root, ".runtime/launcher.json"), receipt);
-  await fs.rm(base, { recursive: true, force: true });
   return receipt;
+  } catch (error) { failure = error; throw error; }
+  finally {
+    // Failed publication deliberately retains its staged artifact for recovery.
+    if (failure?.code !== 'LAUNCHER_REPLACE_FAILED') {
+      try { await fs.rm(base, { recursive: true, force: true }); }
+      catch (error) { if (!failure) throw error; }
+    }
+  }
 }
 
 async function removeCreatedLease(file,identity) {

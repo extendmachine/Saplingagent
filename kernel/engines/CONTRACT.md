@@ -28,3 +28,9 @@ error causes, stacks and extra data are not forwarded as public error objects.
 `codex-models.mjs` reads every model/list page with cursor/nextCursor and rejects malformed, cyclic or excessive pagination without publishing partial results. IDs are native `model` values. Picker labels and reasoning options come from the returned catalog; no hard-coded model list is substituted. Catalog membership does not verify account access.
 
 The shared provider contract accepts Codex modelId null or a bounded nonempty string and rejects provider overrides. `selectCodexModel` validates explicit account choices without fallback, uses a supported effort, and keeps API schemes fixed to their configured model. Only automatic selection may use the catalog default/first model when a preferred ID is missing, with a visible warning. `reportedModel` accepts a bounded native model field, never a selected-value substitute. Runtime persistence and HTTP behavior belong to Agent/workspace.
+
+Claude and OpenCode list profiles with readable credentials. An unavailable key
+or subscription token affects its own profile. The application keeps the user's
+existing model and engine binding and can select another healthy scheme. A
+profile retained across a concurrent settings edit cannot reuse a credential
+that now belongs to a different origin or authentication kind.
