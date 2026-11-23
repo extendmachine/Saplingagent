@@ -8,6 +8,11 @@
 - Reduce background status polling and improve Dock shutdown and recovery. Native macOS launchers need a rebuild to pick up the Dock changes.
 - Kernel updates retain schema 3, layout 1 and application API 1. A full source download includes application changes; a kernel-only update preserves the recipient’s application code.
 
+### Updated Codex catalog (2026-11-23)
+
+- Pin Codex CLI 0.171.0 on macOS, Linux, and Windows. Refresh models in chat to choose GPT-6.2 Sol or Astra when available for the current account. Existing conversation selections and the automatic model preference are retained.
+- Prepare the project Codex directory before native tool probes. The launcher rebinds an existing project to the new tool version on the next start after updating the kernel.
+
 ### Codex login import revision (2026-11-19)
 
 - Use the local user’s Codex login when Configure AI is launched with the project’s own `CODEX_HOME`. If no separate login file is available, direct users to official sign-in or file upload.

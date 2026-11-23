@@ -84,7 +84,7 @@ export class AppServer extends Transport {
       const rollout = await this.awaitResumeWork(findRelocatedRollout(this.projectRoot, params.threadId, { signal: operation.controller.signal }), operation);
       this.assertResumeActive(operation);
       if (!rollout) throw error;
-      // Explicit path takes precedence over threadId in Codex0.146.1. The helper
+      // The native resume uses the explicit path when supplied. The helper
       // verifies the persisted identity before it is sent, and we verify it again
       // on the response. There is exactly one retry and never a replacement thread.
       const result = await this.invokeResume({ ...params, path: rollout, cwd: this.projectRoot }, operation);

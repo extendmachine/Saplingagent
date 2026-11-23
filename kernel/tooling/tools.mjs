@@ -8,6 +8,7 @@ import {spawn} from 'node:child_process';
 import {createHash,randomUUID} from 'node:crypto';
 import {runtimeHome,runtimeMode,readBindings,nodeDirectory,toolLocationAllowed,containsPath,realLocation} from './bindings.mjs';
 import {ensureShared,atomicJSON} from './store.mjs';
+import {ensureManagedDirectory} from '../contracts/local-storage.mjs';
 
 const json=file=>fs.readFile(file,'utf8').then(JSON.parse).catch(()=>null);
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -150,6 +151,8 @@ async function prepareTools(root,{onProgress=()=>{},run=execute,candidates=syste
   if(mode==='portable')await fs.mkdir(home,{recursive:true});
   if(mode==='portable'&&!containsPath(root,realLocation(home)))throw Object.assign(new Error('The portable tool store must resolve inside this project.'),{code:'INVALID_RUNTIME_HOME'});
   const env=toolEnvironment(root,home);await fs.mkdir(env.TMPDIR,{recursive:true});
+  // Codex 0.171.0 requires its configured home to exist before starting.
+  if(engines.includes('codex'))await ensureManagedDirectory(root,'local-secrets/codex');
   const saved=readBindings(root),canReuse=saved?.mode===mode&&saved.home===home;
   const tools=canReuse?{...saved.tools}:{},sdks=canReuse?{...saved.sdks}:{};
   let sdk=canReuse?saved.sdk:undefined;

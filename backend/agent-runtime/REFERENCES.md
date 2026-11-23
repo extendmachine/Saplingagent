@@ -45,7 +45,7 @@ TASK-20261010-015: checked the current official App Server, authentication and p
 
 - Node24.21 child_process: https://nodejs.org/download/release/v24.21.0/docs/api/child_process.html — Windows .cmd limitations, signal behavior and owned process lifecycle. Public; project Node24.21.0.
 - Microsoft taskkill: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/taskkill — /PID /T /F termination of an owned live process tree. Public; Windows10/11 x64; current-user OS rights.
-- OpenAI Windows: https://learn.chatgpt.com/docs/windows/windows-sandbox — native PowerShell, Windows11 recommendation and recent Windows10 best effort. Public; this project still pins Codex0.146.1 and retains Full Access. Real account required for inference; no sandbox migration is inferred from newer docs.
+- OpenAI Windows: https://learn.chatgpt.com/docs/windows/windows-sandbox — native PowerShell, Windows11 recommendation and recent Windows10 best effort. Public; the Windows check used Codex 0.146.1 with Full Access. Real account required for inference; no sandbox migration is inferred from newer docs.
 - Exact npm metadata https://registry.npmjs.org/@openai/codex/0.146.1 and https://registry.npmjs.org/opencode-ai/1.19.0 — native Windows optional dependencies; local OpenCode postinstall selects executable. Public, downloads/install required; no model request.
 
 TASK-20261012-003, checked2026-10-11: https://learn.chatgpt.com/docs/app-server (requiresOpenaiAuth and login account semantics; generated local0.146.1 schema confirms), https://learn.chatgpt.com/docs/config-file/config-advanced (custom provider base_url/env_key/Responses), https://opencode.ai/docs/providers/ and https://opencode.ai/docs/sdk/ (native provider options and MCP status; pinned1.19.0 actual catalog checked). Documents public; actual account/provider requests use the customer's own rights. No current v2 OpenCode assumption, CLI upgrade or paid inference.
@@ -108,3 +108,7 @@ refresh; GIT_OPTIONAL_LOCKS=0 suppresses optional locks, not required mutation l
 No account/network operation is added by local Git status or version labels.
 
 2026-11-17, TASK-20261117-003. The locally generated pinned Codex App Server v2 schema exposes `TurnStartParams.clientUserMessageId`, `ThreadReadParams.includeTurns`, and the `clientId` field of `ThreadItem.userMessage` to identify an individual attempt. [OpenAI App Server protocol](https://developers.openai.com/codex/app-server/).
+
+## Codex CLI 0.171.0 (2026-11-23)
+
+TASK-20261123-001. [OpenAI release notes](https://github.com/openai/codex/releases/tag/rust-v0.171.0) document the GPT-6.2 catalog, and the [App Server model interface](https://learn.chatgpt.com/docs/app-server#list-models-modellist) documents client and account availability. The [official npm package](https://registry.npmjs.org/@openai/codex/0.171.0) lists the native targets. These sources are public. The local macOS ARM64 tests used the pinned executable, isolated synthetic files and a loopback provider. Actual account access requires user authentication.

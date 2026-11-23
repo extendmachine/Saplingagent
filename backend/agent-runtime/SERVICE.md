@@ -1,6 +1,6 @@
 # Agent-runtime service
 
-TASK-20261009-005 / Codex/root; Locally runable development version, manual experience see root TODO. Node >=24.11 (unified environment), ESM native HTTP. No third-party running dependency, rpc.mjs connects to the local official Codex CLI0.146.1 App Server.
+TASK-20261009-005 / Codex/root; Locally runable development version, manual experience see root TODO. Node >=24.11 (unified environment), ESM native HTTP. No third-party running dependency, rpc.mjs connects to the local official Codex CLI 0.171.0 App Server.
 
 Responsibilities: model catalog/authentication, continuous thread/turn, SSE text and tool progress, approval, cancellation, de-weighting, disconnection and restart recovery; tasks.mjs is responsible for root AI_TASKS running period registration and this service ai-tasks/runtime record. Files/commands can use Native Codex or MCP/app-builder; service implementation is still communicated through public contracts.
 

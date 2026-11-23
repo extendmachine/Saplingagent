@@ -27,7 +27,7 @@ async function fixture(t){
     await write(path.join(root,'local-secrets/auth-sentinel'),'private fixture');await write(path.join(root,'data/session-sentinel'),'conversation fixture');
     return root;
   };
-  const run=async(command,args,{cwd}={})=>{
+  const run=async(command,args,{cwd,env}={})=>{
     if(args.includes('ci')||args.includes('install')){
       calls.push({args,cwd});const m=JSON.parse(await fs.readFile(path.join(cwd,'package.json')));
       for(const [name,version]of Object.entries(m.dependencies)){
@@ -36,12 +36,15 @@ async function fixture(t){
         if(name==='opencode-ai')await write(path.join(dir,'bin/opencode.exe'),'1.19.0');
         if(name==='@openai/codex'){
           const binary=process.platform==='win32'?path.join(cwd,`node_modules/@openai/codex-win32-${process.arch}/vendor/${process.arch==='arm64'?'aarch64':'x86_64'}-pc-windows-msvc/bin/codex.exe`):path.join(cwd,'node_modules/.bin/codex');
-          await write(binary,'codex-cli 0.146.1');
+          await write(binary,`codex-cli ${version}`);
         }
       }
       return 'prepared';
     }
-    if(args[0]==='app-server')return 'stdio app-server';
+    if(args[0]==='app-server'){
+      assert.equal((await fs.stat(env.CODEX_HOME)).isDirectory(),true);
+      return 'stdio app-server';
+    }
     return fs.readFile(command,'utf8');
   };
   return {base,home,calls,app,run,options:{home,run,candidates:()=>[]}};
@@ -82,6 +85,24 @@ test('deleted or changed external program invalidates readiness and is repaired 
   assert.equal((await toolSetStatus(a)).ready,false);await ensureTools(a,f.options);
   assert.equal(f.calls.length,5);assert.notEqual(readBindings(a).tools.codex.path,previous);
   assert.equal((await toolSetStatus(a)).ready,true);
+});
+test('a changed Codex pin replaces only this project binding and keeps its local account',async t=>{
+  const f=await fixture(t),root=await f.app('upgrade'),peer=await f.app('peer');
+  const platform=process.platform==='darwin'?'macos':process.platform==='win32'?'windows':process.platform;
+  const configFile=path.join(root,`kernel/config/${platform}.json`);
+  await ensureTools(root,{...f.options,engines:['codex']});
+  await ensureTools(peer,{...f.options,engines:['codex']});
+  const previous=readBindings(root).tools.codex.path;
+  const auth=path.join(root,'local-secrets/codex/auth.json');
+  await write(auth,'synthetic saved login');
+  await write(configFile,{nodeVersion:process.versions.node,codexVersion:'0.171.0'});
+  assert.equal((await toolSetStatus(root,['codex'])).ready,false);
+  assert.equal((await ensureTools(root,{...f.options,engines:['codex']})).ready,true);
+  assert.equal(readBindings(root).tools.codex.version,'0.171.0');
+  assert.notEqual(readBindings(root).tools.codex.path,previous);
+  assert.equal(readBindings(peer).tools.codex.path,previous);
+  assert.equal(await fs.readFile(previous,'utf8'),'codex-cli 0.146.1');
+  assert.equal(await fs.readFile(auth,'utf8'),'synthetic saved login');
 });
 test('shared install failure never replaces the previously published version',async t=>{
   const f=await fixture(t);let good=true;

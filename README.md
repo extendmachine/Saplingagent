@@ -282,7 +282,7 @@ Public settings live in [config/runtime.json](config/runtime.json).
 | Total turn deadline | `turnTimeoutMs: 0` | Disabled by default; explicit nonzero configuration enables a total deadline |
 | Inactivity reminder | `turnIdleWarningMs: 600000` | Warns after 10 minutes without effective progress; does not stop or resend the turn |
 
-The UI/status shows the **actual selected model**. A catalog entry is not proof of account entitlement. Tool commands have a separate timeout, normally 60 seconds and explicitly configurable up to one hour.
+The kernel uses Codex CLI **0.171.0**, whose catalog includes GPT-6.2 Sol and Astra. After restart, choose Codex above the composer and select **Refresh models**. Choose a model available to your account, then select **Apply** in an existing conversation. After sending a message, check **Last confirmed model**. The launcher prepares the pinned version for the project automatically. Tool commands have a separate timeout, normally 60 seconds and configurable up to one hour. [Codex release notes](https://github.com/openai/codex/releases/tag/rust-v0.171.0)
 
 Full Access allows native/MCP file and shell operations wherever the current OS user has permission, including frontend, backend, MCP, Skills and rules. It does not elevate to root or bypass OS permissions. There is no Saplingagent directory allowlist, compulsory build/hash gate or automatic rollback. Recorded originals may support user-requested restoration; arbitrary commands and native writes are not guaranteed reversible.
 
@@ -403,7 +403,7 @@ To create a committed clean Windows source ZIP, use `<project-node> kernel/scrip
 
 ## Automatic device selection
 
-The common Bash entry detects macOS, native Windows Bash and GNU/Linux. Mac chooses Intelx64 or AppleSiliconarm64 (including Rosetta). Windows verifies build17763+, selects native x64/ARM64 ahead of emulated-terminal architecture, checks official Node24.21.0 checksums and actual runtime architecture, then installs pinned Codex0.146.1/OpenCode1.19.0 native binaries. No manual CPU selection. GNU/Linux uses the terminal launcher on supported glibc x64 and ARM64 systems. Re-run Install / repair dependencies after moving the source folder to another device; installed dependencies are OS-specific. Native Windows installation and model use still require a Windows hardware check.
+The common Bash entry detects macOS, native Windows Bash and GNU/Linux. Mac chooses Intelx64 or AppleSiliconarm64 (including Rosetta). Windows verifies build17763+, selects native x64/ARM64 ahead of emulated-terminal architecture, checks official Node24.21.0 checksums and actual runtime architecture, then installs pinned Codex 0.171.0 and OpenCode 1.19.0 native binaries. No manual CPU selection. GNU/Linux uses the terminal launcher on supported glibc x64 and ARM64 systems. Re-run Install / repair dependencies after moving the source folder to another device; installed dependencies are OS-specific. Native Windows installation and model use still require a Windows hardware check.
 
 
 ## Automatic local ports

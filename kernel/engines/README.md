@@ -7,7 +7,7 @@ through unchanged.
 
 ## Moving an existing project folder
 
-The pinned Codex0.146.1 stores absolute rollout paths in its private state database.
+Codex stores absolute rollout paths in its private state database.
 Moving the complete project folder can leave an existing thread ID pointing at the
 old path, even though its JSONL history is present in the new local Codex home.
 
@@ -34,10 +34,9 @@ request deadline covers the initial request, lookup and retry together.
 The native integration check reproduces the stale index in an isolated synthetic
 home, resumes the same thread by its moved path, and verifies that **Codex itself**
 persists its new rollout path. A fresh unadapted native process can then resume by
-ID. Historical JSONL hashes remain unchanged, and a local provider receives zero
-requests. Native `thread.cwd` still reports the historical session metadata;
-top-level response `cwd` reports the effective current directory. This result is
-verified for pinned0.146.1; it does not promise future private-schema behavior.
+ID. The original JSONL bytes are preserved and the local mock provider receives zero
+requests. In 0.171.0 Codex may append its own thread-settings events, and the
+resumed response reports the effective directory in both `thread.cwd` and `cwd`.
 
 Run focused checks with project-local Node:
 

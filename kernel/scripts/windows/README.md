@@ -8,8 +8,8 @@ The UTF8 .sh embeds a UTF16LE/base64 EncodedCommand to preserve Chinese and Unic
 
 Official sources checked2026-10-11 (public unless model auth noted):
 - https://learn.chatgpt.com/docs/windows/windows-sandbox : native Windows and Windows10 best-effort upstream.
-- https://learn.chatgpt.com/docs/app-server : stdio protocol, account requirements; project pins0.146.1.
-- https://registry.npmjs.org/@openai/codex/0.146.1 : native win32-x64 optional binary.
+- https://learn.chatgpt.com/docs/app-server — stdio protocol and account requirements. The current project pin is 0.171.0.
+- https://registry.npmjs.org/@openai/codex/0.171.0 — native Windows x64 and ARM64 optional packages.
 - https://registry.npmjs.org/opencode-ai/1.19.0 and https://opencode.ai/docs/ : native Windows package, upstream recommends WSL for best experience; this candidate implements requested native Windows.
 - https://raw.githubusercontent.com/nodejs/node/v24.21.0/BUILDING.md : exact Node Windows platform support.
 - https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.archive/expand-archive : ZIP extraction.

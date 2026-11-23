@@ -43,7 +43,7 @@ Public documentation and npm metadata need no login; real inference/model catalo
 
 ## Credential import (checked 2026-10-13 / TASK-20261013-002)
 
-- https://learn.chatgpt.com/docs/auth — Codex file/keyring/auto credential stores, CODEX_HOME/auth.json and official copying of local auth cache; public docs, real user's tokens needed only for auth. Pinned Codex0.146.1 runtime stays unchanged.
+- https://learn.chatgpt.com/docs/auth — Codex file/keyring/auto credential stores, CODEX_HOME/auth.json and official copying of local auth cache; public docs, real user's tokens needed only for auth. This import check used Codex 0.146.1.
 - https://learn.chatgpt.com/docs/app-server — account/read and owned browser/device OAuth; saving/importing credentials alone is not real inference. Existing local implementation, commercial authentication rights are separate.
 - https://code.claude.com/docs/en/agent-sdk/quickstart — API/environment authentication and requirement for prior Anthropic approval before a third-party product offers claude.ai subscription login/rate limits. No approval supplied; only API credential import is implemented with pinned SDK0.3.296.
 - https://code.claude.com/docs/en/authentication — ANTHROPIC_API_KEY; keychain/.credentials.json and CLAUDE_CONFIG_DIR distinctions. Import does not read subscription stores, run apiKeyHelper or acquire hosted permissions.

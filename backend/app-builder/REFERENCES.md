@@ -14,7 +14,7 @@ No external release platform, model SDK or third-party parsing package dependenc
 
 - Node24.21 child_process: https://nodejs.org/download/release/v24.21.0/docs/api/child_process.html — Windows .cmd limitations, signal behavior and owned process lifecycle. Public; project Node24.21.0.
 - Microsoft taskkill: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/taskkill — /PID /T /F termination of an owned live process tree. Public; Windows10/11 x64; current-user OS rights.
-- OpenAI Windows: https://learn.chatgpt.com/docs/windows/windows-sandbox — native PowerShell, Windows11 recommendation and recent Windows10 best effort. Public; this project still pins Codex0.146.1 and retains Full Access. Real account required for inference; no sandbox migration is inferred from newer docs.
+- OpenAI Windows: https://learn.chatgpt.com/docs/windows/windows-sandbox — native PowerShell, Windows11 recommendation and recent Windows10 best effort. Public; the Windows check used Codex 0.146.1 with Full Access. Real account required for inference; no sandbox migration is inferred from newer docs.
 - Exact npm metadata https://registry.npmjs.org/@openai/codex/0.146.1 and https://registry.npmjs.org/opencode-ai/1.19.0 — native Windows optional dependencies; local OpenCode postinstall selects executable. Public, downloads/install required; no model request.
 
 - Exact Node24.21 source https://raw.githubusercontent.com/nodejs/node/v24.21.0/lib/child_process.js — checked2026-10-11, cmd /d /s /c outer quoting and windowsVerbatimArguments; follows native Node shell argument semantics. Public, no login.

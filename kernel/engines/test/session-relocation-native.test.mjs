@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import http from 'node:http';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { execFile } from 'node:child_process';
@@ -15,7 +15,9 @@ import { AppServer as Transport } from '../../contracts/codex-rpc.mjs';
 // shipping/runtime code has no dependency on a developer's checkout or account.
 const command = process.env.SAPLING_TEST_CODEX_BIN;
 test('pinned Codex resumes the same moved rollout without a model call or raw database rewrite', { skip: !command, timeout: 45000 }, async t => {
-  assert.equal((await promisify(execFile)(command, ['--version'])).stdout.trim(), 'codex-cli 0.146.1');
+  const platform = { darwin: 'macos', linux: 'linux', win32: 'windows' }[process.platform];
+  const { codexVersion } = JSON.parse(await fs.readFile(new URL(`../../config/${platform}.json`, import.meta.url)));
+  assert.equal((await promisify(execFile)(command, ['--version'])).stdout.trim(), `codex-cli ${codexVersion}`);
   const cache = fileURLToPath(new URL('../../../.cache/session-relocation-native/', import.meta.url));
   await fs.mkdir(cache, { recursive: true });
   const fixture = await fs.realpath(await fs.mkdtemp(path.join(cache, 'move-')));
@@ -28,7 +30,7 @@ test('pinned Codex resumes the same moved rollout without a model call or raw da
   await fs.writeFile(originalFile, JSON.stringify({ timestamp, type: 'session_meta', payload: {
     id: threadId, timestamp, cwd: before, originator: 'saplingagent-relocation-test', cli_version: '0.146.1', source: 'cli', model_provider: 'relocation_test', base_instructions: { text: 'Synthetic offline persistence test.' }, dynamic_tools: [],
   } }) + '\n' + JSON.stringify({ timestamp, type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Synthetic stored message; do not send to a model.' }] } }) + '\n');
-  const initialHash = createHash('sha256').update(await fs.readFile(originalFile)).digest('hex');
+  const historicalBytes = await fs.readFile(originalFile);
   let providerRequests = 0;
   const provider = http.createServer((_req, res) => { providerRequests++; res.writeHead(500); res.end('No inference is allowed in this test.'); });
   await new Promise(resolve => provider.listen(0, '127.0.0.1', resolve));
@@ -64,11 +66,17 @@ test('pinned Codex resumes the same moved rollout without a model call or raw da
   const adapted = await start(AppServer, after);
   const restored = await adapted.call('thread/resume', { ...params, cwd: after });
   assert.equal(restored.thread.id, threadId); assert.equal(restored.thread.path, movedFile); assert.equal(restored.cwd, after);
-  // thread.cwd describes historical persisted metadata; top-level cwd is the
-  // effective resumed configuration. Preserve the original session_meta bytes.
-  assert.equal(restored.thread.cwd, before);
+  // The newer server reports the resumed location. The stored legacy metadata
+  // is still checked below by comparing the complete original rollout bytes.
+  assert.equal(restored.thread.cwd, after);
   await adapted.close(); clients.delete(adapted);
-  assert.equal(createHash('sha256').update(await fs.readFile(movedFile)).digest('hex'), initialHash, 'Historical JSONL bytes must remain unchanged.');
+  const migrated = await fs.readFile(movedFile);
+  assert.deepEqual(migrated.subarray(0, historicalBytes.length), historicalBytes, 'Historical JSONL bytes must remain unchanged.');
+  for (const line of migrated.subarray(historicalBytes.length).toString('utf8').trim().split('\n').filter(Boolean)) {
+    const event = JSON.parse(line);
+    assert.equal(event.type, 'event_msg');
+    assert.equal(event.payload.type, 'thread_settings_applied');
+  }
   const row = readRow();
   // This assertion documents actual pinned native behavior, not an assumption
   // that Saplingagent can modify or delete Codex's private database schema.

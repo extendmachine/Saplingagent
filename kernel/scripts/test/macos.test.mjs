@@ -24,7 +24,7 @@ async function fixture(t, { auth = 'missing', badDev = false } = {}) {
     await fs.writeFile(path.join(root, service, 'package-lock.json'), '{}'); hash.update('{}');
   }
   const codex = path.join(root, '.runtime/codex/node_modules/.bin/codex');
-  const fake = `#!/bin/sh\ncase "$*" in\n *--version*) echo 'codex-cli 0.146.1'; exit 0;;\n *status*) ${auth === 'missing' ? "echo 'Not logged in' >&2; exit 1" : auth === 'broken' ? "echo 'Config error PRIVATE_FIXTURE_VALUE' >&2; exit 1" : 'exit 0'};;\n *) exit 7;;\nesac\n`;
+  const fake = `#!/bin/sh\ncase "$*" in\n *--version*) echo 'codex-cli ${settings.codexVersion}'; exit 0;;\n *status*) ${auth === 'missing' ? "echo 'Not logged in' >&2; exit 1" : auth === 'broken' ? "echo 'Config error PRIVATE_FIXTURE_VALUE' >&2; exit 1" : 'exit 0'};;\n *) exit 7;;\nesac\n`;
   await fs.mkdir(path.dirname(codex), { recursive: true }); await fs.writeFile(codex, fake, { mode: 0o755 });
   for (const file of ['front/node_modules/vite/bin/vite.js', 'backend/mcp-runtime/node_modules/@modelcontextprotocol/sdk/package.json', 'backend/agent-runtime/node_modules/.bin/opencode', `backend/agent-runtime/node_modules/@anthropic-ai/claude-agent-sdk-darwin-${process.arch}/claude`]) { await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.writeFile(path.join(root, file), '{}'); }
   await fs.writeFile(path.join(root, '.runtime/macos-install.json'), JSON.stringify({ signature: hash.digest('hex'), arch: process.arch }));

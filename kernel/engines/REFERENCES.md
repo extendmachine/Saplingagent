@@ -5,7 +5,7 @@ used for documentation/protocol verification.
 
 | Information | Official source | Purpose and access | Applicable version |
 | --- | --- | --- | --- |
-| App Server threads and resume | https://learn.chatgpt.com/docs/app-server | Public OpenAI documentation; confirms thread-ID resume, experimental opt-in and effective per-thread configuration. No login required to read. | Current documentation; local implementation pins0.146.1. |
+| App Server threads and resume | https://learn.chatgpt.com/docs/app-server | Public OpenAI documentation; confirms thread-ID resume, experimental opt-in and effective per-thread configuration. No login required to read. | This row records the original 0.146.1 check. |
 | Exact native resume path field | `codex app-server generate-json-schema --experimental --out DIR`, generated `v2/ThreadResumeParams.json` | Official pinned local executable. `path` is marked unstable; a nonempty path overrides threadId for a nonrunning thread, requiring independent ID checks. Generation needs no account or model request. Generated files are verification cache, not shipped source. | codex-cli0.146.1 |
 
 The public documentation does not promise a stable project-directory relocation
@@ -40,3 +40,7 @@ the project's shared private configuration contract.
 ## Codex account model selection (TASK-20261029-003)
 
 Checked2026-10-29 by Codex using the public [App Server documentation](https://learn.chatgpt.com/docs/app-server), plus the existing pinned0.146.1 local JSON schemas. No login is required for the documentation; schema inspection uses no model request. `ModelListParams.cursor` / `ModelListResponse.nextCursor` paginate the catalog; `ThreadStartResponse.model` and `ThreadResumeResponse.model` report native model selection. `ModelReroutedNotification` binds `threadId`, `turnId`, `fromModel`, `toModel` and `reason`. TurnStartResponse has no authoritative model field. Account/model access still needs actual provider acceptance; catalog membership alone is insufficient.
+
+## Codex CLI 0.171.0 (2026-11-23)
+
+TASK-20261123-001. [OpenAI release notes](https://github.com/openai/codex/releases/tag/rust-v0.171.0) document the GPT-6.2 catalog, and the [App Server model interface](https://learn.chatgpt.com/docs/app-server#list-models-modellist) documents client and account availability. The [official npm package](https://registry.npmjs.org/@openai/codex/0.171.0) lists the native targets. These sources are public. The local macOS ARM64 tests used the pinned executable, isolated synthetic files and a loopback provider. Actual account access requires user authentication.

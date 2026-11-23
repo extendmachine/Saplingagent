@@ -81,7 +81,8 @@ test('native Windows stops parent and grandchild, retains an unrelated process, 
   assert.equal(code, 0); assert.equal(text, 'hello');
 });
 test('native Windows installed Codex and OpenCode report pinned versions without login/model calls', { skip: process.platform !== 'win32' || process.env.SAPLING_WINDOWS_INSTALLED_TEST !== '1' }, async () => {
-  for (const [binary, expected] of [[codexBinary(root), 'codex-cli 0.146.1'], [openCodeBinary(root), '1.19.0'], [claudeBinary(root), '2.1.296 (Claude Code)']]) {
+  const { codexVersion } = JSON.parse(await fs.readFile(new URL('../../config/windows.json', import.meta.url)));
+  for (const [binary, expected] of [[codexBinary(root), `codex-cli ${codexVersion}`], [openCodeBinary(root), '1.19.0'], [claudeBinary(root), '2.1.296 (Claude Code)']]) {
     const child = spawn(binary, ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] });
     let output = ''; child.stdout.on('data', chunk => output += chunk); const [code] = await once(child, 'close');
     assert.equal(code, 0); assert.equal(output.trim(), expected);

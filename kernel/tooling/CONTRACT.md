@@ -13,8 +13,9 @@ link-unavailable filesystems get a Node/npm copy. Machine PATH and original
 installations are not edited. ensureTools checks saved bindings, PATH/common CLI
 paths and shared versions before installing. Detection uses version/help only.
 
-The first implementation reuses exact tested versions: Node24.21.0,
-Codex0.146.1 (with app-server), Claude Code2.1.296, OpenCode1.19.0, Go1.27.2.
+The resolver reuses exact tested versions. These are Node 24.21.0,
+Codex 0.171.0 (with App Server), Claude Code 2.1.296, OpenCode 1.19.0, and Go 1.27.2.
+Codex preparation ensures the project-local Codex directory exists before probing the executable.
 A newer unverified tool is retained; the supported version coexists.
 
 Default home: Windows %LOCALAPPDATA%/Saplingagent; macOS
